@@ -1,0 +1,17 @@
+[package]
+name = "vulcanum-main-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = "0.4"
+pretty_env_logger = "0.5"
+tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
+lazy_static = "1.4.0"
+dotenvy = "0.15.7"
+eyre = "0.6.12"
+serde = { version = "1.0", features = ["derive"] }
+serde_with = { version = "3.12.0", features = ["chrono_0_4"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "postgres", "migrate", "uuid", "chrono"] }
+async_once = "0.2"
+uuid = { version = "1.11.0", features = ["serde"] }
