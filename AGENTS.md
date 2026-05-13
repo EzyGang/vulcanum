@@ -93,6 +93,68 @@ cargo run
 
 All formatting, import ordering, and style conventions (generics, documentation, import groups, `Self`, early returns, etc.) are enforced by the `rust-code-style` skill. Load it with `skill name="rust-code-style"` when editing Rust files.
 
+## Web Service Architecture
+
+All web service crates (e.g. `main-app`, future `agent-server`) must follow a strict layered architecture.
+
+### Layers
+
+| Layer | Responsibility | Location |
+|-------|--------------|----------|
+| HTTP | Routing, handlers, request/response serialization | `src/routes/` or `src/handlers/` |
+| Service | Business logic, auth, validation, caching, orchestration | `src/services/<domain>/service/` |
+| Repository | Database queries, SQLx execution | `src/services/<domain>/repository/` |
+
+Rules:
+- Each layer may only communicate with the layer directly above or below it.
+- The HTTP layer **never** calls repositories directly.
+- The repository layer **never** contains business logic, caching, or auth checks.
+
+### File Organization
+
+Domain logic is organized under `src/services/<domain>/`:
+
+```
+src/services/<domain>/
+  model.rs          # Domain types and constants
+  errors.rs         # Domain errors (thiserror)
+  repository.rs     # Repository struct definition
+  repository/
+    <table>.rs      # Query implementations per table
+  service.rs          # Service struct definition
+  service/
+    <operation>.rs  # Individual business operations
+```
+
+- Keep the HTTP layer in `src/routes/` or `src/handlers/`.
+- Split files when they exceed 200 lines.
+- Large domains may be extracted to separate workspace crates under `services/<domain>/`.
+
+### Repository Conventions
+
+- Repositories are thin, stateless wrappers around SQLx queries (one per domain/table).
+- Use a `Queryer<'c>` trait so methods accept both `&PgPool` and `&mut PgConnection` for transaction support:
+  ```rust
+  pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
+  impl<'c> Queryer<'c> for &PgPool {}
+  impl<'c> Queryer<'c> for &'c mut PgConnection {}
+  ```
+- Map `sqlx::Error` to domain errors inside repository methods. Do not leak raw SQL errors.
+- **No caching, no auth, no business invariants** in repositories.
+
+### Service Conventions
+
+- Services are structs holding repositories, the DB pool, and other infrastructure (`Arc<dyn Mailer>`, `Arc<Queue>`, cache, etc.).
+- All business logic lives in service methods: auth checks, input validation, caching, orchestration.
+- Caching is done **exclusively** at the service layer.
+- Services return domain errors, not HTTP responses.
+
+### HTTP Layer Conventions
+
+- Handlers are thin: extract request data, call the appropriate service method, and return the response.
+- Application state (`web::Data`) must expose **services**, not raw database pools.
+- No business logic, no validation rules, and no direct DB access in handlers.
+
 ## Crate-Specific Conventions
 
 For crate-specific details (migrations, environment variables, SQLx workflows, etc.), refer to the local `AGENTS.md` in each crate directory:

@@ -1,30 +1,42 @@
 ---
 name: actix-web
-description: Reference for building web services with the Actix Web framework. Covers server setup, routing, handlers, extractors, errors, testing, and application state. Use when writing or modifying actix-web code in the Vulcanum monorepo.
+description: Reference for building web services with Actix Web in the Vulcanum architecture. Covers the HTTP layer, routing, handlers, extractors, errors, application state, and how actix-web fits into the layered service/repository pattern.
 ---
 
-# Actix Web
+# Actix Web (HTTP Layer)
 
-Reference for building web services with [Actix Web](https://actix.rs). Full API docs: <https://docs.rs/actix-web>.
+Actix Web implements the **HTTP layer** of the Vulcanum web service architecture. It handles routing, request extraction, and response serialization. All business logic and database access must be delegated to the **service** and **repository** layers.
+
+## Layered Architecture
+
+```
+HTTP Layer (actix-web handlers) → Service Layer → Repository Layer
+```
+
+- **HTTP Layer**: Deserializes requests, delegates to services, serializes responses.
+- **Service Layer**: Contains all business logic (auth, validation, caching, invariants).
+- **Repository Layer**: Encapsulates SQLx queries. No business logic. No caching.
+
+**Rule**: Handlers may **not** call repositories directly. They may only call service methods.
 
 ## Cargo Dependencies
 
 ```toml
 [dependencies]
 actix-web = "4"
-actix-rt = "2"
 ```
 
 ## Entry Point
 
-Use `#[actix_web::main]` to start the actix runtime (replaces `#[tokio::main]`):
-
 ```rust
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let state = create_app_state().await;
+
+    HttpServer::new(move || {
         App::new()
-            .route("/", web::get().to(index))
+            .app_data(web::Data::new(state.clone()))
+            .configure(routes::configure)
     })
     .bind("127.0.0.1:8080")?
     .run()
@@ -32,205 +44,148 @@ async fn main() -> std::io::Result<()> {
 }
 ```
 
-## Server (`HttpServer`)
-
-- `HttpServer::bind("0.0.0.0:8080")` binds a socket.
-- `HttpServer::workers(n)` overrides the default worker count (default = physical CPU count).
-- Workers each get their own `App` instance; application factories must be `Send + Sync`.
-- `HttpServer::shutdown_timeout(secs)` sets the graceful shutdown window (default 30 s).
-- `HttpServer::disable_signals()` disables CTRL‑C / signal handling.
-
-### Keep-Alive
-
-```rust
-HttpServer::new(|| App::new()...)
-    .keep_alive(Duration::from_secs(75))
-```
-
-## Application (`App`)
-
-The `App` holds routes, middleware, and scoped state.
-
-### Configuration helper
-
-Use `App::configure(...)` to split route registration into modules:
-
-```rust
-App::new().configure(routes::configure)
-```
-
-Then in `routes/mod.rs`:
-
-```rust
-use actix_web::web;
-
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api/v1")
-            .route("/resource", web::get().to(handler))
-    );
-}
-```
-
 ## Application State
 
-### Read-only shared state (preferred)
-
-Use `web::Data<T>` (wraps `Arc<T>`). Create it **outside** `HttpServer::new` and call `app_data`:
+State must expose **services**, not raw infrastructure:
 
 ```rust
-let pool = create_pool().await;
+pub struct AppState {
+    pub users: UsersService,
+    pub projects: ProjectsService,
+}
 
-HttpServer::new(move || {
-    App::new()
-        .app_data(web::Data::new(pool.clone()))
-        .route("/", web::get().to(handler))
-})
+impl AppState {
+    pub async fn new(config: &Config) -> Result<Self, Error> {
+        let db = pg::create_pool(&config.db_url).await?;
+        let queue = Arc::new(Queue::new(...));
+        let mailer = Arc::new(mailer::create(...));
+
+        Ok(Self {
+            users: UsersService::new(
+                UsersRepository::new(),
+                config,
+                db.clone(),
+                queue.clone(),
+                mailer.clone(),
+            ),
+            projects: ProjectsService::new(ProjectsRepository::new(), db.clone()),
+        })
+    }
+}
 ```
 
 Extract in handlers:
 
 ```rust
-async fn handler(pool: web::Data<SqlitePool>) -> impl Responder { ... }
+async fn get_user(
+    state: web::Data<Arc<AppState>>,
+    path: web::Path<String>,
+) -> Result<impl Responder, AppError> {
+    let user = state
+        .users
+        .get_user(GetUserInput { id: path.into_inner() })
+        .await?;
+    Ok(web::Json(user))
+}
 ```
-
-### Note on blocking primitives
-
-Do **not** hold `std::sync::Mutex` across `.await` points inside handlers. Use `tokio::sync::Mutex` if locking is unavoidable across async boundaries.
 
 ## Routing
 
-### Route directly on App
+Split route registration into modules using `App::configure`:
 
 ```rust
-App::new()
-    .route("/path", web::get().to(handler))
-    .route("/path", web::post().to(handler2))
-```
-
-### Scoped routes (namespaces)
-
-```rust
-web::scope("/api/v1")
-    .route("/users", web::get().to(users::list))
-    .route("/users/{id}", web::get().to(users::show))
-```
-
-### Dynamic path segments
-
-```rust
-// /users/{id} with Path extractor
-async fn show(path: web::Path<u32>) -> impl Responder {
-    format!("User {}", path.into_inner())
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/api/v1")
+            .route("/users/{id}", web::get().to(users::get))
+    );
 }
-
-// Deserialize into a struct
-#[derive(Deserialize)]
-struct Info {
-    user_id: u32,
-}
-// pattern: /users/{user_id}
-async fn show(info: web::Path<Info>) -> impl Responder { ... }
 ```
-
-Pattern syntax: `{name}` matches up to the next `/`. `{name:regex}` applies a regex filter. A trailing `/` does **not** match (e.g. `foo/1/2/` does not match `foo/{a}/{b}`).
 
 ## Handlers
 
-A handler is an async function returning something that implements `Responder`:
+Handlers are **thin**. They only:
+1. Extract request data (path, query, body, state).
+2. Call the appropriate service method.
+3. Return the response.
 
 ```rust
-async fn handler() -> impl Responder { ... }
-async fn handler() -> Result<impl Responder, AppError> { ... }
+async fn get_user(
+    state: web::Data<Arc<AppState>>,
+    path: web::Path<String>,
+) -> Result<impl Responder, AppError> {
+    let user = state
+        .users
+        .get_user(GetUserInput { id: path.into_inner() })
+        .await?;
+    Ok(web::Json(user))
+}
 ```
-
-Built-in `Responder` impls: `&'static str`, `String`, `web::Json<T>`, `HttpResponse`, `Result<T, E>` (where E implements `ResponseError`), `(StatusCode, T)`, and more.
 
 ## Extractors
 
-Typed arguments to handlers that pull data from the request. Up to 12 allowed per handler.
-
 | Extractor | Purpose |
 |-----------|---------|
-| `web::Json<T>` | Deserializes JSON request body (T: Deserialize) |
-| `web::Query<T>` | Deserializes query string (T: Deserialize) |
-| `web::Path<T>` | Dynamic path segments (T: Deserialize or tuple) |
+| `web::Json<T>` | JSON body |
+| `web::Query<T>` | Query string |
+| `web::Path<T>` | Path segments |
 | `web::Data<T>` | Application state |
-| `web::Form<T>` | URL-encoded form data |
-| `HttpRequest` | Raw request metadata |
-| `String` / `web::Bytes` | Raw request body |
+| `HttpRequest` | Raw metadata |
 
-**IMPORTANT**: If an extractor **consumes** the request body stream (e.g. `Json`, `String`, `Bytes`), only the first such extractor will succeed. Don't put two body-consuming extractors in the same handler signature.
+Only one body-consuming extractor per handler.
 
 ## Error Handling
 
-Implement `ResponseError` for typed errors:
+Use `thiserror` for domain errors and implement `ResponseError` at the HTTP layer boundary:
 
 ```rust
 use actix_web::{HttpResponse, ResponseError};
+use thiserror::Error;
 
-#[derive(Debug)]
-enum AppError { ... }
-
-impl fmt::Display for AppError { ... }
+#[derive(Debug, Error)]
+enum AppError {
+    #[error("not found")]
+    NotFound,
+    #[error("bad request")]
+    BadRequest,
+    #[error("internal error")]
+    Internal(#[from] users::Error),
+}
 
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         match self {
             Self::NotFound => HttpResponse::NotFound().json(...),
             Self::BadRequest => HttpResponse::BadRequest().json(...),
+            Self::Internal(_) => HttpResponse::InternalServerError().json("Internal Server Error"),
         }
     }
 }
 ```
 
-Handler `Result` types: `Result<impl Responder, E>` works when `E` implements `ResponseError`. Actix automatically logs errors at `WARN` level (set `RUST_LOG=actix_web=debug` for more).
-
-Best practice: split errors into **user-facing** (return descriptive messages) and **internal** (map to generic "Internal Server Error").
+Services return structured errors. Repositories map `sqlx::Error` to domain errors.
 
 ## Testing
 
-Use `actix_web::test`:
+Use `actix_web::test` with the full app state:
 
 ```rust
-use actix_web::{test, web, App};
-
 #[actix_web::test]
-async fn test_handler() {
+async fn test_get_user() {
+    let state = Arc::new(AppState::new(&test_config()).await.unwrap());
     let app = test::init_service(
-        App::new().route("/", web::get().to(handler))
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure)
     ).await;
 
-    let req = test::TestRequest::get().uri("/").to_request();
+    let req = test::TestRequest::get().uri("/api/v1/users/1").to_request();
     let resp = test::call_service(&app, req).await;
     assert!(resp.status().is_success());
 }
 ```
 
-### Testing with state
-
-```rust
-let pool = test_db().await;
-let app = test::init_service(
-    App::new()
-        .app_data(web::Data::new(pool))
-        .configure(routes::configure)
-).await;
-```
-
-### Test POST with JSON
-
-```rust
-let req = test::TestRequest::post()
-    .uri("/api/v1/login")
-    .set_json(&serde_json::json!({"email": "test@example.com"}))
-    .to_request();
-```
-
 ## Further Reading
 
-- Full API docs: <https://docs.rs/actix-web/4>
-- Extractor implementors: <https://docs.rs/actix-web/latest/actix_web/trait.FromRequest.html#implementors>
-- Responder foreign impls: <https://docs.rs/actix-web/4/actix_web/trait.Responder.html#foreign-impls>
-- Error helpers: <https://docs.rs/actix-web/4/actix_web/error/struct.Error.html>
-- Guard functions: <https://docs.rs/actix-web/4/actix_web/guard/index.html#functions>
+- API docs: <https://docs.rs/actix-web/4>
+- Extractors: <https://docs.rs/actix-web/latest/actix_web/trait.FromRequest.html#implementors>

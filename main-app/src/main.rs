@@ -1,10 +1,10 @@
+mod app_state;
 mod config;
-mod db;
 mod errors;
-mod models;
 mod routes;
+mod services;
 
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, web};
 
 #[actix_web::main]
 async fn main() -> eyre::Result<()> {
@@ -12,16 +12,20 @@ async fn main() -> eyre::Result<()> {
     pretty_env_logger::init();
 
     let cfg = config::config();
-    db::db_config::init_pool(&cfg.db_url, cfg.max_conns).await?;
+    let app_state = app_state::AppState::new(cfg).await?;
 
     log::info!("Applying migrations...");
-    sqlx::migrate!().run(db::db_config::pool()).await?;
+    sqlx::migrate!().run(&app_state.db_pool).await?;
 
     log::info!("Starting server on 0.0.0.0:8080");
-    HttpServer::new(|| App::new().configure(routes::configure))
-        .bind("0.0.0.0:8080")?
-        .run()
-        .await?;
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(app_state.clone()))
+            .configure(routes::configure)
+    })
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await?;
 
     Ok(())
 }

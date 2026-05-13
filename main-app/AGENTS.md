@@ -38,6 +38,29 @@ Steps:
 - Use `query_as!()` and `query!()` macros if possible.
 - Fall back to `query_as()` and `query()` only if necessary.
 
+## Architecture
+
+This crate follows the **Web Service Architecture** defined in the root `AGENTS.md`.
+
+### Actix-Web Conventions
+
+- Use `web::Data<Arc<AppState>>` for application state.
+- `AppState` exposes **service structs**, not raw `PgPool`.
+- Route configuration uses `App::configure(...)` in `src/routes/mod.rs`.
+- Handlers are thin: they extract request data, delegate to the service layer, and serialize responses.
+- No business logic, auth checks, or direct repository calls in handlers.
+
+### SQLx Conventions
+
+- Use `query!` and `query_as!` macros when possible.
+- Repository methods must map `sqlx::Error` to domain errors; never leak raw SQL errors into the service or HTTP layers.
+- Use the `Queryer<'c>` trait pattern for transaction support:
+  ```rust
+  pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
+  impl<'c> Queryer<'c> for &PgPool {}
+  impl<'c> Queryer<'c> for &'c mut PgConnection {}
+  ```
+
 ## Supported .env Variables
 
 - `DATABASE_URL`
