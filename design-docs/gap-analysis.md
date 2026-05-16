@@ -149,7 +149,7 @@ Instead of building a separate "Vulcanum Agent" service, ship a SKILL.md that ma
 | `GET /tasks/poll` | Poll for ready tasks | (Internal — used by workers, but exposed for agent visibility) |
 | `POST /tasks/dispatch` | Dispatch work | Manually dispatch a task to a worker |
 | `POST /tasks/create` | Create work item | Create a new task in the connected task manager (Kaneo/Linear) |
-| `GET /secrets` | List secrets (names only) | What secrets are configured (values never returned) |
+| `GET /secrets` | List secret refs (names + providers, never values) | What secrets are configured and where they live |
 | `POST /secrets` | Add/rotate secret | Add or rotate an API key or config template |
 | `GET /metrics` | System metrics | Queue depth, dispatch rate, success rate, token spend |
 | `GET /health` | Health check | Orchestrator + connected task managers status |
@@ -235,14 +235,70 @@ vulcanum install-skill --agent codex
 - Systemd `ExecStartPre` can verify binary checksum before starting
 - Server advertises minimum supported worker version; outdated workers receive `upgrade_required`
 
-### 1.12 Secret Store on Server Side — Moderate
+### 1.12 Secret Management — Reference Model (Not Storage)
 
-Secrets (API keys, config templates) stored in `secrets` table:
-- `id, user_id, name, encrypted_value, created_at, rotated_at`
-- Encrypted at rest with age (server's master key)
-- Decrypted only at dispatch time — wrapped per-work-item with a one-time wrapping key
-- Never returned in plaintext via REST — only via the encrypted channel to the worker
-- See technology-research.md §2 for the full exposure minimization strategy
+**Previous approach:** Age-encrypted values stored in PostgreSQL `secrets` table. Server holds master key, decrypts at dispatch.
+
+**Revised approach:** Vulcanum never stores secrets. It stores **references** to an external secret manager. This eliminates ciphertext custody, key rotation liability, and audit trail responsibility — all solved problems with mature tools.
+
+**Architecture:**
+```
+Vulcanum Main App                    HashiCorp Vault / Infisical / AWS SM
+     │                                        │
+     │  GET secret/vulcanum/anthropic_api_key  │
+     │───────────────────────────────────────►│
+     │                                        │
+     │  sk-ant-... (plaintext, over mTLS)     │
+     │◄───────────────────────────────────────│
+     │                                        │
+     │  Wrap with one-time age key + TTL       │
+     │  (plaintext never persisted)            │
+     │  Send wrapped secret to worker          │
+```
+
+**`secret_refs` table (replaces `secrets`):**
+```sql
+CREATE TABLE secret_refs (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id),
+    name TEXT NOT NULL,              -- "ANTHROPIC_API_KEY", "GITHUB_TOKEN"
+    provider TEXT NOT NULL,          -- "vault", "infisical", "aws_sm", "gcp_sm"
+    external_path TEXT NOT NULL,     -- "secret/vulcanum/anthropic_api_key"
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Supported providers:**
+
+| Provider | Deployment | Best for |
+|---|---|---|
+| **HashiCorp Vault** | Self-hosted or HCP Cloud | Dynamic secrets, rich policies, audit logging |
+| **Infisical** | Self-hosted (single binary) or Cloud | Lightweight, open-source, simpler than Vault |
+| **AWS Secrets Manager** | AWS managed | If already on AWS |
+| **GCP Secret Manager** | GCP managed | If already on GCP |
+
+**At dispatch time:**
+1. Work item specifies `secrets: ["ANTHROPIC_API_KEY", "GITHUB_TOKEN"]`
+2. Main App looks up `secret_refs` → resolves provider + path
+3. Fetches plaintext from provider (cached for duration of dispatch, never persisted)
+4. Wraps with one-time age key + 5min TTL
+5. Sends wrapped secret to worker via the polling response
+6. Worker decrypts → injects via memfd → destroys after harness exit
+
+**What we no longer own:**
+- Encryption at rest → provider handles it
+- Key rotation → provider handles it
+- Audit logging → provider handles it
+- Access policies → provider handles it
+- Dynamic/rotating secrets → provider handles it (Vault)
+
+**What we still own (and should):**
+- Per-dispatch wrapping (one-time key + TTL) — defense-in-depth for the transport leg
+- memfd injection on worker — sandbox-level isolation
+- Config file generation in tmpfs — harness-level isolation
+- Output sanitization — safety net
+
+**Fallback for dev/single-user:** The `env` provider reads from environment variables on the Main App server. Not recommended for production, but zero setup for local development.
 
 ### 1.13 CLI Mode Structure — Low
 
@@ -407,11 +463,14 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 │                     VULCANUM MAIN APP                             │
 │                                                                   │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌─────────────────┐ │
-│  │ Task Manager    │  │ Worker Registry   │  │ Work Run Store  │ │
-│  │ Bridge          │  │ (PostgreSQL)      │  │ (PostgreSQL)    │ │
-│  │ (Kaneo, Linear) │  │ - workers         │  │ - run history   │ │
-│  │ - poll/webook   │  │ - capabilities    │  │ - artifacts     │ │
-│  │ - status sync   │  │ - liveness        │  │ - token usage   │ │
+│  │ Task Manager    │  │ Worker Registry   │  │ Work Runs +       │ │
+│  │ Bridge          │  │ (PostgreSQL)      │  │ Secret Refs       │ │
+│  │ (Kaneo, Linear) │  │ - workers         │  │ (PostgreSQL)      │ │
+│  │ - poll/webhook  │  │ - capabilities    │  │ - run history     │ │
+│  │ - status sync   │  │ - liveness        │  │ - artifact refs   │ │
+│  │                 │  │                   │  │ - token usage     │ │
+│  │                 │  │                   │  │ - secret refs →   │ │
+│  │                 │  │                   │  │   Vault/Infisical │ │
 │  └────────┬────────┘  └────────┬─────────┘  └────────┬────────┘ │
 │           │                    │                      │          │
 │  ┌────────▼────────────────────▼──────────────────────▼────────┐ │

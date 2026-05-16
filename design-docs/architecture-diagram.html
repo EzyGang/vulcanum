@@ -127,13 +127,13 @@
         <rect x="430" y="140" width="160" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
         <text x="510" y="160" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL</text>
         <text x="510" y="178" fill="#94a3b8" font-size="8" text-anchor="middle">Worker registry</text>
-        <text x="510" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">Work run history</text>
+        <text x="510" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">Work runs • Secret refs</text>
 
-        <!-- Secret Store -->
-        <rect x="610" y="140" width="45" height="55" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
-        <text x="632" y="160" fill="white" font-size="10" font-weight="600" text-anchor="middle">Secrets</text>
-        <text x="632" y="178" fill="#94a3b8" font-size="7" text-anchor="middle">age</text>
-        <text x="632" y="190" fill="#94a3b8" font-size="7" text-anchor="middle">enc</text>
+        <!-- Secret Refs -->
+        <rect x="610" y="140" width="45" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="632" y="160" fill="white" font-size="9" font-weight="600" text-anchor="middle">Secret</text>
+        <text x="632" y="175" fill="white" font-size="9" font-weight="600" text-anchor="middle">Refs</text>
+        <text x="632" y="190" fill="#94a3b8" font-size="7" text-anchor="middle">→Vault</text>
 
         <!-- API Surface -->
         <rect x="240" y="210" width="415" height="28" rx="5" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
@@ -203,8 +203,8 @@
              SECRETS FLOW (Dashed Rose path)
              ============================================================ -->
         <path d="M 632 195 L 632 260 Q 632 280 615 280 L 340 280 Q 310 280 310 310 L 310 338" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrow-rose)"/>
-        <text x="642" y="260" fill="#fb7185" font-size="8">age-wrapped secrets</text>
-        <text x="642" y="272" fill="#fb7185" font-size="7">→ memfd (never env)</text>
+        <text x="642" y="260" fill="#fb7185" font-size="8">fetch from Vault/Infisical</text>
+        <text x="642" y="272" fill="#fb7185" font-size="7">→ wrap → memfd (never persisted)</text>
 
         <!-- ============================================================
              OUTPUT FLOW (Left)
@@ -265,7 +265,8 @@
           <h3>Security model</h3>
         </div>
         <ul>
-          <li>• Secrets stored age-encrypted, wrapped per-dispatch with TTL</li>
+          <li>• Secrets live in Vault/Infisical — Vulcanum never stores them</li>
+          <li>• Fetched at dispatch, wrapped with one-time key + TTL</li>
           <li>• Injected via memfd (never env vars — /proc/self/environ leak)</li>
           <li>• Config files generated in tmpfs, mounted read-only</li>
           <li>• Sandbox: no network by default, egress filter when needed</li>

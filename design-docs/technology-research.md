@@ -185,7 +185,70 @@ Key properties:
 - Destroyed with the mount namespace after the run
 - Config is per-work-item — no cross-contamination between runs
 
-### 2.5 Network Egress Filtering (Defense-in-Depth)
+### 2.5 At-Rest: Reference Model (No Secret Storage)
+
+**Vulcanum never stores secrets.** It stores references to an external secret manager.
+This eliminates ciphertext custody, key rotation, and audit trail — all solved problems.
+
+**Architecture:**
+```
+Vulcanum Main App                    HashiCorp Vault / Infisical / AWS SM
+     │                                        │
+     │  GET secret/vulcanum/anthropic_api_key  │
+     │───────────────────────────────────────►│
+     │                                        │
+     │  sk-ant-... (plaintext, over mTLS)     │
+     │◄───────────────────────────────────────│
+     │                                        │
+     │  Wrap with one-time age key + 5min TTL  │
+     │  (plaintext never persisted to disk)    │
+     │  Send wrapped secret to worker          │
+```
+
+**`secret_refs` table (PostgreSQL):**
+```sql
+CREATE TABLE secret_refs (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    name TEXT NOT NULL,              -- "ANTHROPIC_API_KEY"
+    provider TEXT NOT NULL,          -- "vault" | "infisical" | "aws_sm" | "gcp_sm" | "env"
+    external_path TEXT NOT NULL,     -- "secret/vulcanum/anthropic_api_key"
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Supported providers:**
+
+| Provider | Deployment | Best for |
+|---|---|---|
+| **HashiCorp Vault** | Self-hosted / HCP Cloud | Dynamic secrets, rich policies |
+| **Infisical** | Self-hosted (single binary) / Cloud | Lightweight open-source, simpler than Vault |
+| **AWS Secrets Manager** | AWS managed | If already on AWS |
+| **GCP Secret Manager** | GCP managed | If already on GCP |
+| **env** | Reads from Main App env vars | Dev/single-user only. Zero setup, not for production. |
+
+**At dispatch time:**
+1. Work item specifies `secrets: ["ANTHROPIC_API_KEY"]`
+2. Main App resolves `secret_refs` → provider + path
+3. Fetches plaintext from provider (in-memory, never persisted)
+4. Wraps with one-time age key + 5min TTL
+5. Sends wrapped secret to worker in polling response
+6. Worker decrypts → injects via memfd → destroys after harness exit
+
+**What we no longer own:**
+- Encryption at rest → provider
+- Key rotation → provider
+- Audit logging → provider
+- Access policies → provider
+- Dynamic/rotating secrets → provider (Vault)
+
+**What we still own (and should):**
+- Per-dispatch wrapping (one-time key + TTL) — defense-in-depth for the transport leg
+- memfd injection on worker — sandbox-level isolation
+- Config file generation in tmpfs — harness-level isolation
+- Output sanitization — safety net
+
+### 2.6 Network Egress Filtering (Defense-in-Depth)
 
 When the harness requires network access (to call APIs), restrict egress to known endpoints:
 
@@ -204,7 +267,7 @@ If network is not needed: `bwrap --unshare-net` (complete network isolation).
 
 This prevents exfiltration via `curl`, `wget`, `git push`, or any other network channel, even if the agent successfully reads a secret.
 
-### 2.6 Output Sanitization (Safety Net)
+### 2.7 Output Sanitization (Safety Net)
 
 Before results/artifacts are submitted upstream, scan for known secret patterns:
 
@@ -222,7 +285,7 @@ static SECRET_PATTERNS: &[(&str, &str)] = &[
 
 This is a **safety net**, not the primary defense. The sandbox and network filtering are the real defenses. Output scanning catches what slips through.
 
-### 2.7 Secret Lifecycle
+### 2.8 Secret Lifecycle (Updated)
 
 ```
 ┌──────────┐     mTLS       ┌──────────────┐    memfd+tmpfs   ┌──────────────┐
@@ -240,15 +303,15 @@ This is a **safety net**, not the primary defense. The sandbox and network filte
                             after injection                   namespace destroyed
 ```
 
-### 2.8 Tool Recommendations
+### 2.9 Tool Recommendations
 
 | Tool | Use Case | Notes |
-|---|---|---|
-| **[age](https://github.com/FiloSottile/age)** | At-rest encryption | Simple, modern, auditable. Server-side secret storage. |
-| **memfd_create(2)** (Linux 3.17+) | In-memory injection | Kernel feature. File sealing since 4.3. Primary injection method. |
-| **tmpfs** | Config file injection | RAM-backed, destroyed on unmount. |
-| **[HashiCorp Vault](https://www.vaultproject.io/)** | Enterprise (future) | Dynamic secrets, wrapping, audit logging. |
-| **[SOPS](https://github.com/getsops/sops)** | Git-friendly encrypted config | Encrypts values in YAML/JSON/ENV files. Works with age, GPG, AWS KMS. |
+|---|---|---|---|
+| **[HashiCorp Vault](https://www.vaultproject.io/)** | Secret storage & access (primary) | Dynamic secrets, wrapping tokens, audit logging, policies. Self-hosted or HCP Cloud. |
+| **[Infisical](https://infisical.com/)** | Secret storage (lightweight) | Open-source, single binary, simpler than Vault. Self-hosted or Cloud. |
+| **memfd_create(2)** (Linux 3.17+) | In-memory secret injection | Kernel feature. File sealing since 4.3. Primary injection method on worker. |
+| **tmpfs** | Config file injection | RAM-backed, destroyed on unmount. Generated per-work-item. |
+| **[age](https://github.com/FiloSottile/age)** | Per-dispatch wrapping | One-time key wrapping for secrets in transit to worker. Not used for at-rest. |
 
 ---
 
