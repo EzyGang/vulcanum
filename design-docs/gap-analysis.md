@@ -262,7 +262,7 @@ CREATE TABLE secret_refs (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,              -- "ANTHROPIC_API_KEY", "GITHUB_TOKEN"
-    provider TEXT NOT NULL,          -- "vault", "infisical", "aws_sm", "gcp_sm"
+    provider TEXT NOT NULL,          -- "vault" | "infisical" | "env"
     external_path TEXT NOT NULL,     -- "secret/vulcanum/anthropic_api_key"
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -271,11 +271,24 @@ CREATE TABLE secret_refs (
 **Supported providers:**
 
 | Provider | Deployment | Best for |
-|---|---|---|
-| **HashiCorp Vault** | Self-hosted or HCP Cloud | Dynamic secrets, rich policies, audit logging |
-| **Infisical** | Self-hosted (single binary) or Cloud | Lightweight, open-source, simpler than Vault |
-| **AWS Secrets Manager** | AWS managed | If already on AWS |
-| **GCP Secret Manager** | GCP managed | If already on GCP |
+|---|---|---|---|
+| **HashiCorp Vault** | Self-hosted (single binary, file backend) | Primary — open source MPL, REST API, audit logging, dynamic secrets |
+| **Infisical** | Self-hosted (Docker Compose) or Cloud | Lighter alternative — MIT, simpler than Vault |
+| **env** | Reads from Main App env vars | Dev only — zero setup, not for production |
+
+**Vault single-node deployment (VPS-scale, zero external deps):**
+```bash
+vault server -config=/etc/vault/config.hcl
+
+# config.hcl — file backend, localhost only
+storage "file" { path = "/var/lib/vault/data" }
+listener "tcp" { address = "127.0.0.1:8200"; tls_disable = true }
+api_addr = "http://127.0.0.1:8200"
+disable_mlock = true  # VPS without mlock privileges
+```
+No Consul, no Raft, no HCP. Single binary, ~50MB RAM, file-backed. For a single-tenant orchestrator, this is perfectly adequate — you're not running a bank.
+
+Dropped AWS Secrets Manager and GCP Secret Manager — cloud-vendor lock-in makes no sense for a self-hosted orchestrator.
 
 **At dispatch time:**
 1. Work item specifies `secrets: ["ANTHROPIC_API_KEY", "GITHUB_TOKEN"]`
