@@ -185,76 +185,56 @@ Key properties:
 - Destroyed with the mount namespace after the run
 - Config is per-work-item — no cross-contamination between runs
 
-### 2.5 At-Rest: Reference Model (No Secret Storage)
+### 2.5 At-Rest: Agent-Vault Proxy (Vulcanum Never Touches Secrets)
 
-**Vulcanum never stores secrets.** It stores references to an external secret manager.
-This eliminates ciphertext custody, key rotation, and audit trail — all solved problems.
+**Vulcanum is out of the secret path entirely.** [Infisical agent-vault](https://github.com/Infisical/agent-vault) runs as a local sidecar proxy on the worker machine. The harness reads secrets directly from the proxy via localhost. Vulcanum only knows which secret names exist.
 
 **Architecture:**
 ```
-Vulcanum Main App                    HashiCorp Vault / Infisical / AWS SM
-     │                                        │
-     │  GET secret/vulcanum/anthropic_api_key  │
-     │───────────────────────────────────────►│
-     │                                        │
-     │  sk-ant-... (plaintext, over mTLS)     │
-     │◄───────────────────────────────────────│
-     │                                        │
-     │  Wrap with one-time age key + 5min TTL  │
-     │  (plaintext never persisted to disk)    │
-     │  Send wrapped secret to worker          │
+Infisical (Cloud or Self-Hosted)
+        │  agent-vault proxy authenticates via Infisical token
+        ▼
+┌── Worker Machine ──────────────────┐
+│  agent-vault proxy (localhost:8200)│
+│  - auth, caching, auto-rotation    │
+│           │                        │
+│           ▼                        │
+│  Harness reads directly            │
+│  curl localhost:8200/secret/...    │
+└────────────────────────────────────┘
+
+Vulcanum Main App — never touches secrets.
 ```
 
-**`secret_refs` table (PostgreSQL):**
+**`secret_refs` table (name only, no provider/path):**
 ```sql
 CREATE TABLE secret_refs (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     name TEXT NOT NULL,              -- "ANTHROPIC_API_KEY"
-    provider TEXT NOT NULL,          -- "vault" | "infisical" | "env"
-    external_path TEXT NOT NULL,     -- "secret/vulcanum/anthropic_api_key"
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
+No provider column. No path. The agent-vault proxy owns the mapping. Vulcanum only tracks which secret names exist so the API skill can list them.
 
-**Supported providers:**
+**What we eliminated:**
+- Main App secret fetching
+- One-time age key wrapping/unwrapping
+- memfd injection code
+- Secret transport over the polling channel
 
-| Provider | Deployment | Best for |
-|---|---|---|---|
-| **HashiCorp Vault** | Self-hosted (single binary, file backend) | Primary — open source MPL, REST API, audit logging, dynamic secrets |
-| **Infisical** | Self-hosted (Docker Compose) or Cloud | Lighter alternative — MIT, simpler than Vault |
-| **env** | Reads from Main App env vars | Dev only — zero setup, not for production |
+**What remains:**
+- Sandbox egress restricted to `localhost:8200` for secret access
+- Output sanitization as safety net
+- Config file generation in tmpfs (pointing harness to the proxy)
 
-**Vault single-node (VPS-scale):**
+**Deployment on worker:**
 ```bash
-vault server -config=/etc/vault/config.hcl
-# file backend, localhost only, no Consul/Raft/HCP needed
-storage "file" { path = "/var/lib/vault/data" }
-listener "tcp" { address = "127.0.0.1:8200"; tls_disable = true }
+systemctl enable --now infisical-agent-vault
+# Worker daemon health-checks localhost:8200 before accepting work
 ```
 
-Dropped AWS/GCP — cloud-vendor lock-in for a self-hosted orchestrator makes no sense.
-
-**At dispatch time:**
-1. Work item specifies `secrets: ["ANTHROPIC_API_KEY"]`
-2. Main App resolves `secret_refs` → provider + path
-3. Fetches plaintext from provider (in-memory, never persisted)
-4. Wraps with one-time age key + 5min TTL
-5. Sends wrapped secret to worker in polling response
-6. Worker decrypts → injects via memfd → destroys after harness exit
-
-**What we no longer own:**
-- Encryption at rest → provider
-- Key rotation → provider
-- Audit logging → provider
-- Access policies → provider
-- Dynamic/rotating secrets → provider (Vault)
-
-**What we still own (and should):**
-- Per-dispatch wrapping (one-time key + TTL) — defense-in-depth for the transport leg
-- memfd injection on worker — sandbox-level isolation
-- Config file generation in tmpfs — harness-level isolation
-- Output sanitization — safety net
+**⚠️ Verification needed:** Confirm HTTP/file-based injection (not just env), offline caching, port/path format. Network unavailable for verification.
 
 ### 2.6 Network Egress Filtering (Defense-in-Depth)
 
@@ -315,11 +295,9 @@ This is a **safety net**, not the primary defense. The sandbox and network filte
 
 | Tool | Use Case | Notes |
 |---|---|---|---|
-| **[HashiCorp Vault](https://www.vaultproject.io/)** | Secret storage & access (primary) | Dynamic secrets, wrapping tokens, audit logging, policies. Self-hosted or HCP Cloud. |
-| **[Infisical](https://infisical.com/)** | Secret storage (lightweight) | Open-source, single binary, simpler than Vault. Self-hosted or Cloud. |
-| **memfd_create(2)** (Linux 3.17+) | In-memory secret injection | Kernel feature. File sealing since 4.3. Primary injection method on worker. |
+| **[Infisical agent-vault](https://github.com/Infisical/agent-vault)** | Local secret proxy on worker | Sidecar — harness reads from localhost:8200. Handles auth, caching, rotation. |
 | **tmpfs** | Config file injection | RAM-backed, destroyed on unmount. Generated per-work-item. |
-| **[age](https://github.com/FiloSottile/age)** | Per-dispatch wrapping | One-time key wrapping for secrets in transit to worker. Not used for at-rest. |
+| **Sandbox network egress** | Restrict harness network | `localhost:8200` only for secret access; no other network. |
 
 ---
 

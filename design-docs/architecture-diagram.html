@@ -64,7 +64,7 @@
     </div>
 
     <div class="diagram-container">
-      <svg viewBox="0 0 880 680">
+      <svg viewBox="0 0 880 720">
         <defs>
           <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
@@ -101,7 +101,7 @@
         <text x="455" y="132" fill="#22d3ee" font-size="8">SKILL.md tool calls</text>
 
         <!-- ============================================================
-             ROW 2: EXTERNAL TASK MANAGERS + VAULT (Left)
+             ROW 2: EXTERNAL TASK MANAGERS (Left)
              ============================================================ -->
         <rect x="30" y="120" width="150" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
         <text x="105" y="142" fill="white" font-size="12" font-weight="600" text-anchor="middle">Kaneo</text>
@@ -110,15 +110,6 @@
         <rect x="30" y="185" width="150" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
         <text x="105" y="207" fill="white" font-size="12" font-weight="600" text-anchor="middle">Linear</text>
         <text x="105" y="223" fill="#94a3b8" font-size="9" text-anchor="middle">Webhooks • GraphQL</text>
-
-        <!-- Vault (Secret Manager) -->
-        <rect x="30" y="250" width="150" height="50" rx="6" fill="rgba(136, 19, 55, 0.15)" stroke="#fb7185" stroke-width="1.5"/>
-        <text x="105" y="272" fill="white" font-size="12" font-weight="600" text-anchor="middle">Vault / Infisical</text>
-        <text x="105" y="288" fill="#94a3b8" font-size="9" text-anchor="middle">Secret manager</text>
-
-        <!-- Arrow: Vault → Main App (secret fetch) -->
-        <path d="M 180 275 L 220 275 Q 235 275 238 262" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5" marker-end="url(#arrow-rose)"/>
-        <text x="195" y="268" fill="#fb7185" font-size="7">fetch</text>
 
         <!-- ============================================================
              ROW 2: MAIN APP (Center)
@@ -136,13 +127,7 @@
         <rect x="430" y="140" width="160" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
         <text x="510" y="160" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL</text>
         <text x="510" y="178" fill="#94a3b8" font-size="8" text-anchor="middle">Worker registry</text>
-        <text x="510" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">Work runs • Secret refs</text>
-
-        <!-- Secret Refs -->
-        <rect x="610" y="140" width="45" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
-        <text x="632" y="160" fill="white" font-size="9" font-weight="600" text-anchor="middle">Secret</text>
-        <text x="632" y="175" fill="white" font-size="9" font-weight="600" text-anchor="middle">Refs</text>
-        <text x="632" y="190" fill="#94a3b8" font-size="7" text-anchor="middle">→Vault</text>
+        <text x="510" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">Work runs • Secret names</text>
 
         <!-- API Surface -->
         <rect x="240" y="210" width="415" height="28" rx="5" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
@@ -155,7 +140,7 @@
         <!-- ============================================================
              ROW 3: WORKER DAEMON (Bottom-Left)
              ============================================================ -->
-        <rect x="30" y="305" width="380" height="160" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
+        <rect x="30" y="305" width="380" height="195" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
         <text x="42" y="322" fill="#34d399" font-size="10" font-weight="600">Worker Daemon (Linux systemd service)</text>
 
         <!-- Poll Loop -->
@@ -166,12 +151,16 @@
         <!-- Work Executor -->
         <rect x="225" y="340" width="170" height="45" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
         <text x="310" y="360" fill="white" font-size="11" font-weight="600" text-anchor="middle">Work Executor</text>
-        <text x="310" y="376" fill="#94a3b8" font-size="8" text-anchor="middle">Unwrap → memfd → sandbox → harness</text>
+        <text x="310" y="376" fill="#94a3b8" font-size="8" text-anchor="middle">Prep sandbox → spawn harness → enforce limits</text>
+
+        <!-- agent-vault proxy (sidecar inside Worker Daemon) -->
+        <rect x="50" y="395" width="345" height="30" rx="5" fill="rgba(136, 19, 55, 0.12)" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="222" y="414" fill="#fb7185" font-size="9" text-anchor="middle">agent-vault proxy (localhost:8200) — auth, cache, rotate</text>
 
         <!-- Harness -->
-        <rect x="50" y="405" width="345" height="45" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
-        <text x="222" y="425" fill="white" font-size="10" font-weight="600" text-anchor="middle">Harnesses: Claude Code (primary)  •  Codex CLI  •  Generic adapter</text>
-        <text x="222" y="441" fill="#94a3b8" font-size="8" text-anchor="middle">All spawned via AgentHarness trait, non-interactive, SIGTERM-respecting</text>
+        <rect x="50" y="440" width="345" height="45" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
+        <text x="222" y="460" fill="white" font-size="10" font-weight="600" text-anchor="middle">Harnesses: Claude Code (primary)  •  Codex CLI  •  Generic adapter</text>
+        <text x="222" y="476" fill="#94a3b8" font-size="8" text-anchor="middle">All spawned via AgentHarness trait, non-interactive, SIGTERM-respecting</text>
 
         <!-- Polling arrows between Main App and Worker -->
         <path d="M 290 238 L 290 290 Q 290 300 280 300 L 155 300 Q 145 300 145 310 L 145 338" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
@@ -182,7 +171,7 @@
         <!-- ============================================================
              ROW 3: SANDBOX (Bottom-Right)
              ============================================================ -->
-        <rect x="445" y="305" width="285" height="160" rx="8" fill="transparent" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5"/>
+        <rect x="445" y="305" width="285" height="195" rx="8" fill="transparent" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5"/>
         <text x="455" y="322" fill="#fb7185" font-size="10" font-weight="600">Sandbox — Tier 1: bubblewrap + nsjail</text>
 
         <!-- Claude Code in sandbox -->
@@ -200,55 +189,58 @@
         <!-- Sandbox properties -->
         <text x="587" y="415" fill="#fb7185" font-size="8" text-anchor="middle">—unshare-net  •  —unshare-pid  •  seccomp-bpf  •  tmpfs /work</text>
 
+        <!-- Network egress note for secrets -->
+        <text x="587" y="432" fill="#22d3ee" font-size="7" text-anchor="middle">egress: localhost:8200 only (agent-vault)</text>
+
+        <!-- Arrow: agent-vault → Harness (secret read) -->
+        <path d="M 222 425 L 222 460 Q 222 468 232 468 L 340 468 Q 350 468 350 456 L 350 410 Q 350 400 360 400 L 463 400" fill="none" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow-rose)"/>
+        <text x="400" y="393" fill="#fb7185" font-size="6">read secret</text>
+
         <!-- Tier 2 note -->
-        <rect x="465" y="432" width="250" height="22" rx="4" fill="rgba(251, 191, 36, 0.08)" stroke="#fbbf24" stroke-width="0.5" stroke-dasharray="3,3"/>
-        <text x="590" y="447" fill="#fbbf24" font-size="8" text-anchor="middle">Tier 2 (opt): Podman rootless for untrusted code</text>
+        <rect x="465" y="455" width="250" height="22" rx="4" fill="rgba(251, 191, 36, 0.08)" stroke="#fbbf24" stroke-width="0.5" stroke-dasharray="3,3"/>
+        <text x="590" y="470" fill="#fbbf24" font-size="8" text-anchor="middle">Tier 2 (opt): Podman rootless for untrusted code</text>
 
         <!-- Arrow: Worker → Sandbox -->
         <line x1="380" y1="385" x2="463" y2="385" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrow-rose)"/>
         <text x="421" y="379" fill="#fb7185" font-size="7">spawn</text>
 
         <!-- ============================================================
-             SECRETS FLOW (Dashed Rose path)
-             ============================================================ -->
-        <path d="M 632 195 L 632 260 Q 632 280 615 280 L 340 280 Q 310 280 310 310 L 310 338" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#arrow-rose)"/>
-        <text x="642" y="260" fill="#fb7185" font-size="8">fetch from Vault/Infisical</text>
-        <text x="642" y="272" fill="#fb7185" font-size="7">→ wrap → memfd (never persisted)</text>
-
-        <!-- ============================================================
              OUTPUT FLOW (Left)
              ============================================================ -->
-        <rect x="30" y="500" width="240" height="45" rx="6" fill="rgba(30, 41, 59, 0.3)" stroke="#94a3b8" stroke-width="1"/>
-        <text x="150" y="518" fill="white" font-size="10" font-weight="600" text-anchor="middle">Artifacts → Task Manager</text>
-        <text x="150" y="535" fill="#94a3b8" font-size="8" text-anchor="middle">diff.patch • logs • metrics → posted as comment</text>
+        <rect x="30" y="530" width="240" height="45" rx="6" fill="rgba(30, 41, 59, 0.3)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="150" y="548" fill="white" font-size="10" font-weight="600" text-anchor="middle">Artifacts → Task Manager</text>
+        <text x="150" y="565" fill="#94a3b8" font-size="8" text-anchor="middle">diff.patch • logs • metrics → posted as comment</text>
 
-        <path d="M 222 470 L 222 485 Q 222 498 210 498 L 175 498" fill="none" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
+        <path d="M 222 500 L 222 515 Q 222 528 210 528 L 175 528" fill="none" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
 
         <!-- ============================================================
              LEGEND
              ============================================================ -->
-        <text x="460" y="510" fill="white" font-size="10" font-weight="600">Legend</text>
+        <text x="460" y="540" fill="white" font-size="10" font-weight="600">Legend</text>
 
-        <rect x="460" y="522" width="14" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
-        <text x="480" y="531" fill="#94a3b8" font-size="8">Orchestrator / Worker</text>
+        <rect x="460" y="552" width="14" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="480" y="561" fill="#94a3b8" font-size="8">Orchestrator / Worker</text>
 
-        <rect x="460" y="540" width="14" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
-        <text x="480" y="549" fill="#94a3b8" font-size="8">User's Agent</text>
+        <rect x="460" y="570" width="14" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="480" y="579" fill="#94a3b8" font-size="8">User's Agent</text>
 
-        <rect x="460" y="558" width="14" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
-        <text x="480" y="567" fill="#94a3b8" font-size="8">Database</text>
+        <rect x="460" y="588" width="14" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="480" y="597" fill="#94a3b8" font-size="8">Database</text>
 
-        <rect x="460" y="576" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
-        <text x="480" y="585" fill="#94a3b8" font-size="8">Security / Sandbox</text>
+        <rect x="460" y="606" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="480" y="615" fill="#94a3b8" font-size="8">Security / Sandbox</text>
 
-        <rect x="655" y="522" width="14" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
-        <text x="675" y="531" fill="#94a3b8" font-size="8">External System</text>
+        <rect x="655" y="552" width="14" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="675" y="561" fill="#94a3b8" font-size="8">External System</text>
 
-        <line x1="655" y1="545" x2="669" y2="545" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="675" y="548" fill="#94a3b8" font-size="8">Secrets flow</text>
+        <rect x="655" y="570" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.12)" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="675" y="579" fill="#94a3b8" font-size="8">agent-vault proxy</text>
 
-        <rect x="655" y="556" width="14" height="10" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="675" y="565" fill="#94a3b8" font-size="8">Sandbox boundary</text>
+        <rect x="655" y="588" width="14" height="10" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="675" y="597" fill="#94a3b8" font-size="8">Sandbox boundary</text>
+
+        <line x1="655" y1="608" x2="669" y2="608" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="675" y="611" fill="#94a3b8" font-size="8">Secret read path</text>
       </svg>
     </div>
 
@@ -263,7 +255,7 @@
           <li>1. Task created in Kaneo/Linear with vulcanum:ready label</li>
           <li>2. Main App polls task manager, enriches with harness config</li>
           <li>3. Worker polls GET /poll every 15s, receives work</li>
-          <li>4. Main App fetches secrets from Vault, wraps → worker unwraps → memfd → harness</li>
+          <li>4. Harness reads secrets from agent-vault proxy (localhost:8200)</li>
           <li>5. Result posted back, status synced to task manager</li>
         </ul>
       </div>
@@ -274,11 +266,10 @@
           <h3>Security model</h3>
         </div>
         <ul>
-          <li>• Secrets live in Vault/Infisical — Vulcanum never stores them</li>
-          <li>• Fetched at dispatch, wrapped with one-time key + TTL</li>
-          <li>• Injected via memfd (never env vars — /proc/self/environ leak)</li>
-          <li>• Config files generated in tmpfs, mounted read-only</li>
-          <li>• Sandbox: no network by default, egress filter when needed</li>
+          <li>• Secrets live in Infisical, never touch Vulcanum Main App</li>
+          <li>• agent-vault proxy on worker handles auth, caching, rotation</li>
+          <li>• Harness reads localhost:8200 — no secrets over the wire</li>
+          <li>• Sandbox: no network by default, localhost:8200 only for secrets</li>
           <li>• Output sanitized for secret patterns before submission</li>
         </ul>
       </div>

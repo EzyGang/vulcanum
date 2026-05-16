@@ -235,83 +235,87 @@ vulcanum install-skill --agent codex
 - Systemd `ExecStartPre` can verify binary checksum before starting
 - Server advertises minimum supported worker version; outdated workers receive `upgrade_required`
 
-### 1.12 Secret Management — Reference Model (Not Storage)
+### 1.12 Secret Management — Agent-Vault Proxy (Vulcanum Out of the Secret Path)
 
-**Previous approach:** Age-encrypted values stored in PostgreSQL `secrets` table. Server holds master key, decrypts at dispatch.
+**Current approach (v2):** Vulcanum Main App fetches secrets from Vault/Infisical, wraps with one-time age key, sends to worker, worker unwraps, injects via memfd.
 
-**Revised approach:** Vulcanum never stores secrets. It stores **references** to an external secret manager. This eliminates ciphertext custody, key rotation liability, and audit trail responsibility — all solved problems with mature tools.
+**Problem:** Vulcanum is still a middleman in the secret flow. Every dispatch, the Main App touches plaintext secrets — even if briefly. This is unnecessary attack surface.
+
+**New approach:** [Infisical agent-vault](https://github.com/Infisical/agent-vault) — a local sidecar proxy that runs on the worker machine. The harness reads secrets directly from the proxy. Vulcanum never touches secrets at all.
 
 **Architecture:**
 ```
-Vulcanum Main App                    HashiCorp Vault / Infisical / AWS SM
-     │                                        │
-     │  GET secret/vulcanum/anthropic_api_key  │
-     │───────────────────────────────────────►│
-     │                                        │
-     │  sk-ant-... (plaintext, over mTLS)     │
-     │◄───────────────────────────────────────│
-     │                                        │
-     │  Wrap with one-time age key + TTL       │
-     │  (plaintext never persisted)            │
-     │  Send wrapped secret to worker          │
+Infisical Cloud / Self-Hosted
+        │
+        │  (agent-vault proxy authenticates, caches, rotates)
+        ▼
+┌──────────────────────────────┐
+│  Worker Machine              │
+│                              │
+│  ┌────────────────────────┐  │
+│  │  agent-vault proxy     │  │  ← localhost sidecar
+│  │  (localhost:8200)      │  │
+│  │  - auth to Infisical   │  │
+│  │  - secret caching      │  │
+│  │  - auto-rotation       │  │
+│  └────────┬───────────────┘  │
+│           │                  │
+│           │  read secret     │
+│           ▼                  │
+│  ┌────────────────────────┐  │
+│  │  Harness (sandboxed)   │  │
+│  │  curl localhost:8200/  │  │
+│  │    secret/anthropic_key│  │
+│  └────────────────────────┘  │
+└──────────────────────────────┘
+
+Vulcanum Main App — never touches secrets.
+It only knows which secret names the harness needs.
 ```
 
-**`secret_refs` table (replaces `secrets`):**
+**What Vulcanum does (minimal):**
+1. Work item specifies `secrets: ["ANTHROPIC_API_KEY"]`
+2. Worker daemon ensures agent-vault proxy is running (managed as a systemd service)
+3. Worker daemon tells harness: "read secrets from `http://localhost:8200/secret/vulcanum/...`"
+4. Harness reads directly — no Vulcanum middleman, no wrapping, no unwrapping
+
+**What we eliminate:**
+- ~~Main App fetches secrets from Vault~~
+- ~~One-time age key wrapping/unwrapping~~
+- ~~memfd injection code on worker~~
+- ~~Secret transport over the polling channel~~
+- ~~`secret_refs` provider resolution logic~~
+
+**What remains:**
+- Sandbox with `—unshare-net` by default; when harness needs secrets, allow egress to `localhost:8200` only
+- Output sanitization as safety net
+- Config file generation in tmpfs (the harness may still need `.claude.json` pointing to the proxy)
+
+**`secret_refs` table (simplified):**
 ```sql
 CREATE TABLE secret_refs (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id),
-    name TEXT NOT NULL,              -- "ANTHROPIC_API_KEY", "GITHUB_TOKEN"
-    provider TEXT NOT NULL,          -- "vault" | "infisical" | "env"
-    external_path TEXT NOT NULL,     -- "secret/vulcanum/anthropic_api_key"
+    name TEXT NOT NULL,              -- "ANTHROPIC_API_KEY"
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
+No provider, no path — just a name. The agent-vault proxy handles the mapping. Vulcanum only needs to know which secrets exist so the API skill can list them.
 
-**Supported providers:**
-
-| Provider | Deployment | Best for |
-|---|---|---|---|
-| **HashiCorp Vault** | Self-hosted (single binary, file backend) | Primary — open source MPL, REST API, audit logging, dynamic secrets |
-| **Infisical** | Self-hosted (Docker Compose) or Cloud | Lighter alternative — MIT, simpler than Vault |
-| **env** | Reads from Main App env vars | Dev only — zero setup, not for production |
-
-**Vault single-node deployment (VPS-scale, zero external deps):**
+**Deployment on worker:**
 ```bash
-vault server -config=/etc/vault/config.hcl
-
-# config.hcl — file backend, localhost only
-storage "file" { path = "/var/lib/vault/data" }
-listener "tcp" { address = "127.0.0.1:8200"; tls_disable = true }
-api_addr = "http://127.0.0.1:8200"
-disable_mlock = true  # VPS without mlock privileges
+# agent-vault runs as a systemd service alongside the Vulcanum worker daemon
+systemctl enable --now infisical-agent-vault
+# Configured with Infisical token + project/environment
+# Exposes localhost:8200
+# Worker daemon health-checks it before accepting work
 ```
-No Consul, no Raft, no HCP. Single binary, ~50MB RAM, file-backed. For a single-tenant orchestrator, this is perfectly adequate — you're not running a bank.
 
-Dropped AWS Secrets Manager and GCP Secret Manager — cloud-vendor lock-in makes no sense for a self-hosted orchestrator.
-
-**At dispatch time:**
-1. Work item specifies `secrets: ["ANTHROPIC_API_KEY", "GITHUB_TOKEN"]`
-2. Main App looks up `secret_refs` → resolves provider + path
-3. Fetches plaintext from provider (cached for duration of dispatch, never persisted)
-4. Wraps with one-time age key + 5min TTL
-5. Sends wrapped secret to worker via the polling response
-6. Worker decrypts → injects via memfd → destroys after harness exit
-
-**What we no longer own:**
-- Encryption at rest → provider handles it
-- Key rotation → provider handles it
-- Audit logging → provider handles it
-- Access policies → provider handles it
-- Dynamic/rotating secrets → provider handles it (Vault)
-
-**What we still own (and should):**
-- Per-dispatch wrapping (one-time key + TTL) — defense-in-depth for the transport leg
-- memfd injection on worker — sandbox-level isolation
-- Config file generation in tmpfs — harness-level isolation
-- Output sanitization — safety net
-
-**Fallback for dev/single-user:** The `env` provider reads from environment variables on the Main App server. Not recommended for production, but zero setup for local development.
+**⚠️ Verification needed (network unavailable):**
+- Confirm agent-vault supports file-based or HTTP-based secret injection (not just env vars)
+- Confirm it works in completely offline mode (cached secrets survive Infisical downtime)
+- Confirm the localhost API surface (port, path format)
+- Test with sandbox network egress restricted to `localhost:8200`
 
 ### 1.13 CLI Mode Structure — Low
 
@@ -454,7 +458,7 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 | **P1** | Basic harness spawning (Claude Code) | MVP: just run a harness and get output |
 | **P1** | Sandboxing (bubblewrap tier) | Security baseline before any real use |
 | **P1** | Result submission + task manager sync | Close the loop |
-| **P2** | Secret injection (memfd + tmpfs) | Required before handling real API keys |
+| **P2** | agent-vault proxy integration (worker sidecar) | Harness reads secrets locally; Vulcanum never touches them |
 | **P2** | CLI control tool + daemon IPC | User-facing bootstrap flow |
 | **P2** | Vulcanum API SKILL.md + `install-skill` CLI command | Agent-native control surface; drop-in for Hermes/Claude Code/Codex |
 | **P2** | State machine + work run tracking | Operational visibility |
@@ -482,8 +486,9 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 │  │ - poll/webhook  │  │ - capabilities    │  │ - run history     │ │
 │  │ - status sync   │  │ - liveness        │  │ - artifact refs   │ │
 │  │                 │  │                   │  │ - token usage     │ │
-│  │                 │  │                   │  │ - secret refs →   │ │
-│  │                 │  │                   │  │   Vault/Infisical │ │
+│  │                 │  │                   │  │ - secret names    │ │
+│  │                 │  │                   │  │   (agent-vault    │ │
+│  │                 │  │                   │  │    handles auth)  │ │
 │  └────────┬────────┘  └────────┬─────────┘  └────────┬────────┘ │
 │           │                    │                      │          │
 │  ┌────────▼────────────────────▼──────────────────────▼────────┐ │
@@ -501,7 +506,7 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 │  │  - All endpoints exposed for agent-native control              │ │
 │  │  - 1:1 mapped in skills/vulcanum-api/SKILL.md                  │ │
 │  │  - Users drop skill into Hermes/Claude Code/Codex for control  │ │
-│  │  - No separate agent service — skill IS the interface          │ │
+│  │  - Secrets: list names only — agent-vault handles the rest     │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 
