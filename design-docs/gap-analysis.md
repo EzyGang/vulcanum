@@ -119,28 +119,74 @@ Kaneo/Linear/Jira          Vulcanum Main App              Worker Daemon
 - If validation fails: retry (max N times), report failure upstream, or escalate
 - Validation itself has a timeout — if a step hangs, it's killed and reported
 
-### 1.6 Vulcanum Agent (NEW — Meta-Agent for System Operations) — Important
+### 1.6 Vulcanum API Skill (NEW — Agent-Native Control Surface) — Important
 
-**Gap:** No mention of an agent that helps *operate* Vulcanum itself. The system orchestrates agents but has no agent to manage the system.
+**Gap:** No way for users to control Vulcanum through their own agents. Every operation requires the CLI or TUI.
 
-**What this is:**
-- A "Vulcanum Agent" (Hermes-managed, or a Claude-based harness) that has access to Vulcanum's internal APIs
-- It can: create work items in Kaneo/Linear on behalf of users, check worker status, debug failed runs, triage errors, suggest worker configuration
-- Users interact through existing channels (Discord, Telegram, CLI): "hey vulcanum, why did work item X fail?"
-- This is distinct from worker harnesses that execute user code — this is a management/operations agent
+**Approach: A `vulcanum-api` SKILL.md bundled with the CLI.**
 
-**Concrete capabilities:**
-1. **Work creation:** "Create a task in Kaneo to fix clippy warnings in the vulcanum repo" → agent creates properly formatted task with validation spec
-2. **Status inquiry:** "What's worker-3 doing right now?" → agent queries internal state
-3. **Failure triage:** "Why did work item abc123 fail?" → agent reads run logs, checks validation output, suggests cause
-4. **Worker management:** "Register a new worker on this machine" → agent guides through bootstrap flow
-5. **System health:** "Are any workers disconnected?" → agent queries worker liveness
+Instead of building a separate "Vulcanum Agent" service, ship a SKILL.md that maps 1:1 to Vulcanum's API surface. Users drop this skill into their agent of choice (Hermes, Claude Code, Codex CLI) and get full programmatic control over the orchestrator.
 
-**Implementation approach:**
-- Expose Vulcanum's internal APIs (work run history, worker status, task manager bridge) as tools/skills the agent can call
-- Could be a Hermes skill initially, graduating to a dedicated agent interface
-- The agent needs read access to: work run records, worker registry, task manager status
-- The agent needs write access to: create/update tasks in task manager, trigger re-queues, rotate worker credentials
+**Why a skill instead of a separate agent:**
+- Zero new infrastructure — leverages the agent the user already has
+- SKILL.md is versioned alongside the CLI and API (same release, no drift)
+- Portable — works with Hermes, Claude Code, any agent that loads SKILL.md files
+- The skill is the API documentation, the tool definitions, and the usage guide in one file
+- 1:1 mapping to API endpoints means the skill stays in sync automatically — adding an API endpoint means adding a section to the skill
+
+**What the skill covers (mapped to API):**
+
+| API Endpoint | Skill Tool / Section | Description |
+|---|---|---|
+| `GET /workers` | List workers | All registered workers, status, capabilities, last seen |
+| `GET /workers/:id` | Get worker details | Specific worker health, current work, metrics |
+| `POST /workers/register` | Register worker | Bootstrap a new worker machine |
+| `DELETE /workers/:id` | Remove worker | Decommission a worker |
+| `GET /runs` | List work runs | Recent work runs with filters (status, worker, harness) |
+| `GET /runs/:id` | Get run details | Full run info: logs, artifacts, token usage, validation results |
+| `POST /runs/:id/retry` | Retry work run | Re-queue a failed run |
+| `POST /runs/:id/cancel` | Cancel work run | Terminate a running work item |
+| `GET /tasks/poll` | Poll for ready tasks | (Internal — used by workers, but exposed for agent visibility) |
+| `POST /tasks/dispatch` | Dispatch work | Manually dispatch a task to a worker |
+| `POST /tasks/create` | Create work item | Create a new task in the connected task manager (Kaneo/Linear) |
+| `GET /secrets` | List secrets (names only) | What secrets are configured (values never returned) |
+| `POST /secrets` | Add/rotate secret | Add or rotate an API key or config template |
+| `GET /metrics` | System metrics | Queue depth, dispatch rate, success rate, token spend |
+| `GET /health` | Health check | Orchestrator + connected task managers status |
+
+**SKILL.md structure:**
+
+```
+skills/vulcanum-api/
+├── SKILL.md          # Main skill: overview, auth setup, tool definitions
+├── references/
+│   ├── api.md        # Full API reference (auto-generated from OpenAPI spec)
+│   └── examples.md   # Common workflows (create work, debug failure, add worker)
+└── templates/
+    └── work-item.json  # Work item template
+```
+
+**Concrete usage examples (what users say to their agent):**
+
+- "Create a vulcanum task to fix all clippy warnings in the vulcanum repo — use claude-sonnet-4, max 25 turns, validate with cargo build + cargo test"
+- "Show me the last 5 failed work runs and what went wrong"
+- "Worker-3 has been disconnected for 2 hours — what's its last known state and what was it working on?"
+- "Rotate the Anthropic API key — the old one was leaked"
+- "How many tokens did we burn this week across all workers?"
+
+**CLI integration:**
+
+```bash
+# Install the skill for an agent
+vulcanum install-skill --agent hermes
+vulcanum install-skill --agent claude-code
+vulcanum install-skill --agent codex
+
+# This copies SKILL.md + references to the agent's skills directory
+# and prompts the user to configure the API endpoint + credentials
+```
+
+**Delivery:** The SKILL.md ships inside the CLI binary (embedded via `include_str!`) and is extracted on `vulcanum install-skill`. It's also available in the vulcanum repo at `skills/vulcanum-api/SKILL.md` for manual installation.
 
 ### 1.7 Multi-Tenant Isolation — Important
 
@@ -168,6 +214,7 @@ Kaneo/Linear/Jira          Vulcanum Main App              Worker Daemon
   - `vulcanum daemon` — starts the host-server daemon
   - `vulcanum tui` — opens the TUI control panel
   - `vulcanum register --token <registration-token>` — registers this machine, generates local credentials
+  - `vulcanum install-skill --agent <hermes|claude-code|codex>` — installs the vulcanum-api SKILL.md for agent-native control
   - `vulcanum status` — quick health check
 - Installation: `curl | sh` one-liner. The binary contains all modes
 - `vulcanum register` installs a systemd user service so the daemon survives reboots
@@ -340,7 +387,7 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 | **P1** | Result submission + task manager sync | Close the loop |
 | **P2** | Secret injection (memfd + tmpfs) | Required before handling real API keys |
 | **P2** | CLI control tool + daemon IPC | User-facing bootstrap flow |
-| **P2** | Vulcanum Agent (basic: work creation, status inquiry) | System usability; self-serve operations |
+| **P2** | Vulcanum API SKILL.md + `install-skill` CLI command | Agent-native control surface; drop-in for Hermes/Claude Code/Codex |
 | **P2** | State machine + work run tracking | Operational visibility |
 | **P3** | Overseer + validation loop | Quality of life, not blocking |
 | **P3** | TUI | Nice to have, daemon works headless |
@@ -348,7 +395,7 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 | **P3** | Linear integration (webhook support) | After Kaneo is stable |
 | **P4** | Self-update mechanism | Can update manually during MVP |
 | **P4** | Enhanced isolation (Podman rootless) | Bubblewrap covers 90% of use cases |
-| **P4** | Frontend UI | Control via CLI + Vulcanum Agent first |
+| **P4** | Frontend UI | Control via CLI + API skill first; skill covers 90% of UI use cases |
 | **P4** | SSE optional upgrade | Only if polling latency is a bottleneck |
 
 ---
@@ -378,10 +425,11 @@ No persistent connections. Stateless HTTP. Horizontally scalable behind any load
 │  └──────────────────────────────────────────────────────────────┘ │
 │                                                                   │
 │  ┌──────────────────────────────────────────────────────────────┐ │
-│  │  Vulcanum Agent API (internal)                                 │ │
-│  │  - Query work runs, worker status                             │ │
-│  │  - Create tasks in task manager                               │ │
-│  │  - System health checks                                       │ │
+│  │  Vulcanum API (full control surface)                           │ │
+│  │  - All endpoints exposed for agent-native control              │ │
+│  │  - 1:1 mapped in skills/vulcanum-api/SKILL.md                  │ │
+│  │  - Users drop skill into Hermes/Claude Code/Codex for control  │ │
+│  │  - No separate agent service — skill IS the interface          │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 
