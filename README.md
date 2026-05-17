@@ -1,62 +1,62 @@
 # Vulcanum 🔥
 
-**Symphony-like agentic work orchestrator.** Dispatch, isolate, execute, and validate AI agent tasks across distributed worker machines.
+**Kaneo-to-OpenCode automation bridge.** Poll Kaneo for tasks, dispatch to sandboxed workers, sync status back. Thin metadata/trigger broker — doesn't validate code, doesn't run agents itself.
 
 ## Architecture
 
 ![Architecture Diagram](design-docs/architecture-diagram.html)
 
-Vulcanum is a distributed system with three main components:
+Vulcanum has two components:
 
 ### Main App (Control Panel)
-- **actix-web** HTTP server with magic-link authentication
-- **PostgreSQL** for work queue, worker registry, audit logs, and encrypted secrets
-- **WebSocket server** for real-time bidirectional communication with workers
-- REST API for user management, server configuration, and work dispatch
+- **actix-web** HTTP server
+- **PostgreSQL** for work runs, worker registry, project configs, run history
+- Background poller watches enabled Kaneo projects for new tasks
+- In-memory boolean cache per worker for lightweight "work pending?" checks
+- HTTP API for worker communication and user configuration
+- Single-user MVP — auth exists in code/DB but API not gated
 
 ### Worker Daemon
-- Lightweight Rust daemon running on user machines (Linux primary)
-- Connects to Main App via **outbound WebSocket** (works behind NAT/firewalls)
-- Receives work, decrypts secrets, spawns agent harnesses in **sandboxed environments**
-- Reports progress, submits results, auto-cleans on completion
-
-### CLI (Dual-Mode)
-- **TUI Control Panel:** Dashboard for monitoring workers, viewing work status
-- **Control Tool:** Bootstrap — authenticate, register machine, install daemon
+- Single binary: `vulcanum connect --instance <url> --code <code>` → registers, gets token pair, daemonizes
+- Short-polls main app for pending work (hits cache flag, not DB)
+- Spawns OpenCode inside a Firecracker microVM on each work item
+- Reports results back, then idles
+- Linux-only (requires KVM for Firecracker)
 
 ## How It Works
 
 ```
-User creates work → Main App dispatches → Worker picks up via WebSocket
-                                          → Worker decrypts secrets (age)
-                                          → Spawns agent harness (Claude Code, etc.)
-                                          → Inside sandbox (bwrap, tmpfs, no network)
-                                          → Secrets injected via memfd (never on disk)
-                                          → Results streamed back
-                                          → Validation checks run
-                                          → Sandbox destroyed, cleanup automatic
+Kaneo (todo column)  →  Main App polls, creates work_run  →  Worker polls cache flag
+                                                              ↓
+                                                         Worker boots Firecracker μVM
+                                                         OpenCode does work, submits PR
+                                                              ↓
+Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /result
 ```
 
-## Key Design Decisions
+## Key Design Decisions (MVP)
 
 | Domain | Decision |
-|--------|----------|
-| **Isolation** | Tiered: bubblewrap+tmpfs (default) → Podman+gVisor → Firecracker microVMs |
-| **Secrets** | age (X25519) wrapping, memfd injection, destroyed on process exit |
-| **Communication** | WebSocket (primary), SSE+POST (fallback) over mTLS |
-| **Harnesses** | Claude Code P0, Codex CLI P1, pluggable trait for more |
+|---|---|
+| **Harness** | OpenCode only |
+| **Isolation** | Firecracker microVMs (Linux/KVM required) |
+| **Secrets** | Plain HTTPS (single-user, own infra; agent-vault for v2) |
+| **Communication** | HTTP polling (in-memory cache flags, stateless) |
+| **Task source** | Kaneo only — per-project opt-in with configurable column mapping |
+| **Worker auth** | Short-lived registration codes → token pair (refresh + access), revocable |
+| **Verification** | Mechanical: PR exists? Worker reports exit code. Main app doesn't validate. |
 | **Language** | Rust (workspace: cli, host-server, main-app, shared) |
 | **Database** | PostgreSQL via SQLx |
 
 ## Repository Layout
 
 | Crate | Purpose | Status |
-|-------|---------|--------|
-| `main-app/` | Control panel server (actix-web + SQLx + auth) | Active |
-| `host-server/` | Worker daemon (polling, sandboxing, harness orchestration) | Placeholder |
-| `cli/` | TUI + control tool (registration, monitoring) | Placeholder |
+|---|---|---|
+| `main-app/` | Control panel server (actix-web + SQLx) | Active |
+| `host-server/` | Worker daemon (polling, Firecracker μVM, harness spawning) | Placeholder |
+| `cli/` | Worker bootstrap (`vulcanum connect`) + future TUI | Placeholder |
 | `shared/` | Shared types and utilities | Empty |
-| `design-docs/` | Architecture analysis, technology research, diagrams | New |
+| `design-docs/` | Architecture analysis, technology research, diagrams | Active |
 
 ## Getting Started
 
@@ -74,5 +74,6 @@ make check
 ## Design Docs
 
 - [Technology Research](design-docs/technology-research.md) — isolation, secrets, polling, harnesses
-- [Gap Analysis](design-docs/gap-analysis.md) — architectural gaps, recommendations, priority
+- [Gap Analysis](design-docs/gap-analysis.md) — architectural gaps, MVP scope decisions
 - [Architecture Diagram](design-docs/architecture-diagram.html) — visual system overview
+- [MVP Implementation Tasks](design-docs/mvp-implementation-tasks.md) — what needs to be built

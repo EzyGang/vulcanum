@@ -3,17 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vulcanum Architecture</title>
+  <title>Vulcanum Architecture (MVP)</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'JetBrains Mono', monospace;
-      background: #020617;
-      min-height: 100vh;
-      padding: 2rem;
-      color: white;
-    }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
     .container { max-width: 1000px; margin: 0 auto; }
     .header { margin-bottom: 2rem; }
     .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
@@ -21,31 +15,14 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     h1 { font-size: 1.5rem; font-weight: 700; }
     .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
-    .diagram-container {
-      background: rgba(15, 23, 42, 0.5);
-      border-radius: 1rem;
-      border: 1px solid #1e293b;
-      padding: 2rem;
-    }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 2rem; }
     svg { width: 100%; min-width: 800px; display: block; }
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-      margin-top: 2rem;
-    }
-    .card {
-      background: rgba(15, 23, 42, 0.5);
-      border-radius: 0.75rem;
-      border: 1px solid #1e293b;
-      padding: 1.25rem;
-    }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
     .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
     .card-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .card-dot.cyan { background: #22d3ee; }
-    .card-dot.emerald { background: #34d399; }
-    .card-dot.violet { background: #a78bfa; }
-    .card-dot.rose { background: #fb7185; }
+    .card-dot.cyan { background: #22d3ee; } .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; } .card-dot.rose { background: #fb7185; }
     .card-dot.amber { background: #fbbf24; }
     .card h3 { font-size: 0.875rem; font-weight: 600; }
     .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
@@ -58,254 +35,140 @@
     <div class="header">
       <div class="header-row">
         <div class="pulse-dot"></div>
-        <h1>Vulcanum — Agent Orchestrator Architecture</h1>
+        <h1>Vulcanum Architecture (MVP)</h1>
       </div>
-      <p class="subtitle">Task manager → Orchestrator → Worker → Sandbox → Harness</p>
+      <p class="subtitle">Kaneo → Main App → Worker (Firecracker + OpenCode) — thin metadata/trigger broker</p>
     </div>
 
     <div class="diagram-container">
-      <svg viewBox="0 0 880 720">
+      <svg viewBox="0 0 880 580">
         <defs>
-          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
-          </marker>
-          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
-          </marker>
-          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
-          </marker>
-          <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
-          </marker>
-          <marker id="arrow-slate" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
-          </marker>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
-          </pattern>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b" /></marker>
+          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#34d399" /></marker>
+          <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" /></marker>
+          <marker id="arrow-slate" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" /></marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
         </defs>
-
         <rect width="100%" height="100%" fill="url(#grid)" />
 
-        <!-- ============================================================
-             ROW 1: USER'S AGENT (Top)
-             ============================================================ -->
-        <rect x="285" y="20" width="310" height="70" rx="8" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="2"/>
-        <text x="440" y="48" fill="white" font-size="13" font-weight="600" text-anchor="middle">User's Agent</text>
-        <text x="440" y="66" fill="#22d3ee" font-size="10" text-anchor="middle">Hermes / Claude Code / Codex CLI</text>
-        <text x="440" y="80" fill="#94a3b8" font-size="9" text-anchor="middle">+ vulcanum-api SKILL.md (1:1 API mapping)</text>
+        <!-- ROW 1: Kaneo (External) -->
+        <rect x="30" y="30" width="180" height="60" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="120" y="54" fill="white" font-size="12" font-weight="600" text-anchor="middle">Kaneo</text>
+        <text x="120" y="72" fill="#94a3b8" font-size="9" text-anchor="middle">Task manager (self-hosted)</text>
+        <text x="120" y="84" fill="#fbbf24" font-size="8" text-anchor="middle">"todo" → pickup</text>
 
-        <!-- Arrow: Agent → Orchestrator -->
-        <path d="M 440 90 L 440 140 Q 440 155 440 165" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,5" marker-end="url(#arrow-cyan)"/>
-        <text x="455" y="132" fill="#22d3ee" font-size="8">SKILL.md tool calls</text>
+        <!-- ROW 1: Arrows Kaneo ↔ Main App -->
+        <line x1="210" y1="60" x2="268" y2="60" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
+        <text x="239" y="54" fill="#94a3b8" font-size="8">poll tasks</text>
+        <line x1="268" y1="75" x2="210" y2="75" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
+        <text x="239" y="89" fill="#94a3b8" font-size="8">sync status</text>
 
-        <!-- ============================================================
-             ROW 2: EXTERNAL TASK MANAGERS (Left)
-             ============================================================ -->
-        <rect x="30" y="120" width="150" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-        <text x="105" y="142" fill="white" font-size="12" font-weight="600" text-anchor="middle">Kaneo</text>
-        <text x="105" y="158" fill="#94a3b8" font-size="9" text-anchor="middle">Self-hosted task manager</text>
+        <!-- ROW 1: Main App boundary -->
+        <rect x="270" y="15" width="430" height="140" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
+        <text x="282" y="32" fill="#34d399" font-size="10" font-weight="600">Vulcanum Main App (actix-web)</text>
 
-        <rect x="30" y="185" width="150" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-        <text x="105" y="207" fill="white" font-size="12" font-weight="600" text-anchor="middle">Linear</text>
-        <text x="105" y="223" fill="#94a3b8" font-size="9" text-anchor="middle">Webhooks • GraphQL</text>
+        <rect x="290" y="45" width="190" height="50" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="385" y="65" fill="white" font-size="11" font-weight="600" text-anchor="middle">Background Poller</text>
+        <text x="385" y="83" fill="#94a3b8" font-size="8" text-anchor="middle">Per-project, per-column, idempotent</text>
 
-        <!-- ============================================================
-             ROW 2: MAIN APP (Center)
-             ============================================================ -->
-        <rect x="220" y="110" width="450" height="140" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
-        <text x="232" y="127" fill="#34d399" font-size="10" font-weight="600">Vulcanum Main App (axum)</text>
+        <rect x="500" y="45" width="180" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="590" y="65" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL</text>
+        <text x="590" y="83" fill="#94a3b8" font-size="8" text-anchor="middle">Work runs • Workers • Projects</text>
 
-        <!-- Task Manager Bridge -->
-        <rect x="240" y="140" width="170" height="55" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1.5"/>
-        <text x="325" y="160" fill="white" font-size="11" font-weight="600" text-anchor="middle">Task Manager Bridge</text>
-        <text x="325" y="178" fill="#94a3b8" font-size="8" text-anchor="middle">Poll / Webhook → Status sync</text>
-        <text x="325" y="190" fill="#fbbf24" font-size="8" text-anchor="middle">vulcanum:ready → vulcanum:running</text>
+        <rect x="290" y="108" width="390" height="32" rx="5" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
+        <text x="485" y="128" fill="#94a3b8" font-size="9" text-anchor="middle">GET /poll  ·  GET /jobs/:id  ·  POST /result  ·  POST /workers/connect  ·  /projects</text>
 
-        <!-- PostgreSQL -->
-        <rect x="430" y="140" width="160" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
-        <text x="510" y="160" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL</text>
-        <text x="510" y="178" fill="#94a3b8" font-size="8" text-anchor="middle">Worker registry</text>
-        <text x="510" y="190" fill="#94a3b8" font-size="8" text-anchor="middle">Work runs • Secret names</text>
+        <!-- Main App → Worker arrows -->
+        <path d="M 485 155 L 485 220 Q 485 235 475 235 L 400 235 Q 390 235 390 225 L 390 210 Q 390 200 380 200 L 310 200 Q 300 200 300 210 L 300 235" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+        <text x="495" y="198" fill="#34d399" font-size="8">dispatch work</text>
 
-        <!-- API Surface -->
-        <rect x="240" y="210" width="415" height="28" rx="5" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
-        <text x="447" y="228" fill="#94a3b8" font-size="9" text-anchor="middle">GET /poll  •  POST /ack  •  POST /progress  •  POST /result</text>
+        <!-- ROW 2: Worker Daemon -->
+        <rect x="30" y="240" width="480" height="195" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
+        <text x="42" y="257" fill="#34d399" font-size="10" font-weight="600">Worker Daemon (Linux, single binary)</text>
 
-        <!-- Arrows: Task Managers → Bridge -->
-        <line x1="180" y1="147" x2="238" y2="147" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
-        <line x1="180" y1="207" x2="238" y2="207" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
+        <rect x="50" y="275" width="160" height="45" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="130" y="295" fill="white" font-size="11" font-weight="600" text-anchor="middle">Poll Loop</text>
+        <text x="130" y="311" fill="#94a3b8" font-size="8" text-anchor="middle">GET /poll?worker_id=X</text>
 
-        <!-- ============================================================
-             ROW 3: WORKER DAEMON (Bottom-Left)
-             ============================================================ -->
-        <rect x="30" y="305" width="380" height="195" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
-        <text x="42" y="322" fill="#34d399" font-size="10" font-weight="600">Worker Daemon (Linux systemd service)</text>
+        <rect x="230" y="275" width="260" height="45" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="360" y="295" fill="white" font-size="11" font-weight="600" text-anchor="middle">Work Executor</text>
+        <text x="360" y="311" fill="#94a3b8" font-size="8" text-anchor="middle">Fetch metadata · Prep config · Boot μVM</text>
 
-        <!-- Poll Loop -->
-        <rect x="50" y="340" width="155" height="45" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
-        <text x="127" y="360" fill="white" font-size="11" font-weight="600" text-anchor="middle">Poll Loop</text>
-        <text x="127" y="376" fill="#94a3b8" font-size="8" text-anchor="middle">GET /poll every 15s</text>
+        <!-- Firecracker μVM -->
+        <rect x="50" y="335" width="440" height="85" rx="8" fill="transparent" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5"/>
+        <text x="62" y="352" fill="#fb7185" font-size="10" font-weight="600">Firecracker microVM</text>
+        <text x="62" y="364" fill="#fb7185" font-size="7">Linux KVM · tmpfs workdir · egress: api.anthropic.com + github.com only</text>
 
-        <!-- Work Executor -->
-        <rect x="225" y="340" width="170" height="45" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
-        <text x="310" y="360" fill="white" font-size="11" font-weight="600" text-anchor="middle">Work Executor</text>
-        <text x="310" y="376" fill="#94a3b8" font-size="8" text-anchor="middle">Prep sandbox → spawn harness → enforce limits</text>
+        <rect x="70" y="375" width="200" height="32" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="170" y="395" fill="white" font-size="11" font-weight="600" text-anchor="middle">OpenCode</text>
 
-        <!-- agent-vault proxy (sidecar inside Worker Daemon) -->
-        <rect x="50" y="395" width="345" height="30" rx="5" fill="rgba(136, 19, 55, 0.12)" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="222" y="414" fill="#fb7185" font-size="9" text-anchor="middle">agent-vault proxy (localhost:8200) — auth, cache, rotate</text>
+        <!-- Result back to Main App -->
+        <path d="M 300 430 L 300 450 Q 300 460 310 460 L 400 460 Q 410 460 410 450 L 410 435" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+        <text x="310" y="474" fill="#34d399" font-size="8">POST /result {pr_url, usage, exit_code}</text>
 
-        <!-- Harness -->
-        <rect x="50" y="440" width="345" height="45" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1"/>
-        <text x="222" y="460" fill="white" font-size="10" font-weight="600" text-anchor="middle">Harnesses: Claude Code (primary)  •  Codex CLI  •  Generic adapter</text>
-        <text x="222" y="476" fill="#94a3b8" font-size="8" text-anchor="middle">All spawned via AgentHarness trait, non-interactive, SIGTERM-respecting</text>
+        <!-- Firecracker detail -->
+        <rect x="290" y="375" width="180" height="32" rx="4" fill="rgba(136, 19, 55, 0.15)" stroke="#fb7185" stroke-width="0.5" stroke-dasharray="3,3"/>
+        <text x="380" y="395" fill="#fb7185" font-size="8" text-anchor="middle">Destroyed on completion</text>
 
-        <!-- Polling arrows between Main App and Worker -->
-        <path d="M 290 238 L 290 290 Q 290 300 280 300 L 155 300 Q 145 300 145 310 L 145 338" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
-        <path d="M 420 238 L 420 290 Q 420 300 430 300 L 500 300 Q 510 300 510 310 L 510 338" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-        <text x="155" y="295" fill="#34d399" font-size="8">poll</text>
-        <text x="520" y="295" fill="#94a3b8" font-size="8">dispatch/result</text>
+        <!-- Worker → Main App flow back arrow -->
+        <path d="M 50 297 L 30 297 L 30 60 L 28 60" fill="none" stroke="#64748b" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow-slate)"/>
+        <text x="15" y="180" fill="#94a3b8" font-size="7" transform="rotate(-90, 15, 180)">result submission</text>
 
-        <!-- ============================================================
-             ROW 3: SANDBOX (Bottom-Right)
-             ============================================================ -->
-        <rect x="445" y="305" width="285" height="195" rx="8" fill="transparent" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5"/>
-        <text x="455" y="322" fill="#fb7185" font-size="10" font-weight="600">Sandbox — Tier 1: bubblewrap + nsjail</text>
+        <!-- Legend -->
+        <rect x="550" y="240" width="300" height="175" rx="8" fill="rgba(15, 23, 42, 0.7)" stroke="#1e293b" stroke-width="1"/>
+        <text x="700" y="262" fill="white" font-size="10" font-weight="600" text-anchor="middle">Legend</text>
+        <rect x="565" y="278" width="14" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/><text x="585" y="287" fill="#94a3b8" font-size="8">Orchestrator / Worker</text>
+        <rect x="565" y="296" width="14" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/><text x="585" y="305" fill="#94a3b8" font-size="8">Database</text>
+        <rect x="565" y="314" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/><text x="585" y="323" fill="#94a3b8" font-size="8">Sandbox / Isolation</text>
+        <rect x="565" y="332" width="14" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/><text x="585" y="341" fill="#94a3b8" font-size="8">External System</text>
+        <rect x="565" y="350" width="14" height="10" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/><text x="585" y="359" fill="#94a3b8" font-size="8">μVM boundary</text>
+        <line x1="565" y1="370" x2="579" y2="370" stroke="#34d399" stroke-width="1.5"/><text x="585" y="373" fill="#94a3b8" font-size="8">Work flow</text>
+        <line x1="565" y1="382" x2="579" y2="382" stroke="#94a3b8" stroke-width="1.5"/><text x="585" y="385" fill="#94a3b8" font-size="8">Status sync</text>
 
-        <!-- Claude Code in sandbox -->
-        <rect x="465" y="340" width="120" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
-        <text x="525" y="360" fill="white" font-size="11" font-weight="600" text-anchor="middle">Claude Code</text>
-        <text x="525" y="376" fill="#94a3b8" font-size="8" text-anchor="middle">claude -p --json</text>
-        <text x="525" y="390" fill="#fb7185" font-size="8" text-anchor="middle">max-turns • timeout</text>
-
-        <!-- Codex in sandbox -->
-        <rect x="600" y="340" width="115" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
-        <text x="657" y="360" fill="white" font-size="11" font-weight="600" text-anchor="middle">Codex CLI</text>
-        <text x="657" y="376" fill="#94a3b8" font-size="8" text-anchor="middle">codex exec --json</text>
-        <text x="657" y="390" fill="#94a3b8" font-size="8" text-anchor="middle">Rust • Apache 2.0</text>
-
-        <!-- Sandbox properties -->
-        <text x="587" y="415" fill="#fb7185" font-size="8" text-anchor="middle">—unshare-net  •  —unshare-pid  •  seccomp-bpf  •  tmpfs /work</text>
-
-        <!-- Network egress note for secrets -->
-        <text x="587" y="432" fill="#22d3ee" font-size="7" text-anchor="middle">egress: localhost:8200 only (agent-vault)</text>
-
-        <!-- Arrow: agent-vault → Harness (secret read) -->
-        <path d="M 222 425 L 222 460 Q 222 468 232 468 L 340 468 Q 350 468 350 456 L 350 410 Q 350 400 360 400 L 463 400" fill="none" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow-rose)"/>
-        <text x="400" y="393" fill="#fb7185" font-size="6">read secret</text>
-
-        <!-- Tier 2 note -->
-        <rect x="465" y="455" width="250" height="22" rx="4" fill="rgba(251, 191, 36, 0.08)" stroke="#fbbf24" stroke-width="0.5" stroke-dasharray="3,3"/>
-        <text x="590" y="470" fill="#fbbf24" font-size="8" text-anchor="middle">Tier 2 (opt): Podman rootless for untrusted code</text>
-
-        <!-- Arrow: Worker → Sandbox -->
-        <line x1="380" y1="385" x2="463" y2="385" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrow-rose)"/>
-        <text x="421" y="379" fill="#fb7185" font-size="7">spawn</text>
-
-        <!-- ============================================================
-             OUTPUT FLOW (Left)
-             ============================================================ -->
-        <rect x="30" y="530" width="240" height="45" rx="6" fill="rgba(30, 41, 59, 0.3)" stroke="#94a3b8" stroke-width="1"/>
-        <text x="150" y="548" fill="white" font-size="10" font-weight="600" text-anchor="middle">Artifacts → Task Manager</text>
-        <text x="150" y="565" fill="#94a3b8" font-size="8" text-anchor="middle">diff.patch • logs • metrics → posted as comment</text>
-
-        <path d="M 222 500 L 222 515 Q 222 528 210 528 L 175 528" fill="none" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow-slate)"/>
-
-        <!-- ============================================================
-             LEGEND
-             ============================================================ -->
-        <text x="460" y="540" fill="white" font-size="10" font-weight="600">Legend</text>
-
-        <rect x="460" y="552" width="14" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
-        <text x="480" y="561" fill="#94a3b8" font-size="8">Orchestrator / Worker</text>
-
-        <rect x="460" y="570" width="14" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
-        <text x="480" y="579" fill="#94a3b8" font-size="8">User's Agent</text>
-
-        <rect x="460" y="588" width="14" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
-        <text x="480" y="597" fill="#94a3b8" font-size="8">Database</text>
-
-        <rect x="460" y="606" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
-        <text x="480" y="615" fill="#94a3b8" font-size="8">Security / Sandbox</text>
-
-        <rect x="655" y="552" width="14" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
-        <text x="675" y="561" fill="#94a3b8" font-size="8">External System</text>
-
-        <rect x="655" y="570" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.12)" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="675" y="579" fill="#94a3b8" font-size="8">agent-vault proxy</text>
-
-        <rect x="655" y="588" width="14" height="10" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="675" y="597" fill="#94a3b8" font-size="8">Sandbox boundary</text>
-
-        <line x1="655" y1="608" x2="669" y2="608" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="675" y="611" fill="#94a3b8" font-size="8">Secret read path</text>
+        <!-- Auth flow label -->
+        <rect x="565" y="395" width="270" height="14" rx="3" fill="rgba(251, 191, 36, 0.08)"/>
+        <text x="700" y="405" fill="#fbbf24" font-size="7" text-anchor="middle">Worker auth: code → token pair (refresh + access), revocable</text>
       </svg>
     </div>
 
-    <!-- Info Cards -->
     <div class="cards">
       <div class="card">
-        <div class="card-header">
-          <div class="card-dot cyan"></div>
-          <h3>How work flows</h3>
-        </div>
+        <div class="card-header"><div class="card-dot emerald"></div><h3>Work Flow</h3></div>
         <ul>
-          <li>1. Task created in Kaneo/Linear with vulcanum:ready label</li>
-          <li>2. Main App polls task manager, enriches with harness config</li>
-          <li>3. Worker polls GET /poll every 15s, receives work</li>
-          <li>4. Harness reads secrets from agent-vault proxy (localhost:8200)</li>
-          <li>5. Result posted back, status synced to task manager</li>
+          <li>• Main app polls Kaneo "todo" per enabled project</li>
+          <li>• INSERT work_run with ON CONFLICT DO NOTHING</li>
+          <li>• Worker short-polls cache flag → gets job_id</li>
+          <li>• Worker fetches full metadata (prompt, secrets, config)</li>
+          <li>• Boots Firecracker μVM, spawns OpenCode</li>
+          <li>• OpenCode does work, submits PR, exits</li>
+          <li>• Worker POSTs /result → Main app syncs Kaneo to "in review"</li>
         </ul>
       </div>
-
       <div class="card">
-        <div class="card-header">
-          <div class="card-dot rose"></div>
-          <h3>Security model</h3>
-        </div>
+        <div class="card-header"><div class="card-dot rose"></div><h3>Isolation (Firecracker)</h3></div>
         <ul>
-          <li>• Secrets live in Infisical, never touch Vulcanum Main App</li>
-          <li>• agent-vault proxy on worker handles auth, caching, rotation</li>
-          <li>• Harness reads localhost:8200 — no secrets over the wire</li>
-          <li>• Sandbox: no network by default, localhost:8200 only for secrets</li>
-          <li>• Output sanitized for secret patterns before submission</li>
+          <li>• Linux KVM required — Firecracker microVM per work item</li>
+          <li>• Pre-built rootfs with OpenCode + git + curl</li>
+          <li>• tmpfs workdir — ephemeral, destroyed on VM exit</li>
+          <li>• Network: egress to api.anthropic.com + github.com only</li>
+          <li>• CPU/memory limits enforced at VM level</li>
+          <li>• Secrets injected via env inside VM, never on host disk</li>
         </ul>
       </div>
-
       <div class="card">
-        <div class="card-header">
-          <div class="card-dot emerald"></div>
-          <h3>Why polling, not WebSocket</h3>
-        </div>
+        <div class="card-header"><div class="card-dot violet"></div><h3>MVP Boundaries</h3></div>
         <ul>
-          <li>• Stateless HTTP — any load balancer can handle any request</li>
-          <li>• No connection state, no reconnection storms on restart</li>
-          <li>• Configurable interval (15s default, tune per workload)</li>
-          <li>• Works through every proxy and firewall</li>
-          <li>• SSE available as optional upgrade for near-real-time</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot violet"></div>
-          <h3>Agent-native control</h3>
-        </div>
-        <ul>
-          <li>• vulcanum-api SKILL.md shipped in CLI binary</li>
-          <li>• 1:1 API mapping — every endpoint callable from agent</li>
-          <li>• vulcanum install-skill --agent hermes</li>
-          <li>• "Create a vulcanum task to fix clippy warnings"</li>
-          <li>• "Why did work item abc123 fail?"</li>
+          <li>• Single-user, self-hosted, no auth gating on API</li>
+          <li>• Linux-only workers (Firecracker needs KVM)</li>
+          <li>• OpenCode as sole harness (no Claude Code / Codex)</li>
+          <li>• Kaneo as sole task source (no Linear / Jira)</li>
+          <li>• Plain HTTPS for secrets (agent-vault for v2)</li>
+          <li>• Main app is metadata broker — never validates code</li>
         </ul>
       </div>
     </div>
 
-    <p class="footer">
-      Vulcanum Agent Orchestrator • Revised Architecture (May 2026) • github.com/EzyGang/vulcanum
-    </p>
+    <p class="footer">Vulcanum · MVP Architecture · May 2026</p>
   </div>
 </body>
 </html>
