@@ -155,6 +155,88 @@ src/services/<domain>/
 - Application state (`web::Data`) must expose **services**, not raw database pools.
 - No business logic, no validation rules, and no direct DB access in handlers.
 
+## Kaneo Task Management
+
+Tasks for this project live in Kaneo (project `k5s7dwb5f89anmaui2d814h9`, slug `vulcanum`).
+The local `.kaneo-conf.json` is pinned to the project — `kaneo task` commands work from this directory without extra flags.
+
+### Skills to Load
+
+When creating or updating tasks, always load these skills first:
+
+- `skill name="kaneo"` — CLI reference (list, create, update, status, labels, comments, etc.)
+- `skill name="kaneo-task-template"` — required structure: Goal, Requirements, Dependencies, Validation, Actions Log
+
+### Column Statuses
+
+| Slug | Status | Meaning |
+|------|--------|---------|
+| `planned` | Planned | Backlog — accepted but not ready to start |
+| `to-do` | To Do | Ready for implementation |
+| `in-progress` | In Progress | Currently being worked on |
+| `in-review` | In Review | Implementation done, awaiting review |
+| `done` | Done | Validated and complete (final) |
+
+### Task Lifecycle
+
+```
+planned → to-do → in-progress → in-review → done
+```
+
+- **planned**: Task exists but may be blocked by dependencies.
+- **to-do**: Dependencies resolved, ready to pick up.
+- **in-progress**: Move here at the start of implementation.
+- **in-review**: Tests pass, PR submitted — move here, not directly to done. The reviewer (user) validates.
+- **done**: Only after explicit user validation.
+
+### Priority Conventions
+
+| Tier | Kaneo Priority | When to Use |
+|------|---------------|-------------|
+| P0 | `high` | Core infrastructure — nothing works without these |
+| P1 | `medium` | Feature work that depends on P0 |
+| P2 | `low` | Reliability, optimizations, CLI polish |
+| P3 | `low` | Developer experience, tooling, documentation |
+
+### Creating a Task
+
+```bash
+kaneo task create \
+  --title "Short imperative title" \
+  --status planned \
+  --description "# Full markdown body with Goal, Requirements, Dependencies, Validation, Actions Log"
+```
+
+Never guess requirements. If context is insufficient, ask before creating.
+
+### Updating a Task
+
+```bash
+# Move status
+kaneo task update <id> --status "in-progress"
+
+# Update description (always pass the complete body — Kaneo replaces the entire field)
+kaneo task update <id> --description "<full updated body>"
+
+# Set priority
+kaneo task update <id> --priority medium
+```
+
+### Listing Tasks
+
+```bash
+kaneo task list                           # all tasks in the project
+kaneo task list --status planned          # filter by status
+kaneo task list --priority high           # filter by priority
+```
+
+### Valid Status Values
+
+When using `--status`, always use the **slug** form (lowercase, hyphenated):
+`planned`, `to-do`, `in-progress`, `in-review`, `done`
+
+Do NOT use display names (`"To Do"`, `"In Progress"`) — these will fail with a 400 error.
+
 ## Crate-Specific Conventions
 
 For crate-specific details (migrations, environment variables, SQLx workflows, etc.), refer to the local `AGENTS.md` in each crate directory:
