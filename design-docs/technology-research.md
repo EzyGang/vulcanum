@@ -19,7 +19,7 @@ For MVP, we standardize on Firecracker. It provides hardware-level isolation (KV
 | **Memory overhead** | ~5–10MB per VM + guest kernel (~5MB) |
 | **CPU overhead** | Near-native |
 | **Disk overhead** | Block device per VM |
-| **Network isolation** | Configurable — we restrict to `api.anthropic.com` + `github.com` only |
+| **Network isolation** | Configurable |
 | **Filesystem** | Block device, tmpfs workdir |
 | **Linux only** | Yes (requires KVM) |
 | **Daemon required** | No (Firecracker binary + jailer) |
@@ -30,7 +30,7 @@ For MVP, we standardize on Firecracker. It provides hardware-level isolation (KV
 2. Pre-built minimal Linux kernel + rootfs image already on worker machine
 3. Firecracker boots microVM with:
    - tmpfs workdir (ephemeral, destroyed on VM exit)
-   - Network egress: `api.anthropic.com` + `github.com` only
+   - Network egress
    - CPU/memory limits at the VM level
    - Secrets injected via env or config file inside VM
 4. OpenCode runs, does work, submits PR, exits

@@ -4,7 +4,7 @@ mod errors;
 mod routes;
 mod services;
 
-use actix_web::{App, HttpServer, web};
+use actix_web::{web, App, HttpServer};
 
 #[actix_web::main]
 async fn main() -> eyre::Result<()> {

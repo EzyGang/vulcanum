@@ -166,7 +166,7 @@ CREATE TABLE work_runs (
 - Pre-built minimal Linux kernel + rootfs image with OpenCode, git, curl
 - Per-work Firecracker microVM:
   - tmpfs workdir (ephemeral, destroyed on VM exit)
-  - Network egress: `api.anthropic.com` + `github.com` only
+  - Network egress
   - CPU/memory limits at the VM level
   - Secrets injected via env or config file inside VM
 - VM destroyed on completion — all state gone
