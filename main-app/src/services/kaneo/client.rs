@@ -1,12 +1,35 @@
+use async_trait::async_trait;
 use kaneo_cli::api::client::ApiClient;
 use kaneo_cli::api::types::{BoardResponse, Column, Comment, Task};
 
 use super::errors::{api_err, KaneoError};
 
+const FETCH_TASKS_LIMIT: u32 = 200;
+
+#[async_trait]
+pub trait TaskFetcher: Send + Sync {
+    async fn fetch_tasks_in_column(
+        &self,
+        project_id: &str,
+        column_slug: &str,
+    ) -> Result<Vec<Task>, KaneoError>;
+}
+
 #[derive(Clone)]
 pub struct KaneoClient {
     instance: String,
     api_key: String,
+}
+
+#[async_trait]
+impl TaskFetcher for KaneoClient {
+    async fn fetch_tasks_in_column(
+        &self,
+        project_id: &str,
+        column_slug: &str,
+    ) -> Result<Vec<Task>, KaneoError> {
+        self.do_fetch_tasks_in_column(project_id, column_slug).await
+    }
 }
 
 impl KaneoClient {
@@ -18,14 +41,14 @@ impl KaneoClient {
         ApiClient::new(&self.instance, &self.api_key).map_err(api_err)
     }
 
-    #[allow(dead_code)]
-    pub async fn fetch_tasks_in_column(
+    async fn do_fetch_tasks_in_column(
         &self,
         project_id: &str,
         column_slug: &str,
     ) -> Result<Vec<Task>, KaneoError> {
         let client = self.build_client()?;
-        let path = format!("/task/tasks/{project_id}?limit=50&status={column_slug}");
+        let path =
+            format!("/task/tasks/{project_id}?limit={FETCH_TASKS_LIMIT}&status={column_slug}");
         let board: BoardResponse = client.get(&path).await.map_err(api_err)?;
 
         Ok(filter_tasks_in_column(board, column_slug))
@@ -88,7 +111,6 @@ impl KaneoClient {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) -> Vec<Task> {
     board
         .data

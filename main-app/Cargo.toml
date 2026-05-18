@@ -7,11 +7,14 @@ edition = "2021"
 actix-web = "4"
 kaneo-cli = { git = "https://github.com/EzyGang/kaneo-cli.git", branch = "main" }
 actix-rt = "2"
+async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15.7"
 eyre = "0.6.12"
 log = "0.4"
-pretty_env_logger = "0.5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-log = "0.2"
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

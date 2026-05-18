@@ -5,6 +5,11 @@ use crate::app_state::AppState;
 use crate::routes;
 
 fn build_state(pool: sqlx::PgPool) -> AppState {
+    let kaneo = crate::services::kaneo::client::KaneoClient::new(
+        "cloud.kaneo.app".to_owned(),
+        String::new(),
+    );
+
     AppState {
         auth: crate::services::auth::service::AuthService::new(
             crate::services::users::service::UsersService::new(
@@ -15,12 +20,12 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
             crate::services::project_configs::repository::ProjectConfigsRepository::new(),
             pool.clone(),
-            crate::services::kaneo::client::KaneoClient::new(
-                "cloud.kaneo.app".to_owned(),
-                String::new(),
-            ),
+            kaneo.clone(),
         ),
         db_pool: pool,
+        kaneo,
+        work_runs: crate::services::work_runs::repository::WorkRunsRepository::new(),
+        work_notifier: crate::services::poller::notifier::WorkNotifier::new(),
     }
 }
 
