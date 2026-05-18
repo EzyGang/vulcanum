@@ -1,0 +1,150 @@
+use actix_web::{test, web, App};
+use uuid::Uuid;
+
+use crate::app_state::AppState;
+use crate::routes;
+
+fn build_state(pool: sqlx::PgPool) -> AppState {
+    AppState {
+        auth: crate::services::auth::service::AuthService::new(
+            crate::services::users::service::UsersService::new(
+                crate::services::users::repository::UsersRepository::new(),
+                pool.clone(),
+            ),
+        ),
+        project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
+            crate::services::project_configs::repository::ProjectConfigsRepository::new(),
+            pool.clone(),
+            crate::services::kaneo::client::KaneoClient::new(
+                "cloud.kaneo.app".to_owned(),
+                String::new(),
+            ),
+        ),
+        db_pool: pool,
+    }
+}
+
+async fn insert_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> Uuid {
+    let id = Uuid::new_v4();
+
+    sqlx::query(
+        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template) VALUES ($1, $2, $3)",
+    )
+    .bind(id)
+    .bind(kaneo_project_id)
+    .bind("Review {{task_title}}")
+    .execute(pool)
+    .await
+    .expect("Should insert test config");
+
+    id
+}
+
+#[sqlx::test]
+async fn list_returns_configs(pool: sqlx::PgPool) {
+    insert_config(&pool, "test-list-1").await;
+    insert_config(&pool, "test-list-2").await;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool)))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/projects")
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert!(resp.status().is_success());
+
+    let body: Vec<serde_json::Value> = test::read_body_json(resp).await;
+    assert!(body.len() >= 2);
+}
+
+#[sqlx::test]
+async fn get_returns_config(pool: sqlx::PgPool) {
+    let id = insert_config(&pool, "test-get").await;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool)))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get()
+        .uri(&format!("/api/v1/projects/{id}"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert!(resp.status().is_success());
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(body["kaneo_project_id"], "test-get");
+}
+
+#[sqlx::test]
+async fn get_nonexistent_returns_404(pool: sqlx::PgPool) {
+    let nonexistent = Uuid::new_v4();
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool)))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get()
+        .uri(&format!("/api/v1/projects/{nonexistent}"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 404);
+}
+
+#[sqlx::test]
+async fn delete_removes_config(pool: sqlx::PgPool) {
+    let id = insert_config(&pool, "test-delete").await;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool.clone())))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::delete()
+        .uri(&format!("/api/v1/projects/{id}"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 204);
+
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM project_configs WHERE id = $1")
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .expect("Should query count");
+    assert_eq!(count.0, 0);
+}
+
+#[sqlx::test]
+async fn delete_nonexistent_returns_404(pool: sqlx::PgPool) {
+    let nonexistent = Uuid::new_v4();
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool)))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::delete()
+        .uri(&format!("/api/v1/projects/{nonexistent}"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 404);
+}

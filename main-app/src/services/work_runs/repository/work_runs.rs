@@ -5,12 +5,14 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRun;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
+#[allow(dead_code)]
 pub trait Queryer<'c>: Executor<'c, Database = Postgres> {}
 
 impl<'c> Queryer<'c> for &sqlx::PgPool {}
 
 impl<'c> Queryer<'c> for &'c mut sqlx::PgConnection {}
 
+#[allow(dead_code)]
 pub struct InsertWorkRunParams {
     pub external_task_ref: String,
     pub project_config_id: Uuid,
@@ -19,6 +21,7 @@ pub struct InsertWorkRunParams {
 }
 
 impl WorkRunsRepository {
+    #[allow(dead_code)]
     pub async fn insert_work_run<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

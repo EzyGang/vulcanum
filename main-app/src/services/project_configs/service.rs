@@ -1,0 +1,121 @@
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::services::kaneo::client::KaneoClient;
+use crate::services::project_configs::errors::ProjectConfigsError;
+use crate::services::project_configs::model::{
+    CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
+};
+use crate::services::project_configs::repository::{
+    ProjectConfigsRepository, UpdateProjectConfigParams,
+};
+
+#[derive(Clone)]
+pub struct ProjectConfigsService {
+    pub repo: ProjectConfigsRepository,
+    pub db: PgPool,
+    pub kaneo: KaneoClient,
+}
+
+impl ProjectConfigsService {
+    pub fn new(repo: ProjectConfigsRepository, db: PgPool, kaneo: KaneoClient) -> Self {
+        Self { repo, db, kaneo }
+    }
+
+    pub async fn list_all(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
+        self.repo.list_all(&self.db).await
+    }
+
+    pub async fn get_by_id(&self, id: Uuid) -> Result<ProjectConfig, ProjectConfigsError> {
+        self.repo.find_by_id(&self.db, id).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn list_enabled(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
+        self.repo.list_enabled(&self.db).await
+    }
+
+    pub async fn create(
+        &self,
+        params: CreateProjectConfigRequest,
+    ) -> Result<ProjectConfig, ProjectConfigsError> {
+        self.validate_columns_exist(&params.kaneo_project_id, &params.pickup_column)
+            .await?;
+        self.validate_columns_exist(&params.kaneo_project_id, &params.progress_column)
+            .await?;
+        self.validate_columns_exist(&params.kaneo_project_id, &params.target_column)
+            .await?;
+
+        self.repo.create(&self.db, &params).await
+    }
+
+    pub async fn update(
+        &self,
+        id: Uuid,
+        params: UpdateProjectConfigRequest,
+    ) -> Result<ProjectConfig, ProjectConfigsError> {
+        let existing = self.repo.find_by_id(&self.db, id).await?;
+
+        if let Some(ref col) = params.pickup_column {
+            self.validate_columns_exist(&existing.kaneo_project_id, col)
+                .await?;
+        }
+        if let Some(ref col) = params.progress_column {
+            self.validate_columns_exist(&existing.kaneo_project_id, col)
+                .await?;
+        }
+        if let Some(ref col) = params.target_column {
+            self.validate_columns_exist(&existing.kaneo_project_id, col)
+                .await?;
+        }
+
+        self.repo
+            .update(
+                &self.db,
+                id,
+                &UpdateProjectConfigParams {
+                    pickup_column: params.pickup_column.as_deref(),
+                    target_column: params.target_column.as_deref(),
+                    progress_column: params.progress_column.as_deref(),
+                    prompt_template: params.prompt_template.as_deref(),
+                    repo_url: params.repo_url.as_deref(),
+                    enabled: params.enabled,
+                },
+            )
+            .await
+    }
+
+    pub async fn delete(&self, id: Uuid) -> Result<(), ProjectConfigsError> {
+        self.repo.delete(&self.db, id).await
+    }
+
+    pub async fn fetch_columns(
+        &self,
+        id: Uuid,
+    ) -> Result<Vec<kaneo_cli::api::types::Column>, ProjectConfigsError> {
+        let config = self.repo.find_by_id(&self.db, id).await?;
+
+        self.kaneo
+            .fetch_columns(&config.kaneo_project_id)
+            .await
+            .map_err(ProjectConfigsError::from)
+    }
+
+    async fn validate_columns_exist(
+        &self,
+        project_id: &str,
+        column_slug: &str,
+    ) -> Result<(), ProjectConfigsError> {
+        let columns = self.kaneo.fetch_columns(project_id).await?;
+
+        let found = columns
+            .iter()
+            .any(|col| col.name.to_lowercase() == column_slug.to_lowercase());
+
+        if found {
+            Ok(())
+        } else {
+            Err(ProjectConfigsError::ColumnNotFound(column_slug.to_owned()))
+        }
+    }
+}

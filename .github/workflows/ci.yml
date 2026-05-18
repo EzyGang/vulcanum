@@ -1,0 +1,128 @@
+name: CI
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+on:
+  push:
+
+jobs:
+  ci-pass:
+    name: CI succeeded
+    runs-on: self-hosted
+    if: always()
+
+    needs:
+      - fmt
+      - clippy
+      - test
+
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Check whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
+
+  fmt:
+    name: fmt
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+          shared-key: "fmt"
+          key: "fmt"
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Run linter
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Build Dependencies
+        run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+          shared-key: "clippy"
+          key: "clippy"
+
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: Run tests
+    runs-on: self-hosted
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vulcanum_db
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 172.17.0.1:5432:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Build Dependencies
+        run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: "true"
+          shared-key: "test"
+          key: "test"
+
+      - name: Install SQLx CLI
+        run: cargo install sqlx-cli
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
+        run: sqlx migrate run --source main-app/migrations
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
+        run: cargo test --workspace

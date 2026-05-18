@@ -18,6 +18,7 @@ impl KaneoClient {
         ApiClient::new(&self.instance, &self.api_key).map_err(api_err)
     }
 
+    #[allow(dead_code)]
     pub async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
@@ -30,6 +31,7 @@ impl KaneoClient {
         Ok(filter_tasks_in_column(board, column_slug))
     }
 
+    #[allow(dead_code)]
     pub async fn update_task_status(
         &self,
         task_id: &str,
@@ -54,6 +56,7 @@ impl KaneoClient {
             .map_err(api_err)
     }
 
+    #[allow(dead_code)]
     pub async fn add_comment(&self, task_id: &str, content: &str) -> Result<(), KaneoError> {
         let client = self.build_client()?;
 
@@ -85,6 +88,7 @@ impl KaneoClient {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) -> Vec<Task> {
     board
         .data
