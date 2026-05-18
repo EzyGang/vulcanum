@@ -23,6 +23,15 @@ fn map_sqlx_error(err: sqlx::Error) -> ProjectConfigsError {
     }
 }
 
+pub struct UpdateProjectConfigParams<'a> {
+    pub pickup_column: Option<&'a str>,
+    pub target_column: Option<&'a str>,
+    pub progress_column: Option<&'a str>,
+    pub prompt_template: Option<&'a str>,
+    pub repo_url: Option<&'a str>,
+    pub enabled: Option<bool>,
+}
+
 #[derive(Clone)]
 pub struct ProjectConfigsRepository {}
 

@@ -3,7 +3,9 @@ use uuid::Uuid;
 
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::CreateProjectConfigRequest;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::repository::{
+    ProjectConfigsRepository, UpdateProjectConfigParams,
+};
 
 #[sqlx::test]
 async fn create_finds_and_deletes_config(pool: PgPool) {
@@ -109,12 +111,14 @@ async fn update_partial_fields(pool: PgPool) {
         .update(
             &pool,
             created.id,
-            None,
-            None,
-            None,
-            Some("Updated template"),
-            None,
-            Some(false),
+            &UpdateProjectConfigParams {
+                pickup_column: None,
+                target_column: None,
+                progress_column: None,
+                prompt_template: Some("Updated template"),
+                repo_url: None,
+                enabled: Some(false),
+            },
         )
         .await
         .expect("Should update");
@@ -130,7 +134,18 @@ async fn update_nonexistent_returns_not_found(pool: PgPool) {
     let nonexistent_id = Uuid::new_v4();
 
     let result = repo
-        .update(&pool, nonexistent_id, None, None, None, None, None, None)
+        .update(
+            &pool,
+            nonexistent_id,
+            &UpdateProjectConfigParams {
+                pickup_column: None,
+                target_column: None,
+                progress_column: None,
+                prompt_template: None,
+                repo_url: None,
+                enabled: None,
+            },
+        )
         .await;
 
     assert!(matches!(result, Err(ProjectConfigsError::NotFound)));
@@ -173,25 +188,35 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
         .await
         .expect("Should create disabled");
 
-    repo.update(&pool, created.id, None, None, None, None, None, Some(false))
-        .await
-        .expect("Should disable");
+    repo.update(
+        &pool,
+        created.id,
+        &UpdateProjectConfigParams {
+            pickup_column: None,
+            target_column: None,
+            progress_column: None,
+            prompt_template: None,
+            repo_url: None,
+            enabled: Some(false),
+        },
+    )
+    .await
+    .expect("Should disable");
 
     repo.create(&pool, &enabled_params)
         .await
         .expect("Should create enabled");
 
-    let enabled_list = repo
-        .list_enabled(&pool)
-        .await
-        .expect("Should list enabled");
+    let enabled_list = repo.list_enabled(&pool).await.expect("Should list enabled");
 
     assert!(
         enabled_list.iter().all(|c| c.enabled),
         "All returned configs should be enabled"
     );
     assert!(
-        !enabled_list.iter().any(|c| c.kaneo_project_id == "kaneo-proj-disabled"),
+        !enabled_list
+            .iter()
+            .any(|c| c.kaneo_project_id == "kaneo-proj-disabled"),
         "Disabled config should not be in enabled list"
     );
 }

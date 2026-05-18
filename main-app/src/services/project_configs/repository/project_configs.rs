@@ -2,7 +2,9 @@ use uuid::Uuid;
 
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
-use crate::services::project_configs::repository::{map_sqlx_error, ProjectConfigsRepository, Queryer};
+use crate::services::project_configs::repository::{
+    map_sqlx_error, ProjectConfigsRepository, Queryer, UpdateProjectConfigParams,
+};
 
 const BASE_COLUMNS: &str = "id, kaneo_project_id, enabled, pickup_column, target_column, \
      progress_column, prompt_template, repo_url, created_at";
@@ -36,6 +38,7 @@ impl ProjectConfigsRepository {
         .ok_or(ProjectConfigsError::NotFound)
     }
 
+    #[allow(dead_code)]
     pub async fn find_by_kaneo_project_id<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -51,6 +54,7 @@ impl ProjectConfigsRepository {
         .map_err(ProjectConfigsError::from)
     }
 
+    #[allow(dead_code)]
     pub async fn list_enabled<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -94,12 +98,7 @@ impl ProjectConfigsRepository {
         &self,
         db: Q,
         id: Uuid,
-        pickup_column: Option<&str>,
-        target_column: Option<&str>,
-        progress_column: Option<&str>,
-        prompt_template: Option<&str>,
-        repo_url: Option<&str>,
-        enabled: Option<bool>,
+        params: &UpdateProjectConfigParams<'_>,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         sqlx::query_as::<_, ProjectConfig>(&format!(
             "UPDATE project_configs SET \
@@ -114,12 +113,12 @@ impl ProjectConfigsRepository {
             BASE_COLUMNS
         ))
         .bind(id)
-        .bind(pickup_column)
-        .bind(target_column)
-        .bind(progress_column)
-        .bind(prompt_template)
-        .bind(repo_url)
-        .bind(enabled)
+        .bind(params.pickup_column)
+        .bind(params.target_column)
+        .bind(params.progress_column)
+        .bind(params.prompt_template)
+        .bind(params.repo_url)
+        .bind(params.enabled)
         .fetch_optional(db)
         .await?
         .ok_or(ProjectConfigsError::NotFound)

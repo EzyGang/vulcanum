@@ -6,7 +6,7 @@ use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
     CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
 };
-use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::repository::{ProjectConfigsRepository, UpdateProjectConfigParams};
 
 #[derive(Clone)]
 pub struct ProjectConfigsService {
@@ -28,6 +28,7 @@ impl ProjectConfigsService {
         self.repo.find_by_id(&self.db, id).await
     }
 
+    #[allow(dead_code)]
     pub async fn list_enabled(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         self.repo.list_enabled(&self.db).await
     }
@@ -36,9 +37,12 @@ impl ProjectConfigsService {
         &self,
         params: CreateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
-        self.validate_columns_exist(&params.kaneo_project_id, &params.pickup_column).await?;
-        self.validate_columns_exist(&params.kaneo_project_id, &params.progress_column).await?;
-        self.validate_columns_exist(&params.kaneo_project_id, &params.target_column).await?;
+        self.validate_columns_exist(&params.kaneo_project_id, &params.pickup_column)
+            .await?;
+        self.validate_columns_exist(&params.kaneo_project_id, &params.progress_column)
+            .await?;
+        self.validate_columns_exist(&params.kaneo_project_id, &params.target_column)
+            .await?;
 
         self.repo.create(&self.db, &params).await
     }
@@ -67,12 +71,14 @@ impl ProjectConfigsService {
             .update(
                 &self.db,
                 id,
-                params.pickup_column.as_deref(),
-                params.target_column.as_deref(),
-                params.progress_column.as_deref(),
-                params.prompt_template.as_deref(),
-                params.repo_url.as_deref(),
-                params.enabled,
+                &UpdateProjectConfigParams {
+                    pickup_column: params.pickup_column.as_deref(),
+                    target_column: params.target_column.as_deref(),
+                    progress_column: params.progress_column.as_deref(),
+                    prompt_template: params.prompt_template.as_deref(),
+                    repo_url: params.repo_url.as_deref(),
+                    enabled: params.enabled,
+                },
             )
             .await
     }
@@ -100,9 +106,9 @@ impl ProjectConfigsService {
     ) -> Result<(), ProjectConfigsError> {
         let columns = self.kaneo.fetch_columns(project_id).await?;
 
-        let found = columns.iter().any(|col| {
-            col.name.to_lowercase() == column_slug.to_lowercase()
-        });
+        let found = columns
+            .iter()
+            .any(|col| col.name.to_lowercase() == column_slug.to_lowercase());
 
         if found {
             Ok(())

@@ -15,7 +15,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}", web::get().to(project_configs::get))
                     .route("/{id}", web::put().to(project_configs::update))
                     .route("/{id}", web::delete().to(project_configs::delete))
-                    .route("/{id}/columns", web::post().to(project_configs::list_columns)),
+                    .route(
+                        "/{id}/columns",
+                        web::post().to(project_configs::list_columns),
+                    ),
             ),
     );
 }

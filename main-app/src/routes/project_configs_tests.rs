@@ -52,7 +52,9 @@ async fn list_returns_configs(pool: sqlx::PgPool) {
     )
     .await;
 
-    let req = test::TestRequest::get().uri("/api/v1/projects").to_request();
+    let req = test::TestRequest::get()
+        .uri("/api/v1/projects")
+        .to_request();
     let resp = test::call_service(&app, req).await;
 
     assert!(resp.status().is_success());
@@ -120,12 +122,11 @@ async fn delete_removes_config(pool: sqlx::PgPool) {
 
     assert_eq!(resp.status(), 204);
 
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM project_configs WHERE id = $1")
-            .bind(id)
-            .fetch_one(&pool)
-            .await
-            .expect("Should query count");
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM project_configs WHERE id = $1")
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .expect("Should query count");
     assert_eq!(count.0, 0);
 }
 

@@ -4,6 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Serialize)]
+#[allow(dead_code)]
 pub struct WorkRun {
     pub id: Uuid,
     pub external_task_ref: String,

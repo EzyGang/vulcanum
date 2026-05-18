@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum KaneoError {
     #[error("kaneo API error: {0}")]
     Api(String),
