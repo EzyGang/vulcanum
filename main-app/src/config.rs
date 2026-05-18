@@ -8,8 +8,6 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Result<Self, eyre::Error> {
-        dotenvy::dotenv().ok();
-
         let db_url = std::env::var("DATABASE_URL")?;
         let max_conns = std::env::var("MAX_CONNS")
             .unwrap_or_else(|_| "32".to_owned())

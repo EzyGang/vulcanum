@@ -22,13 +22,13 @@ async fn main() -> eyre::Result<()> {
     let cfg = config::config();
     let app_state = app_state::AppState::new(cfg).await?;
 
-    log::info!("Applying migrations...");
+    tracing::info!("Applying migrations...");
     sqlx::migrate!().run(&app_state.db_pool).await?;
 
     let poller = app_state.clone().into_poller(cfg.poll_period_secs);
     tokio::spawn(poller.run());
 
-    log::info!("Starting server on 0.0.0.0:8080");
+    tracing::info!("Starting server on 0.0.0.0:8080");
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(app_state.clone()))

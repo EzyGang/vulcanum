@@ -4,11 +4,31 @@ use std::time::Duration;
 use sqlx::PgPool;
 
 use crate::services::kaneo::client::TaskFetcher;
+use crate::services::kaneo::errors::KaneoError;
 use crate::services::poller::notifier::WorkNotifier;
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
+
+#[derive(Debug)]
+enum PollError {
+    Kaneo(KaneoError),
+}
+
+impl std::fmt::Display for PollError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Kaneo(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl From<KaneoError> for PollError {
+    fn from(e: KaneoError) -> Self {
+        Self::Kaneo(e)
+    }
+}
 
 pub struct PollerService {
     kaneo: Arc<dyn TaskFetcher>,
@@ -83,12 +103,11 @@ impl PollerService {
         tracing::debug!("Poll cycle complete, checked {} projects", configs.len());
     }
 
-    async fn poll_project(&self, config: &ProjectConfig) -> Result<usize, String> {
+    async fn poll_project(&self, config: &ProjectConfig) -> Result<usize, PollError> {
         let tasks = self
             .kaneo
             .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
-            .await
-            .map_err(|e| format!("{}", e))?;
+            .await?;
 
         let mut inserted = 0;
         for task in &tasks {
