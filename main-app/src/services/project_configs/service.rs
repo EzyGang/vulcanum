@@ -6,7 +6,9 @@ use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
     CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
 };
-use crate::services::project_configs::repository::{ProjectConfigsRepository, UpdateProjectConfigParams};
+use crate::services::project_configs::repository::{
+    ProjectConfigsRepository, UpdateProjectConfigParams,
+};
 
 #[derive(Clone)]
 pub struct ProjectConfigsService {
