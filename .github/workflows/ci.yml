@@ -6,8 +6,6 @@ concurrency:
 
 on:
   push:
-  pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
   ci-pass:
@@ -122,7 +120,7 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
-        run: sqlx migrate run
+        run: sqlx migrate run --source main-app/migrations
 
       - name: Run tests
         env:
