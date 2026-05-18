@@ -92,11 +92,7 @@ async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
     id
 }
 
-fn build_service(
-    mock: Arc<MockTaskFetcher>,
-    db: PgPool,
-    notifier: WorkNotifier,
-) -> PollerService {
+fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool, notifier: WorkNotifier) -> PollerService {
     let kaneo: Arc<dyn TaskFetcher> = mock;
 
     PollerService::new(
@@ -119,7 +115,10 @@ async fn poller_inserts_tasks(pool: PgPool) {
     mock.set_tasks(
         "kaneo-proj-1",
         "to-do",
-        vec![make_task("task-1", "Fix login bug"), make_task("task-2", "Add dark mode")],
+        vec![
+            make_task("task-1", "Fix login bug"),
+            make_task("task-2", "Add dark mode"),
+        ],
     )
     .await;
 
@@ -143,8 +142,12 @@ async fn poller_skips_duplicates(pool: PgPool) {
 
     let _project_id = insert_project_config(&pool, "kaneo-proj-2").await;
 
-    mock.set_tasks("kaneo-proj-2", "to-do", vec![make_task("task-dup", "Fix login bug")])
-        .await;
+    mock.set_tasks(
+        "kaneo-proj-2",
+        "to-do",
+        vec![make_task("task-dup", "Fix login bug")],
+    )
+    .await;
 
     let service = build_service(mock.clone(), pool.clone(), notifier);
 
@@ -170,21 +173,33 @@ async fn poller_handles_unreachable_kaneo(pool: PgPool) {
     insert_project_config(&pool, "kaneo-good").await;
     insert_project_config(&pool, "kaneo-bad").await;
 
-    mock.set_tasks("kaneo-good", "to-do", vec![make_task("task-ok", "Working project task")])
-        .await;
-    mock.set_error("kaneo-bad", "to-do", KaneoError::Api("connection refused".to_owned()))
-        .await;
+    mock.set_tasks(
+        "kaneo-good",
+        "to-do",
+        vec![make_task("task-ok", "Working project task")],
+    )
+    .await;
+    mock.set_error(
+        "kaneo-bad",
+        "to-do",
+        KaneoError::Api("connection refused".to_owned()),
+    )
+    .await;
 
     let service = build_service(mock, pool.clone(), notifier);
     service.poll_once().await;
 
-    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM work_runs WHERE external_task_ref = $1")
-        .bind("task-ok")
-        .fetch_one(&pool)
-        .await
-        .expect("Should query work_runs");
+    let count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM work_runs WHERE external_task_ref = $1")
+            .bind("task-ok")
+            .fetch_one(&pool)
+            .await
+            .expect("Should query work_runs");
 
-    assert_eq!(count.0, 1, "Should insert task from working project despite failing one");
+    assert_eq!(
+        count.0, 1,
+        "Should insert task from working project despite failing one"
+    );
 }
 
 #[sqlx::test]
@@ -197,8 +212,12 @@ async fn poller_flips_notifier(pool: PgPool) {
 
     insert_project_config(&pool, "kaneo-notify").await;
 
-    mock.set_tasks("kaneo-notify", "to-do", vec![make_task("task-new", "New task")])
-        .await;
+    mock.set_tasks(
+        "kaneo-notify",
+        "to-do",
+        vec![make_task("task-new", "New task")],
+    )
+    .await;
 
     let service = build_service(mock, pool.clone(), notifier.clone());
     service.poll_once().await;
