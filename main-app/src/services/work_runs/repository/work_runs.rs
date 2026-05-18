@@ -33,7 +33,7 @@ impl WorkRunsRepository {
              "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text) \
              VALUES ($1, $2, $3, $4::work_run_status, $5) \
              RETURNING id, external_task_ref, project_config_id, worker_id, status::text, prompt_text, \
-                       result_pr_url, result_exit_code, tokens_used, duration_ms, created_at, updated_at",
+                        result_pr_url, result_exit_code, tokens_used, duration_ms, created_at, updated_at",
         )
         .bind(id)
         .bind(&params.external_task_ref)
@@ -42,6 +42,29 @@ impl WorkRunsRepository {
         .bind(&params.prompt_text)
         .fetch_one(db)
         .await
+        .map_err(WorkRunsError::from)
+    }
+
+    pub async fn insert_work_run_if_not_active<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        params: InsertWorkRunParams,
+    ) -> Result<bool, WorkRunsError> {
+        let id = Uuid::new_v4();
+
+        sqlx::query(
+            "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text) \
+             VALUES ($1, $2, $3, $4::work_run_status, $5) \
+             ON CONFLICT DO NOTHING",
+        )
+        .bind(id)
+        .bind(&params.external_task_ref)
+        .bind(params.project_config_id)
+        .bind(&params.status)
+        .bind(&params.prompt_text)
+        .execute(db)
+        .await
+        .map(|result| result.rows_affected() > 0)
         .map_err(WorkRunsError::from)
     }
 }
