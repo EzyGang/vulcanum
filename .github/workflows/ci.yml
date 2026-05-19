@@ -7,6 +7,9 @@ concurrency:
 on:
   push:
 
+env:
+  SQLX_OFFLINE: true
+
 jobs:
   ci-pass:
     name: CI succeeded
@@ -43,7 +46,6 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          cache-all-crates: "true"
           shared-key: "fmt"
           key: "fmt"
 
@@ -69,7 +71,6 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          cache-all-crates: "true"
           shared-key: "clippy"
           key: "clippy"
 
@@ -79,7 +80,7 @@ jobs:
   test:
     name: Run tests
     runs-on: self-hosted
-
+    needs: [fmt, clippy]
     services:
       postgres:
         image: postgres
@@ -110,7 +111,6 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          cache-all-crates: "true"
           shared-key: "test"
           key: "test"
 

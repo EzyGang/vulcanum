@@ -28,8 +28,6 @@ async fn create_inserts_worker(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_by_id_returns_worker(pool: sqlx::PgPool) {
-    use crate::services::workers::errors::WorkersError;
-
     let repo = WorkersRepository::new();
     let created = repo
         .create(

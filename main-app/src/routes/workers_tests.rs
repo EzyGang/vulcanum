@@ -1,5 +1,4 @@
 use actix_web::{test, web, App};
-use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::routes;
