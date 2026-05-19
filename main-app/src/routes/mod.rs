@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod project_configs;
+pub mod workers;
 
 use actix_web::web;
 
@@ -19,9 +20,19 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                         "/{id}/columns",
                         web::post().to(project_configs::list_columns),
                     ),
+            )
+            .service(
+                web::scope("/workers")
+                    .route("/codes", web::post().to(workers::generate_code))
+                    .route("/connect", web::post().to(workers::connect))
+                    .route("/refresh", web::post().to(workers::refresh))
+                    .route("/{id}", web::delete().to(workers::delete)),
             ),
     );
 }
 
 #[cfg(test)]
 mod project_configs_tests;
+
+#[cfg(test)]
+mod workers_tests;

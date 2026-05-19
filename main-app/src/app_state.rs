@@ -12,11 +12,14 @@ use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::services::workers::repository::WorkersRepository;
+use crate::services::workers::service::WorkersService;
 
 #[derive(Clone)]
 pub struct AppState {
     pub auth: AuthService,
     pub project_configs: ProjectConfigsService,
+    pub workers: WorkersService,
     pub db_pool: PgPool,
     pub kaneo: KaneoClient,
     pub work_runs: WorkRunsRepository,
@@ -43,12 +46,15 @@ impl AppState {
             db_pool.clone(),
             kaneo.clone(),
         );
+        let workers_repo = WorkersRepository::new();
+        let workers = WorkersService::new(workers_repo, db_pool.clone(), cfg);
         let work_runs = WorkRunsRepository::new();
         let work_notifier = WorkNotifier::new();
 
         Ok(Self {
             auth,
             project_configs,
+            workers,
             db_pool,
             kaneo,
             work_runs,

@@ -8,6 +8,7 @@ use crate::services::kaneo::errors::KaneoError;
 use crate::services::poller::notifier::WorkNotifier;
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
@@ -115,7 +116,7 @@ impl PollerService {
                 external_task_ref: task.id.clone(),
                 project_config_id: config.id,
                 prompt_text: config.prompt_template.clone(),
-                status: "pending".to_owned(),
+                status: WorkRunStatus::Pending,
             };
 
             match self

@@ -4,6 +4,7 @@ use thiserror::Error;
 use crate::services::auth::errors::AuthError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::users::errors::UsersError;
+use crate::services::workers::errors::WorkersError;
 
 #[derive(Debug, Error)]
 pub enum AppError {
@@ -11,6 +12,14 @@ pub enum AppError {
     UserNotFound,
     #[error("invalid token")]
     InvalidToken,
+    #[error("registration code not found")]
+    CodeNotFound,
+    #[error("registration code expired")]
+    CodeExpired,
+    #[error("invalid refresh token")]
+    InvalidRefreshToken,
+    #[error("worker not found")]
+    WorkerNotFound,
     #[error("project config not found")]
     ProjectConfigNotFound,
     #[error("duplicate project config")]
@@ -27,6 +36,18 @@ impl ResponseError for AppError {
             }),
             Self::InvalidToken => HttpResponse::Unauthorized().json(ErrorBody {
                 error: "Invalid token".to_owned(),
+            }),
+            Self::CodeNotFound => HttpResponse::BadRequest().json(ErrorBody {
+                error: "Registration code not found".to_owned(),
+            }),
+            Self::CodeExpired => HttpResponse::BadRequest().json(ErrorBody {
+                error: "Registration code expired".to_owned(),
+            }),
+            Self::InvalidRefreshToken => HttpResponse::Unauthorized().json(ErrorBody {
+                error: "Invalid refresh token".to_owned(),
+            }),
+            Self::WorkerNotFound => HttpResponse::NotFound().json(ErrorBody {
+                error: "Worker not found".to_owned(),
             }),
             Self::ProjectConfigNotFound => HttpResponse::NotFound().json(ErrorBody {
                 error: "Project config not found".to_owned(),
@@ -66,6 +87,19 @@ impl From<ProjectConfigsError> for AppError {
             ProjectConfigsError::DuplicateKaneoProjectId => Self::DuplicateProjectConfig,
             ProjectConfigsError::Database(_) | ProjectConfigsError::Kaneo(_) => Self::Internal,
             ProjectConfigsError::ColumnNotFound(_) => Self::Internal,
+        }
+    }
+}
+
+impl From<WorkersError> for AppError {
+    fn from(err: WorkersError) -> Self {
+        match err {
+            WorkersError::CodeNotFound => Self::CodeNotFound,
+            WorkersError::CodeExpired => Self::CodeExpired,
+            WorkersError::InvalidRefreshToken => Self::InvalidRefreshToken,
+            WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
+            WorkersError::WorkerNotFound => Self::WorkerNotFound,
+            WorkersError::Database(_) | WorkersError::Jwt(_) => Self::Internal,
         }
     }
 }

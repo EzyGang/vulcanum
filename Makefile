@@ -5,7 +5,7 @@
 # Auto-format all Rust code and apply clippy auto-fixes
 format:
 	@cargo fmt --all
-	@cargo clippy --workspace --fix --allow-dirty
+	@cargo clippy --all-targets --workspace --fix --allow-dirty
 
 # ── Checks ──
 
@@ -14,7 +14,11 @@ format:
 check:
 	@cargo check --workspace
 	@cargo fmt --all -- --check
-	@cargo clippy --workspace -- -D warnings
+	@cargo clippy --all-targets --workspace -- -D warnings
+
+
+prep-queries:
+	@cargo sqlx prepare --workspace -- --all-targets
 
 # ── Build ──
 
