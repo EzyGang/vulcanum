@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, created_at FROM project_configs WHERE id = $1",
+  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "created_at",
+        "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
@@ -66,5 +66,5 @@
       true
     ]
   },
-  "hash": "eec54972c26ab8bcffbf8b0c306800a3ed3d46e7ead0fbb5d0ad2c3895095430"
+  "hash": "f3f272cad761b16ec41de812ddcb229dcfc8934a118654bf4e58b99ce16675f5"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column, progress_column, prompt_template, repo_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, created_at",
+  "query": "INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column,\n             progress_column, prompt_template, repo_url)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, created_at as \"created_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "created_at",
+        "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
@@ -72,5 +72,5 @@
       true
     ]
   },
-  "hash": "7bea99837e90ad8490769b27047836fbaecfd335d955c964701d8033eb25e36a"
+  "hash": "2deef2e0c1a5a223451046cffc875259c5e9496afc87529fae20abe9ae4b6db9"
 }

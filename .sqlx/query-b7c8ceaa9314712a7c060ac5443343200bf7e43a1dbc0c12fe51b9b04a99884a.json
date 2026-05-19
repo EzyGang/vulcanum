@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen, status, capabilities, created_at FROM workers WHERE id = $1",
+  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\"\n             FROM workers WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "ordinal": 5,
-        "name": "status",
+        "name": "status: WorkerStatus",
         "type_info": {
           "Custom": {
             "name": "worker_status",
@@ -51,7 +51,7 @@
       },
       {
         "ordinal": 7,
-        "name": "created_at",
+        "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
@@ -71,5 +71,5 @@
       true
     ]
   },
-  "hash": "9b663fd19fa0848c1298fa1e2b1433b8580e44aaaff8e48bbecb317fc2969931"
+  "hash": "b7c8ceaa9314712a7c060ac5443343200bf7e43a1dbc0c12fe51b9b04a99884a"
 }

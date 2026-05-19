@@ -48,7 +48,7 @@ jobs:
           key: "fmt"
 
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo fmt --workspace --all -- --check
 
   clippy:
     name: Run linter
@@ -74,7 +74,7 @@ jobs:
           key: "clippy"
 
       - name: clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
     name: Run tests

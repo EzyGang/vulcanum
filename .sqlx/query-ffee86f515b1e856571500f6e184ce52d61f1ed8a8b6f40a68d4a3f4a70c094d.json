@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET pickup_column = COALESCE($2, pickup_column), target_column = COALESCE($3, target_column), progress_column = COALESCE($4, progress_column), prompt_template = COALESCE($5, prompt_template), repo_url = COALESCE($6, repo_url), enabled = COALESCE($7, enabled) WHERE id = $1 RETURNING id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, created_at",
+  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -45,20 +45,12 @@
       },
       {
         "ordinal": 8,
-        "name": "created_at",
+        "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Bool"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -72,5 +64,5 @@
       true
     ]
   },
-  "hash": "720208fbb7a72f66eedf3200a08b8927f50725b580278335b6280febfc495fc3"
+  "hash": "ffee86f515b1e856571500f6e184ce52d61f1ed8a8b6f40a68d4a3f4a70c094d"
 }

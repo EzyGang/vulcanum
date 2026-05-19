@@ -16,6 +16,10 @@ check:
 	@cargo fmt --all -- --check
 	@cargo clippy --workspace -- -D warnings
 
+
+prep-queries:
+	@cargo sqlx prepare --workspace
+
 # ── Build ──
 
 # Build everything in the workspace

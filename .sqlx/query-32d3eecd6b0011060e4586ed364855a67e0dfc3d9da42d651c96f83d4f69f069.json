@@ -1,0 +1,120 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text)\n             VALUES ($1, $2, $3, $4, $5)\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\", prompt_text,\n                        result_pr_url, result_exit_code, tokens_used, duration_ms,\n                        created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "worker_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "status: WorkRunStatus",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "prompt_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "result_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "result_exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "tokens_used",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "32d3eecd6b0011060e4586ed364855a67e0dfc3d9da42d651c96f83d4f69f069"
+}
