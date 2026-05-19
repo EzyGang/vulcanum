@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n             FROM work_runs WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "worker_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "status: WorkRunStatus",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "prompt_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "result_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "result_exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "tokens_used",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "4886bf025d31809bce0cde6839985910aaa73dbf6caa81b1a9df0d5e96bad028"
+}
