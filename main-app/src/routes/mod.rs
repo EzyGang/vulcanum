@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod jobs;
 pub mod project_configs;
 pub mod workers;
 
@@ -9,6 +10,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         web::scope("/api/v1")
             .route("/auth/login", web::post().to(auth::login))
             .route("/auth/verify", web::get().to(auth::verify))
+            .route("/poll", web::get().to(jobs::poll))
+            .service(
+                web::scope("/jobs")
+                    .route("/{id}", web::get().to(jobs::get_job))
+                    .route("/{id}/ack", web::post().to(jobs::ack_job))
+                    .route("/{id}/result", web::post().to(jobs::submit_result)),
+            )
             .service(
                 web::scope("/projects")
                     .route("", web::get().to(project_configs::list))
@@ -36,3 +44,6 @@ mod project_configs_tests;
 
 #[cfg(test)]
 mod workers_tests;
+
+#[cfg(test)]
+mod jobs_tests;

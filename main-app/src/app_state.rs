@@ -12,6 +12,7 @@ use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::services::work_runs::service::WorkRunsService;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 
@@ -20,6 +21,7 @@ pub struct AppState {
     pub auth: AuthService,
     pub project_configs: ProjectConfigsService,
     pub workers: WorkersService,
+    pub jobs: WorkRunsService,
     pub db_pool: PgPool,
     pub kaneo: KaneoClient,
     pub work_runs: WorkRunsRepository,
@@ -47,14 +49,22 @@ impl AppState {
             kaneo.clone(),
         );
         let workers_repo = WorkersRepository::new();
-        let workers = WorkersService::new(workers_repo, db_pool.clone(), cfg);
+        let workers = WorkersService::new(workers_repo.clone(), db_pool.clone(), cfg);
         let work_runs = WorkRunsRepository::new();
         let work_notifier = WorkNotifier::new();
+        let jobs = WorkRunsService::new(
+            work_runs.clone(),
+            workers_repo,
+            db_pool.clone(),
+            work_notifier.clone(),
+            cfg.stale_worker_threshold_secs,
+        );
 
         Ok(Self {
             auth,
             project_configs,
             workers,
+            jobs,
             db_pool,
             kaneo,
             work_runs,

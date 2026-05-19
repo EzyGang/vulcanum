@@ -131,4 +131,47 @@ impl WorkersRepository {
 
         Ok(())
     }
+
+    #[allow(dead_code)]
+    pub async fn update_status<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+        status: WorkerStatus,
+    ) -> Result<(), WorkersError> {
+        let rows = sqlx::query!(
+            "UPDATE workers SET status = $1::worker_status WHERE id = $2",
+            status as WorkerStatus,
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(map_sqlx_error)?
+        .rows_affected();
+
+        if rows == 0 {
+            return Err(WorkersError::WorkerNotFound);
+        }
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn mark_stale_disconnected<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        threshold: chrono::Duration,
+    ) -> Result<u64, WorkersError> {
+        let cutoff = chrono::Utc::now() - threshold;
+
+        sqlx::query!(
+            r#"UPDATE workers SET status = 'disconnected'::worker_status
+             WHERE last_seen < $1 AND status != 'disconnected'::worker_status"#,
+            cutoff,
+        )
+        .execute(db)
+        .await
+        .map(|result| result.rows_affected())
+        .map_err(map_sqlx_error)
+    }
 }
