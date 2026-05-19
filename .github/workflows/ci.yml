@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.13'
+          python-version: "3.13"
       - name: Check whether the needed jobs succeeded or failed
         uses: re-actors/alls-green@v1.2.2
         with:
@@ -48,7 +48,7 @@ jobs:
           key: "fmt"
 
       - name: Check formatting
-        run: cargo fmt --workspace --all -- --check
+        run: cargo fmt --all -- --check --workspace
 
   clippy:
     name: Run linter
@@ -74,7 +74,7 @@ jobs:
           key: "clippy"
 
       - name: clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings --workspace
 
   test:
     name: Run tests
