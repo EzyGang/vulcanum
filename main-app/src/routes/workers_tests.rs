@@ -1,4 +1,5 @@
 use actix_web::{test, web, App};
+use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::routes;
@@ -142,6 +143,7 @@ async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
 
     let body: serde_json::Value = test::read_body_json(resp).await;
     assert!(body["access_token"].is_string());
+    assert!(body["refresh_token"].is_string());
     assert!(body["expires_at"].is_string());
 }
 
@@ -163,4 +165,33 @@ async fn refresh_with_invalid_token_returns_401(pool: sqlx::PgPool) {
     let resp = test::call_service(&app, req).await;
 
     assert_eq!(resp.status(), 401);
+}
+
+#[sqlx::test]
+async fn delete_worker_returns_204(pool: sqlx::PgPool) {
+    let state = build_state(pool);
+    let code = state.workers.generate_code().await;
+    let connect = state
+        .workers
+        .connect(crate::services::workers::model::ConnectRequest {
+            code: code.code,
+            worker_name: "delete-me".to_owned(),
+        })
+        .await
+        .unwrap();
+    let worker_id = connect.worker_id;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::delete()
+        .uri(&format!("/api/v1/workers/{worker_id}"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 204);
 }

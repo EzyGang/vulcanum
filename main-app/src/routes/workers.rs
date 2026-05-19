@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse};
+use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
@@ -23,4 +24,12 @@ pub async fn refresh(
 ) -> Result<HttpResponse, AppError> {
     let resp = state.workers.refresh(body.into_inner()).await?;
     Ok(HttpResponse::Ok().json(resp))
+}
+
+pub async fn delete(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, AppError> {
+    state.workers.delete_worker(path.into_inner()).await?;
+    Ok(HttpResponse::NoContent().finish())
 }

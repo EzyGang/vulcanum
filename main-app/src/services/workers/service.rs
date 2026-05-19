@@ -11,7 +11,7 @@ use crate::services::workers::repository::WorkersRepository;
 pub struct WorkersService {
     pub repo: WorkersRepository,
     pub db: PgPool,
-    pub jwt_secret: String,
+    jwt_secret: String,
     codes: tokio::sync::RwLock<std::collections::HashMap<String, chrono::DateTime<chrono::Utc>>>,
 }
 

@@ -3,13 +3,22 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+#[derive(Debug, Clone, sqlx::Type, Serialize)]
+#[sqlx(type_name = "worker_status", rename_all = "snake_case")]
+pub enum WorkerStatus {
+    Idle,
+    Busy,
+    Disconnected,
+}
+
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Worker {
     pub id: Uuid,
     pub name: String,
     pub refresh_token_hash: String,
+    pub refresh_expires_at: DateTime<Utc>,
     pub last_seen: Option<DateTime<Utc>>,
-    pub status: String,
+    pub status: WorkerStatus,
     pub capabilities: serde_json::Value,
     pub created_at: DateTime<Utc>,
 }
@@ -36,6 +45,7 @@ pub struct ConnectResponse {
 #[derive(Debug, Serialize)]
 pub struct RefreshResponse {
     pub access_token: String,
+    pub refresh_token: String,
     pub expires_at: DateTime<Utc>,
 }
 

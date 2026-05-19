@@ -97,6 +97,7 @@ impl From<WorkersError> for AppError {
             WorkersError::CodeNotFound => Self::CodeNotFound,
             WorkersError::CodeExpired => Self::CodeExpired,
             WorkersError::InvalidRefreshToken => Self::InvalidRefreshToken,
+            WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
             WorkersError::Database(_) | WorkersError::Jwt(_) => Self::Internal,
         }

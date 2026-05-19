@@ -8,8 +8,9 @@ pub enum WorkersError {
     CodeExpired,
     #[error("invalid refresh token")]
     InvalidRefreshToken,
+    #[error("refresh token expired")]
+    RefreshTokenExpired,
     #[error("worker not found")]
-    #[allow(dead_code)]
     WorkerNotFound,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),

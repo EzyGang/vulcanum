@@ -12,6 +12,7 @@ use crate::services::workers::service::WorkersService;
 
 const CODE_TTL_MINUTES: i64 = 10;
 const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
+const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
 const TOKEN_LENGTH: usize = 64;
 const CODE_LENGTH: usize = 16;
 
@@ -42,10 +43,17 @@ impl WorkersService {
 
         let refresh_token = generate_random_token(TOKEN_LENGTH);
         let refresh_hash = hash_token(&refresh_token);
+        let refresh_expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_TTL_DAYS);
 
         let worker = self
             .repo
-            .create(&self.db, &req.worker_name, &refresh_hash, &json!({}))
+            .create(
+                &self.db,
+                &req.worker_name,
+                &refresh_hash,
+                refresh_expires_at,
+                &json!({}),
+            )
             .await?;
 
         let (access_token, _expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
@@ -65,16 +73,30 @@ impl WorkersService {
             .find_by_refresh_token_hash(&self.db, &hash)
             .await?;
 
-        if Utc::now() > worker.created_at {
-            // worker exists and refresh is valid
+        if Utc::now() > worker.refresh_expires_at {
+            return Err(WorkersError::RefreshTokenExpired);
         }
 
-        let (access_token, expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
+        let new_refresh_token = generate_random_token(TOKEN_LENGTH);
+        let new_hash = hash_token(&new_refresh_token);
+        let new_expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_TTL_DAYS);
+
+        let updated = self
+            .repo
+            .update_refresh_token(&self.db, worker.id, &new_hash, new_expires_at)
+            .await?;
+
+        let (access_token, expires_at) = build_jwt(updated.id, &self.jwt_secret)?;
 
         Ok(RefreshResponse {
             access_token,
+            refresh_token: new_refresh_token,
             expires_at,
         })
+    }
+
+    pub async fn delete_worker(&self, worker_id: uuid::Uuid) -> Result<(), WorkersError> {
+        self.repo.delete(&self.db, worker_id).await
     }
 
     fn evict_expired(codes: &mut std::collections::HashMap<String, DateTime<Utc>>) {

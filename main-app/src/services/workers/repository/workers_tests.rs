@@ -1,25 +1,44 @@
+use chrono::{Duration, Utc};
+
+use crate::services::workers::model::WorkerStatus;
+use crate::services::workers::repository::WorkersRepository;
+
+fn default_expires_at() -> chrono::DateTime<Utc> {
+    Utc::now() + Duration::days(30)
+}
+
 #[sqlx::test]
 async fn create_inserts_worker(pool: sqlx::PgPool) {
-    use crate::services::workers::repository::WorkersRepository;
-
     let repo = WorkersRepository::new();
     let worker = repo
-        .create(&pool, "test-worker", "refresh-hash", &serde_json::json!({}))
+        .create(
+            &pool,
+            "test-worker",
+            "refresh-hash",
+            default_expires_at(),
+            &serde_json::json!({}),
+        )
         .await
         .expect("Should create worker");
 
     assert_eq!(worker.name, "test-worker");
     assert_eq!(worker.refresh_token_hash, "refresh-hash");
-    assert_eq!(worker.status, "idle");
+    assert!(matches!(worker.status, WorkerStatus::Idle));
 }
 
 #[sqlx::test]
 async fn find_by_id_returns_worker(pool: sqlx::PgPool) {
-    use crate::services::workers::repository::WorkersRepository;
+    use crate::services::workers::errors::WorkersError;
 
     let repo = WorkersRepository::new();
     let created = repo
-        .create(&pool, "find-me", "hash1", &serde_json::json!({}))
+        .create(
+            &pool,
+            "find-me",
+            "hash1",
+            default_expires_at(),
+            &serde_json::json!({}),
+        )
         .await
         .unwrap();
 
@@ -34,7 +53,6 @@ async fn find_by_id_returns_worker(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn find_by_id_missing_returns_error(pool: sqlx::PgPool) {
     use crate::services::workers::errors::WorkersError;
-    use crate::services::workers::repository::WorkersRepository;
     use uuid::Uuid;
 
     let repo = WorkersRepository::new();
@@ -48,11 +66,15 @@ async fn find_by_id_missing_returns_error(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn find_by_refresh_token_hash_returns_worker(pool: sqlx::PgPool) {
-    use crate::services::workers::repository::WorkersRepository;
-
     let repo = WorkersRepository::new();
     let created = repo
-        .create(&pool, "rt-worker", "rt-hash", &serde_json::json!({}))
+        .create(
+            &pool,
+            "rt-worker",
+            "rt-hash",
+            default_expires_at(),
+            &serde_json::json!({}),
+        )
         .await
         .unwrap();
 
@@ -65,11 +87,15 @@ async fn find_by_refresh_token_hash_returns_worker(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_removes_worker(pool: sqlx::PgPool) {
-    use crate::services::workers::repository::WorkersRepository;
-
     let repo = WorkersRepository::new();
     let created = repo
-        .create(&pool, "del-me", "h", &serde_json::json!({}))
+        .create(
+            &pool,
+            "del-me",
+            "h",
+            default_expires_at(),
+            &serde_json::json!({}),
+        )
         .await
         .unwrap();
 
@@ -85,16 +111,40 @@ async fn delete_removes_worker(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_all_returns_workers(pool: sqlx::PgPool) {
-    use crate::services::workers::repository::WorkersRepository;
-
     let repo = WorkersRepository::new();
-    repo.create(&pool, "w1", "h1", &serde_json::json!({}))
+    let expiry = default_expires_at();
+    repo.create(&pool, "w1", "h1", expiry, &serde_json::json!({}))
         .await
         .unwrap();
-    repo.create(&pool, "w2", "h2", &serde_json::json!({}))
+    repo.create(&pool, "w2", "h2", expiry, &serde_json::json!({}))
         .await
         .unwrap();
 
     let all = repo.list_all(&pool).await.expect("Should list");
     assert_eq!(all.len(), 2);
+}
+
+#[sqlx::test]
+async fn update_refresh_token_rotates_hash(pool: sqlx::PgPool) {
+    let repo = WorkersRepository::new();
+    let expiry = default_expires_at();
+    let created = repo
+        .create(
+            &pool,
+            "rotate-me",
+            "old-hash",
+            expiry,
+            &serde_json::json!({}),
+        )
+        .await
+        .unwrap();
+
+    let new_expiry = Utc::now() + Duration::days(30);
+    let updated = repo
+        .update_refresh_token(&pool, created.id, "new-hash", new_expiry)
+        .await
+        .expect("Should update");
+
+    assert_eq!(updated.refresh_token_hash, "new-hash");
+    assert!(updated.refresh_expires_at > expiry);
 }
