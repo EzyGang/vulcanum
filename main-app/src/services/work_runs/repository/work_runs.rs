@@ -129,11 +129,7 @@ impl WorkRunsRepository {
         &self,
         db: Q,
         id: Uuid,
-        pr_url: &str,
-        exit_code: i32,
-        tokens_used: i32,
-        duration_ms: i32,
-        status: WorkRunStatus,
+        params: SetResultParams<'_>,
     ) -> Result<WorkRun, WorkRunsError> {
         sqlx::query_as!(
             WorkRun,
@@ -144,15 +140,23 @@ impl WorkRunsRepository {
              prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
-            pr_url,
-            exit_code,
-            tokens_used,
-            duration_ms,
-            &status as &WorkRunStatus,
+            params.pr_url,
+            params.exit_code,
+            params.tokens_used,
+            params.duration_ms,
+            &params.status as &WorkRunStatus,
         )
         .fetch_optional(db)
         .await
         .map_err(map_err)?
         .ok_or(WorkRunsError::InvalidStatusTransition)
     }
+}
+
+pub struct SetResultParams<'a> {
+    pub pr_url: &'a str,
+    pub exit_code: i32,
+    pub tokens_used: i32,
+    pub duration_ms: i32,
+    pub status: WorkRunStatus,
 }
