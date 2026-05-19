@@ -4,9 +4,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::routes;
-use crate::services::work_runs::model::WorkRunStatus;
-use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
-use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::test_helpers;
 
 fn build_state(pool: sqlx::PgPool) -> AppState {
     let kaneo = crate::services::kaneo::client::KaneoClient::new(
@@ -23,7 +21,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
     };
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();
-    let work_runs_repo = WorkRunsRepository::new();
+    let work_runs_repo = crate::services::work_runs::repository::WorkRunsRepository::new();
     let work_notifier = crate::services::poller::notifier::WorkNotifier::new();
 
     AppState {
@@ -57,61 +55,10 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
     }
 }
 
-async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
-    let id = Uuid::new_v4();
-    let hash = hex::encode([0u8; 32]);
-
-    sqlx::query!(
-        "INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status) VALUES ($1, $2, $3, NOW() + INTERVAL '30 days', 'idle'::worker_status)",
-        id,
-        name,
-        hash,
-    )
-    .execute(pool)
-    .await
-    .expect("Should insert worker");
-
-    id
-}
-
-async fn insert_project_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> Uuid {
-    let id = Uuid::new_v4();
-
-    sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template) VALUES ($1, $2, 'Review {{task_title}}')",
-        id,
-        kaneo_project_id,
-    )
-    .execute(pool)
-    .await
-    .expect("Should insert project config");
-
-    id
-}
-
-async fn insert_pending_work_run(
-    pool: &sqlx::PgPool,
-    project_config_id: Uuid,
-    task_ref: &str,
-) -> Uuid {
-    let repo = WorkRunsRepository::new();
-    let params = InsertWorkRunParams {
-        external_task_ref: task_ref.to_owned(),
-        project_config_id,
-        prompt_text: "Review the PR".to_owned(),
-        status: WorkRunStatus::Pending,
-    };
-
-    repo.insert_work_run(pool, params)
-        .await
-        .expect("Should insert work_run")
-        .id
-}
-
 #[sqlx::test]
 async fn poll_returns_204_when_no_work(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let worker_id = insert_worker(&pool, "test-poll-noop").await;
+    let worker_id = test_helpers::insert_worker(&pool, "test-poll-noop").await;
 
     let app = test::init_service(
         App::new()
@@ -131,9 +78,9 @@ async fn poll_returns_204_when_no_work(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let worker_id = insert_worker(&pool, "test-poll-work").await;
-    let project_id = insert_project_config(&pool, "kaneo-poll-test").await;
-    let wr_id = insert_pending_work_run(&pool, project_id, "task-poll-test").await;
+    let worker_id = test_helpers::insert_worker(&pool, "test-poll-work").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-test").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-poll-test").await;
 
     state.work_notifier.add_worker(worker_id).await;
     state.work_notifier.notify_all().await;
@@ -159,8 +106,8 @@ async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn get_job_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let project_id = insert_project_config(&pool, "kaneo-get-test").await;
-    let wr_id = insert_pending_work_run(&pool, project_id, "task-get-test").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-test").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-test").await;
 
     let app = test::init_service(
         App::new()
@@ -203,9 +150,9 @@ async fn get_job_returns_404_for_missing(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn ack_job_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let worker_id = insert_worker(&pool, "test-acker").await;
-    let project_id = insert_project_config(&pool, "kaneo-ack-test").await;
-    let wr_id = insert_pending_work_run(&pool, project_id, "task-ack-test").await;
+    let worker_id = test_helpers::insert_worker(&pool, "test-acker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-test").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-test").await;
 
     let app = test::init_service(
         App::new()
@@ -230,10 +177,10 @@ async fn ack_job_returns_200(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let worker_a = insert_worker(&pool, "test-acker-a").await;
-    let worker_b = insert_worker(&pool, "test-acker-b").await;
-    let project_id = insert_project_config(&pool, "kaneo-ack-race").await;
-    let wr_id = insert_pending_work_run(&pool, project_id, "task-ack-race").await;
+    let worker_a = test_helpers::insert_worker(&pool, "test-acker-a").await;
+    let worker_b = test_helpers::insert_worker(&pool, "test-acker-b").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-race").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-race").await;
 
     let app = test::init_service(
         App::new()
@@ -260,9 +207,9 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let worker_id = insert_worker(&pool, "test-result").await;
-    let project_id = insert_project_config(&pool, "kaneo-result-test").await;
-    let wr_id = insert_pending_work_run(&pool, project_id, "task-result-test").await;
+    let worker_id = test_helpers::insert_worker(&pool, "test-result").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-test").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result-test").await;
 
     let app = test::init_service(
         App::new()
@@ -301,8 +248,8 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
-    let project_id = insert_project_config(&pool, "kaneo-early-result").await;
-    let wr_id = insert_pending_work_run(&pool, project_id, "task-early-result").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-early-result").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-early-result").await;
 
     let app = test::init_service(
         App::new()

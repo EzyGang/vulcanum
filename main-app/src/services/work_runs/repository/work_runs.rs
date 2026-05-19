@@ -6,10 +6,6 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
 use crate::services::work_runs::repository::WorkRunsRepository;
 
-fn map_err(err: sqlx::Error) -> WorkRunsError {
-    WorkRunsError::from(err)
-}
-
 #[allow(dead_code)]
 pub struct InsertWorkRunParams {
     pub external_task_ref: String,
@@ -84,7 +80,7 @@ impl WorkRunsRepository {
         )
         .fetch_optional(db)
         .await
-        .map_err(map_err)?
+        .map_err(WorkRunsError::from)?
         .ok_or(WorkRunsError::NotFound)
     }
 
@@ -98,7 +94,7 @@ impl WorkRunsRepository {
         )
         .fetch_optional(db)
         .await
-        .map_err(map_err)
+        .map_err(WorkRunsError::from)
     }
 
     #[allow(dead_code)]
@@ -120,7 +116,7 @@ impl WorkRunsRepository {
         )
         .fetch_optional(db)
         .await
-        .map_err(map_err)?
+        .map_err(WorkRunsError::from)?
         .ok_or(WorkRunsError::AlreadyClaimed)
     }
 
@@ -148,7 +144,7 @@ impl WorkRunsRepository {
         )
         .fetch_optional(db)
         .await
-        .map_err(map_err)?
+        .map_err(WorkRunsError::from)?
         .ok_or(WorkRunsError::InvalidStatusTransition)
     }
 }

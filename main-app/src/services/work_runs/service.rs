@@ -3,8 +3,7 @@ pub mod work_runs;
 #[cfg(test)]
 mod work_runs_tests;
 
-use std::time::Duration;
-
+use chrono::Duration;
 use sqlx::PgPool;
 
 use crate::services::poller::notifier::WorkNotifier;
@@ -44,7 +43,7 @@ impl WorkRunsService {
             workers_repo,
             db,
             notifier,
-            stale_threshold: Duration::from_secs(stale_threshold_secs),
+            stale_threshold: Duration::seconds(stale_threshold_secs as i64),
         }
     }
 }

@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::services::work_runs::errors::WorkRunsError;
@@ -25,10 +25,7 @@ impl WorkRunsService {
 
         if let Err(e) = self
             .workers_repo
-            .mark_stale_disconnected(
-                &self.db,
-                Duration::seconds(self.stale_threshold.as_secs() as i64),
-            )
+            .mark_stale_disconnected(&self.db, self.stale_threshold)
             .await
         {
             tracing::warn!("Failed to mark stale workers: {}", e);
