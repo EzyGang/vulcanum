@@ -4,6 +4,7 @@ use thiserror::Error;
 use crate::services::auth::errors::AuthError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::users::errors::UsersError;
+use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::workers::errors::WorkersError;
 
 #[derive(Debug, Error)]
@@ -24,6 +25,12 @@ pub enum AppError {
     ProjectConfigNotFound,
     #[error("duplicate project config")]
     DuplicateProjectConfig,
+    #[error("work run not found")]
+    WorkRunNotFound,
+    #[error("work run already claimed")]
+    AlreadyClaimed,
+    #[error("invalid status transition")]
+    InvalidStatusTransition,
     #[error("internal server error")]
     Internal,
 }
@@ -54,6 +61,15 @@ impl ResponseError for AppError {
             }),
             Self::DuplicateProjectConfig => HttpResponse::Conflict().json(ErrorBody {
                 error: "A config for this project already exists".to_owned(),
+            }),
+            Self::WorkRunNotFound => HttpResponse::NotFound().json(ErrorBody {
+                error: "Work run not found".to_owned(),
+            }),
+            Self::AlreadyClaimed => HttpResponse::Conflict().json(ErrorBody {
+                error: "Work run already claimed".to_owned(),
+            }),
+            Self::InvalidStatusTransition => HttpResponse::Conflict().json(ErrorBody {
+                error: "Invalid status transition".to_owned(),
             }),
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
@@ -87,6 +103,17 @@ impl From<ProjectConfigsError> for AppError {
             ProjectConfigsError::DuplicateKaneoProjectId => Self::DuplicateProjectConfig,
             ProjectConfigsError::Database(_) | ProjectConfigsError::Kaneo(_) => Self::Internal,
             ProjectConfigsError::ColumnNotFound(_) => Self::Internal,
+        }
+    }
+}
+
+impl From<WorkRunsError> for AppError {
+    fn from(err: WorkRunsError) -> Self {
+        match err {
+            WorkRunsError::NotFound => Self::WorkRunNotFound,
+            WorkRunsError::AlreadyClaimed => Self::AlreadyClaimed,
+            WorkRunsError::InvalidStatusTransition => Self::InvalidStatusTransition,
+            WorkRunsError::Database(_) => Self::Internal,
         }
     }
 }

@@ -15,7 +15,12 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         max_conns: 1,
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
+        stale_worker_threshold_secs: 120,
     };
+
+    let workers_repo = crate::services::workers::repository::WorkersRepository::new();
+    let work_runs_repo = crate::services::work_runs::repository::WorkRunsRepository::new();
+    let work_notifier = crate::services::poller::notifier::WorkNotifier::new();
 
     AppState {
         auth: crate::services::auth::service::AuthService::new(
@@ -30,14 +35,21 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             kaneo.clone(),
         ),
         workers: crate::services::workers::service::WorkersService::new(
-            crate::services::workers::repository::WorkersRepository::new(),
+            workers_repo.clone(),
             pool.clone(),
             &cfg,
         ),
+        jobs: crate::services::work_runs::service::WorkRunsService::new(
+            work_runs_repo.clone(),
+            workers_repo,
+            pool.clone(),
+            work_notifier.clone(),
+            120,
+        ),
         db_pool: pool,
         kaneo,
-        work_runs: crate::services::work_runs::repository::WorkRunsRepository::new(),
-        work_notifier: crate::services::poller::notifier::WorkNotifier::new(),
+        work_runs: work_runs_repo,
+        work_notifier,
     }
 }
 

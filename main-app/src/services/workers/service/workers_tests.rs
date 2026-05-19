@@ -10,6 +10,7 @@ fn cfg() -> AppConfig {
         max_conns: 1,
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
+        stale_worker_threshold_secs: 120,
     }
 }
 
