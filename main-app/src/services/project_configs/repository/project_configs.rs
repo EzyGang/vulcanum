@@ -6,18 +6,16 @@ use crate::services::project_configs::repository::{
     map_sqlx_error, ProjectConfigsRepository, Queryer, UpdateProjectConfigParams,
 };
 
-const BASE_COLUMNS: &str = "id, kaneo_project_id, enabled, pickup_column, target_column, \
-     progress_column, prompt_template, repo_url, created_at";
-
 impl ProjectConfigsRepository {
     pub async fn list_all<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
-        sqlx::query_as::<_, ProjectConfig>(&format!(
-            "SELECT {} FROM project_configs ORDER BY created_at DESC",
-            BASE_COLUMNS
-        ))
+        sqlx::query_as::<_, ProjectConfig>(
+            "SELECT id, kaneo_project_id, enabled, pickup_column, target_column, \
+             progress_column, prompt_template, repo_url, created_at \
+             FROM project_configs ORDER BY created_at DESC",
+        )
         .fetch_all(db)
         .await
         .map_err(ProjectConfigsError::from)
@@ -28,10 +26,11 @@ impl ProjectConfigsRepository {
         db: Q,
         id: Uuid,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
-        sqlx::query_as::<_, ProjectConfig>(&format!(
-            "SELECT {} FROM project_configs WHERE id = $1",
-            BASE_COLUMNS
-        ))
+        sqlx::query_as::<_, ProjectConfig>(
+            "SELECT id, kaneo_project_id, enabled, pickup_column, target_column, \
+             progress_column, prompt_template, repo_url, created_at \
+             FROM project_configs WHERE id = $1",
+        )
         .bind(id)
         .fetch_optional(db)
         .await?
@@ -44,10 +43,11 @@ impl ProjectConfigsRepository {
         db: Q,
         kaneo_project_id: &str,
     ) -> Result<Option<ProjectConfig>, ProjectConfigsError> {
-        sqlx::query_as::<_, ProjectConfig>(&format!(
-            "SELECT {} FROM project_configs WHERE kaneo_project_id = $1",
-            BASE_COLUMNS
-        ))
+        sqlx::query_as::<_, ProjectConfig>(
+            "SELECT id, kaneo_project_id, enabled, pickup_column, target_column, \
+             progress_column, prompt_template, repo_url, created_at \
+             FROM project_configs WHERE kaneo_project_id = $1",
+        )
         .bind(kaneo_project_id)
         .fetch_optional(db)
         .await
@@ -59,10 +59,11 @@ impl ProjectConfigsRepository {
         &self,
         db: Q,
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
-        sqlx::query_as::<_, ProjectConfig>(&format!(
-            "SELECT {} FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
-            BASE_COLUMNS
-        ))
+        sqlx::query_as::<_, ProjectConfig>(
+            "SELECT id, kaneo_project_id, enabled, pickup_column, target_column, \
+             progress_column, prompt_template, repo_url, created_at \
+             FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
+        )
         .fetch_all(db)
         .await
         .map_err(ProjectConfigsError::from)
@@ -75,13 +76,13 @@ impl ProjectConfigsRepository {
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         let id = Uuid::new_v4();
 
-        sqlx::query_as::<_, ProjectConfig>(&format!(
+        sqlx::query_as::<_, ProjectConfig>(
             "INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column, \
              progress_column, prompt_template, repo_url) \
              VALUES ($1, $2, $3, $4, $5, $6, $7) \
-             RETURNING {}",
-            BASE_COLUMNS
-        ))
+             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column, \
+             progress_column, prompt_template, repo_url, created_at",
+        )
         .bind(id)
         .bind(&params.kaneo_project_id)
         .bind(&params.pickup_column)
@@ -100,7 +101,7 @@ impl ProjectConfigsRepository {
         id: Uuid,
         params: &UpdateProjectConfigParams<'_>,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
-        sqlx::query_as::<_, ProjectConfig>(&format!(
+        sqlx::query_as::<_, ProjectConfig>(
             "UPDATE project_configs SET \
              pickup_column = COALESCE($2, pickup_column), \
              target_column = COALESCE($3, target_column), \
@@ -109,9 +110,9 @@ impl ProjectConfigsRepository {
              repo_url = COALESCE($6, repo_url), \
              enabled = COALESCE($7, enabled) \
              WHERE id = $1 \
-             RETURNING {}",
-            BASE_COLUMNS
-        ))
+             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column, \
+             progress_column, prompt_template, repo_url, created_at",
+        )
         .bind(id)
         .bind(params.pickup_column)
         .bind(params.target_column)
