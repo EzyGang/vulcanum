@@ -1,12 +1,12 @@
 use uuid::Uuid;
 
+use crate::services::poller::notifier::WorkNotifier;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::work_runs::SubmitResultParams;
 use crate::services::work_runs::service::WorkRunsService;
-use crate::services::poller::notifier::WorkNotifier;
 use crate::services::workers::repository::WorkersRepository;
 
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
@@ -51,7 +51,11 @@ async fn insert_project_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> U
     id
 }
 
-async fn insert_pending_work_run(pool: &sqlx::PgPool, project_config_id: Uuid, task_ref: &str) -> Uuid {
+async fn insert_pending_work_run(
+    pool: &sqlx::PgPool,
+    project_config_id: Uuid,
+    task_ref: &str,
+) -> Uuid {
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
         external_task_ref: task_ref.to_owned(),
@@ -131,7 +135,9 @@ async fn ack_fails_when_already_claimed(pool: sqlx::PgPool) {
     let project_id = insert_project_config(&pool, "kaneo-ack-2").await;
     let wr_id = insert_pending_work_run(&pool, project_id, "task-race").await;
 
-    svc.ack_job(wr_id, worker_a).await.expect("First should succeed");
+    svc.ack_job(wr_id, worker_a)
+        .await
+        .expect("First should succeed");
 
     let err = svc
         .ack_job(wr_id, worker_b)
@@ -156,10 +162,16 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         tokens_used: 500,
         duration_ms: 30000,
     };
-    let job = svc.submit_result(wr_id, params).await.expect("Should succeed");
+    let job = svc
+        .submit_result(wr_id, params)
+        .await
+        .expect("Should succeed");
 
     assert!(matches!(job.status, WorkRunStatus::Completed));
-    assert_eq!(job.result_pr_url.as_deref(), Some("https://github.com/example/pr/1"));
+    assert_eq!(
+        job.result_pr_url.as_deref(),
+        Some("https://github.com/example/pr/1")
+    );
     assert_eq!(job.result_exit_code, Some(0));
     assert_eq!(job.tokens_used, Some(500));
     assert_eq!(job.duration_ms, Some(30000));
@@ -180,7 +192,10 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         tokens_used: 0,
         duration_ms: 5000,
     };
-    let job = svc.submit_result(wr_id, params).await.expect("Should succeed");
+    let job = svc
+        .submit_result(wr_id, params)
+        .await
+        .expect("Should succeed");
 
     assert!(matches!(job.status, WorkRunStatus::Failed));
 }

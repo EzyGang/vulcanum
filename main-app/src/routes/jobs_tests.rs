@@ -89,7 +89,11 @@ async fn insert_project_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> U
     id
 }
 
-async fn insert_pending_work_run(pool: &sqlx::PgPool, project_config_id: Uuid, task_ref: &str) -> Uuid {
+async fn insert_pending_work_run(
+    pool: &sqlx::PgPool,
+    project_config_id: Uuid,
+    task_ref: &str,
+) -> Uuid {
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
         external_task_ref: task_ref.to_owned(),
