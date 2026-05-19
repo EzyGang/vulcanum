@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE project_configs SET pickup_column = COALESCE($2, pickup_column), target_column = COALESCE($3, target_column), progress_column = COALESCE($4, progress_column), prompt_template = COALESCE($5, prompt_template), repo_url = COALESCE($6, repo_url), enabled = COALESCE($7, enabled) WHERE id = $1 RETURNING id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "kaneo_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "720208fbb7a72f66eedf3200a08b8927f50725b580278335b6280febfc495fc3"
+}

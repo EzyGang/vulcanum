@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, created_at FROM project_configs ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "kaneo_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "b37d52b49aebb25a341b81d7956f7bf1027aa1726528f267b8065076b1dc3d9a"
+}

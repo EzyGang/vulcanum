@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column, progress_column, prompt_template, repo_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "kaneo_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "target_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7bea99837e90ad8490769b27047836fbaecfd335d955c964701d8033eb25e36a"
+}

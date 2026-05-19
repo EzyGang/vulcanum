@@ -44,12 +44,12 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
 async fn insert_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO project_configs (id, kaneo_project_id, prompt_template) VALUES ($1, $2, $3)",
+        id,
+        kaneo_project_id,
+        "Review {{task_title}}",
     )
-    .bind(id)
-    .bind(kaneo_project_id)
-    .bind("Review {{task_title}}")
     .execute(pool)
     .await
     .expect("Should insert test config");
@@ -139,12 +139,14 @@ async fn delete_removes_config(pool: sqlx::PgPool) {
 
     assert_eq!(resp.status(), 204);
 
-    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM project_configs WHERE id = $1")
-        .bind(id)
-        .fetch_one(&pool)
-        .await
-        .expect("Should query count");
-    assert_eq!(count.0, 0);
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM project_configs WHERE id = $1",
+        id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query count");
+    assert_eq!(row.count.unwrap(), 0);
 }
 
 #[sqlx::test]

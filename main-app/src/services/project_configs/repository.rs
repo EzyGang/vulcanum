@@ -1,13 +1,7 @@
 pub mod project_configs;
 
+use crate::queryer::Queryer;
 use crate::services::project_configs::errors::ProjectConfigsError;
-use sqlx::{Executor, Postgres};
-
-pub trait Queryer<'c>: Executor<'c, Database = Postgres> {}
-
-impl<'c> Queryer<'c> for &sqlx::PgPool {}
-
-impl<'c> Queryer<'c> for &'c mut sqlx::PgConnection {}
 
 fn is_unique_violation(err: &sqlx::Error) -> bool {
     err.as_database_error()

@@ -79,12 +79,12 @@ fn make_task(id: &str, title: &str) -> Task {
 async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO project_configs (id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url) \
          VALUES ($1, $2, true, 'to-do', 'in-review', 'in-progress', 'Review {{task_title}}', '')",
+        id,
+        kaneo_project_id,
     )
-    .bind(id)
-    .bind(kaneo_project_id)
     .execute(pool)
     .await
     .expect("Should insert project config");
@@ -125,14 +125,15 @@ async fn poller_inserts_tasks(pool: PgPool) {
     let service = build_service(mock, pool.clone(), notifier);
     service.poll_once().await;
 
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM work_runs WHERE project_config_id = $1")
-            .bind(project_id)
-            .fetch_one(&pool)
-            .await
-            .expect("Should query work_runs");
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE project_config_id = $1",
+        project_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query work_runs");
 
-    assert_eq!(count.0, 2, "Should insert 2 work_runs");
+    assert_eq!(row.count.unwrap(), 2, "Should insert 2 work_runs");
 }
 
 #[sqlx::test]
@@ -155,14 +156,19 @@ async fn poller_skips_duplicates(pool: PgPool) {
 
     service.poll_once().await;
 
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM work_runs WHERE external_task_ref = $1")
-            .bind("task-dup")
-            .fetch_one(&pool)
-            .await
-            .expect("Should query work_runs");
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE external_task_ref = $1",
+        "task-dup",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query work_runs");
 
-    assert_eq!(count.0, 1, "Should not insert duplicate work_run");
+    assert_eq!(
+        row.count.unwrap(),
+        1,
+        "Should not insert duplicate work_run"
+    );
 }
 
 #[sqlx::test]
@@ -189,15 +195,17 @@ async fn poller_handles_unreachable_kaneo(pool: PgPool) {
     let service = build_service(mock, pool.clone(), notifier);
     service.poll_once().await;
 
-    let count: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM work_runs WHERE external_task_ref = $1")
-            .bind("task-ok")
-            .fetch_one(&pool)
-            .await
-            .expect("Should query work_runs");
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE external_task_ref = $1",
+        "task-ok",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query work_runs");
 
     assert_eq!(
-        count.0, 1,
+        row.count.unwrap(),
+        1,
         "Should insert task from working project despite failing one"
     );
 }

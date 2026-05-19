@@ -1,23 +1,17 @@
-use sqlx::{Executor, Postgres};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::WorkRun;
+use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
 use crate::services::work_runs::repository::WorkRunsRepository;
-
-#[allow(dead_code)]
-pub trait Queryer<'c>: Executor<'c, Database = Postgres> {}
-
-impl<'c> Queryer<'c> for &sqlx::PgPool {}
-
-impl<'c> Queryer<'c> for &'c mut sqlx::PgConnection {}
 
 #[allow(dead_code)]
 pub struct InsertWorkRunParams {
     pub external_task_ref: String,
     pub project_config_id: Uuid,
     pub prompt_text: String,
-    pub status: String,
+    pub status: WorkRunStatus,
 }
 
 impl WorkRunsRepository {
@@ -29,17 +23,19 @@ impl WorkRunsRepository {
     ) -> Result<WorkRun, WorkRunsError> {
         let id = Uuid::new_v4();
 
-        sqlx::query_as::<_, WorkRun>(
-             "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text) \
-             VALUES ($1, $2, $3, $4::work_run_status, $5) \
-             RETURNING id, external_task_ref, project_config_id, worker_id, status::text, prompt_text, \
-                        result_pr_url, result_exit_code, tokens_used, duration_ms, created_at, updated_at",
+        sqlx::query_as!(
+            WorkRun,
+            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
+                        result_pr_url, result_exit_code, tokens_used, duration_ms,
+                        created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            &params.external_task_ref,
+            params.project_config_id,
+            &params.status as &WorkRunStatus,
+            &params.prompt_text,
         )
-        .bind(id)
-        .bind(&params.external_task_ref)
-        .bind(params.project_config_id)
-        .bind(&params.status)
-        .bind(&params.prompt_text)
         .fetch_one(db)
         .await
         .map_err(WorkRunsError::from)
@@ -52,16 +48,16 @@ impl WorkRunsRepository {
     ) -> Result<bool, WorkRunsError> {
         let id = Uuid::new_v4();
 
-        sqlx::query(
-            "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text) \
-             VALUES ($1, $2, $3, $4::work_run_status, $5) \
-             ON CONFLICT DO NOTHING",
+        sqlx::query!(
+            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT DO NOTHING"#,
+            id,
+            &params.external_task_ref,
+            params.project_config_id,
+            &params.status as &WorkRunStatus,
+            &params.prompt_text,
         )
-        .bind(id)
-        .bind(&params.external_task_ref)
-        .bind(params.project_config_id)
-        .bind(&params.status)
-        .bind(&params.prompt_text)
         .execute(db)
         .await
         .map(|result| result.rows_affected() > 0)

@@ -101,12 +101,14 @@ async fn delete_removes_worker(pool: sqlx::PgPool) {
 
     repo.delete(&pool, created.id).await.expect("Should delete");
 
-    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM workers WHERE id = $1")
-        .bind(created.id)
-        .fetch_one(&pool)
-        .await
-        .expect("Should query");
-    assert_eq!(count.0, 0);
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM workers WHERE id = $1",
+        created.id
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query");
+    assert_eq!(row.count.unwrap(), 0);
 }
 
 #[sqlx::test]

@@ -16,17 +16,19 @@ impl WorkersRepository {
     ) -> Result<Worker, WorkersError> {
         let id = Uuid::new_v4();
 
-        sqlx::query_as::<_, Worker>(
-            "INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities) \
-             VALUES ($1, $2, $3, $4, $5, $6) \
-             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen, status::text as status, capabilities, created_at",
+        sqlx::query_as!(
+            Worker,
+            r#"INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities)
+             VALUES ($1, $2, $3, $4, $5::worker_status, $6)
+             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>""#,
+            id,
+            name,
+            refresh_token_hash,
+            refresh_expires_at,
+            WorkerStatus::Idle as WorkerStatus,
+            capabilities,
         )
-        .bind(id)
-        .bind(name)
-        .bind(refresh_token_hash)
-        .bind(refresh_expires_at)
-        .bind(WorkerStatus::Idle)
-        .bind(capabilities)
         .fetch_one(db)
         .await
         .map_err(map_sqlx_error)
@@ -38,11 +40,13 @@ impl WorkersRepository {
         db: Q,
         id: Uuid,
     ) -> Result<Worker, WorkersError> {
-        sqlx::query_as::<_, Worker>(
-            "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen, status::text as status, capabilities, created_at \
-             FROM workers WHERE id = $1",
+        sqlx::query_as!(
+            Worker,
+            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>"
+             FROM workers WHERE id = $1"#,
+            id,
         )
-        .bind(id)
         .fetch_optional(db)
         .await?
         .ok_or(WorkersError::WorkerNotFound)
@@ -53,11 +57,13 @@ impl WorkersRepository {
         db: Q,
         hash: &str,
     ) -> Result<Worker, WorkersError> {
-        sqlx::query_as::<_, Worker>(
-            "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen, status::text as status, capabilities, created_at \
-             FROM workers WHERE refresh_token_hash = $1",
+        sqlx::query_as!(
+            Worker,
+            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>"
+             FROM workers WHERE refresh_token_hash = $1"#,
+            hash,
         )
-        .bind(hash)
         .fetch_optional(db)
         .await?
         .ok_or(WorkersError::InvalidRefreshToken)
@@ -70,14 +76,16 @@ impl WorkersRepository {
         new_hash: &str,
         new_expires_at: DateTime<Utc>,
     ) -> Result<Worker, WorkersError> {
-        sqlx::query_as::<_, Worker>(
-            "UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2 \
-             WHERE id = $3 \
-             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen, status::text as status, capabilities, created_at",
+        sqlx::query_as!(
+            Worker,
+            r#"UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2
+             WHERE id = $3
+             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>""#,
+            new_hash,
+            new_expires_at,
+            worker_id,
         )
-        .bind(new_hash)
-        .bind(new_expires_at)
-        .bind(worker_id)
         .fetch_optional(db)
         .await?
         .ok_or(WorkersError::WorkerNotFound)
@@ -90,9 +98,7 @@ impl WorkersRepository {
         id: Uuid,
         ts: DateTime<Utc>,
     ) -> Result<(), WorkersError> {
-        sqlx::query("UPDATE workers SET last_seen = $1 WHERE id = $2")
-            .bind(ts)
-            .bind(id)
+        sqlx::query!("UPDATE workers SET last_seen = $1 WHERE id = $2", ts, id)
             .execute(db)
             .await
             .map_err(map_sqlx_error)?;
@@ -101,9 +107,11 @@ impl WorkersRepository {
 
     #[allow(dead_code)]
     pub async fn list_all<'c, Q: Queryer<'c>>(&self, db: Q) -> Result<Vec<Worker>, WorkersError> {
-        sqlx::query_as::<_, Worker>(
-            "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen, status::text as status, capabilities, created_at \
-             FROM workers ORDER BY created_at DESC",
+        sqlx::query_as!(
+            Worker,
+            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>"
+             FROM workers ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
         .await
@@ -111,8 +119,7 @@ impl WorkersRepository {
     }
 
     pub async fn delete<'c, Q: Queryer<'c>>(&self, db: Q, id: Uuid) -> Result<(), WorkersError> {
-        let rows = sqlx::query("DELETE FROM workers WHERE id = $1")
-            .bind(id)
+        let rows = sqlx::query!("DELETE FROM workers WHERE id = $1", id)
             .execute(db)
             .await
             .map_err(map_sqlx_error)?

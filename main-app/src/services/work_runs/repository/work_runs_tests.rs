@@ -2,18 +2,19 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::services::work_runs::errors::WorkRunsError;
+use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO project_configs (id, kaneo_project_id, prompt_template) VALUES ($1, $2, $3)",
+        id,
+        kaneo_project_id,
+        "Review {{task_title}}",
     )
-    .bind(id)
-    .bind(kaneo_project_id)
-    .bind("Review {{task_title}}")
     .execute(pool)
     .await
     .expect("Should insert project config");
@@ -31,7 +32,7 @@ async fn unique_active_task_prevents_duplicate_active(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
-        status: "pending".to_owned(),
+        status: WorkRunStatus::Pending,
     };
 
     repo.insert_work_run(&pool, params)
@@ -42,7 +43,7 @@ async fn unique_active_task_prevents_duplicate_active(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review another PR".to_owned(),
-        status: "pending".to_owned(),
+        status: WorkRunStatus::Pending,
     };
 
     let result = repo.insert_work_run(&pool, duplicate_params).await;
@@ -63,7 +64,7 @@ async fn unique_active_task_allows_completed_with_same_ref(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
-        status: "pending".to_owned(),
+        status: WorkRunStatus::Pending,
     };
 
     repo.insert_work_run(&pool, pending_params)
@@ -74,7 +75,7 @@ async fn unique_active_task_allows_completed_with_same_ref(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review another PR".to_owned(),
-        status: "completed".to_owned(),
+        status: WorkRunStatus::Completed,
     };
 
     repo.insert_work_run(&pool, completed_params)

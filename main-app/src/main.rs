@@ -1,6 +1,7 @@
 mod app_state;
 mod config;
 mod errors;
+mod queryer;
 mod routes;
 mod services;
 
