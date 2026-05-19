@@ -48,7 +48,7 @@ jobs:
           key: "fmt"
 
       - name: Check formatting
-        run: cargo fmt --all -- --check --workspace
+        run: cargo fmt --all -- --check
 
   clippy:
     name: Run linter
