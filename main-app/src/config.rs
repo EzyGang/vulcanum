@@ -4,6 +4,7 @@ pub struct AppConfig {
     pub db_url: String,
     pub max_conns: u32,
     pub poll_period_secs: u64,
+    pub jwt_secret: String,
 }
 
 impl AppConfig {
@@ -15,11 +16,13 @@ impl AppConfig {
         let poll_period_secs = std::env::var("POLL_PERIOD_SECS")
             .unwrap_or_else(|_| "30".to_owned())
             .parse::<u64>()?;
+        let jwt_secret = std::env::var("JWT_SECRET")?;
 
         Ok(AppConfig {
             db_url,
             max_conns,
             poll_period_secs,
+            jwt_secret,
         })
     }
 }

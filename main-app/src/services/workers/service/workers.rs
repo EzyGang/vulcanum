@@ -1,0 +1,111 @@
+use chrono::{DateTime, Duration, Utc};
+use rand::Rng;
+use serde_json::json;
+use sha2::{Digest, Sha256};
+use uuid::Uuid;
+
+use crate::services::workers::errors::WorkersError;
+use crate::services::workers::model::{
+    CodeResponse, ConnectRequest, ConnectResponse, RefreshRequest, RefreshResponse,
+};
+use crate::services::workers::service::WorkersService;
+
+const CODE_TTL_MINUTES: i64 = 10;
+const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
+const TOKEN_LENGTH: usize = 64;
+const CODE_LENGTH: usize = 16;
+
+impl WorkersService {
+    pub async fn generate_code(&self) -> CodeResponse {
+        let mut codes = self.codes.write().await;
+        Self::evict_expired(&mut codes);
+
+        let code: String = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(CODE_LENGTH)
+            .map(char::from)
+            .collect();
+
+        let expires_at = Utc::now() + Duration::minutes(CODE_TTL_MINUTES);
+        codes.insert(code.clone(), expires_at);
+
+        CodeResponse { code, expires_at }
+    }
+
+    pub async fn connect(&self, req: ConnectRequest) -> Result<ConnectResponse, WorkersError> {
+        let mut codes = self.codes.write().await;
+        let expiry = codes.remove(&req.code).ok_or(WorkersError::CodeNotFound)?;
+
+        if Utc::now() > expiry {
+            return Err(WorkersError::CodeExpired);
+        }
+
+        let refresh_token = generate_random_token(TOKEN_LENGTH);
+        let refresh_hash = hash_token(&refresh_token);
+
+        let worker = self
+            .repo
+            .create(&self.db, &req.worker_name, &refresh_hash, &json!({}))
+            .await?;
+
+        let (access_token, _expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
+
+        Ok(ConnectResponse {
+            access_token,
+            refresh_token,
+            worker_id: worker.id,
+            name: worker.name,
+        })
+    }
+
+    pub async fn refresh(&self, req: RefreshRequest) -> Result<RefreshResponse, WorkersError> {
+        let hash = hash_token(&req.refresh_token);
+        let worker = self
+            .repo
+            .find_by_refresh_token_hash(&self.db, &hash)
+            .await?;
+
+        if Utc::now() > worker.created_at {
+            // worker exists and refresh is valid
+        }
+
+        let (access_token, expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
+
+        Ok(RefreshResponse {
+            access_token,
+            expires_at,
+        })
+    }
+
+    fn evict_expired(codes: &mut std::collections::HashMap<String, DateTime<Utc>>) {
+        let now = Utc::now();
+        codes.retain(|_k, v| *v > now);
+    }
+}
+
+fn hash_token(token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+fn generate_random_token(length: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
+fn build_jwt(
+    worker_id: Uuid,
+    secret: &str,
+) -> Result<(String, DateTime<Utc>), jsonwebtoken::errors::Error> {
+    let exp = Utc::now() + Duration::minutes(ACCESS_TOKEN_TTL_MINUTES);
+    let claims = jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &serde_json::json!({"sub": worker_id.to_string(), "exp": exp.timestamp()}),
+        &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
+    )?;
+    Ok((claims, exp))
+}
