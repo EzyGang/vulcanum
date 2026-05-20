@@ -55,8 +55,8 @@ pub struct JobResponse {
 pub struct SubmitResultRequest {
     pub pr_url: String,
     pub exit_code: i32,
-    pub tokens_used: i32,
-    pub duration_ms: i32,
+    pub tokens_used: u64,
+    pub duration_ms: u64,
 }
 
 pub struct ApiClient {

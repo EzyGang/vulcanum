@@ -1,6 +1,7 @@
 mod api_error;
 mod client;
 mod commands;
+mod harness;
 mod state;
 mod token;
 
@@ -16,7 +17,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Worker commands (connect, daemon)
+    /// Worker commands (connect, daemon, setup)
     #[command(visible_alias = "wrk")]
     Worker {
         #[command(subcommand)]
@@ -36,6 +37,8 @@ enum WorkerCommand {
     },
     /// Run the worker daemon (poll loop, job execution)
     Daemon,
+    /// Validate worker environment and report missing components
+    Setup,
 }
 
 #[tokio::main]
@@ -54,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
                 commands::connect::run(code, instance).await
             }
             WorkerCommand::Daemon => commands::daemon::run().await,
+            WorkerCommand::Setup => commands::setup::run().await,
         },
     }
 }
