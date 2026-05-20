@@ -16,15 +16,16 @@ pub async fn run(code: String, instance: String) -> anyhow::Result<()> {
         instance_url: instance,
         access_token: resp.access_token,
         refresh_token: resp.refresh_token,
-        expires_at: chrono::Utc::now() + chrono::Duration::minutes(15),
+        expires_at: resp.expires_at,
     };
 
     save_state(&state)?;
 
     tracing::info!(
-        "connected as worker '{}' (id: {})",
+        "connected as worker '{}' (id: {}, token expires: {})",
         resp.name,
-        resp.worker_id
+        resp.worker_id,
+        resp.expires_at
     );
 
     Ok(())

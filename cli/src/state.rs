@@ -1,6 +1,7 @@
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -39,7 +40,30 @@ pub fn save_state(state: &WorkerState) -> anyhow::Result<()> {
             .with_context(|| format!("failed to create config dir {}", parent.display()))?;
     }
     let data = serde_json::to_string_pretty(state).context("failed to serialize state")?;
-    std::fs::write(&path, data)
+
+    let mut file = create_restricted_file(&path)?;
+    file.write_all(data.as_bytes())
         .with_context(|| format!("failed to write state to {}", path.display()))?;
+
     Ok(())
+}
+
+#[cfg(unix)]
+fn create_restricted_file(path: &std::path::Path) -> anyhow::Result<std::fs::File> {
+    use std::fs::OpenOptions;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)
+        .with_context(|| format!("failed to open {} for writing", path.display()))
+}
+
+#[cfg(not(unix))]
+fn create_restricted_file(path: &std::path::Path) -> anyhow::Result<std::fs::File> {
+    std::fs::File::create(path)
+        .with_context(|| format!("failed to open {} for writing", path.display()))
 }

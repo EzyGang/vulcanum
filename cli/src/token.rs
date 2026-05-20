@@ -3,13 +3,12 @@ use chrono::Utc;
 use crate::client::ApiClient;
 use crate::state::WorkerState;
 
-const REFRESH_BUFFER_SECS: i64 = 60;
-
-/// Refreshes the access token if it expires within the buffer window.
-/// Returns the updated state (saved to disk) or an error.
-pub async fn ensure_valid_token(client: &ApiClient, state: &mut WorkerState) -> anyhow::Result<()> {
-    let now = Utc::now();
-    let threshold = now + chrono::Duration::seconds(REFRESH_BUFFER_SECS);
+pub async fn ensure_valid_token(
+    client: &ApiClient,
+    state: &mut WorkerState,
+    refresh_buffer_secs: i64,
+) -> anyhow::Result<()> {
+    let threshold = Utc::now() + chrono::Duration::seconds(refresh_buffer_secs);
 
     if state.expires_at <= threshold {
         let resp = client.refresh(&state.refresh_token).await?;

@@ -26,6 +26,7 @@ pub struct AppState {
     pub kaneo: KaneoClient,
     pub work_runs: WorkRunsRepository,
     pub work_notifier: WorkNotifier,
+    pub jwt_secret: String,
 }
 
 impl AppState {
@@ -60,6 +61,8 @@ impl AppState {
             cfg.stale_worker_threshold_secs,
         );
 
+        let jwt_secret = cfg.jwt_secret.clone();
+
         Ok(Self {
             auth,
             project_configs,
@@ -69,6 +72,7 @@ impl AppState {
             kaneo,
             work_runs,
             work_notifier,
+            jwt_secret,
         })
     }
 

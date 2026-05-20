@@ -3,6 +3,12 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+pub const CODE_TTL_MINUTES: i64 = 10;
+pub const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
+pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
+pub const TOKEN_LENGTH: usize = 64;
+pub const CODE_LENGTH: usize = 16;
+
 #[derive(Debug, Clone, sqlx::Type, Serialize)]
 #[sqlx(type_name = "worker_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
@@ -39,6 +45,7 @@ pub struct RefreshRequest {
 pub struct ConnectResponse {
     pub access_token: String,
     pub refresh_token: String,
+    pub expires_at: DateTime<Utc>,
     pub worker_id: Uuid,
     pub name: String,
 }

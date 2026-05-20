@@ -50,6 +50,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         kaneo,
         work_runs: work_runs_repo,
         work_notifier,
+        jwt_secret: cfg.jwt_secret.clone(),
     }
 }
 
