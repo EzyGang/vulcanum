@@ -6,6 +6,9 @@ use tokio::time::sleep;
 
 use crate::api_error::ApiError;
 use crate::client::{ApiClient, SubmitResultRequest};
+use crate::harness::host::HostHarness;
+use crate::harness::validate::is_environment_ready;
+use crate::harness::AgentHarness;
 use crate::state::{load_state, WorkerState};
 use crate::token::ensure_valid_token;
 
@@ -22,6 +25,13 @@ enum TickOutcome {
 }
 
 pub async fn run() -> anyhow::Result<()> {
+    if !is_environment_ready() {
+        tracing::error!("environment validation failed — run `vulcanum worker setup` for details");
+        return Err(anyhow::anyhow!(
+            "worker environment is not ready — run `vulcanum worker setup` to diagnose"
+        ));
+    }
+
     let mut state = load_state()?.ok_or_else(|| {
         anyhow::anyhow!(
             "no worker state found — run `vulcanum worker connect <instance> --code <code>` first"
@@ -52,7 +62,8 @@ pub async fn run() -> anyhow::Result<()> {
                 tracing::info!("received SIGINT, shutting down");
                 return Ok(());
             }
-            result = tick(&client, &mut state, refresh_buffer_secs) => {
+            result = tick(&client, &mut state, refresh_buffer_secs,
+            ) => {
                 match result {
                     TickOutcome::Success => {
                         backoff_ms = INITIAL_BACKOFF_MS;
@@ -131,16 +142,46 @@ async fn handle_job(client: &ApiClient, state: &WorkerState, job_id: uuid::Uuid)
         job.prompt_text.len()
     );
 
-    let start = std::time::Instant::now();
-    let _ = job.prompt_text;
+    let workdir = std::env::temp_dir().join(format!("vulcanum-work-{}", job_id));
+    if let Err(e) = std::fs::create_dir_all(&workdir) {
+        return TickOutcome::Fatal(format!("failed to create workdir: {e}"));
+    }
 
-    let elapsed = start.elapsed();
+    let harness = HostHarness::new();
+    let limits = crate::harness::ResourceLimits::default();
+    let secrets = std::collections::HashMap::new();
+
+    let harness_result = match harness
+        .spawn(&job.prompt_text, &workdir, &secrets, &limits)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("job {} execution failed: {}", job_id, e);
+            let result = SubmitResultRequest {
+                pr_url: String::new(),
+                exit_code: 1,
+                tokens_used: 0,
+                duration_ms: 0,
+            };
+            if let Err(e) = client
+                .submit_result(job_id, &result, &state.access_token)
+                .await
+            {
+                if is_fatal_request_error(&e) {
+                    return TickOutcome::Fatal(format!("submit_result failed: {:#}", e));
+                }
+                return TickOutcome::Transient;
+            }
+            return TickOutcome::Success;
+        }
+    };
 
     let result = SubmitResultRequest {
-        pr_url: String::new(),
-        exit_code: 0,
-        tokens_used: 0,
-        duration_ms: elapsed.as_millis() as i32,
+        pr_url: harness_result.pr_url.unwrap_or_default(),
+        exit_code: harness_result.exit_code,
+        tokens_used: harness_result.tokens_used,
+        duration_ms: harness_result.duration_ms,
     };
 
     if let Err(e) = client
@@ -153,7 +194,14 @@ async fn handle_job(client: &ApiClient, state: &WorkerState, job_id: uuid::Uuid)
         return TickOutcome::Transient;
     }
 
-    tracing::info!("job {} completed in {}ms", job_id, elapsed.as_millis());
+    tracing::info!(
+        "job {} completed in {}ms (exit: {})",
+        job_id,
+        harness_result.duration_ms,
+        harness_result.exit_code
+    );
+
+    let _ = std::fs::remove_dir_all(&workdir);
 
     TickOutcome::Success
 }
