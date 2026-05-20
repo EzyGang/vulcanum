@@ -49,6 +49,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         kaneo,
         work_runs: work_runs_repo,
         work_notifier,
+        jwt_secret: cfg.jwt_secret.clone(),
     }
 }
 
@@ -98,6 +99,7 @@ async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
 
     let body: serde_json::Value = test::read_body_json(resp).await;
     assert!(body["access_token"].is_string());
+    assert!(body["expires_at"].is_string());
     assert_eq!(body["name"], "handler-test");
 }
 

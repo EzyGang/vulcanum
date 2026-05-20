@@ -52,7 +52,20 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         kaneo,
         work_runs: work_runs_repo,
         work_notifier,
+        jwt_secret: cfg.jwt_secret.clone(),
     }
+}
+
+fn build_worker_token(worker_id: Uuid) -> String {
+    let exp = chrono::Utc::now() + chrono::Duration::minutes(15);
+    let claims = json!({"sub": worker_id.to_string(), "exp": exp.timestamp()});
+    let token = jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &jsonwebtoken::EncodingKey::from_secret("test-secret".as_bytes()),
+    )
+    .expect("should build token");
+    format!("Bearer {token}")
 }
 
 #[sqlx::test]
@@ -68,7 +81,8 @@ async fn poll_returns_204_when_no_work(pool: sqlx::PgPool) {
     .await;
 
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/poll?worker_id={worker_id}"))
+        .uri("/api/v1/poll")
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -93,7 +107,8 @@ async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
     .await;
 
     let req = test::TestRequest::get()
-        .uri(&format!("/api/v1/poll?worker_id={worker_id}"))
+        .uri("/api/v1/poll")
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -106,6 +121,7 @@ async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn get_job_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "test-getter").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-test").await;
 
@@ -118,6 +134,7 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
 
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/jobs/{wr_id}"))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -131,6 +148,7 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn get_job_returns_404_for_missing(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "test-missing-getter").await;
 
     let app = test::init_service(
         App::new()
@@ -141,6 +159,7 @@ async fn get_job_returns_404_for_missing(pool: sqlx::PgPool) {
 
     let req = test::TestRequest::get()
         .uri(&format!("/api/v1/jobs/{}", Uuid::new_v4()))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -163,7 +182,7 @@ async fn ack_job_returns_200(pool: sqlx::PgPool) {
 
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
-        .set_json(json!({"worker_id": worker_id}))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -191,14 +210,14 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
 
     let req_a = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
-        .set_json(json!({"worker_id": worker_a}))
+        .insert_header(("Authorization", build_worker_token(worker_a).as_str()))
         .to_request();
     let resp_a = test::call_service(&app, req_a).await;
     assert_eq!(resp_a.status(), 200);
 
     let req_b = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
-        .set_json(json!({"worker_id": worker_b}))
+        .insert_header(("Authorization", build_worker_token(worker_b).as_str()))
         .to_request();
     let resp_b = test::call_service(&app, req_b).await;
     assert_eq!(resp_b.status(), 409);
@@ -220,12 +239,13 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
 
     let ack_req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
-        .set_json(json!({"worker_id": worker_id}))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .to_request();
     test::call_service(&app, ack_req).await;
 
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/result"))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .set_json(json!({
             "pr_url": "https://github.com/test/pr/1",
             "exit_code": 0,
@@ -248,6 +268,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "test-early-result").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-early-result").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-early-result").await;
 
@@ -260,6 +281,7 @@ async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
 
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/result"))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .set_json(json!({
             "pr_url": "",
             "exit_code": 0,
@@ -270,4 +292,41 @@ async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
     let resp = test::call_service(&app, req).await;
 
     assert_eq!(resp.status(), 409);
+}
+
+#[sqlx::test]
+async fn poll_rejects_missing_auth(pool: sqlx::PgPool) {
+    let state = build_state(pool.clone());
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get().uri("/api/v1/poll").to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 401);
+}
+
+#[sqlx::test]
+async fn poll_rejects_invalid_token(pool: sqlx::PgPool) {
+    let state = build_state(pool.clone());
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/poll")
+        .insert_header(("Authorization", "Bearer garbage"))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 401);
 }

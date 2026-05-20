@@ -5,16 +5,11 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::services::workers::errors::WorkersError;
+use crate::services::workers::model;
 use crate::services::workers::model::{
     CodeResponse, ConnectRequest, ConnectResponse, RefreshRequest, RefreshResponse,
 };
 use crate::services::workers::service::WorkersService;
-
-const CODE_TTL_MINUTES: i64 = 10;
-const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
-const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
-const TOKEN_LENGTH: usize = 64;
-const CODE_LENGTH: usize = 16;
 
 impl WorkersService {
     pub async fn generate_code(&self) -> CodeResponse {
@@ -23,11 +18,11 @@ impl WorkersService {
 
         let code: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
-            .take(CODE_LENGTH)
+            .take(model::CODE_LENGTH)
             .map(char::from)
             .collect();
 
-        let expires_at = Utc::now() + Duration::minutes(CODE_TTL_MINUTES);
+        let expires_at = Utc::now() + Duration::minutes(model::CODE_TTL_MINUTES);
         codes.insert(code.clone(), expires_at);
 
         CodeResponse { code, expires_at }
@@ -41,9 +36,9 @@ impl WorkersService {
             return Err(WorkersError::CodeExpired);
         }
 
-        let refresh_token = generate_random_token(TOKEN_LENGTH);
+        let refresh_token = generate_random_token(model::TOKEN_LENGTH);
         let refresh_hash = hash_token(&refresh_token);
-        let refresh_expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_TTL_DAYS);
+        let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
 
         let worker = self
             .repo
@@ -56,11 +51,12 @@ impl WorkersService {
             )
             .await?;
 
-        let (access_token, _expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
+        let (access_token, expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
 
         Ok(ConnectResponse {
             access_token,
             refresh_token,
+            expires_at,
             worker_id: worker.id,
             name: worker.name,
         })
@@ -77,9 +73,9 @@ impl WorkersService {
             return Err(WorkersError::RefreshTokenExpired);
         }
 
-        let new_refresh_token = generate_random_token(TOKEN_LENGTH);
+        let new_refresh_token = generate_random_token(model::TOKEN_LENGTH);
         let new_hash = hash_token(&new_refresh_token);
-        let new_expires_at = Utc::now() + Duration::days(REFRESH_TOKEN_TTL_DAYS);
+        let new_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
 
         let updated = self
             .repo
@@ -123,7 +119,7 @@ fn build_jwt(
     worker_id: Uuid,
     secret: &str,
 ) -> Result<(String, DateTime<Utc>), jsonwebtoken::errors::Error> {
-    let exp = Utc::now() + Duration::minutes(ACCESS_TOKEN_TTL_MINUTES);
+    let exp = Utc::now() + Duration::minutes(model::ACCESS_TOKEN_TTL_MINUTES);
     let claims = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &serde_json::json!({"sub": worker_id.to_string(), "exp": exp.timestamp()}),

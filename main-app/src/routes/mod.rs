@@ -1,6 +1,8 @@
 pub mod auth;
 pub mod jobs;
 pub mod project_configs;
+pub mod status;
+pub mod worker_auth;
 pub mod workers;
 
 use actix_web::web;
@@ -11,6 +13,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/auth/login", web::post().to(auth::login))
             .route("/auth/verify", web::get().to(auth::verify))
             .route("/poll", web::get().to(jobs::poll))
+            .route("/status", web::get().to(status::get))
             .service(
                 web::scope("/jobs")
                     .route("/{id}", web::get().to(jobs::get_job))

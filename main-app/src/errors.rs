@@ -29,6 +29,8 @@ pub enum AppError {
     WorkRunNotFound,
     #[error("work run already claimed")]
     AlreadyClaimed,
+    #[error("work run not owned by this worker")]
+    NotOwned,
     #[error("invalid status transition")]
     InvalidStatusTransition,
     #[error("internal server error")]
@@ -67,6 +69,9 @@ impl ResponseError for AppError {
             }),
             Self::AlreadyClaimed => HttpResponse::Conflict().json(ErrorBody {
                 error: "Work run already claimed".to_owned(),
+            }),
+            Self::NotOwned => HttpResponse::Forbidden().json(ErrorBody {
+                error: "Work run not owned by this worker".to_owned(),
             }),
             Self::InvalidStatusTransition => HttpResponse::Conflict().json(ErrorBody {
                 error: "Invalid status transition".to_owned(),
@@ -112,6 +117,7 @@ impl From<WorkRunsError> for AppError {
         match err {
             WorkRunsError::NotFound => Self::WorkRunNotFound,
             WorkRunsError::AlreadyClaimed => Self::AlreadyClaimed,
+            WorkRunsError::NotOwned => Self::NotOwned,
             WorkRunsError::InvalidStatusTransition => Self::InvalidStatusTransition,
             WorkRunsError::Database(_) => Self::Internal,
         }
