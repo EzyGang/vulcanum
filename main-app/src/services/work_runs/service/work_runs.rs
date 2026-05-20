@@ -53,6 +53,7 @@ impl WorkRunsService {
     pub async fn submit_result(
         &self,
         id: Uuid,
+        worker_id: Uuid,
         params: SubmitResultParams,
     ) -> Result<WorkRun, WorkRunsError> {
         let status = if params.exit_code == 0 {
@@ -60,6 +61,16 @@ impl WorkRunsService {
         } else {
             WorkRunStatus::Failed
         };
+
+        let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+
+        if !matches!(run.status, WorkRunStatus::Running) {
+            return Err(WorkRunsError::InvalidStatusTransition);
+        }
+
+        if run.worker_id != Some(worker_id) {
+            return Err(WorkRunsError::NotOwned);
+        }
 
         self.work_runs_repo
             .set_result(

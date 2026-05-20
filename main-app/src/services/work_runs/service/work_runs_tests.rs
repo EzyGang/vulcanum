@@ -110,7 +110,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         duration_ms: 30000,
     };
     let job = svc
-        .submit_result(wr_id, params)
+        .submit_result(wr_id, worker_id, params)
         .await
         .expect("Should succeed");
 
@@ -140,7 +140,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         duration_ms: 5000,
     };
     let job = svc
-        .submit_result(wr_id, params)
+        .submit_result(wr_id, worker_id, params)
         .await
         .expect("Should succeed");
 
@@ -150,7 +150,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
-    let _worker_id = test_helpers::insert_worker(&pool, "early-result").await;
+    let worker_id = test_helpers::insert_worker(&pool, "early-result").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-early-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-early").await;
 
@@ -161,11 +161,37 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         duration_ms: 0,
     };
     let err = svc
-        .submit_result(wr_id, params)
+        .submit_result(wr_id, worker_id, params)
         .await
         .expect_err("Should fail on pending job");
 
     assert!(matches!(err, WorkRunsError::InvalidStatusTransition));
+}
+
+#[sqlx::test]
+async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_a = test_helpers::insert_worker(&pool, "owner-a").await;
+    let worker_b = test_helpers::insert_worker(&pool, "intruder-b").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-owner-1").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-owner").await;
+
+    svc.ack_job(wr_id, worker_a)
+        .await
+        .expect("Worker A should ack");
+
+    let params = SubmitResultParams {
+        pr_url: String::new(),
+        exit_code: 0,
+        tokens_used: 0,
+        duration_ms: 0,
+    };
+    let err = svc
+        .submit_result(wr_id, worker_b, params)
+        .await
+        .expect_err("Worker B should not submit result");
+
+    assert!(matches!(err, WorkRunsError::NotOwned));
 }
 
 #[sqlx::test]

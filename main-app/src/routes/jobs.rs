@@ -56,7 +56,7 @@ pub async fn submit_result(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
     body: web::Json<SubmitResultBody>,
-    _auth: WorkerAuth,
+    auth: WorkerAuth,
 ) -> Result<HttpResponse, AppError> {
     let b = body.into_inner();
     let params = SubmitResultParams {
@@ -65,7 +65,10 @@ pub async fn submit_result(
         tokens_used: b.tokens_used,
         duration_ms: b.duration_ms,
     };
-    let job = state.jobs.submit_result(path.into_inner(), params).await?;
+    let job = state
+        .jobs
+        .submit_result(path.into_inner(), auth.worker_id, params)
+        .await?;
 
     Ok(HttpResponse::Ok().json(job))
 }

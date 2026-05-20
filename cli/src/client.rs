@@ -3,6 +3,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::api_error::ApiError;
+
 #[derive(Debug, Serialize)]
 struct ConnectRequest<'a> {
     code: &'a str,
@@ -36,11 +38,6 @@ pub struct StatusResponse {
     pub access_token_ttl_minutes: i64,
     pub code_ttl_minutes: i64,
     pub refresh_token_ttl_days: i64,
-}
-
-#[derive(Debug, Deserialize)]
-struct ErrorBody {
-    error: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -87,7 +84,7 @@ impl ApiClient {
             .await
             .context("connect request failed")?;
 
-        map_response(resp).await
+        map_response(resp).await.map_err(Into::into)
     }
 
     pub async fn refresh(&self, refresh_token: &str) -> anyhow::Result<RefreshResponse> {
@@ -101,7 +98,7 @@ impl ApiClient {
             .await
             .context("refresh request failed")?;
 
-        map_response(resp).await
+        map_response(resp).await.map_err(Into::into)
     }
 
     pub async fn status(&self) -> anyhow::Result<StatusResponse> {
@@ -113,7 +110,7 @@ impl ApiClient {
             .await
             .context("status request failed")?;
 
-        map_response(resp).await
+        map_response(resp).await.map_err(Into::into)
     }
 
     pub async fn poll(&self, access_token: &str) -> anyhow::Result<Option<Uuid>> {
@@ -144,7 +141,7 @@ impl ApiClient {
             .await
             .context("get job request failed")?;
 
-        map_response(resp).await
+        map_response(resp).await.map_err(Into::into)
     }
 
     pub async fn ack_job(&self, job_id: Uuid, access_token: &str) -> anyhow::Result<()> {
@@ -161,9 +158,7 @@ impl ApiClient {
             return Ok(());
         }
 
-        let status = resp.status().as_u16();
-        let body = resp.text().await.unwrap_or_default();
-        anyhow::bail!("ack returned {status}: {body}");
+        Err(build_error(resp).await.into())
     }
 
     pub async fn submit_result(
@@ -186,24 +181,26 @@ impl ApiClient {
             return Ok(());
         }
 
-        let status = resp.status().as_u16();
-        let body = resp.text().await.unwrap_or_default();
-        anyhow::bail!("submit result returned {status}: {body}");
+        Err(build_error(resp).await.into())
     }
+}
+
+async fn build_error(resp: reqwest::Response) -> ApiError {
+    let status = resp.status().as_u16();
+    let body = resp.text().await.unwrap_or_default();
+    ApiError { status, body }
 }
 
 async fn map_response<T: serde::de::DeserializeOwned>(
     resp: reqwest::Response,
-) -> anyhow::Result<T> {
+) -> Result<T, ApiError> {
     if resp.status().is_success() {
-        return resp.json().await.context("failed to parse response body");
+        let status = resp.status().as_u16();
+        return resp.json().await.map_err(|e| ApiError {
+            status,
+            body: e.to_string(),
+        });
     }
 
-    let status = resp.status().as_u16();
-    let body = resp.text().await.unwrap_or_default();
-
-    match serde_json::from_str::<ErrorBody>(&body) {
-        Ok(e) => anyhow::bail!("{status}: {}", e.error),
-        Err(_) => anyhow::bail!("{status}: {}", body),
-    }
+    Err(build_error(resp).await)
 }

@@ -9,6 +9,8 @@ pub enum WorkRunsError {
     AlreadyClaimed,
     #[error("invalid status transition")]
     InvalidStatusTransition,
+    #[error("work run not owned by this worker")]
+    NotOwned,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }

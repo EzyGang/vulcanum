@@ -4,6 +4,7 @@ use std::time::Duration;
 use tokio::signal;
 use tokio::time::sleep;
 
+use crate::api_error::ApiError;
 use crate::client::{ApiClient, SubmitResultRequest};
 use crate::state::{load_state, WorkerState};
 use crate::token::ensure_valid_token;
@@ -158,11 +159,9 @@ async fn handle_job(client: &ApiClient, state: &WorkerState, job_id: uuid::Uuid)
 }
 
 fn is_fatal_token_error(e: &anyhow::Error) -> bool {
-    let msg = e.to_string();
-    msg.contains("401")
+    e.downcast_ref::<ApiError>().is_some_and(|a| a.is_fatal())
 }
 
 fn is_fatal_request_error(e: &anyhow::Error) -> bool {
-    let msg = e.to_string();
-    msg.contains("401") || msg.contains("403")
+    e.downcast_ref::<ApiError>().is_some_and(|a| a.is_fatal())
 }

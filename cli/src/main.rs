@@ -1,3 +1,4 @@
+mod api_error;
 mod client;
 mod commands;
 mod state;
