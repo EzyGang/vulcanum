@@ -37,7 +37,7 @@ enum WorkerCommand {
     },
     /// Run the worker daemon (poll loop, job execution)
     Daemon,
-    /// Validate worker environment and report missing components
+    /// Install Docker, Kata Containers, pull agent image, and configure systemd
     Setup,
 }
 
