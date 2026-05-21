@@ -1,6 +1,8 @@
 use uuid::Uuid;
 
+use crate::services::kaneo::client::KaneoClient;
 use crate::services::poller::notifier::WorkNotifier;
+use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -13,8 +15,10 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     WorkRunsService::new(
         WorkRunsRepository::new(),
         WorkersRepository::new(),
+        ProjectConfigsRepository::new(),
         pool,
         WorkNotifier::new(),
+        KaneoClient::new("cloud.kaneo.app".to_owned(), String::new()),
         120,
     )
 }

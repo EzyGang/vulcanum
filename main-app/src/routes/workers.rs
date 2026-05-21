@@ -26,6 +26,11 @@ pub async fn refresh(
     Ok(HttpResponse::Ok().json(resp))
 }
 
+pub async fn list(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
+    let workers = state.workers.list_all().await?;
+    Ok(HttpResponse::Ok().json(workers))
+}
+
 pub async fn delete(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,

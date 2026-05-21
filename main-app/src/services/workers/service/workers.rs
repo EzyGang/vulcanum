@@ -91,6 +91,12 @@ impl WorkersService {
         })
     }
 
+    pub async fn list_all(
+        &self,
+    ) -> Result<Vec<crate::services::workers::model::Worker>, WorkersError> {
+        self.repo.list_all(&self.db).await
+    }
+
     pub async fn delete_worker(&self, worker_id: uuid::Uuid) -> Result<(), WorkersError> {
         self.repo.delete(&self.db, worker_id).await
     }

@@ -34,6 +34,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             )
             .service(
                 web::scope("/workers")
+                    .route("", web::get().to(workers::list))
                     .route("/codes", web::post().to(workers::generate_code))
                     .route("/connect", web::post().to(workers::connect))
                     .route("/refresh", web::post().to(workers::refresh))

@@ -2,6 +2,7 @@ use actix_web::{test, web, App};
 
 use crate::app_state::AppState;
 use crate::routes;
+use crate::test_helpers;
 
 fn build_state(pool: sqlx::PgPool) -> AppState {
     let kaneo = crate::services::kaneo::client::KaneoClient::new(
@@ -19,6 +20,8 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();
     let work_runs_repo = crate::services::work_runs::repository::WorkRunsRepository::new();
+    let project_configs_repo =
+        crate::services::project_configs::repository::ProjectConfigsRepository::new();
     let work_notifier = crate::services::poller::notifier::WorkNotifier::new();
 
     AppState {
@@ -29,7 +32,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             ),
         ),
         project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
-            crate::services::project_configs::repository::ProjectConfigsRepository::new(),
+            project_configs_repo.clone(),
             pool.clone(),
             kaneo.clone(),
         ),
@@ -41,8 +44,10 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         jobs: crate::services::work_runs::service::WorkRunsService::new(
             work_runs_repo.clone(),
             workers_repo,
+            project_configs_repo,
             pool.clone(),
             work_notifier.clone(),
+            kaneo.clone(),
             120,
         ),
         db_pool: pool,
@@ -207,4 +212,25 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
     let resp = test::call_service(&app, req).await;
 
     assert_eq!(resp.status(), 204);
+}
+
+#[sqlx::test]
+async fn list_workers_returns_200(pool: sqlx::PgPool) {
+    test_helpers::insert_worker(&pool, "list-test-1").await;
+    test_helpers::insert_worker(&pool, "list-test-2").await;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool)))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get().uri("/api/v1/workers").to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 200);
+
+    let body: Vec<serde_json::Value> = test::read_body_json(resp).await;
+    assert!(body.len() >= 2);
 }

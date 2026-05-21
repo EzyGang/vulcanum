@@ -105,7 +105,6 @@ impl WorkersRepository {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub async fn list_all<'c, Q: Queryer<'c>>(&self, db: Q) -> Result<Vec<Worker>, WorkersError> {
         sqlx::query_as!(
             Worker,
