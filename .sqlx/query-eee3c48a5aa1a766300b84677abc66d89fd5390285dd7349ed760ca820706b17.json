@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT external_task_ref, prompt_text FROM work_runs WHERE project_config_id = $1 ORDER BY external_task_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "prompt_text",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "eee3c48a5aa1a766300b84677abc66d89fd5390285dd7349ed760ca820706b17"
+}
