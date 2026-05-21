@@ -1,0 +1,50 @@
+use super::template::{render_template, TemplateVars};
+
+#[test]
+fn interpolates_all_vars() {
+    let template = "Task: {{task_title}}\nBody: {{task_body}}\nRepo: {{repo_url}}";
+    let vars = TemplateVars {
+        task_title: "Fix login bug",
+        task_body: "The login form crashes on submit.",
+        repo_url: "https://github.com/org/repo",
+    };
+    let result = render_template(template, &vars);
+
+    assert!(result.contains("Fix login bug"));
+    assert!(result.contains("The login form crashes on submit."));
+    assert!(result.contains("https://github.com/org/repo"));
+    assert!(!result.contains("{{"));
+}
+
+#[test]
+fn preserves_unknown_vars() {
+    let template = "Unknown {{foo}} and {{bar}}";
+    let vars = TemplateVars {
+        task_title: "",
+        task_body: "",
+        repo_url: "",
+    };
+    let result = render_template(template, &vars);
+    assert_eq!(result, "Unknown {{foo}} and {{bar}}");
+}
+
+#[test]
+fn handles_empty_template() {
+    let vars = TemplateVars {
+        task_title: "",
+        task_body: "",
+        repo_url: "",
+    };
+    assert_eq!(render_template("", &vars), "");
+}
+
+#[test]
+fn handles_partial_template() {
+    let template = "Only title: {{task_title}}";
+    let vars = TemplateVars {
+        task_title: "My Task",
+        task_body: "",
+        repo_url: "",
+    };
+    assert_eq!(render_template(template, &vars), "Only title: My Task");
+}

@@ -6,6 +6,7 @@ use sqlx::PgPool;
 use crate::services::kaneo::client::TaskFetcher;
 use crate::services::kaneo::errors::KaneoError;
 use crate::services::poller::notifier::WorkNotifier;
+use crate::services::poller::template::{self, TemplateVars};
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::model::WorkRunStatus;
@@ -112,10 +113,18 @@ impl PollerService {
 
         let mut inserted = 0;
         for task in &tasks {
+            let prompt_text = template::render_template(
+                &config.prompt_template,
+                &TemplateVars {
+                    task_title: &task.title,
+                    task_body: task.description.as_deref().unwrap_or(""),
+                    repo_url: &config.repo_url,
+                },
+            );
             let params = InsertWorkRunParams {
                 external_task_ref: task.id.clone(),
                 project_config_id: config.id,
-                prompt_text: config.prompt_template.clone(),
+                prompt_text,
                 status: WorkRunStatus::Pending,
             };
 

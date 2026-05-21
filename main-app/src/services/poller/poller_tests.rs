@@ -125,15 +125,19 @@ async fn poller_inserts_tasks(pool: PgPool) {
     let service = build_service(mock, pool.clone(), notifier);
     service.poll_once().await;
 
-    let row = sqlx::query!(
-        "SELECT COUNT(*) as count FROM work_runs WHERE project_config_id = $1",
+    let rows = sqlx::query!(
+        "SELECT external_task_ref, prompt_text FROM work_runs WHERE project_config_id = $1 ORDER BY external_task_ref",
         project_id,
     )
-    .fetch_one(&pool)
+    .fetch_all(&pool)
     .await
     .expect("Should query work_runs");
 
-    assert_eq!(row.count.unwrap(), 2, "Should insert 2 work_runs");
+    assert_eq!(rows.len(), 2, "Should insert 2 work_runs");
+    assert_eq!(rows[0].external_task_ref, "task-1");
+    assert_eq!(rows[0].prompt_text, "Review Fix login bug");
+    assert_eq!(rows[1].external_task_ref, "task-2");
+    assert_eq!(rows[1].prompt_text, "Review Add dark mode");
 }
 
 #[sqlx::test]
