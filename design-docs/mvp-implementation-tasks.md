@@ -13,8 +13,8 @@
 
 - [ ] **Worker daemon binary**: `vulcanum` with subcommands (`connect`, `daemon`, future: `setup-worker`, `tui`). Tokio-based async runtime
 - [ ] **Poll loop in worker**: `GET /poll` every 15s, backoff on unreachable. Token refresh before expiry. Worker status updates (idle/busy)
-- [ ] **Firecracker microVM spawning**: boot VM from pre-built kernel + rootfs image, configure tmpfs workdir, network egress rules, CPU/memory limits. VM lifecycle management (boot, wait, collect, destroy)
-- [ ] **OpenCode harness adapter**: spawn OpenCode inside μVM with rendered prompt + secrets in env. Parse output (exit code, PR URL, token usage). Timeout enforcement
+- [ ] **Kata Containers isolation**: run container via Docker with `--runtime=kata-runtimes`, mount tmpfs workdir as volume, network egress-only, CPU/memory limits. Container lifecycle management (run, wait, collect, destroy)
+- [ ] **OpenCode harness adapter**: spawn OpenCode inside Kata container with rendered prompt + secrets in env. Parse output (exit code, PR URL, token usage). Timeout enforcement
 - [ ] **Prompt template rendering**: interpolate `{task_title}`, `{task_body}`, `{repo_url}`, `{branch}` into per-project template. Default template shipped in code
 - [ ] **Result submission + Kaneo sync**: worker POSTs `/jobs/:id/result` → main app PATCHes Kaneo status to target column, posts comment with PR link. Handle failure case (status back to pickup)
 
@@ -28,8 +28,8 @@
 
 ## P3 — Developer Experience
 
-- [ ] **Worker setup script**: `vulcanum setup-worker` installs Firecracker + jailer, pulls rootfs image, installs OpenCode, configures systemd. For Ubuntu 22.04+ initially
-- [ ] **Rootfs image build**: minimal Linux kernel + rootfs with OpenCode, git, curl, SSH. Build script or pre-built image download
+- [ ] **Worker setup script**: `vulcanum setup-worker` installs Docker + kata-runtime, pulls container image, installs OpenCode, configures systemd. For Ubuntu 22.04+ initially
+- [ ] **Container image build**: Dockerfile producing image with OpenCode, git, curl, SSH. Build script or pre-built image push
 - [ ] **Basic API UI**: minimal page for generating worker codes, listing workers, toggling projects on/off. Can be static HTML served by actix-web
 - [ ] **Logging**: `tracing` crate, structured JSON in production, token usage metrics per run
 
@@ -41,7 +41,7 @@
 - Agent-vault proxy — secrets flow through main app over HTTPS
 - Vulcanum API SKILL.md — CLI + API is enough for now
 - TUI — `vulcanum connect` command + API is the interface
-- macOS support — Firecracker requires Linux KVM
+- macOS support — Kata Containers requires Linux KVM
 - Verifier agent (second OpenCode run) — human reviews PRs
 - CI status polling in main app — it's a metadata broker, not a CI watcher
 - Linear/Jira integrations — Kaneo only

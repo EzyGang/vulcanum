@@ -19,16 +19,16 @@ Vulcanum has two components:
 ### Worker Daemon
 - Single binary: `vulcanum connect --instance <url> --code <code>` → registers, gets token pair, daemonizes
 - Short-polls main app for pending work (hits cache flag, not DB)
-- Spawns OpenCode inside a Firecracker microVM on each work item
+- Spawns OpenCode inside a Kata Container VM on each work item
 - Reports results back, then idles
-- Linux-only (requires KVM for Firecracker)
+- Linux-only (requires KVM for Kata Containers)
 
 ## How It Works
 
 ```
 Kaneo (todo column)  →  Main App polls, creates work_run  →  Worker polls cache flag
                                                               ↓
-                                                         Worker boots Firecracker μVM
+                                                          Worker runs Kata container
                                                          OpenCode does work, submits PR
                                                               ↓
 Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /result
@@ -39,7 +39,7 @@ Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /re
 | Domain | Decision |
 |---|---|
 | **Harness** | OpenCode only |
-| **Isolation** | Firecracker microVMs (Linux/KVM required) |
+| **Isolation** | Kata Containers (Linux/KVM required) |
 | **Secrets** | Plain HTTPS (single-user, own infra; agent-vault for v2) |
 | **Communication** | HTTP polling (in-memory cache flags, stateless) |
 | **Task source** | Kaneo only — per-project opt-in with configurable column mapping |
@@ -53,7 +53,7 @@ Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /re
 | Crate | Purpose | Status |
 |---|---|---|
 | `main-app/` | Control panel server (actix-web + SQLx) | Active |
-| `host-server/` | Worker daemon (polling, Firecracker μVM, harness spawning) | Placeholder |
+| `host-server/` | Worker daemon (polling, Kata container, harness spawning) | Placeholder |
 | `cli/` | Worker bootstrap (`vulcanum connect`) + future TUI | Placeholder |
 | `shared/` | Shared types and utilities | Empty |
 | `design-docs/` | Architecture analysis, technology research, diagrams | Active |

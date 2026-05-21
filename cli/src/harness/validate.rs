@@ -20,9 +20,9 @@ pub fn validate_environment() -> Vec<ValidationIssue> {
 
     check_kvm(&mut issues);
     check_binary("opencode", &mut issues, Severity::Critical);
-    check_binary("firecracker", &mut issues, Severity::Warning);
-    check_binary("jailer", &mut issues, Severity::Warning);
-    check_rootfs(&mut issues);
+    check_binary("docker", &mut issues, Severity::Warning);
+    check_binary("kata-runtime", &mut issues, Severity::Warning);
+    check_kata_image(&mut issues);
 
     issues
 }
@@ -85,18 +85,14 @@ fn check_binary(name: &str, issues: &mut Vec<ValidationIssue>, severity: Severit
     }
 }
 
-fn check_rootfs(issues: &mut Vec<ValidationIssue>) {
-    let path = std::env::var("FIRECRACKER_ROOTFS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/var/lib/vulcanum/rootfs.ext4"));
+fn check_kata_image(issues: &mut Vec<ValidationIssue>) {
+    let image = std::env::var("KATA_IMAGE").unwrap_or_else(|_| String::new());
 
-    if !path.exists() {
+    if image.is_empty() {
         issues.push(ValidationIssue {
             severity: Severity::Warning,
-            message: format!(
-                "rootfs image not found at {} — set FIRECRACKER_ROOTFS or run setup",
-                path.display()
-            ),
+            message: "KATA_IMAGE not set — set it to the container image reference or run setup"
+                .to_owned(),
         });
     }
 }

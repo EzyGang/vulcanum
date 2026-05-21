@@ -7,14 +7,14 @@ fn display_install() {
 }
 
 #[test]
-fn display_vm_boot() {
-    let e = HarnessError::VmBoot("bad config".to_owned());
-    assert_eq!(e.to_string(), "vm boot error: bad config");
+fn display_container_boot() {
+    let e = HarnessError::ContainerBoot("bad config".to_owned());
+    assert_eq!(e.to_string(), "container boot error: bad config");
 }
 
 #[test]
-fn display_vm_timeout() {
-    let e = HarnessError::VmTimeout(1_800);
+fn display_timeout() {
+    let e = HarnessError::Timeout(1_800);
     assert_eq!(e.to_string(), "job timed out after 1800s");
 }
 
