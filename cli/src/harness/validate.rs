@@ -22,8 +22,6 @@ pub fn validate_environment() -> Vec<ValidationIssue> {
     check_binary("opencode", &mut issues, Severity::Critical);
     check_binary("docker", &mut issues, Severity::Warning);
     check_binary("kata-runtime", &mut issues, Severity::Warning);
-    check_kata_image(&mut issues);
-
     issues
 }
 
@@ -82,18 +80,6 @@ fn check_binary(name: &str, issues: &mut Vec<ValidationIssue>, severity: Severit
                 message: format!("{name} not found in PATH"),
             });
         }
-    }
-}
-
-fn check_kata_image(issues: &mut Vec<ValidationIssue>) {
-    let image = std::env::var("KATA_IMAGE").unwrap_or_else(|_| String::new());
-
-    if image.is_empty() {
-        issues.push(ValidationIssue {
-            severity: Severity::Warning,
-            message: "KATA_IMAGE not set — set it to the container image reference or run setup"
-                .to_owned(),
-        });
     }
 }
 

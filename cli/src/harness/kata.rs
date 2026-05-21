@@ -65,7 +65,7 @@ impl AgentHarness for KataHarness {
             .arg(format!("--cpus={}", limits.vcpu_count))
             .arg(format!("--memory={}m", limits.memory_mib))
             .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+            .stderr(std::process::Stdio::inherit());
 
         for (key, value) in secrets {
             cmd.arg("-e").arg(format!("{key}={value}"));
@@ -118,8 +118,6 @@ impl AgentHarness for KataHarness {
 
         let pr_url = parse_pr_url(&stdout);
         let tokens_used = parse_token_usage(&stdout);
-
-        let _ = cleanup_container(&container_name).await;
 
         Ok(HarnessResult {
             exit_code: exit_status.code().unwrap_or(-1),
