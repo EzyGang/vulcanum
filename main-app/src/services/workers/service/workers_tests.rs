@@ -150,3 +150,21 @@ async fn refresh_with_invalid_token_fails(pool: sqlx::PgPool) {
 
     assert!(matches!(err, WorkersError::InvalidRefreshToken));
 }
+
+#[sqlx::test]
+async fn list_all_returns_workers(pool: sqlx::PgPool) {
+    let c = cfg();
+    let repo = WorkersRepository::new();
+    let svc = WorkersService::new(repo.clone(), pool.clone(), &c);
+    let expiry = Utc::now() + Duration::days(30);
+
+    repo.create(&pool, "l1", "h1", expiry, &serde_json::json!({}))
+        .await
+        .unwrap();
+    repo.create(&pool, "l2", "h2", expiry, &serde_json::json!({}))
+        .await
+        .unwrap();
+
+    let workers = svc.list_all().await.expect("Should list");
+    assert_eq!(workers.len(), 2);
+}

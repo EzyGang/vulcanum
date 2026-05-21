@@ -72,7 +72,8 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
-        self.work_runs_repo
+        let updated = self
+            .work_runs_repo
             .set_result(
                 &self.db,
                 id,
@@ -84,6 +85,64 @@ impl WorkRunsService {
                     status,
                 },
             )
+            .await?;
+
+        self.sync_kaneo_on_result(&run, &params, status).await;
+
+        Ok(updated)
+    }
+
+    async fn sync_kaneo_on_result(
+        &self,
+        run: &WorkRun,
+        params: &SubmitResultParams,
+        status: WorkRunStatus,
+    ) {
+        let project_config = match self
+            .project_configs_repo
+            .find_by_id(&self.db, run.project_config_id)
             .await
+        {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to look up project config {} for work_run {}: {}",
+                    run.project_config_id,
+                    run.id,
+                    e,
+                );
+                return;
+            }
+        };
+
+        let new_column = match status {
+            WorkRunStatus::Completed => &project_config.target_column,
+            _ => &project_config.pickup_column,
+        };
+
+        if let Err(e) = self
+            .kaneo
+            .update_task_status(&run.external_task_ref, new_column)
+            .await
+        {
+            tracing::warn!(
+                "Failed to update kaneo task {} status to {}: {}",
+                run.external_task_ref,
+                new_column,
+                e,
+            );
+        }
+
+        if let Err(e) = self
+            .kaneo
+            .add_comment(&run.external_task_ref, &format!("PR: {}", params.pr_url))
+            .await
+        {
+            tracing::warn!(
+                "Failed to add kaneo comment for task {}: {}",
+                run.external_task_ref,
+                e,
+            );
+        }
     }
 }

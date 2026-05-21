@@ -64,7 +64,6 @@ impl WorkRunsRepository {
         .map_err(WorkRunsError::from)
     }
 
-    #[allow(dead_code)]
     pub async fn find_by_id<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -84,7 +83,6 @@ impl WorkRunsRepository {
         .ok_or(WorkRunsError::NotFound)
     }
 
-    #[allow(dead_code)]
     pub async fn find_oldest_pending_id<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -97,7 +95,6 @@ impl WorkRunsRepository {
         .map_err(WorkRunsError::from)
     }
 
-    #[allow(dead_code)]
     pub async fn acknowledge<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -120,7 +117,6 @@ impl WorkRunsRepository {
         .ok_or(WorkRunsError::AlreadyClaimed)
     }
 
-    #[allow(dead_code)]
     pub async fn set_result<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

@@ -3,7 +3,7 @@ use serde::Serialize;
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, sqlx::Type, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, sqlx::Type, Serialize)]
 #[sqlx(type_name = "work_run_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum WorkRunStatus {

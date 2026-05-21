@@ -54,7 +54,6 @@ impl KaneoClient {
         Ok(filter_tasks_in_column(board, column_slug))
     }
 
-    #[allow(dead_code)]
     pub async fn update_task_status(
         &self,
         task_id: &str,
@@ -79,7 +78,6 @@ impl KaneoClient {
             .map_err(api_err)
     }
 
-    #[allow(dead_code)]
     pub async fn add_comment(&self, task_id: &str, content: &str) -> Result<(), KaneoError> {
         let client = self.build_client()?;
 

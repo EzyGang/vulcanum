@@ -56,8 +56,10 @@ impl AppState {
         let jobs = WorkRunsService::new(
             work_runs.clone(),
             workers_repo,
+            project_configs_repo.clone(),
             db_pool.clone(),
             work_notifier.clone(),
+            kaneo.clone(),
             cfg.stale_worker_threshold_secs,
         );
 
