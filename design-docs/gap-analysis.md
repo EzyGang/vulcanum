@@ -1,7 +1,7 @@
 # Vulcanum Architecture — Gap Analysis & MVP Scope
 
 **Date:** 2026-05-17
-**Status:** Revised for MVP — single-user, Linux/Firecracker, OpenCode-only, Kaneo-driven
+**Status:** Revised for MVP — single-user, Linux/Kata, OpenCode-only, Kaneo-driven
 
 ---
 
@@ -12,7 +12,7 @@ Vulcanum is a **thin metadata/trigger broker** between Kaneo and OpenCode. It po
 ### What's IN
 
 - Single-user, self-hosted, no auth gating on API (auth code remains in DB for future)
-- Linux-only workers with Firecracker microVM isolation
+- Linux-only workers with Kata Containers isolation
 - OpenCode as the sole agent harness
 - Kaneo as the sole task source — per-project configurable opt-in
 - HTTP short-polling (in-memory boolean cache flags, stateless)
@@ -28,7 +28,7 @@ Vulcanum is a **thin metadata/trigger broker** between Kaneo and OpenCode. It po
 - Agent-vault proxy (secrets flow through main app)
 - Vulcanum API SKILL.md (agent-native control surface)
 - TUI
-- macOS support (Firecracker requires Linux KVM)
+- macOS support (Kata Containers requires Linux KVM)
 - Verifier agent (second OpenCode run)
 - CI status checking in main app (it's a broker, not a CI watcher)
 - Linear/Jira integrations — Kaneo only
@@ -60,11 +60,11 @@ Kaneo                          Main App                        Worker
   │                                │──── 200 {work_spec} ─────────►│
   │                                │    (prompt, secrets, config)   │
   │                                │                               │
-  │                                │       Worker:                 │
-  │                                │       - writes OpenCode config │
-  │                                │       - boots Firecracker μVM  │
-  │                                │       - spawns OpenCode        │
-  │                                │       - waits for completion   │
+    │                                │       Worker:                 │
+    │                                │       - writes OpenCode config │
+    │                                │       - runs Kata container    │
+    │                                │       - spawns OpenCode        │
+    │                                │       - waits for completion   │
   │                                │                               │
   │  PATCH task → "in progress"    │                               │
   │◄───────────────────────────────│                               │
@@ -76,7 +76,7 @@ Kaneo                          Main App                        Worker
   │  post comment (PR link)        │                               │
   │◄───────────────────────────────│                               │
   │                                │                               │
-  │                                │       μVM destroyed            │
+    │                                │       container destroyed      │
 ```
 
 ---
@@ -160,16 +160,16 @@ CREATE TABLE work_runs (
 
 ---
 
-## 4. Worker Isolation (Firecracker)
+## 4. Worker Isolation (Kata Containers)
 
-- Worker machine needs Firecracker + `firecracker-jailer` pre-installed
-- Pre-built minimal Linux kernel + rootfs image with OpenCode, git, curl
-- Per-work Firecracker microVM:
-  - tmpfs workdir (ephemeral, destroyed on VM exit)
-  - Network egress
-  - CPU/memory limits at the VM level
-  - Secrets injected via env or config file inside VM
-- VM destroyed on completion — all state gone
+- Worker machine needs Docker + `kata-runtime` pre-installed
+- Pre-built container image with OpenCode, git, curl, SSH
+- Per-work Kata container:
+  - Ephemeral workdir mounted as Docker volume
+  - Network egress-only via Kata network policy
+  - CPU/memory limits via Docker resource flags
+  - Secrets injected as container environment variables
+- Container destroyed on completion — all state gone
 
 ---
 
@@ -212,11 +212,11 @@ Fetched live from Kaneo API. If a project lacks a progress column, that transiti
 | **P0** | Worker auth: registration codes → token pair | Workers can't connect without it |
 | **P0** | HTTP polling endpoints (worker ↔ server) | Core communication channel |
 | **P0** | Project config CRUD + status column mapping | Users configure what gets automated |
-| **P1** | Worker daemon: poll loop, Firecracker μVM boot | Actual work execution |
+| **P1** | Worker daemon: poll loop, Kata container run | Actual work execution |
 | **P1** | OpenCode harness adapter + prompt rendering | Agent execution |
 | **P1** | Result submission + Kaneo status sync | Close the loop |
 | **P2** | In-memory boolean cache for poll endpoint | Optimize — avoid DB hits on every short poll |
 | **P2** | Worker heartbeat / liveness (last_seen, timeouts) | Prevent silent failures |
 | **P2** | CLI: `vulcanum connect` command | Bootstrap flow for workers |
-| **P3** | Worker setup script (Firecracker + rootfs) | Automation for worker machine setup |
+| **P3** | Worker setup script (Docker + kata-runtime) | Automation for worker machine setup |
 | **P3** | Token rotation / revocation UI | Security lifecycle |

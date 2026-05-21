@@ -1,17 +1,17 @@
 #[derive(Debug, thiserror::Error)]
 #[allow(dead_code)]
 pub enum HarnessError {
-    /// Firecracker or jailer binaries are missing, or rootfs image not found.
+    /// Docker or kata-runtime are missing, or the container image is not pulled.
     #[error("install error: {0}")]
     Install(String),
 
-    /// The VM failed to boot, or its config was rejected by Firecracker.
-    #[error("vm boot error: {0}")]
-    VmBoot(String),
+    /// The Kata VM failed to boot, or the container could not be started.
+    #[error("container boot error: {0}")]
+    ContainerBoot(String),
 
     /// The job exceeded its configured maximum duration.
     #[error("job timed out after {0}s")]
-    VmTimeout(u64),
+    Timeout(u64),
 
     /// OpenCode exited with a non-zero status or crashed.
     #[error("opencode crashed: {0}")]

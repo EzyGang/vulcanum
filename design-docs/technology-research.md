@@ -1,52 +1,52 @@
 # Vulcanum Agent Orchestrator — Technology Research (MVP)
 
 **Date:** 2026-05-17 (MVP revision)
-**Status:** Scoped for MVP — Linux-only, Firecracker, OpenCode, Kaneo
+**Status:** Scoped for MVP — Linux-only, Kata Containers, OpenCode, Kaneo
 
 ---
 
-## 1. AGENT ISOLATION — Firecracker microVMs
+## 1. AGENT ISOLATION — Kata Containers
 
-### Why Firecracker
+### Why Kata Containers
 
-For MVP, we standardize on Firecracker. It provides hardware-level isolation (KVM) with near-native performance and sub-second boot times. Used by AWS Lambda and Fargate at enormous scale.
+For MVP, we standardize on Kata Containers. It provides hardware-level isolation (KVM) by running each container inside its own lightweight VM, with an OCI-compatible interface. Used by major cloud providers for secure multi-tenant container workloads.
 
-| Property | Firecracker |
+| Property | Kata Containers |
 |---|---|
-| **Isolation type** | microVM (own minimal kernel) |
+| **Isolation type** | Lightweight VM per container (KVM) |
 | **Isolation strength** | Very High (KVM hardware virtualization) |
-| **Startup time** | ~125ms–300ms |
-| **Memory overhead** | ~5–10MB per VM + guest kernel (~5MB) |
+| **Startup time** | ~200ms–500ms |
+| **Memory overhead** | ~20–30MB per VM + guest kernel |
 | **CPU overhead** | Near-native |
-| **Disk overhead** | Block device per VM |
-| **Network isolation** | Configurable |
-| **Filesystem** | Block device, tmpfs workdir |
+| **Disk overhead** | Container image layers |
+| **Network isolation** | Configurable, egress-only default |
+| **Filesystem** | Docker volume mount, tmpfs workdir |
 | **Linux only** | Yes (requires KVM) |
-| **Daemon required** | No (Firecracker binary + jailer) |
+| **Daemon required** | Docker + kata-runtime |
 
-### Per-Work VM Boot Flow
+### Per-Work Container Run Flow
 
 1. Worker receives work spec from main app
-2. Pre-built minimal Linux kernel + rootfs image already on worker machine
-3. Firecracker boots microVM with:
-   - tmpfs workdir (ephemeral, destroyed on VM exit)
-   - Network egress
-   - CPU/memory limits at the VM level
-   - Secrets injected via env or config file inside VM
+2. Pre-built Docker image with OpenCode, git, curl, SSH already pulled on worker machine
+3. Docker runs container with `--runtime=kata-runtimes`:
+   - Ephemeral workdir mounted as Docker volume
+   - Network egress-only via Kata network policy
+   - CPU/memory limits via Docker resource flags
+   - Secrets injected as container environment variables
 4. OpenCode runs, does work, submits PR, exits
 5. Worker collects output, reports result
-6. microVM destroyed — all state gone
+6. Container destroyed — all state gone
 
 ### Worker Machine Setup
 
 ```bash
-# Firecracker + jailer must be pre-installed
-# Rootfs image pre-built with:
+# Docker + kata-runtime must be pre-installed
+# Container image pre-built with:
 # - OpenCode CLI
 # - git + curl + basic tooling
 # - SSH/git config for repo access
 
-vulcanum setup-worker  # installs Firecracker, pulls rootfs image, configures systemd
+vulcanum setup-worker  # installs Docker + kata-runtime, pulls container image, configures systemd
 ```
 
 ---
@@ -63,7 +63,7 @@ For the single-user, self-hosted MVP, secrets flow through the main app over pla
 1. User configures secrets in main app (API keys, GitHub tokens)
 2. When dispatching work, main app includes secrets in the work spec response
 3. Worker receives secrets in the `/jobs/:id` response
-4. Worker injects secrets into Firecracker VM via env vars
+4. Worker injects secrets into Kata VM via env vars
 5. OpenCode reads from env
 
 **V2:** Replace with agent-vault proxy on worker (sidecar pattern). Harness reads from `localhost:8200`, Vulcanum never touches plaintext secrets. See gap analysis for full design.

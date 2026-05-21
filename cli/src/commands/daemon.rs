@@ -7,8 +7,9 @@ use tokio::time::sleep;
 use crate::api_error::ApiError;
 use crate::client::{ApiClient, SubmitResultRequest};
 use crate::harness::host::HostHarness;
+use crate::harness::kata::KataHarness;
 use crate::harness::validate::is_environment_ready;
-use crate::harness::AgentHarness;
+use crate::harness::{AgentHarness, HarnessKind};
 use crate::state::{load_state, WorkerState};
 use crate::token::ensure_valid_token;
 
@@ -147,7 +148,7 @@ async fn handle_job(client: &ApiClient, state: &WorkerState, job_id: uuid::Uuid)
         return TickOutcome::Fatal(format!("failed to create workdir: {e}"));
     }
 
-    let harness = HostHarness::new();
+    let harness = create_harness();
     let limits = crate::harness::ResourceLimits::default();
     let secrets = std::collections::HashMap::new();
 
@@ -212,4 +213,19 @@ fn is_fatal_token_error(e: &anyhow::Error) -> bool {
 
 fn is_fatal_request_error(e: &anyhow::Error) -> bool {
     e.downcast_ref::<ApiError>().is_some_and(|a| a.is_fatal())
+}
+
+fn create_harness() -> HarnessKind {
+    let harness_type = std::env::var("VULCANUM_HARNESS").unwrap_or_else(|_| "host".to_owned());
+
+    match harness_type.as_str() {
+        "kata" => {
+            tracing::info!("using Kata Containers harness");
+            HarnessKind::Kata(KataHarness::new())
+        }
+        _ => {
+            tracing::info!("using host harness");
+            HarnessKind::Host(HostHarness::new())
+        }
+    }
 }

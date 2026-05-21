@@ -1,5 +1,7 @@
 pub mod errors;
 pub mod host;
+pub mod kata;
+mod parse;
 pub mod validate;
 
 #[cfg(test)]
@@ -8,10 +10,15 @@ mod errors_tests;
 #[cfg(test)]
 mod host_tests;
 
+#[cfg(test)]
+mod kata_tests;
+
 use std::collections::HashMap;
 use std::path::Path;
 
 use crate::harness::errors::HarnessError;
+use crate::harness::host::HostHarness;
+use crate::harness::kata::KataHarness;
 
 /// The result of a completed agent job.
 #[derive(Debug, Clone, PartialEq)]
@@ -40,10 +47,34 @@ impl Default for ResourceLimits {
     }
 }
 
+/// Enum dispatch over harness implementations.
+///
+/// Allows the daemon to select between host and Kata harnesses at runtime
+/// without requiring trait objects or the async_trait crate.
+pub enum HarnessKind {
+    Host(HostHarness),
+    Kata(KataHarness),
+}
+
+impl AgentHarness for HarnessKind {
+    async fn spawn(
+        &self,
+        prompt: &str,
+        workdir: &Path,
+        secrets: &HashMap<String, String>,
+        limits: &ResourceLimits,
+    ) -> Result<HarnessResult, HarnessError> {
+        match self {
+            Self::Host(h) => h.spawn(prompt, workdir, secrets, limits).await,
+            Self::Kata(k) => k.spawn(prompt, workdir, secrets, limits).await,
+        }
+    }
+}
+
 /// Abstract contract for spawning an agent job executor.
 ///
-/// Implementations may run on the host (HostHarness) or inside a microVM
-/// (FirecrackerHarness, deferred to a follow-up ticket).
+/// Implementations may run on the host (HostHarness) or inside a Kata
+/// Containers VM (KataHarness) via Docker with --runtime=kata-runtimes.
 pub trait AgentHarness {
     /// Spawn the job, returning the result once the agent exits.
     fn spawn(

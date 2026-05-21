@@ -37,7 +37,7 @@
         <div class="pulse-dot"></div>
         <h1>Vulcanum Architecture (MVP)</h1>
       </div>
-      <p class="subtitle">Kaneo → Main App → Worker (Firecracker + OpenCode) — thin metadata/trigger broker</p>
+      <p class="subtitle">Kaneo → Main App → Worker (Kata Containers + OpenCode) — thin metadata/trigger broker</p>
     </div>
 
     <div class="diagram-container">
@@ -92,12 +92,12 @@
 
         <rect x="230" y="275" width="260" height="45" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
         <text x="360" y="295" fill="white" font-size="11" font-weight="600" text-anchor="middle">Work Executor</text>
-        <text x="360" y="311" fill="#94a3b8" font-size="8" text-anchor="middle">Fetch metadata · Prep config · Boot μVM</text>
+        <text x="360" y="311" fill="#94a3b8" font-size="8" text-anchor="middle">Fetch metadata · Prep config · Run container</text>
 
-        <!-- Firecracker μVM -->
+        <!-- Kata container -->
         <rect x="50" y="335" width="440" height="85" rx="8" fill="transparent" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="5,5"/>
-        <text x="62" y="352" fill="#fb7185" font-size="10" font-weight="600">Firecracker microVM</text>
-        <text x="62" y="364" fill="#fb7185" font-size="7">Linux KVM · tmpfs workdir · egress: api.anthropic.com + github.com only</text>
+        <text x="62" y="352" fill="#fb7185" font-size="10" font-weight="600">Kata Container (Docker + kata-runtime)</text>
+        <text x="62" y="364" fill="#fb7185" font-size="7">Linux KVM · mounted workdir · egress: api.anthropic.com + github.com only</text>
 
         <rect x="70" y="375" width="200" height="32" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
         <text x="170" y="395" fill="white" font-size="11" font-weight="600" text-anchor="middle">OpenCode</text>
@@ -106,7 +106,7 @@
         <path d="M 300 430 L 300 450 Q 300 460 310 460 L 400 460 Q 410 460 410 450 L 410 435" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
         <text x="310" y="474" fill="#34d399" font-size="8">POST /result {pr_url, usage, exit_code}</text>
 
-        <!-- Firecracker detail -->
+        <!-- Kata detail -->
         <rect x="290" y="375" width="180" height="32" rx="4" fill="rgba(136, 19, 55, 0.15)" stroke="#fb7185" stroke-width="0.5" stroke-dasharray="3,3"/>
         <text x="380" y="395" fill="#fb7185" font-size="8" text-anchor="middle">Destroyed on completion</text>
 
@@ -121,7 +121,7 @@
         <rect x="565" y="296" width="14" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/><text x="585" y="305" fill="#94a3b8" font-size="8">Database</text>
         <rect x="565" y="314" width="14" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/><text x="585" y="323" fill="#94a3b8" font-size="8">Sandbox / Isolation</text>
         <rect x="565" y="332" width="14" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/><text x="585" y="341" fill="#94a3b8" font-size="8">External System</text>
-        <rect x="565" y="350" width="14" height="10" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/><text x="585" y="359" fill="#94a3b8" font-size="8">μVM boundary</text>
+        <rect x="565" y="350" width="14" height="10" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/><text x="585" y="359" fill="#94a3b8" font-size="8">VM boundary</text>
         <line x1="565" y1="370" x2="579" y2="370" stroke="#34d399" stroke-width="1.5"/><text x="585" y="373" fill="#94a3b8" font-size="8">Work flow</text>
         <line x1="565" y1="382" x2="579" y2="382" stroke="#94a3b8" stroke-width="1.5"/><text x="585" y="385" fill="#94a3b8" font-size="8">Status sync</text>
 
@@ -139,27 +139,27 @@
           <li>• INSERT work_run with ON CONFLICT DO NOTHING</li>
           <li>• Worker short-polls cache flag → gets job_id</li>
           <li>• Worker fetches full metadata (prompt, secrets, config)</li>
-          <li>• Boots Firecracker μVM, spawns OpenCode</li>
+          <li>• Runs Kata container, spawns OpenCode</li>
           <li>• OpenCode does work, submits PR, exits</li>
           <li>• Worker POSTs /result → Main app syncs Kaneo to "in review"</li>
         </ul>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-dot rose"></div><h3>Isolation (Firecracker)</h3></div>
+        <div class="card-header"><div class="card-dot rose"></div><h3>Isolation (Kata Containers)</h3></div>
         <ul>
-          <li>• Linux KVM required — Firecracker microVM per work item</li>
-          <li>• Pre-built rootfs with OpenCode + git + curl</li>
-          <li>• tmpfs workdir — ephemeral, destroyed on VM exit</li>
+          <li>• Linux KVM required — Kata container per work item</li>
+          <li>• Pre-built container image with OpenCode + git + curl</li>
+          <li>• Ephemeral workdir mounted as Docker volume</li>
           <li>• Network: egress to providers + github.com only</li>
-          <li>• CPU/memory limits enforced at VM level</li>
-          <li>• Secrets injected via env inside VM, never on host disk</li>
+          <li>• CPU/memory limits via Docker resource flags</li>
+          <li>• Secrets injected as env vars inside container</li>
         </ul>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-dot violet"></div><h3>MVP Boundaries</h3></div>
         <ul>
           <li>• Single-user, self-hosted, no auth gating on API</li>
-          <li>• Linux-only workers (Firecracker needs KVM)</li>
+          <li>• Linux-only workers (Kata Containers needs KVM)</li>
           <li>• OpenCode as sole harness (no Claude Code / Codex)</li>
           <li>• Kaneo as sole task source (no Linear / Jira)</li>
           <li>• Plain HTTPS for secrets (agent-vault for v2)</li>
