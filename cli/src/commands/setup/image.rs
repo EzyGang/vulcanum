@@ -1,11 +1,17 @@
 use std::process::Command;
 
+use super::utils::which;
+
 const AGENT_IMAGE: &str = "ghcr.io/vulcanum/agent:latest";
 
 pub fn pull_agent_image() -> anyhow::Result<()> {
     if is_image_pulled() {
         tracing::info!("agent image '{AGENT_IMAGE}' is already pulled");
         return Ok(());
+    }
+
+    if !which("docker") {
+        anyhow::bail!("docker is not installed — run `vulcanum worker setup` to install dependencies");
     }
 
     tracing::info!("pulling agent image '{AGENT_IMAGE}'...");
@@ -24,11 +30,9 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
 }
 
 fn is_image_pulled() -> bool {
-    let output = Command::new("docker")
+    Command::new("docker")
         .args(["images", "-q", AGENT_IMAGE])
         .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().is_empty())
-        .unwrap_or(true);
-
-    !output
+        .map(|o| !String::from_utf8_lossy(&o.stdout).trim().is_empty())
+        .unwrap_or(false)
 }

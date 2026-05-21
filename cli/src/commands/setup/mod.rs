@@ -6,6 +6,7 @@ mod image;
 mod kata;
 mod opencode;
 mod systemd;
+mod utils;
 
 pub async fn run() -> anyhow::Result<()> {
     tracing::info!("starting worker environment provisioning...");

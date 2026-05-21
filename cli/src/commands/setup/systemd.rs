@@ -1,4 +1,4 @@
-use std::process::Command;
+use super::utils::run_systemctl;
 
 const UNIT_NAME: &str = "vulcanum-worker";
 const UNIT_PATH: &str = "/etc/systemd/system/vulcanum-worker.service";
@@ -12,6 +12,8 @@ pub fn configure_systemd() -> anyhow::Result<()> {
     tracing::info!("configuring systemd unit '{UNIT_NAME}'...");
 
     let binary_path = current_exe_path()?;
+    tracing::info!("binding systemd to binary at: {binary_path}");
+
     let unit_content = format!(
         "[Unit]\n\
          Description=Vulcanum Worker Daemon\n\
@@ -39,7 +41,7 @@ pub fn configure_systemd() -> anyhow::Result<()> {
 }
 
 fn is_unit_active() -> bool {
-    Command::new("systemctl")
+    std::process::Command::new("systemctl")
         .args(["is-active", "--quiet", UNIT_NAME])
         .status()
         .map(|s| s.success())
@@ -52,17 +54,4 @@ fn current_exe_path() -> anyhow::Result<String> {
         .to_str()
         .map(|s| s.to_owned())
         .ok_or_else(|| anyhow::anyhow!("binary path is not valid UTF-8"))
-}
-
-fn run_systemctl(args: &str) -> anyhow::Result<()> {
-    let status = Command::new("sudo")
-        .arg("systemctl")
-        .args(args.split_whitespace())
-        .status()
-        .map_err(|e| anyhow::anyhow!("failed to run systemctl: {e}"))?;
-
-    if !status.success() {
-        anyhow::bail!("systemctl {} failed", args);
-    }
-    Ok(())
 }

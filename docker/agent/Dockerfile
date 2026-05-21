@@ -6,8 +6,6 @@ RUN apk add --no-cache \
     git \
     openssh-client
 
-ARG OPENCODE_VERSION=latest
-
 RUN curl -fsSL https://opencode.ai/install.sh | sh
 
 WORKDIR /workdir

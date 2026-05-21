@@ -1,14 +1,7 @@
-use crate::harness::validate::validate_environment;
-use crate::harness::validate::Severity;
+use super::utils::which;
 
 pub fn verify_or_install_opencode() -> anyhow::Result<()> {
-    let issues = validate_environment();
-    let opencode_ok = issues
-        .iter()
-        .filter(|i| i.severity == Severity::Critical)
-        .all(|i| !i.message.contains("opencode"));
-
-    if opencode_ok {
+    if which("opencode") {
         tracing::info!("OpenCode is already installed");
         return Ok(());
     }
@@ -24,12 +17,7 @@ pub fn verify_or_install_opencode() -> anyhow::Result<()> {
         anyhow::bail!("OpenCode install script failed");
     }
 
-    let issues = validate_environment();
-    let still_missing = issues
-        .iter()
-        .any(|i| i.severity == Severity::Critical && i.message.contains("opencode"));
-
-    if still_missing {
+    if !which("opencode") {
         anyhow::bail!("OpenCode installation succeeded but the binary is not in PATH — ensure ~/.local/bin is on PATH and re-run setup");
     }
 
