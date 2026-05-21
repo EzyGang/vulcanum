@@ -11,7 +11,9 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
     }
 
     if !which("docker") {
-        anyhow::bail!("docker is not installed — run `vulcanum worker setup` to install dependencies");
+        anyhow::bail!(
+            "docker is not installed — run `vulcanum worker setup` to install dependencies"
+        );
     }
 
     tracing::info!("pulling agent image '{AGENT_IMAGE}'...");
