@@ -155,7 +155,7 @@ impl WorkRunsRepository {
 pub struct SetResultParams<'a> {
     pub pr_url: &'a str,
     pub exit_code: i32,
-    pub tokens_used: i32,
-    pub duration_ms: i32,
+    pub tokens_used: i64,
+    pub duration_ms: i64,
     pub status: WorkRunStatus,
 }
