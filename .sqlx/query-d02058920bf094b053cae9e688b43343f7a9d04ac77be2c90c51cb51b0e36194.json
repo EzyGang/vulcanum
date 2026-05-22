@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             prompt_template = COALESCE($5, prompt_template),\n             repo_url = COALESCE($6, repo_url),\n             enabled = COALESCE($7, enabled)\n             WHERE id = $1\n             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -45,6 +45,11 @@
       },
       {
         "ordinal": 8,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -57,7 +62,8 @@
         "Text",
         "Text",
         "Text",
-        "Bool"
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -69,8 +75,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "797061746f4faec12ebe3cdeacc0f177a37a3eff7da77f2dbdd55ea9acf76f39"
+  "hash": "d02058920bf094b053cae9e688b43343f7a9d04ac77be2c90c51cb51b0e36194"
 }

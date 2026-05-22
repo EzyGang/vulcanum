@@ -24,6 +24,8 @@ pub struct WorkRun {
     pub worker_id: Option<Uuid>,
     pub status: WorkRunStatus,
     pub prompt_text: String,
+    pub repo_url: String,
+    pub agents_md: String,
     pub result_pr_url: Option<String>,
     pub result_exit_code: Option<i32>,
     pub tokens_used: Option<i32>,

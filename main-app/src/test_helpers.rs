@@ -46,6 +46,8 @@ pub async fn insert_pending_work_run(
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
+        repo_url: String::new(),
+        agents_md: String::new(),
         status: WorkRunStatus::Pending,
     };
 

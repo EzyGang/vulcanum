@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column,\n             progress_column, prompt_template, repo_url)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -45,22 +45,20 @@
       },
       {
         "ordinal": 8,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -72,5 +70,5 @@
       true
     ]
   },
-  "hash": "2deef2e0c1a5a223451046cffc875259c5e9496afc87529fae20abe9ae4b6db9"
+  "hash": "19a4ac69577dee7b4c8d55ed1d6b66c6a282e8e643e259bb35bff8b50b72db52"
 }

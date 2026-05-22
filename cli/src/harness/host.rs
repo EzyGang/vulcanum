@@ -3,11 +3,13 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use tokio::process::Command;
-use tokio::time::timeout;
+use tokio::time::{sleep, timeout};
 
 use crate::harness::errors::HarnessError;
 use crate::harness::parse::{parse_pr_url, parse_token_usage};
 use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
+
+const TERM_GRACE_SECS: u64 = 5;
 
 pub struct HostHarness;
 
@@ -30,11 +32,22 @@ impl AgentHarness for HostHarness {
         workdir: &Path,
         secrets: &HashMap<String, String>,
         limits: &ResourceLimits,
+        repo_url: &str,
+        agents_md: &str,
     ) -> Result<HarnessResult, HarnessError> {
         let prompt_path = workdir.join("prompt.md");
         tokio::fs::write(&prompt_path, prompt)
             .await
             .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to write prompt: {e}")))?;
+
+        if !agents_md.is_empty() {
+            let agents_path = workdir.join("AGENTS.md");
+            tokio::fs::write(&agents_path, agents_md)
+                .await
+                .map_err(|e| {
+                    HarnessError::OpenCodeCrash(format!("failed to write AGENTS.md: {e}"))
+                })?;
+        }
 
         let mut cmd = Command::new("opencode");
         cmd.arg("--prompt")
@@ -45,6 +58,10 @@ impl AgentHarness for HostHarness {
 
         for (key, value) in secrets {
             cmd.env(key, value);
+        }
+
+        if !repo_url.is_empty() {
+            cmd.arg("--repo-url").arg(repo_url);
         }
 
         let mut child = cmd
@@ -62,6 +79,16 @@ impl AgentHarness for HostHarness {
                 )));
             }
             Err(_) => {
+                let pid = child.id().unwrap_or(0);
+                if pid > 0 {
+                    let _ = Command::new("kill")
+                        .arg("-TERM")
+                        .arg(pid.to_string())
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .spawn();
+                    sleep(Duration::from_secs(TERM_GRACE_SECS)).await;
+                }
                 let _ = child.kill().await;
                 return Err(HarnessError::Timeout(limits.max_duration_secs));
             }

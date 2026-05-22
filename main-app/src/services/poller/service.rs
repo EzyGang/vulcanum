@@ -125,6 +125,8 @@ impl PollerService {
                 external_task_ref: task.id.clone(),
                 project_config_id: config.id,
                 prompt_text,
+                repo_url: config.repo_url.clone(),
+                agents_md: config.agents_md.clone(),
                 status: WorkRunStatus::Pending,
             };
 

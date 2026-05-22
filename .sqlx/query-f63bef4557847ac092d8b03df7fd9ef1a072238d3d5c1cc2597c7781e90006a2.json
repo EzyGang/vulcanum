@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE work_runs SET result_pr_url = $2, result_exit_code = $3, tokens_used = $4,\n             duration_ms = $5, status = $6\n             WHERE id = $1 AND status = 'running'::work_run_status\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "UPDATE work_runs SET worker_id = $2, status = 'running'::work_run_status\n             WHERE id = $1 AND status = 'pending'::work_run_status\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -49,31 +49,41 @@
       },
       {
         "ordinal": 6,
-        "name": "result_pr_url",
+        "name": "repo_url",
         "type_info": "Text"
       },
       {
         "ordinal": 7,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "result_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
         "name": "result_exit_code",
         "type_info": "Int4"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "tokens_used",
         "type_info": "Int4"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "duration_ms",
         "type_info": "Int4"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -81,25 +91,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Int4",
-        "Int4",
-        "Int4",
-        {
-          "Custom": {
-            "name": "work_run_status",
-            "kind": {
-              "Enum": [
-                "pending",
-                "dispatched",
-                "running",
-                "completed",
-                "failed",
-                "stalled"
-              ]
-            }
-          }
-        }
+        "Uuid"
       ]
     },
     "nullable": [
@@ -107,6 +99,8 @@
       false,
       false,
       true,
+      false,
+      false,
       false,
       false,
       true,
@@ -117,5 +111,5 @@
       true
     ]
   },
-  "hash": "c4cd2319c25ad8a67aa11ee31ed0a3ccf4d95d950a0fe367508dcab62f5d8e7b"
+  "hash": "f63bef4557847ac092d8b03df7fd9ef1a072238d3d5c1cc2597c7781e90006a2"
 }
