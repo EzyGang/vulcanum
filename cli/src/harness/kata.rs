@@ -59,7 +59,6 @@ impl AgentHarness for KataHarness {
         let env = RunnerEnv {
             prompt,
             workdir: &workdir_ref,
-            secrets,
             limits,
             agents_md,
             spawn_error_msg: "docker",
@@ -80,6 +79,10 @@ impl AgentHarness for KataHarness {
                     .arg(format!("--memory={}m", limits_val.memory_mib))
                     .stdout(std::process::Stdio::piped())
                     .stderr(std::process::Stdio::inherit());
+
+                for (key, value) in secrets {
+                    cmd.arg("-e").arg(format!("{key}={value}"));
+                }
 
                 cmd.arg(&image)
                     .arg("opencode")

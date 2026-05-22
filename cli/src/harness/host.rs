@@ -37,7 +37,6 @@ impl AgentHarness for HostHarness {
         let env = RunnerEnv {
             prompt,
             workdir: &workdir,
-            secrets,
             limits,
             agents_md,
             spawn_error_msg: "opencode",
@@ -55,6 +54,10 @@ impl AgentHarness for HostHarness {
 
                 if !repo_url.is_empty() {
                     cmd.arg("--repo-url").arg(&repo_url);
+                }
+
+                for (key, value) in secrets {
+                    cmd.env(key, value);
                 }
 
                 Ok(cmd)

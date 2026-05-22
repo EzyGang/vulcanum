@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -14,7 +13,6 @@ const TERM_GRACE_SECS: u64 = 5;
 pub(super) struct RunnerEnv<'a> {
     pub prompt: &'a str,
     pub workdir: &'a Path,
-    pub secrets: &'a HashMap<String, String>,
     pub limits: &'a ResourceLimits,
     pub agents_md: &'a str,
     pub spawn_error_msg: &'a str,
@@ -40,10 +38,6 @@ pub(super) async fn run_opencode_in_env(
     let mut cmd = build_cmd().map_err(|e| {
         HarnessError::Install(format!("failed to build {}: {e}", env.spawn_error_msg))
     })?;
-
-    for (key, value) in env.secrets {
-        cmd.env(key, value);
-    }
 
     let mut child = cmd.spawn().map_err(|e| {
         HarnessError::Install(format!("failed to spawn {}: {e}", env.spawn_error_msg))
