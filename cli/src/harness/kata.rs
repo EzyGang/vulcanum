@@ -152,7 +152,12 @@ async fn kill_with_grace(child: &mut tokio::process::Child, container_name: &str
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .spawn();
-        sleep(Duration::from_secs(TERM_GRACE_SECS)).await;
+        for _ in 0..TERM_GRACE_SECS {
+            match child.try_wait() {
+                Ok(Some(_)) => break,
+                _ => sleep(Duration::from_secs(1)).await,
+            }
+        }
     }
     let _ = child.kill().await;
     let _ = cleanup_container(container_name).await;
