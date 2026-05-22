@@ -58,7 +58,6 @@ impl ProjectConfigsRepository {
         .map_err(ProjectConfigsError::from)
     }
 
-    #[allow(dead_code)]
     pub async fn list_enabled<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

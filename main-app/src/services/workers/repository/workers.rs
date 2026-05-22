@@ -91,7 +91,6 @@ impl WorkersRepository {
         .ok_or(WorkersError::WorkerNotFound)
     }
 
-    #[allow(dead_code)]
     pub async fn update_last_seen<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -155,7 +154,6 @@ impl WorkersRepository {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub async fn mark_stale_disconnected<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

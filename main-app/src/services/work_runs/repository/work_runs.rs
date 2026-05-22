@@ -6,7 +6,6 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
 use crate::services::work_runs::repository::WorkRunsRepository;
 
-#[allow(dead_code)]
 pub struct InsertWorkRunParams {
     pub external_task_ref: String,
     pub project_config_id: Uuid,

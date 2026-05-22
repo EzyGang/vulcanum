@@ -28,7 +28,10 @@ impl ApiClient {
 
     pub async fn connect(&self, code: &str, worker_name: &str) -> anyhow::Result<ConnectResponse> {
         let url = format!("{}/api/v1/workers/connect", self.base_url);
-        let body = ConnectRequest { code, worker_name };
+        let body = ConnectRequest {
+            code: code.to_owned(),
+            worker_name: worker_name.to_owned(),
+        };
         let resp = self
             .http
             .post(&url)
@@ -42,7 +45,9 @@ impl ApiClient {
 
     pub async fn refresh(&self, refresh_token: &str) -> anyhow::Result<RefreshResponse> {
         let url = format!("{}/api/v1/workers/refresh", self.base_url);
-        let body = RefreshRequest { refresh_token };
+        let body = RefreshRequest {
+            refresh_token: refresh_token.to_owned(),
+        };
         let resp = self
             .http
             .post(&url)

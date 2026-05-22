@@ -86,8 +86,8 @@ pub(crate) async fn handle_job(
     let result = SubmitResultRequest {
         pr_url: harness_result.pr_url.unwrap_or_default(),
         exit_code: harness_result.exit_code,
-        tokens_used: harness_result.tokens_used,
-        duration_ms: harness_result.duration_ms,
+        tokens_used: harness_result.tokens_used as i64,
+        duration_ms: harness_result.duration_ms as i64,
     };
 
     if let Err(e) = client

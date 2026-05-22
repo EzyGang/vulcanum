@@ -14,14 +14,7 @@ use actix_web::{web, App, HttpServer};
 async fn main() -> eyre::Result<()> {
     dotenvy::dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
-
-    tracing_log::LogTracer::init().ok();
+    vulcanum_shared::telemetry::init();
 
     let cfg = config::config();
     let app_state = app_state::AppState::new(cfg).await?;

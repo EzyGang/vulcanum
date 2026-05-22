@@ -25,7 +25,6 @@ impl WorkNotifier {
         }
     }
 
-    #[allow(dead_code)]
     pub async fn add_worker(&self, worker_id: Uuid) {
         self.flags
             .write()
@@ -34,7 +33,6 @@ impl WorkNotifier {
             .or_insert_with(|| Arc::new(AtomicBool::new(false)));
     }
 
-    #[allow(dead_code)]
     pub async fn take(&self, worker_id: &Uuid) -> bool {
         match self.flags.read().await.get(worker_id) {
             Some(flag) => flag.swap(false, Ordering::AcqRel),

@@ -5,13 +5,7 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
 use crate::services::work_runs::service::WorkRunsService;
-
-pub struct SubmitResultParams {
-    pub pr_url: String,
-    pub exit_code: i32,
-    pub tokens_used: i64,
-    pub duration_ms: i64,
-}
+use vulcanum_shared::api_types::SubmitResultRequest;
 
 impl WorkRunsService {
     pub async fn poll(&self, worker_id: Uuid) -> Result<Option<Uuid>, WorkRunsError> {
@@ -54,7 +48,7 @@ impl WorkRunsService {
         &self,
         id: Uuid,
         worker_id: Uuid,
-        params: SubmitResultParams,
+        params: SubmitResultRequest,
     ) -> Result<WorkRun, WorkRunsError> {
         let status = if params.exit_code == 0 {
             WorkRunStatus::Completed
@@ -95,7 +89,7 @@ impl WorkRunsService {
     async fn sync_kaneo_on_result(
         &self,
         run: &WorkRun,
-        params: &SubmitResultParams,
+        params: &SubmitResultRequest,
         status: WorkRunStatus,
     ) {
         let project_config = match self

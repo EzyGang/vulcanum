@@ -6,10 +6,10 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::services::work_runs::service::work_runs::SubmitResultParams;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::services::workers::repository::WorkersRepository;
 use crate::test_helpers;
+use vulcanum_shared::api_types::SubmitResultRequest;
 
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     WorkRunsService::new(
@@ -107,7 +107,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
 
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
-    let params = SubmitResultParams {
+    let params = SubmitResultRequest {
         pr_url: "https://github.com/example/pr/1".to_owned(),
         exit_code: 0,
         tokens_used: 500,
@@ -137,7 +137,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
 
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
-    let params = SubmitResultParams {
+    let params = SubmitResultRequest {
         pr_url: String::new(),
         exit_code: 1,
         tokens_used: 0,
@@ -158,7 +158,7 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-early-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-early").await;
 
-    let params = SubmitResultParams {
+    let params = SubmitResultRequest {
         pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,
@@ -184,7 +184,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         .await
         .expect("Worker A should ack");
 
-    let params = SubmitResultParams {
+    let params = SubmitResultRequest {
         pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,

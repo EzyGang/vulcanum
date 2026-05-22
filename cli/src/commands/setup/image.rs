@@ -1,12 +1,11 @@
 use std::process::Command;
 
 use super::utils::which;
-
-const AGENT_IMAGE: &str = "ghcr.io/vulcanum/agent:latest";
+use crate::harness::kata::DEFAULT_KATA_IMAGE;
 
 pub fn pull_agent_image() -> anyhow::Result<()> {
     if is_image_pulled() {
-        tracing::info!("agent image '{AGENT_IMAGE}' is already pulled");
+        tracing::info!("agent image '{DEFAULT_KATA_IMAGE}' is already pulled");
         return Ok(());
     }
 
@@ -16,15 +15,15 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
         );
     }
 
-    tracing::info!("pulling agent image '{AGENT_IMAGE}'...");
+    tracing::info!("pulling agent image '{DEFAULT_KATA_IMAGE}'...");
 
     let status = Command::new("docker")
-        .args(["pull", AGENT_IMAGE])
+        .args(["pull", DEFAULT_KATA_IMAGE])
         .status()
         .map_err(|e| anyhow::anyhow!("failed to run docker pull: {e}"))?;
 
     if !status.success() {
-        anyhow::bail!("docker pull '{AGENT_IMAGE}' failed");
+        anyhow::bail!("docker pull '{DEFAULT_KATA_IMAGE}' failed");
     }
 
     tracing::info!("agent image pulled successfully");
@@ -33,7 +32,7 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
 
 fn is_image_pulled() -> bool {
     Command::new("docker")
-        .args(["images", "-q", AGENT_IMAGE])
+        .args(["images", "-q", DEFAULT_KATA_IMAGE])
         .output()
         .map(|o| !String::from_utf8_lossy(&o.stdout).trim().is_empty())
         .unwrap_or(false)

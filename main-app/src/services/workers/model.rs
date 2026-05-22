@@ -1,7 +1,11 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::FromRow;
 use uuid::Uuid;
+
+pub use vulcanum_shared::api_types::{
+    ConnectRequest, ConnectResponse, RefreshRequest, RefreshResponse,
+};
 
 pub const CODE_TTL_MINUTES: i64 = 10;
 pub const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
@@ -28,33 +32,6 @@ pub struct Worker {
     pub status: WorkerStatus,
     pub capabilities: serde_json::Value,
     pub created_at: DateTime<Utc>,
-}
-
-#[derive(Deserialize)]
-pub struct ConnectRequest {
-    pub code: String,
-    pub worker_name: String,
-}
-
-#[derive(Deserialize)]
-pub struct RefreshRequest {
-    pub refresh_token: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ConnectResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_at: DateTime<Utc>,
-    pub worker_id: Uuid,
-    pub name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RefreshResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]

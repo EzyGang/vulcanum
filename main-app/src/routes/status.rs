@@ -1,14 +1,7 @@
 use actix_web::HttpResponse;
-use serde::Serialize;
 
 use crate::services::workers::model;
-
-#[derive(Serialize)]
-struct StatusResponse {
-    access_token_ttl_minutes: i64,
-    code_ttl_minutes: i64,
-    refresh_token_ttl_days: i64,
-}
+use vulcanum_shared::api_types::StatusResponse;
 
 pub async fn get() -> HttpResponse {
     HttpResponse::Ok().json(StatusResponse {

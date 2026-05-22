@@ -1,25 +1,10 @@
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
-use serde::Serialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::worker_auth::WorkerAuth;
-use crate::services::work_runs::service::work_runs::SubmitResultParams;
-
-#[derive(Serialize)]
-struct PollResponse {
-    job_id: Uuid,
-}
-
-#[derive(Deserialize)]
-pub struct SubmitResultBody {
-    pr_url: String,
-    exit_code: i32,
-    tokens_used: i64,
-    duration_ms: i64,
-}
+use vulcanum_shared::api_types::{PollResponse, SubmitResultRequest};
 
 pub async fn poll(state: web::Data<AppState>, auth: WorkerAuth) -> Result<HttpResponse, AppError> {
     match state.jobs.poll(auth.worker_id).await {
@@ -55,19 +40,12 @@ pub async fn ack_job(
 pub async fn submit_result(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    body: web::Json<SubmitResultBody>,
+    body: web::Json<SubmitResultRequest>,
     auth: WorkerAuth,
 ) -> Result<HttpResponse, AppError> {
-    let b = body.into_inner();
-    let params = SubmitResultParams {
-        pr_url: b.pr_url,
-        exit_code: b.exit_code,
-        tokens_used: b.tokens_used,
-        duration_ms: b.duration_ms,
-    };
     let job = state
         .jobs
-        .submit_result(path.into_inner(), auth.worker_id, params)
+        .submit_result(path.into_inner(), auth.worker_id, body.into_inner())
         .await?;
 
     Ok(HttpResponse::Ok().json(job))

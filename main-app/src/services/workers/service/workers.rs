@@ -114,11 +114,7 @@ fn hash_token(token: &str) -> String {
 }
 
 fn generate_random_token(length: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(length)
-        .map(char::from)
-        .collect()
+    vulcanum_shared::crypto::generate_alphanumeric_string(length)
 }
 
 fn build_jwt(
