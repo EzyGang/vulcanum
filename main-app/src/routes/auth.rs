@@ -2,7 +2,10 @@ use actix_web::{web, HttpResponse};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::services::auth::model::{LoginRequest, LoginResponse, VerifyQuery, VerifyResponse};
+use crate::services::auth::model::{
+    InstanceLoginRequest, InstanceLoginResponse, LoginRequest, LoginResponse, VerifyQuery,
+    VerifyResponse,
+};
 
 pub async fn login(
     state: web::Data<AppState>,
@@ -25,4 +28,13 @@ pub async fn verify(
         message: "Logged in successfully".to_owned(),
         user: user.into(),
     }))
+}
+
+pub async fn instance_login(
+    state: web::Data<AppState>,
+    body: web::Json<InstanceLoginRequest>,
+) -> Result<HttpResponse, AppError> {
+    let token = state.auth.instance_login(&body.password)?;
+
+    Ok(HttpResponse::Ok().json(InstanceLoginResponse { token }))
 }

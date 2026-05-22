@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 vulcanum-shared = { path = "../shared" }
 actix-web = "4"
+actix-cors = "0.7"
 kaneo-cli = { git = "https://github.com/EzyGang/kaneo-cli.git", branch = "main" }
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }

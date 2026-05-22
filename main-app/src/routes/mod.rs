@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod instance_auth;
 pub mod jobs;
 pub mod project_configs;
 pub mod status;
@@ -12,6 +13,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         web::scope("/api/v1")
             .route("/auth/login", web::post().to(auth::login))
             .route("/auth/verify", web::get().to(auth::verify))
+            .route("/auth/instance-login", web::post().to(auth::instance_login))
             .route("/poll", web::get().to(jobs::poll))
             .route("/status", web::get().to(status::get))
             .service(

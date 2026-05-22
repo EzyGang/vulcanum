@@ -41,4 +41,12 @@ impl TokenStore {
 
         Some(entry.user_id)
     }
+
+    pub fn validate(&self, token: &str) -> bool {
+        self.inner
+            .read()
+            .expect("token store lock poisoned")
+            .get(token)
+            .is_some_and(|entry| Utc::now() <= entry.expires_at)
+    }
 }

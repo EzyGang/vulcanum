@@ -4,11 +4,15 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
+use crate::routes::instance_auth::InstanceAuth;
 use crate::services::project_configs::model::{
     CreateProjectConfigRequest, UpdateProjectConfigRequest,
 };
 
-pub async fn list(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
+pub async fn list(
+    state: web::Data<AppState>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
     let configs = state.project_configs.list_all().await?;
 
     Ok(HttpResponse::Ok().json(configs))
@@ -17,6 +21,7 @@ pub async fn list(state: web::Data<AppState>) -> Result<HttpResponse, AppError> 
 pub async fn get(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
+    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let id = path.into_inner();
     let config = state.project_configs.get_by_id(id).await?;
@@ -27,6 +32,7 @@ pub async fn get(
 pub async fn create(
     state: web::Data<AppState>,
     body: web::Json<CreateProjectConfigRequest>,
+    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let config = state.project_configs.create(body.into_inner()).await?;
 
@@ -37,6 +43,7 @@ pub async fn update(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
     body: web::Json<UpdateProjectConfigRequest>,
+    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let id = path.into_inner();
     let config = state.project_configs.update(id, body.into_inner()).await?;
@@ -47,6 +54,7 @@ pub async fn update(
 pub async fn delete(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
+    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let id = path.into_inner();
     state.project_configs.delete(id).await?;
@@ -62,6 +70,7 @@ pub struct ColumnsResponse {
 pub async fn list_columns(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
+    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let id = path.into_inner();
     let columns = state.project_configs.fetch_columns(id).await?;
