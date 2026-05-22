@@ -16,7 +16,7 @@ Vulcanum is a symphony-like agentic work orchestrator. It provides:
 | Host Machine Server | `host-server/` | Rust | Active |
 | Main Application Server | `main-app/` | Rust | Active |
 | Shared Types & Utilities | `shared/` | Rust | Active |
-| Frontend UI | *(omitted for now)* | — | — |
+| Frontend UI | `frontend/` | TypeScript/Preact | Active |
 | Agent Server | *(omitted for now)* | — | — |
 
 Non-Rust components (Frontend UI, Agent Server) are **not** part of the Cargo workspace and will live in their own top-level directories when added.
@@ -239,10 +239,13 @@ When using `--status`, always use the **slug** form (lowercase, hyphenated):
 
 Do NOT use display names (`"To Do"`, `"In Progress"`) — these will fail with a 400 error.
 
-## Crate-Specific Conventions
+## Module-Specific Conventions
 
-For crate-specific details (migrations, environment variables, SQLx workflows, etc.), refer to the local `AGENTS.md` in each crate directory:
+For module-specific details, refer to the local `AGENTS.md` in each module directory:
 
-- `main-app/AGENTS.md`
+- `main-app/AGENTS.md` — Rust backend (migrations, SQLx, actix-web, env vars)
 - `host-server/AGENTS.md`
 - `cli/AGENTS.md`
+- `frontend/AGENTS.md` — TypeScript/Preact UI (component patterns, API layer, design system)
+
+**Always read the module's local `AGENTS.md` before working on code in that directory.**

@@ -1,0 +1,44 @@
+{
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"lint": "biome check --error-on-warnings ./src ./public",
+		"format": "biome check --error-on-warnings --write --unsafe ./src ./public",
+		"type-check": "tsc --noEmit",
+		"validate": "pnpm lint && pnpm type-check",
+		"fix": "pnpm format && pnpm type-check",
+		"ci-run": "biome ci --error-on-warnings ./src ./public",
+		"ver:patch": "pnpm version patch --no-git-tag-version",
+		"ver:minor": "pnpm version minor --no-git-tag-version",
+		"ver:major": "pnpm version major --no-git-tag-version"
+	},
+	"dependencies": {
+		"@preact/signals": "^2.9.0",
+		"@tailwindcss/vite": "^4.3.0",
+		"@tanstack/react-query": "^5.100.13",
+		"axios": "^1.16.1",
+		"axios-case-converter": "^1.1.1",
+		"clsx": "^2.1.1",
+		"preact": "^10.26.9",
+		"react": "npm:@preact/compat",
+		"tailwindcss": "^4.3.0",
+		"wouter-preact": "^3.10.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.15",
+		"@preact/preset-vite": "^2.10.2",
+		"@testing-library/preact": "^3.2.4",
+		"typescript": "^6.0.3",
+		"vite": "^7.0.4",
+		"vitest": "^4.1.7"
+	},
+	"pnpm": {
+		"overrides": {
+			"react": "npm:@preact/compat",
+			"react-dom": "npm:@preact/compat"
+		}
+	}
+}

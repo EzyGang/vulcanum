@@ -1,0 +1,100 @@
+import { accessToken } from '../../stores/auth.store';
+import { camelKeys, snakeKeys } from './snake-camel';
+
+const isDevelopment = import.meta.env.DEV;
+const baseURL = isDevelopment ? import.meta.env.VITE_API_URL || 'http://localhost:8000' : '/api/v1';
+
+export class ApiError extends Error {
+  status: number;
+  serverError: string;
+
+  constructor(status: number, serverError: string) {
+    super(serverError);
+    this.name = 'ApiError';
+    this.status = status;
+    this.serverError = serverError;
+  }
+}
+
+interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
+  body?: unknown;
+  params?: Record<string, string | number | boolean>;
+}
+
+const buildUrl = (path: string, params?: Record<string, string | number | boolean>): string => {
+  const url = `${baseURL}${path}`;
+  if (!params) return url;
+
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    search.append(key, String(value));
+  }
+  return `${url}?${search.toString()}`;
+};
+
+const logRequest = (method: string, url: string, body?: unknown) => {
+  if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
+  console.group(`API Request: ${method} ${url}`);
+  if (body) console.log('Request Body:', body);
+  console.groupEnd();
+};
+
+const logResponse = (method: string, url: string, status: number, data: unknown) => {
+  if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
+  console.group(`API Response: ${method} ${url}`);
+  console.log('Status:', status);
+  console.log('Response:', data);
+  console.groupEnd();
+};
+
+const logError = (method: string, url: string, status: number, error: unknown) => {
+  if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
+  console.group(`API Error: ${method} ${url}`);
+  console.log('Status:', status);
+  console.log('Error:', error);
+  console.groupEnd();
+};
+
+export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): Promise<T> => {
+  const { body, params, ...init } = options;
+  const method = (init.method || 'GET').toUpperCase();
+  const url = buildUrl(path, method === 'GET' ? params : undefined);
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init.headers as Record<string, string> | undefined)
+  };
+
+  const token = accessToken.value;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const requestBody = body != null ? JSON.stringify(snakeKeys(body)) : undefined;
+
+  logRequest(method, url, body);
+
+  const response = await fetch(url, {
+    ...init,
+    method,
+    headers,
+    body: requestBody
+  });
+
+  const isJson = response.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await response.json() : null;
+
+  if (!response.ok) {
+    const errorMessage =
+      data && typeof data === 'object' && 'error' in data
+        ? String(data.error)
+        : response.statusText;
+
+    logError(method, url, response.status, errorMessage);
+    throw new ApiError(response.status, errorMessage);
+  }
+
+  const result = data != null ? camelKeys(data) : null;
+  logResponse(method, url, response.status, result);
+  return result as T;
+};
