@@ -70,12 +70,12 @@
       {
         "ordinal": 10,
         "name": "tokens_used",
-        "type_info": "Int4"
+        "type_info": "Int8"
       },
       {
         "ordinal": 11,
         "name": "duration_ms",
-        "type_info": "Int4"
+        "type_info": "Int8"
       },
       {
         "ordinal": 12,
@@ -93,8 +93,8 @@
         "Uuid",
         "Text",
         "Int4",
-        "Int4",
-        "Int4",
+        "Int8",
+        "Int8",
         {
           "Custom": {
             "name": "work_run_status",

@@ -1,16 +1,13 @@
 use std::collections::HashMap;
 use std::path::Path;
-use std::time::{Duration, Instant};
 
 use tokio::process::Command;
-use tokio::time::{sleep, timeout};
 
 use crate::harness::errors::HarnessError;
-use crate::harness::parse::{parse_pr_url, parse_token_usage};
+use crate::harness::runner::{self, RunnerEnv};
 use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
 
 const DEFAULT_KATA_IMAGE: &str = "ghcr.io/vulcanum/agent:latest";
-const TERM_GRACE_SECS: u64 = 5;
 
 pub struct KataHarness {
     pub(crate) image: String,
@@ -44,20 +41,6 @@ impl AgentHarness for KataHarness {
         repo_url: &str,
         agents_md: &str,
     ) -> Result<HarnessResult, HarnessError> {
-        let prompt_path = workdir.join("prompt.md");
-        tokio::fs::write(&prompt_path, prompt)
-            .await
-            .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to write prompt: {e}")))?;
-
-        if !agents_md.is_empty() {
-            let agents_path = workdir.join("AGENTS.md");
-            tokio::fs::write(&agents_path, agents_md)
-                .await
-                .map_err(|e| {
-                    HarnessError::OpenCodeCrash(format!("failed to write AGENTS.md: {e}"))
-                })?;
-        }
-
         let container_name = format!(
             "vulcanum-{}",
             workdir
@@ -65,113 +48,52 @@ impl AgentHarness for KataHarness {
                 .and_then(|n| n.to_str())
                 .unwrap_or("job")
         );
+        let workdir_for_cmd = workdir.to_path_buf();
+        let repo_url_for_cmd = repo_url.to_owned();
+        let image = self.image.clone();
+        let limits_val = *limits;
 
-        let mut cmd = Command::new("docker");
-        cmd.arg("run")
-            .arg("--runtime=kata-runtimes")
-            .arg("--rm")
-            .arg("--name")
-            .arg(&container_name)
-            .arg("-v")
-            .arg(format!("{}:/workdir", workdir.display()))
-            .arg(format!("--cpus={}", limits.vcpu_count))
-            .arg(format!("--memory={}m", limits.memory_mib))
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::inherit());
+        let cleanup_name = container_name.clone();
+        let workdir_ref = workdir_for_cmd.clone();
 
-        for (key, value) in secrets {
-            cmd.arg("-e").arg(format!("{key}={value}"));
-        }
-
-        cmd.arg(&self.image)
-            .arg("opencode")
-            .arg("--prompt")
-            .arg("/workdir/prompt.md");
-
-        if !repo_url.is_empty() {
-            cmd.arg("--repo-url").arg(repo_url);
-        }
-
-        let mut child = cmd
-            .spawn()
-            .map_err(|e| HarnessError::Install(format!("failed to spawn docker: {e}")))?;
-
-        let start = Instant::now();
-        let max_duration = Duration::from_secs(limits.max_duration_secs);
-
-        let exit_status = match timeout(max_duration, child.wait()).await {
-            Ok(Ok(status)) => status,
-            Ok(Err(e)) => {
-                let _ = cleanup_container(&container_name).await;
-                return Err(HarnessError::OpenCodeCrash(format!(
-                    "docker process error: {e}"
-                )));
-            }
-            Err(_) => {
-                kill_with_grace(&mut child, &container_name).await;
-                return Err(HarnessError::Timeout(limits.max_duration_secs));
-            }
+        let env = RunnerEnv {
+            prompt,
+            workdir: &workdir_ref,
+            secrets,
+            limits,
+            agents_md,
+            spawn_error_msg: "docker",
         };
 
-        let duration_ms = start.elapsed().as_millis() as u64;
+        runner::run_opencode_in_env(
+            env,
+            move || {
+                let mut cmd = Command::new("docker");
+                cmd.arg("run")
+                    .arg("--runtime=kata-runtimes")
+                    .arg("--rm")
+                    .arg("--name")
+                    .arg(&container_name)
+                    .arg("-v")
+                    .arg(format!("{}:/workdir", workdir_for_cmd.display()))
+                    .arg(format!("--cpus={}", limits_val.vcpu_count))
+                    .arg(format!("--memory={}m", limits_val.memory_mib))
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::inherit());
 
-        let stdout = match child.stdout.take() {
-            Some(mut out) => {
-                let mut buf = String::new();
-                match tokio::io::AsyncReadExt::read_to_string(&mut out, &mut buf).await {
-                    Ok(_) => buf,
-                    Err(e) => {
-                        let _ = cleanup_container(&container_name).await;
-                        return Err(HarnessError::OutputParse(format!(
-                            "failed to read stdout: {e}"
-                        )));
-                    }
+                cmd.arg(&image)
+                    .arg("opencode")
+                    .arg("--prompt")
+                    .arg("/workdir/prompt.md");
+
+                if !repo_url_for_cmd.is_empty() {
+                    cmd.arg("--repo-url").arg(&repo_url_for_cmd);
                 }
-            }
-            None => String::new(),
-        };
 
-        let pr_url = parse_pr_url(&stdout);
-        let tokens_used = parse_token_usage(&stdout);
-
-        Ok(HarnessResult {
-            exit_code: exit_status.code().unwrap_or(-1),
-            tokens_used,
-            pr_url,
-            duration_ms,
-        })
-    }
-}
-
-async fn kill_with_grace(child: &mut tokio::process::Child, container_name: &str) {
-    let pid = child.id().unwrap_or(0);
-    if pid > 0 {
-        let _ = Command::new("kill")
-            .arg("-TERM")
-            .arg(pid.to_string())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-        for _ in 0..TERM_GRACE_SECS {
-            match child.try_wait() {
-                Ok(Some(_)) => break,
-                _ => sleep(Duration::from_secs(1)).await,
-            }
-        }
-    }
-    let _ = child.kill().await;
-    let _ = cleanup_container(container_name).await;
-}
-
-async fn cleanup_container(name: &str) {
-    let result = Command::new("docker")
-        .arg("rm")
-        .arg("-f")
-        .arg(name)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn();
-    if let Ok(mut child) = result {
-        let _ = child.wait().await;
+                Ok(cmd)
+            },
+            Some(&cleanup_name),
+        )
+        .await
     }
 }

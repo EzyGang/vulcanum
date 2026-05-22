@@ -5,10 +5,6 @@ pub enum HarnessError {
     #[error("install error: {0}")]
     Install(String),
 
-    /// The Kata VM failed to boot, or the container could not be started.
-    #[error("container boot error: {0}")]
-    ContainerBoot(String),
-
     /// The job exceeded its configured maximum duration.
     #[error("job timed out after {0}s")]
     Timeout(u64),

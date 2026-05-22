@@ -17,8 +17,8 @@ struct PollResponse {
 pub struct SubmitResultBody {
     pr_url: String,
     exit_code: i32,
-    tokens_used: i32,
-    duration_ms: i32,
+    tokens_used: i64,
+    duration_ms: i64,
 }
 
 pub async fn poll(state: web::Data<AppState>, auth: WorkerAuth) -> Result<HttpResponse, AppError> {

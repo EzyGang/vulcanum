@@ -2,6 +2,7 @@ pub mod errors;
 pub mod host;
 pub mod kata;
 mod parse;
+pub(crate) mod runner;
 pub mod validate;
 
 #[cfg(test)]
@@ -12,6 +13,9 @@ mod host_tests;
 
 #[cfg(test)]
 mod kata_tests;
+
+#[cfg(test)]
+mod parse_tests;
 
 use std::collections::HashMap;
 use std::path::Path;

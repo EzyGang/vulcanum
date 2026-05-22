@@ -9,8 +9,8 @@ use crate::services::work_runs::service::WorkRunsService;
 pub struct SubmitResultParams {
     pub pr_url: String,
     pub exit_code: i32,
-    pub tokens_used: i32,
-    pub duration_ms: i32,
+    pub tokens_used: i64,
+    pub duration_ms: i64,
 }
 
 impl WorkRunsService {
