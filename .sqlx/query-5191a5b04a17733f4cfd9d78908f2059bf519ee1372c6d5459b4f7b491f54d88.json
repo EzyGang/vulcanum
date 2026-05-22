@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE work_runs SET worker_id = $2, status = 'running'::work_run_status\n             WHERE id = $1 AND status = 'pending'::work_run_status\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n             FROM work_runs WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -49,38 +49,47 @@
       },
       {
         "ordinal": 6,
-        "name": "result_pr_url",
+        "name": "repo_url",
         "type_info": "Text"
       },
       {
         "ordinal": 7,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "result_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
         "name": "result_exit_code",
         "type_info": "Int4"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "tokens_used",
         "type_info": "Int4"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "duration_ms",
         "type_info": "Int4"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -91,6 +100,8 @@
       true,
       false,
       false,
+      false,
+      false,
       true,
       true,
       true,
@@ -99,5 +110,5 @@
       true
     ]
   },
-  "hash": "dbc23b892adafa28965c0b60e4ebf482fb7b111185e388a02a102c0b43c2f886"
+  "hash": "5191a5b04a17733f4cfd9d78908f2059bf519ee1372c6d5459b4f7b491f54d88"
 }

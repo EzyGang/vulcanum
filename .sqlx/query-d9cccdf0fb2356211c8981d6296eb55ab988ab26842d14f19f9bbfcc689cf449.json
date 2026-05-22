@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs ORDER BY created_at DESC",
+  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -45,6 +45,11 @@
       },
       {
         "ordinal": 8,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -61,8 +66,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "ffee86f515b1e856571500f6e184ce52d61f1ed8a8b6f40a68d4a3f4a70c094d"
+  "hash": "d9cccdf0fb2356211c8981d6296eb55ab988ab26842d14f19f9bbfcc689cf449"
 }

@@ -63,10 +63,18 @@ impl AgentHarness for HarnessKind {
         workdir: &Path,
         secrets: &HashMap<String, String>,
         limits: &ResourceLimits,
+        repo_url: &str,
+        agents_md: &str,
     ) -> Result<HarnessResult, HarnessError> {
         match self {
-            Self::Host(h) => h.spawn(prompt, workdir, secrets, limits).await,
-            Self::Kata(k) => k.spawn(prompt, workdir, secrets, limits).await,
+            Self::Host(h) => {
+                h.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
+                    .await
+            }
+            Self::Kata(k) => {
+                k.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
+                    .await
+            }
         }
     }
 }
@@ -83,5 +91,7 @@ pub trait AgentHarness {
         workdir: &Path,
         secrets: &HashMap<String, String>,
         limits: &ResourceLimits,
+        repo_url: &str,
+        agents_md: &str,
     ) -> impl std::future::Future<Output = Result<HarnessResult, HarnessError>> + Send;
 }

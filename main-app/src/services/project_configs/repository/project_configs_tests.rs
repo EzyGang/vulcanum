@@ -17,6 +17,7 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Review {{task_title}}".to_owned(),
         repo_url: "https://github.com/test/repo".to_owned(),
+        agents_md: String::new(),
     };
 
     let created = repo
@@ -53,6 +54,7 @@ async fn list_all_returns_configs(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Template A".to_owned(),
         repo_url: String::new(),
+        agents_md: String::new(),
     };
     let p2 = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-list-b".to_owned(),
@@ -61,6 +63,7 @@ async fn list_all_returns_configs(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Template B".to_owned(),
         repo_url: String::new(),
+        agents_md: String::new(),
     };
 
     repo.create(&pool, &p1).await.expect("Should create p1");
@@ -80,6 +83,7 @@ async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Template".to_owned(),
         repo_url: String::new(),
+        agents_md: String::new(),
     };
 
     repo.create(&pool, &params)
@@ -103,6 +107,7 @@ async fn update_partial_fields(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Original".to_owned(),
         repo_url: String::new(),
+        agents_md: String::new(),
     };
 
     let created = repo.create(&pool, &params).await.expect("Should create");
@@ -117,6 +122,7 @@ async fn update_partial_fields(pool: PgPool) {
                 progress_column: None,
                 prompt_template: Some("Updated template"),
                 repo_url: None,
+                agents_md: None,
                 enabled: Some(false),
             },
         )
@@ -143,6 +149,7 @@ async fn update_nonexistent_returns_not_found(pool: PgPool) {
                 progress_column: None,
                 prompt_template: None,
                 repo_url: None,
+                agents_md: None,
                 enabled: None,
             },
         )
@@ -172,6 +179,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Enabled".to_owned(),
         repo_url: String::new(),
+        agents_md: String::new(),
     };
 
     let disabled_params = CreateProjectConfigRequest {
@@ -181,6 +189,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
         target_column: "in-review".to_owned(),
         prompt_template: "Disabled".to_owned(),
         repo_url: String::new(),
+        agents_md: String::new(),
     };
 
     let created = repo
@@ -197,6 +206,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
             progress_column: None,
             prompt_template: None,
             repo_url: None,
+            agents_md: None,
             enabled: Some(false),
         },
     )

@@ -11,6 +11,8 @@ pub struct InsertWorkRunParams {
     pub external_task_ref: String,
     pub project_config_id: Uuid,
     pub prompt_text: String,
+    pub repo_url: String,
+    pub agents_md: String,
     pub status: WorkRunStatus,
 }
 
@@ -25,9 +27,10 @@ impl WorkRunsRepository {
 
         sqlx::query_as!(
             WorkRun,
-            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text)
-             VALUES ($1, $2, $3, $4, $5)
+            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
+                        repo_url, agents_md,
                         result_pr_url, result_exit_code, tokens_used, duration_ms,
                         created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -35,6 +38,8 @@ impl WorkRunsRepository {
             params.project_config_id,
             &params.status as &WorkRunStatus,
             &params.prompt_text,
+            &params.repo_url,
+            &params.agents_md,
         )
         .fetch_one(db)
         .await
@@ -49,14 +54,16 @@ impl WorkRunsRepository {
         let id = Uuid::new_v4();
 
         sqlx::query!(
-            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text)
-             VALUES ($1, $2, $3, $4, $5)
+            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT DO NOTHING"#,
             id,
             &params.external_task_ref,
             params.project_config_id,
             &params.status as &WorkRunStatus,
             &params.prompt_text,
+            &params.repo_url,
+            &params.agents_md,
         )
         .execute(db)
         .await
@@ -72,7 +79,7 @@ impl WorkRunsRepository {
         sqlx::query_as!(
             WorkRun,
             r#"SELECT id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
              FROM work_runs WHERE id = $1"#,
             id,
@@ -106,7 +113,7 @@ impl WorkRunsRepository {
             r#"UPDATE work_runs SET worker_id = $2, status = 'running'::work_run_status
              WHERE id = $1 AND status = 'pending'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             worker_id,
@@ -129,7 +136,7 @@ impl WorkRunsRepository {
              duration_ms = $5, status = $6
              WHERE id = $1 AND status = 'running'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             params.pr_url,

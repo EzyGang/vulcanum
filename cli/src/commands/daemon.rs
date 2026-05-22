@@ -153,7 +153,14 @@ async fn handle_job(client: &ApiClient, state: &WorkerState, job_id: uuid::Uuid)
     let secrets = std::collections::HashMap::new();
 
     let harness_result = match harness
-        .spawn(&job.prompt_text, &workdir, &secrets, &limits)
+        .spawn(
+            &job.prompt_text,
+            &workdir,
+            &secrets,
+            &limits,
+            &job.repo_url,
+            &job.agents_md,
+        )
         .await
     {
         Ok(r) => r,

@@ -32,6 +32,8 @@ async fn unique_active_task_prevents_duplicate_active(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
+        repo_url: String::new(),
+        agents_md: String::new(),
         status: WorkRunStatus::Pending,
     };
 
@@ -43,6 +45,8 @@ async fn unique_active_task_prevents_duplicate_active(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review another PR".to_owned(),
+        repo_url: String::new(),
+        agents_md: String::new(),
         status: WorkRunStatus::Pending,
     };
 
@@ -64,6 +68,8 @@ async fn unique_active_task_allows_completed_with_same_ref(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
+        repo_url: String::new(),
+        agents_md: String::new(),
         status: WorkRunStatus::Pending,
     };
 
@@ -75,6 +81,8 @@ async fn unique_active_task_allows_completed_with_same_ref(pool: PgPool) {
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review another PR".to_owned(),
+        repo_url: String::new(),
+        agents_md: String::new(),
         status: WorkRunStatus::Completed,
     };
 

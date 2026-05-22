@@ -48,6 +48,8 @@ pub struct PollResponse {
 #[derive(Debug, Deserialize)]
 pub struct JobResponse {
     pub prompt_text: String,
+    pub repo_url: String,
+    pub agents_md: String,
     pub external_task_ref: String,
 }
 

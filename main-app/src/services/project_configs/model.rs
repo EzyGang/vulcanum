@@ -13,6 +13,7 @@ pub struct ProjectConfig {
     pub progress_column: String,
     pub prompt_template: String,
     pub repo_url: String,
+    pub agents_md: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -28,6 +29,8 @@ pub struct CreateProjectConfigRequest {
     pub prompt_template: String,
     #[serde(default)]
     pub repo_url: String,
+    #[serde(default)]
+    pub agents_md: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -42,6 +45,8 @@ pub struct UpdateProjectConfigRequest {
     pub prompt_template: Option<String>,
     #[serde(default)]
     pub repo_url: Option<String>,
+    #[serde(default)]
+    pub agents_md: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
 }
