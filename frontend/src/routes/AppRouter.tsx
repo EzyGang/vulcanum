@@ -16,7 +16,7 @@ const AuthenticatedLayout = ({ children }: { children: ComponentChildren }): JSX
 );
 
 const ProjectsEditRoute = () => {
-  const params = useParams();
+  const params = useParams<{ id?: string }>();
   return <ProjectsFormPage projectId={params.id} />;
 };
 
