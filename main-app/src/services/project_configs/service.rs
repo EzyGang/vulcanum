@@ -102,6 +102,16 @@ impl ProjectConfigsService {
             .map_err(ProjectConfigsError::from)
     }
 
+    pub async fn fetch_columns_by_kaneo_id(
+        &self,
+        kaneo_project_id: &str,
+    ) -> Result<Vec<kaneo_cli::api::types::Column>, ProjectConfigsError> {
+        self.kaneo
+            .fetch_columns(kaneo_project_id)
+            .await
+            .map_err(ProjectConfigsError::from)
+    }
+
     async fn validate_columns_exist(
         &self,
         project_id: &str,

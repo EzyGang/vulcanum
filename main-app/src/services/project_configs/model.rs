@@ -20,6 +20,8 @@ pub struct ProjectConfig {
 #[derive(Debug, Deserialize)]
 pub struct CreateProjectConfigRequest {
     pub kaneo_project_id: String,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
     #[serde(default = "default_pickup_column")]
     pub pickup_column: String,
     #[serde(default = "default_progress_column")]
@@ -49,6 +51,10 @@ pub struct UpdateProjectConfigRequest {
     pub agents_md: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
+}
+
+fn default_enabled() -> bool {
+    true
 }
 
 fn default_pickup_column() -> String {

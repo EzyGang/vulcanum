@@ -12,6 +12,7 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let params = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-test-create".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
@@ -49,6 +50,7 @@ async fn list_all_returns_configs(pool: PgPool) {
 
     let p1 = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-list-a".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
@@ -58,6 +60,7 @@ async fn list_all_returns_configs(pool: PgPool) {
     };
     let p2 = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-list-b".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
@@ -78,6 +81,7 @@ async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let params = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-dup".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
@@ -102,6 +106,7 @@ async fn update_partial_fields(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let params = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-update".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
@@ -174,6 +179,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
 
     let enabled_params = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-enabled".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
@@ -184,6 +190,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
 
     let disabled_params = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-disabled".to_owned(),
+        enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
