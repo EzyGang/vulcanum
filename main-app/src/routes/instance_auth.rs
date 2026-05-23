@@ -3,7 +3,9 @@ use actix_web::{dev::Payload, Error, FromRequest, HttpRequest};
 use crate::app_state::AppState;
 use crate::errors::AppError;
 
-pub struct InstanceAuth;
+pub struct InstanceAuth {
+    pub token: String,
+}
 
 impl FromRequest for InstanceAuth {
     type Error = Error;
@@ -29,7 +31,9 @@ impl FromRequest for InstanceAuth {
         };
 
         if state.auth.token_store.validate(token) {
-            std::future::ready(Ok(InstanceAuth))
+            std::future::ready(Ok(InstanceAuth {
+                token: token.to_owned(),
+            }))
         } else {
             std::future::ready(Err(AppError::InvalidToken.into()))
         }

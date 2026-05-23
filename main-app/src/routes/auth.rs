@@ -1,4 +1,4 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{web, HttpResponse};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
@@ -41,18 +41,10 @@ pub async fn instance_login(
 }
 
 pub async fn logout(
-    req: HttpRequest,
     state: web::Data<AppState>,
-    _auth: InstanceAuth,
+    auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
-    let token = req
-        .headers()
-        .get("Authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .unwrap_or("");
-
-    state.auth.revoke(token);
+    state.auth.revoke(&auth.token);
 
     Ok(HttpResponse::NoContent().finish())
 }
