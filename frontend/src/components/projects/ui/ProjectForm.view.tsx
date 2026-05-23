@@ -37,6 +37,52 @@ const textareaClasses =
   'bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full font-mono';
 const labelClasses = 'text-text-muted text-xs uppercase tracking-wider';
 
+interface ColumnSelectProps {
+  id: string;
+  label: string;
+  value: Signal<string>;
+  columns: Signal<ColumnInfo[]>;
+  columnsLoading: Signal<boolean>;
+  disabled: boolean;
+  placeholderText: string;
+}
+
+const ColumnSelect = ({
+  id,
+  label,
+  value,
+  columns,
+  columnsLoading,
+  disabled,
+  placeholderText
+}: ColumnSelectProps): JSX.Element => (
+  <div class='flex flex-col gap-2'>
+    <label for={id} class={labelClasses}>
+      {label}
+    </label>
+    {columnsLoading.value ? (
+      <span class='text-text-muted text-sm'>Loading columns...</span>
+    ) : (
+      <select
+        id={id}
+        value={value.value}
+        onChange={(e) => {
+          value.value = (e.target as HTMLSelectElement).value;
+        }}
+        disabled={disabled || !columns.value.length}
+        class={selectClasses}
+      >
+        <option value=''>{placeholderText}</option>
+        {columns.value.map((col) => (
+          <option key={col.id} value={col.name}>
+            {col.name}
+          </option>
+        ))}
+      </select>
+    )}
+  </div>
+);
+
 export const ProjectFormView = ({
   data: {
     isEdit,
@@ -99,86 +145,39 @@ export const ProjectFormView = ({
           </label>
         </div>
 
-        <div class='flex flex-col gap-2'>
-          <label for='field-pickup-column' class={labelClasses}>
-            Pickup Column
-          </label>
-          {columnsLoading.value ? (
-            <span class='text-text-muted text-sm'>Loading columns...</span>
-          ) : (
-            <select
-              id='field-pickup-column'
-              value={pickupColumn.value}
-              onChange={(e) => {
-                pickupColumn.value = (e.target as HTMLSelectElement).value;
-              }}
-              disabled={submitting.value || !columns.value.length}
-              class={selectClasses}
-            >
-              <option value=''>— Select pickup column —</option>
-              {columns.value.map((col) => (
-                <option key={col.id} value={col.name}>
-                  {col.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {!columnsLoading.value && columnsFetched.value && columns.value.length === 0 && (
-            <span class='text-text-muted text-xs'>Enter a Kaneo Project ID to load columns</span>
-          )}
-        </div>
+        {!columnsLoading.value && columnsFetched.value && columns.value.length === 0 && (
+          <span class='text-text-muted text-xs'>Enter a Kaneo Project ID to load columns</span>
+        )}
 
-        <div class='flex flex-col gap-2'>
-          <label for='field-progress-column' class={labelClasses}>
-            Progress Column
-          </label>
-          {columnsLoading.value ? (
-            <span class='text-text-muted text-sm'>Loading columns...</span>
-          ) : (
-            <select
-              id='field-progress-column'
-              value={progressColumn.value}
-              onChange={(e) => {
-                progressColumn.value = (e.target as HTMLSelectElement).value;
-              }}
-              disabled={submitting.value || !columns.value.length}
-              class={selectClasses}
-            >
-              <option value=''>— Select progress column —</option>
-              {columns.value.map((col) => (
-                <option key={col.id} value={col.name}>
-                  {col.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        <ColumnSelect
+          id='field-pickup-column'
+          label='Pickup Column'
+          value={pickupColumn}
+          columns={columns}
+          columnsLoading={columnsLoading}
+          disabled={submitting.value}
+          placeholderText='Select pickup column'
+        />
 
-        <div class='flex flex-col gap-2'>
-          <label for='field-target-column' class={labelClasses}>
-            Target Column
-          </label>
-          {columnsLoading.value ? (
-            <span class='text-text-muted text-sm'>Loading columns...</span>
-          ) : (
-            <select
-              id='field-target-column'
-              value={targetColumn.value}
-              onChange={(e) => {
-                targetColumn.value = (e.target as HTMLSelectElement).value;
-              }}
-              disabled={submitting.value || !columns.value.length}
-              class={selectClasses}
-            >
-              <option value=''>— Select target column —</option>
-              {columns.value.map((col) => (
-                <option key={col.id} value={col.name}>
-                  {col.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        <ColumnSelect
+          id='field-progress-column'
+          label='Progress Column'
+          value={progressColumn}
+          columns={columns}
+          columnsLoading={columnsLoading}
+          disabled={submitting.value}
+          placeholderText='Select progress column'
+        />
+
+        <ColumnSelect
+          id='field-target-column'
+          label='Target Column'
+          value={targetColumn}
+          columns={columns}
+          columnsLoading={columnsLoading}
+          disabled={submitting.value}
+          placeholderText='Select target column'
+        />
 
         <div class='flex flex-col gap-2'>
           <label for='field-prompt-template' class={labelClasses}>

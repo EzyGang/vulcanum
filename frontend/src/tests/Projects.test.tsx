@@ -132,7 +132,7 @@ describe('Projects.view', () => {
     deleteConfirmId.value = '1';
     const projects = [makeProject({ id: '1' })];
 
-    render(
+    const { getByText } = render(
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
@@ -140,17 +140,8 @@ describe('Projects.view', () => {
       />
     );
 
-    const deleteButtons = document.querySelectorAll('button');
-    let confirmDeleteButton: HTMLButtonElement | null = null;
-    for (const btn of deleteButtons) {
-      if (btn.textContent === 'Delete' && btn.closest('.flex.items-center.gap-2')) {
-        confirmDeleteButton = btn as HTMLButtonElement;
-      }
-    }
-
-    if (confirmDeleteButton) {
-      fireEvent.click(confirmDeleteButton);
-    }
+    expect(getByText('Confirm?')).toBeDefined();
+    fireEvent.click(getByText('Delete'));
     expect(onDelete).toHaveBeenCalledWith('1');
   });
 });
