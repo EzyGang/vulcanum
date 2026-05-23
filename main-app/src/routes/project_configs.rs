@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
@@ -74,6 +74,24 @@ pub async fn list_columns(
 ) -> Result<HttpResponse, AppError> {
     let id = path.into_inner();
     let columns = state.project_configs.fetch_columns(id).await?;
+
+    Ok(HttpResponse::Ok().json(ColumnsResponse { columns }))
+}
+
+#[derive(Deserialize)]
+pub struct ColumnsQuery {
+    pub kaneo_project_id: String,
+}
+
+pub async fn list_columns_by_kaneo_id(
+    state: web::Data<AppState>,
+    query: web::Query<ColumnsQuery>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let columns = state
+        .project_configs
+        .fetch_columns_by_kaneo_id(&query.kaneo_project_id)
+        .await?;
 
     Ok(HttpResponse::Ok().json(ColumnsResponse { columns }))
 }

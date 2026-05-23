@@ -27,6 +27,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 web::scope("/projects")
                     .route("", web::get().to(project_configs::list))
                     .route("", web::post().to(project_configs::create))
+                    .route(
+                        "/columns",
+                        web::get().to(project_configs::list_columns_by_kaneo_id),
+                    )
                     .route("/{id}", web::get().to(project_configs::get))
                     .route("/{id}", web::put().to(project_configs::update))
                     .route("/{id}", web::delete().to(project_configs::delete))

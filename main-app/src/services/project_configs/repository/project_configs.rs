@@ -82,13 +82,14 @@ impl ProjectConfigsRepository {
 
         sqlx::query_as!(
             ProjectConfig,
-            r#"INSERT INTO project_configs (id, kaneo_project_id, pickup_column, target_column,
+            r#"INSERT INTO project_configs (id, kaneo_project_id, enabled, pickup_column, target_column,
              progress_column, prompt_template, repo_url, agents_md)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id, kaneo_project_id, enabled, pickup_column, target_column,
              progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>""#,
             id,
             &params.kaneo_project_id,
+            params.enabled,
             &params.pickup_column,
             &params.target_column,
             &params.progress_column,
