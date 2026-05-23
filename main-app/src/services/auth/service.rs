@@ -3,6 +3,7 @@ use crate::services::users::service::UsersService;
 
 pub mod instance_login;
 pub mod login;
+pub mod revoke;
 pub mod verify;
 
 #[derive(Clone)]

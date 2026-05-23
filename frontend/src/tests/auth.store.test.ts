@@ -4,6 +4,10 @@ vi.mock('../services/auth/auth.service', () => ({
   instanceLogin: vi.fn()
 }));
 
+vi.mock('../utils/api/client', () => ({
+  fetchApi: vi.fn().mockResolvedValue(undefined)
+}));
+
 import { instanceLogin } from '../services/auth/auth.service';
 import { accessToken, login, logout } from '../stores/auth.store';
 
@@ -20,11 +24,11 @@ describe('auth.store', () => {
     expect(accessToken.value).toBeNull();
   });
 
-  it('logout clears the token signal and localStorage', () => {
+  it('logout clears the token signal and localStorage', async () => {
     accessToken.value = 'test-token';
     localStorage.setItem(TEST_KEY, 'test-token');
 
-    logout();
+    await logout();
 
     expect(accessToken.value).toBeNull();
     expect(localStorage.getItem(TEST_KEY)).toBeNull();

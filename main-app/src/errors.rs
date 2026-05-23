@@ -13,6 +13,8 @@ pub enum AppError {
     UserNotFound,
     #[error("invalid token")]
     InvalidToken,
+    #[error("authorization header required")]
+    AuthHeaderMissing,
     #[error("invalid password")]
     InvalidPassword,
     #[error("registration code not found")]
@@ -47,6 +49,9 @@ impl ResponseError for AppError {
             }),
             Self::InvalidToken => HttpResponse::Unauthorized().json(ErrorBody {
                 error: "Invalid token".to_owned(),
+            }),
+            Self::AuthHeaderMissing => HttpResponse::BadRequest().json(ErrorBody {
+                error: "Authorization header required".to_owned(),
             }),
             Self::InvalidPassword => HttpResponse::Unauthorized().json(ErrorBody {
                 error: "Invalid password".to_owned(),

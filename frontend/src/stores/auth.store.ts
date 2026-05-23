@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals';
 import { instanceLogin } from '../services/auth/auth.service';
+import { fetchApi } from '../utils/api/client';
 
 const STORAGE_KEY = 'vulcanum-auth-token';
 
@@ -13,7 +14,15 @@ export const login = async (password: string): Promise<void> => {
   localStorage.setItem(STORAGE_KEY, token);
 };
 
-export const logout = (): void => {
+export const logout = async (): Promise<void> => {
+  const token = accessToken.value;
+  if (token) {
+    try {
+      await fetchApi('/auth/logout', { method: 'POST' });
+    } catch {
+      // Token expires server-side in 15 minutes regardless
+    }
+  }
   accessToken.value = null;
   localStorage.removeItem(STORAGE_KEY);
 };

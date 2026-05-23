@@ -18,7 +18,9 @@ impl FromRequest for InstanceAuth {
 
         let token = match header {
             Some(t) => t,
-            None => return std::future::ready(Err(AppError::InvalidToken.into())),
+            None => {
+                return std::future::ready(Err(AppError::AuthHeaderMissing.into()));
+            }
         };
 
         let state = match req.app_data::<actix_web::web::Data<AppState>>() {

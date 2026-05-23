@@ -18,33 +18,10 @@ export const Dashboard = (): JSX.Element => (
       </div>
     </header>
 
-    <main class='flex flex-col items-center justify-center flex-1 gap-12 px-6'>
+    <main class='flex flex-col items-center justify-center flex-1 gap-6 px-6'>
       <div class='flex flex-col items-center gap-4 text-center'>
         <h2 class='text-3xl font-semibold text-text-primary'>Dashboard</h2>
-        <p class='text-text-secondary text-sm max-w-md'>
-          Manage workers, project configurations, and monitor work runs from the panels below.
-        </p>
-      </div>
-
-      <div class='flex gap-6'>
-        <a
-          href='/workers'
-          class='flex flex-col items-center gap-3 bg-bg-card border border-border-base p-6 hover:border-border-focus transition-colors'
-        >
-          <span class='text-text-primary text-sm font-medium uppercase tracking-wider'>
-            Workers
-          </span>
-          <span class='text-text-muted text-xs'>View and manage connected workers</span>
-        </a>
-        <a
-          href='/projects'
-          class='flex flex-col items-center gap-3 bg-bg-card border border-border-base p-6 hover:border-border-focus transition-colors'
-        >
-          <span class='text-text-primary text-sm font-medium uppercase tracking-wider'>
-            Projects
-          </span>
-          <span class='text-text-muted text-xs'>Configure project integrations</span>
-        </a>
+        <p class='text-text-muted text-sm'>More features coming soon.</p>
       </div>
     </main>
   </div>

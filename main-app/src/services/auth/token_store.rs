@@ -25,14 +25,14 @@ impl TokenStore {
             user_id: user_id.to_owned(),
             expires_at: Utc::now() + Duration::minutes(ttl_minutes),
         };
-        self.inner
-            .write()
-            .expect("token store lock poisoned")
-            .insert(token.to_owned(), entry);
+        let mut map = self.inner.write().unwrap_or_else(|e| e.into_inner());
+        let now = Utc::now();
+        map.retain(|_, v| v.expires_at > now);
+        map.insert(token.to_owned(), entry);
     }
 
     pub fn consume(&self, token: &str) -> Option<String> {
-        let mut map = self.inner.write().expect("token store lock poisoned");
+        let mut map = self.inner.write().unwrap_or_else(|e| e.into_inner());
         let entry = map.remove(token)?;
 
         if Utc::now() > entry.expires_at {
@@ -42,10 +42,11 @@ impl TokenStore {
         Some(entry.user_id)
     }
 
+    #[must_use]
     pub fn validate(&self, token: &str) -> bool {
         self.inner
             .read()
-            .expect("token store lock poisoned")
+            .unwrap_or_else(|e| e.into_inner())
             .get(token)
             .is_some_and(|entry| Utc::now() <= entry.expires_at)
     }
