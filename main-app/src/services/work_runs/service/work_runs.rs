@@ -27,11 +27,27 @@ impl WorkRunsService {
 
         self.notifier.add_worker(worker_id).await;
 
-        if !self.notifier.take(&worker_id).await {
+        let work_run_id = self.notifier.take(&worker_id).await;
+
+        if !work_run_id {
             return Ok(None);
         }
 
-        self.work_runs_repo.find_oldest_pending_id(&self.db).await
+        let run_id = self.work_runs_repo.find_oldest_pending_id(&self.db).await?;
+
+        if let Some((id, external_task_ref)) = run_id {
+            tracing::info!(
+                worker_id = worker_id.to_string().as_str(),
+                work_run_id = id.to_string().as_str(),
+                external_task_ref = external_task_ref.as_str(),
+                "dispatching work_run {} to worker {}",
+                id,
+                worker_id,
+            );
+            return Ok(Some(id));
+        }
+
+        Ok(None)
     }
 
     pub async fn get_job(&self, id: Uuid) -> Result<WorkRun, WorkRunsError> {
@@ -91,6 +107,18 @@ impl WorkRunsService {
                 },
             )
             .await?;
+
+        tracing::info!(
+            worker_id = worker_id.to_string().as_str(),
+            work_run_id = id.to_string().as_str(),
+            tokens_used = params.tokens_used,
+            duration_ms = params.duration_ms,
+            exit_code = params.exit_code,
+            has_pr_url = !params.pr_url.is_empty(),
+            "work_run {} completed by worker {}",
+            id,
+            worker_id,
+        );
 
         self.sync_kaneo_on_result(&run, &params, status).await;
 

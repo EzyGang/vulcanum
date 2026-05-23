@@ -22,6 +22,8 @@ pub async fn run(code: String, instance: String) -> anyhow::Result<()> {
     save_state(&state)?;
 
     tracing::info!(
+        worker_id = resp.worker_id.to_string().as_str(),
+        worker_name = resp.name.as_str(),
         "connected as worker '{}' (id: {}, token expires: {})",
         resp.name,
         resp.worker_id,

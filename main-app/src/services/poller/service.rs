@@ -80,11 +80,17 @@ impl PollerService {
             }
         };
 
+        let project_count = configs.len();
+
         for config in &configs {
             match self.poll_project(config).await {
-                Ok(inserted) => {
+                Ok((tasks_found, inserted)) => {
                     if inserted > 0 {
                         tracing::info!(
+                            project_count = project_count,
+                            tasks_found = tasks_found,
+                            tasks_inserted = inserted,
+                            project_id = config.kaneo_project_id.as_str(),
                             "Inserted {} new work_runs for project {}",
                             inserted,
                             config.kaneo_project_id,
@@ -94,6 +100,7 @@ impl PollerService {
                 }
                 Err(e) => {
                     tracing::error!(
+                        project_id = config.kaneo_project_id.as_str(),
                         "Kaneo poll failed for project {}: {}",
                         config.kaneo_project_id,
                         e,
@@ -102,16 +109,22 @@ impl PollerService {
             }
         }
 
-        tracing::debug!("Poll cycle complete, checked {} projects", configs.len());
+        tracing::debug!(
+            project_count = project_count,
+            "Poll cycle complete, checked {} projects",
+            project_count,
+        );
     }
 
-    async fn poll_project(&self, config: &ProjectConfig) -> Result<usize, PollError> {
+    async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
         let tasks = self
             .kaneo
             .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
             .await?;
 
+        let tasks_found = tasks.len();
         let mut inserted = 0;
+
         for task in &tasks {
             let prompt_text = template::render_template(
                 &config.prompt_template,
@@ -143,6 +156,6 @@ impl PollerService {
             }
         }
 
-        Ok(inserted)
+        Ok((tasks_found, inserted))
     }
 }

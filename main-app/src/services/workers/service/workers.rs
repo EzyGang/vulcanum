@@ -53,6 +53,14 @@ impl WorkersService {
 
         let (access_token, expires_at) = build_jwt(worker.id, &self.jwt_secret)?;
 
+        tracing::info!(
+            worker_id = worker.id.to_string().as_str(),
+            worker_name = worker.name.as_str(),
+            "worker '{}' registered with id {}",
+            worker.name,
+            worker.id,
+        );
+
         Ok(ConnectResponse {
             access_token,
             refresh_token,

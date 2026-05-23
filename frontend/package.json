@@ -7,7 +7,7 @@
 		"preview": "vite preview",
 		"lint": "biome check --error-on-warnings ./src ./public",
 		"format": "biome check --error-on-warnings --write --unsafe ./src ./public",
-		"type-check": "tsc --noEmit",
+		"type-check": "tsc -b",
 		"validate": "pnpm lint && pnpm type-check",
 		"fix": "pnpm format && pnpm type-check",
 		"ci-run": "biome ci --error-on-warnings ./src ./public",

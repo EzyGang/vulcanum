@@ -1,7 +1,6 @@
-use std::process;
-
 #[tokio::main]
 async fn main() {
-    println!("vulcanum-host-server placeholder");
-    process::exit(0);
+    vulcanum_shared::telemetry::init();
+    tracing::info!("vulcanum-host-server placeholder");
+    std::process::exit(0);
 }

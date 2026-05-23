@@ -15,7 +15,12 @@ pub(crate) async fn handle_job(
     state: &WorkerState,
     job_id: Uuid,
 ) -> TickOutcome {
-    tracing::info!("job received: {}", job_id);
+    tracing::info!(
+        worker_id = state.worker_id.to_string().as_str(),
+        work_run_id = job_id.to_string().as_str(),
+        "job received: {}",
+        job_id,
+    );
 
     let job = match client.get_job(job_id, &state.access_token).await {
         Ok(j) => j,
@@ -35,6 +40,9 @@ pub(crate) async fn handle_job(
     }
 
     tracing::info!(
+        worker_id = state.worker_id.to_string().as_str(),
+        work_run_id = job_id.to_string().as_str(),
+        external_task_ref = job.external_task_ref.as_str(),
         "executing job {} (task: {}, prompt length: {})",
         job_id,
         job.external_task_ref,
@@ -63,7 +71,14 @@ pub(crate) async fn handle_job(
     {
         Ok(r) => r,
         Err(e) => {
-            tracing::error!("job {} execution failed: {}", job_id, e);
+            tracing::error!(
+                worker_id = state.worker_id.to_string().as_str(),
+                work_run_id = job_id.to_string().as_str(),
+                external_task_ref = job.external_task_ref.as_str(),
+                "job {} execution failed: {}",
+                job_id,
+                e,
+            );
             let result = SubmitResultRequest {
                 pr_url: String::new(),
                 exit_code: 1,
@@ -74,6 +89,13 @@ pub(crate) async fn handle_job(
                 .submit_result(job_id, &result, &state.access_token)
                 .await
             {
+                tracing::error!(
+                    worker_id = state.worker_id.to_string().as_str(),
+                    work_run_id = job_id.to_string().as_str(),
+                    "submit_result failed for job {}: {}",
+                    job_id,
+                    e,
+                );
                 if is_fatal_api_error(&e) {
                     return TickOutcome::Fatal(format!("submit_result failed: {:#}", e));
                 }
@@ -101,6 +123,12 @@ pub(crate) async fn handle_job(
     }
 
     tracing::info!(
+        worker_id = state.worker_id.to_string().as_str(),
+        work_run_id = job_id.to_string().as_str(),
+        external_task_ref = job.external_task_ref.as_str(),
+        tokens_used = harness_result.tokens_used,
+        duration_ms = harness_result.duration_ms,
+        exit_code = harness_result.exit_code,
         "job {} completed in {}ms (exit: {})",
         job_id,
         harness_result.duration_ms,

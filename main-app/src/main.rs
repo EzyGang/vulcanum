@@ -10,6 +10,7 @@ mod test_helpers;
 
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
+use tracing_actix_web::TracingLogger;
 
 #[actix_web::main]
 async fn main() -> eyre::Result<()> {
@@ -30,6 +31,7 @@ async fn main() -> eyre::Result<()> {
     HttpServer::new(move || {
         let cors = Cors::permissive();
         App::new()
+            .wrap(TracingLogger::default())
             .wrap(cors)
             .app_data(web::Data::new(app_state.clone()))
             .configure(routes::configure)
