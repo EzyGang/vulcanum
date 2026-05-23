@@ -26,10 +26,10 @@ interface DashboardViewProps {
   };
 }
 
-const StatCard = ({ label, value }: { label: string; value: number }): JSX.Element => (
+const PlaceholderStatCard = ({ label }: { label: string }): JSX.Element => (
   <div class='flex flex-col gap-1 bg-bg-card border border-border-base p-5'>
     <span class='text-text-muted text-xs uppercase tracking-wider'>{label}</span>
-    <span class='text-text-primary text-2xl font-semibold font-mono'>{value}</span>
+    <span class='text-text-muted text-2xl font-semibold font-mono'>—</span>
   </div>
 );
 
@@ -43,42 +43,69 @@ const DurationCell = ({ ms }: { ms: number | null }): JSX.Element => (
   </span>
 );
 
+const StatCard = ({ label, value }: { label: string; value: number }): JSX.Element => (
+  <div class='flex flex-col gap-1 bg-bg-card border border-border-base p-5'>
+    <span class='text-text-muted text-xs uppercase tracking-wider'>{label}</span>
+    <span class='text-text-primary text-2xl font-semibold font-mono'>{value}</span>
+  </div>
+);
+
+const StatsGrid = ({
+  stats,
+  statsError,
+  workersError
+}: {
+  stats: StatsData | null;
+  statsError: ApiError | null;
+  workersError: ApiError | null;
+}): JSX.Element => (
+  <section class='flex flex-col gap-4'>
+    <div class='grid grid-cols-4 gap-4'>
+      {stats ? (
+        <>
+          <StatCard label='Enabled Projects' value={stats.enabledProjects} />
+          <StatCard label='Idle Workers' value={stats.idleWorkers} />
+          <StatCard label='Busy Workers' value={stats.busyWorkers} />
+          <StatCard label='Disconnected Workers' value={stats.disconnectedWorkers} />
+        </>
+      ) : (
+        <>
+          <PlaceholderStatCard label='Enabled Projects' />
+          <PlaceholderStatCard label='Idle Workers' />
+          <PlaceholderStatCard label='Busy Workers' />
+          <PlaceholderStatCard label='Disconnected Workers' />
+        </>
+      )}
+    </div>
+
+    {statsError && (
+      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
+        {statsError.message}
+      </div>
+    )}
+
+    {workersError && (
+      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
+        {workersError.message}
+      </div>
+    )}
+  </section>
+);
+
 export const DashboardView = ({
   data: { runs, stats },
   status: { runsLoading, workersLoading, statsLoading, runsError, workersError, statsError }
 }: DashboardViewProps): JSX.Element => {
+  const allDataMissing = !stats && runs.length === 0;
   const anyLoading = runsLoading || workersLoading || statsLoading;
 
   return (
     <div class='flex flex-col gap-8'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Dashboard</h2>
 
-      {anyLoading && !stats && !runs.length && (
-        <div class='text-text-muted text-sm'>Loading...</div>
-      )}
+      {anyLoading && allDataMissing && <div class='text-text-muted text-sm'>Loading...</div>}
 
-      {stats && (
-        <>
-          <div class='grid grid-cols-4 gap-4'>
-            <StatCard label='Enabled Projects' value={stats.enabledProjects} />
-            <StatCard label='Idle Workers' value={stats.idleWorkers} />
-            <StatCard label='Busy Workers' value={stats.busyWorkers} />
-            <StatCard label='Disconnected Workers' value={stats.disconnectedWorkers} />
-          </div>
-
-          {statsError && (
-            <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-              {statsError.message}
-            </div>
-          )}
-        </>
-      )}
-
-      {workersError && (
-        <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-          {workersError.message}
-        </div>
-      )}
+      <StatsGrid stats={stats} statsError={statsError} workersError={workersError} />
 
       <section class='flex flex-col gap-4'>
         <h3 class='text-md font-semibold text-text-primary uppercase tracking-wide'>
