@@ -18,6 +18,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
+        instance_password: "test-password".to_owned(),
     };
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();
@@ -32,6 +33,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
                 crate::services::users::repository::UsersRepository::new(),
                 pool.clone(),
             ),
+            "test-password".to_owned(),
         ),
         project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
             project_configs_repo.clone(),

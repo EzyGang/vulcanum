@@ -4,6 +4,8 @@ use crate::app_state::AppState;
 use crate::routes;
 use crate::test_helpers;
 
+const TEST_PASSWORD: &str = "test-password";
+
 fn build_state(pool: sqlx::PgPool) -> AppState {
     let kaneo = crate::services::kaneo::client::KaneoClient::new(
         "cloud.kaneo.app".to_owned(),
@@ -16,6 +18,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
+        instance_password: TEST_PASSWORD.to_owned(),
     };
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();
@@ -24,13 +27,16 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         crate::services::project_configs::repository::ProjectConfigsRepository::new();
     let work_notifier = crate::services::poller::notifier::WorkNotifier::new();
 
-    AppState {
-        auth: crate::services::auth::service::AuthService::new(
-            crate::services::users::service::UsersService::new(
-                crate::services::users::repository::UsersRepository::new(),
-                pool.clone(),
-            ),
+    let auth = crate::services::auth::service::AuthService::new(
+        crate::services::users::service::UsersService::new(
+            crate::services::users::repository::UsersRepository::new(),
+            pool.clone(),
         ),
+        TEST_PASSWORD.to_owned(),
+    );
+
+    AppState {
+        auth,
         project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
             project_configs_repo.clone(),
             pool.clone(),
@@ -58,17 +64,25 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
     }
 }
 
+fn auth_header(token: &str) -> (&str, String) {
+    ("Authorization", format!("Bearer {token}"))
+}
+
 #[sqlx::test]
 async fn generate_code_returns_201(pool: sqlx::PgPool) {
+    let state = build_state(pool);
+    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+
     let app = test::init_service(
         App::new()
-            .app_data(web::Data::new(build_state(pool)))
+            .app_data(web::Data::new(state))
             .configure(routes::configure),
     )
     .await;
 
     let req = test::TestRequest::post()
         .uri("/api/v1/workers/codes")
+        .insert_header(auth_header(&token))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -199,6 +213,8 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
         .unwrap();
     let worker_id = connect.worker_id;
 
+    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(state))
@@ -208,6 +224,7 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
 
     let req = test::TestRequest::delete()
         .uri(&format!("/api/v1/workers/{worker_id}"))
+        .insert_header(auth_header(&token))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -219,14 +236,20 @@ async fn list_workers_returns_200(pool: sqlx::PgPool) {
     test_helpers::insert_worker(&pool, "list-test-1").await;
     test_helpers::insert_worker(&pool, "list-test-2").await;
 
+    let state = build_state(pool);
+    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+
     let app = test::init_service(
         App::new()
-            .app_data(web::Data::new(build_state(pool)))
+            .app_data(web::Data::new(state))
             .configure(routes::configure),
     )
     .await;
 
-    let req = test::TestRequest::get().uri("/api/v1/workers").to_request();
+    let req = test::TestRequest::get()
+        .uri("/api/v1/workers")
+        .insert_header(auth_header(&token))
+        .to_request();
     let resp = test::call_service(&app, req).await;
 
     assert_eq!(resp.status(), 200);

@@ -6,6 +6,7 @@ pub struct AppConfig {
     pub poll_period_secs: u64,
     pub jwt_secret: String,
     pub stale_worker_threshold_secs: u64,
+    pub instance_password: String,
 }
 
 impl AppConfig {
@@ -21,6 +22,7 @@ impl AppConfig {
         let stale_worker_threshold_secs = std::env::var("STALE_WORKER_THRESHOLD_SECS")
             .unwrap_or_else(|_| "120".to_owned())
             .parse::<u64>()?;
+        let instance_password = std::env::var("INSTANCE_PASSWORD")?;
 
         Ok(AppConfig {
             db_url,
@@ -28,6 +30,7 @@ impl AppConfig {
             poll_period_secs,
             jwt_secret,
             stale_worker_threshold_secs,
+            instance_password,
         })
     }
 }

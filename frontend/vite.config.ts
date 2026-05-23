@@ -8,5 +8,15 @@ export default defineConfig({
        jsxImportSource: 'preact',
      }),
      tailwindcss(),
-   ],
+  ],
+  "server": {
+    allowedHosts: ["localhost", "0.0.0.0", "127.0.0.1", "localho.st"],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 });

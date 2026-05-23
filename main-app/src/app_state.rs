@@ -42,7 +42,7 @@ impl AppState {
         );
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
-        let auth = AuthService::new(users);
+        let auth = AuthService::new(users, cfg.instance_password.clone());
         let project_configs_repo = ProjectConfigsRepository::new();
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),

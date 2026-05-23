@@ -11,6 +11,7 @@ fn cfg() -> AppConfig {
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
+        instance_password: "test-password".to_owned(),
     }
 }
 
