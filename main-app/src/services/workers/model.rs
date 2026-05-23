@@ -34,6 +34,29 @@ pub struct Worker {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct WorkerResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub last_seen: Option<DateTime<Utc>>,
+    pub status: WorkerStatus,
+    pub capabilities: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<Worker> for WorkerResponse {
+    fn from(w: Worker) -> Self {
+        Self {
+            id: w.id,
+            name: w.name,
+            last_seen: w.last_seen,
+            status: w.status,
+            capabilities: w.capabilities,
+            created_at: w.created_at,
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct CodeResponse {
     pub code: String,

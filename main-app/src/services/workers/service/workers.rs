@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::services::workers::errors::WorkersError;
-use crate::services::workers::model;
+use crate::services::workers::model::{self, WorkerResponse};
 use crate::services::workers::model::{
     CodeResponse, ConnectRequest, ConnectResponse, RefreshRequest, RefreshResponse,
 };
@@ -91,10 +91,9 @@ impl WorkersService {
         })
     }
 
-    pub async fn list_all(
-        &self,
-    ) -> Result<Vec<crate::services::workers::model::Worker>, WorkersError> {
-        self.repo.list_all(&self.db).await
+    pub async fn list_all(&self) -> Result<Vec<WorkerResponse>, WorkersError> {
+        let workers = self.repo.list_all(&self.db).await?;
+        Ok(workers.into_iter().map(WorkerResponse::from).collect())
     }
 
     pub async fn delete_worker(&self, worker_id: uuid::Uuid) -> Result<(), WorkersError> {
