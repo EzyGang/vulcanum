@@ -1,0 +1,26 @@
+import { useLocation } from 'wouter-preact';
+
+interface NavLink {
+  href: string;
+  label: string;
+}
+
+const NAV_LINKS: NavLink[] = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/workers', label: 'Workers' },
+  { href: '/projects', label: 'Projects' },
+  { href: '/runs', label: 'Runs' }
+];
+
+export const useNavigationShell = () => {
+  const [location] = useLocation();
+
+  const isActive = (href: string): boolean => {
+    if (href === '/') {
+      return location === '/';
+    }
+    return location.startsWith(href);
+  };
+
+  return { navLinks: NAV_LINKS, isActive };
+};

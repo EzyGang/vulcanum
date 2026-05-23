@@ -151,4 +151,16 @@ impl ProjectConfigsRepository {
 
         Ok(())
     }
+
+    pub async fn count_enabled<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+    ) -> Result<i64, ProjectConfigsError> {
+        sqlx::query_scalar!(
+            "SELECT COUNT(*) as \"count!: i64\" FROM project_configs WHERE enabled = true"
+        )
+        .fetch_one(db)
+        .await
+        .map_err(ProjectConfigsError::from)
+    }
 }

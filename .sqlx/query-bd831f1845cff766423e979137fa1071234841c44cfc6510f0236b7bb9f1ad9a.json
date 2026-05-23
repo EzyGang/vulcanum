@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,\n             w.name as worker_name,\n             wr.status as \"status: WorkRunStatus\", wr.prompt_text, wr.repo_url,\n             wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,\n             wr.created_at as \"created_at!: DateTime<Utc>\"\n             FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id\n             WHERE ($1::work_run_status IS NULL OR wr.status = $1)\n             ORDER BY wr.created_at DESC LIMIT $2 OFFSET $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "worker_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "worker_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "status: WorkRunStatus",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "prompt_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "result_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "result_exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "tokens_used",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "duration_ms",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "bd831f1845cff766423e979137fa1071234841c44cfc6510f0236b7bb9f1ad9a"
+}

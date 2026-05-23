@@ -18,9 +18,11 @@ check:
 	@cargo fmt --all -- --check
 	@cargo clippy --all-targets --workspace -- -D warnings
 
-
 prep-queries:
 	@cargo sqlx prepare --workspace -- --all-targets
+
+
+full-format-and-check: check-fe format check
 
 # ── Build ──
 

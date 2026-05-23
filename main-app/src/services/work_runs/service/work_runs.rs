@@ -2,7 +2,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
+use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
 use crate::services::work_runs::service::WorkRunsService;
 use vulcanum_shared::api_types::SubmitResultRequest;
@@ -41,6 +41,17 @@ impl WorkRunsService {
     pub async fn ack_job(&self, id: Uuid, worker_id: Uuid) -> Result<WorkRun, WorkRunsError> {
         self.work_runs_repo
             .acknowledge(&self.db, id, worker_id)
+            .await
+    }
+
+    pub async fn list_all(
+        &self,
+        status: Option<WorkRunStatus>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
+        self.work_runs_repo
+            .list_all(&self.db, status, limit, offset)
             .await
     }
 

@@ -95,3 +95,17 @@ pub async fn list_columns_by_kaneo_id(
 
     Ok(HttpResponse::Ok().json(ColumnsResponse { columns }))
 }
+
+#[derive(Serialize)]
+pub struct ProjectStats {
+    pub enabled_count: i64,
+}
+
+pub async fn stats(
+    state: web::Data<AppState>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let enabled_count = state.project_configs.count_enabled().await?;
+
+    Ok(HttpResponse::Ok().json(ProjectStats { enabled_count }))
+}

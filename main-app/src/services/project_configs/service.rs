@@ -26,6 +26,10 @@ impl ProjectConfigsService {
         self.repo.list_all(&self.db).await
     }
 
+    pub async fn count_enabled(&self) -> Result<i64, ProjectConfigsError> {
+        self.repo.count_enabled(&self.db).await
+    }
+
     pub async fn get_by_id(&self, id: Uuid) -> Result<ProjectConfig, ProjectConfigsError> {
         self.repo.find_by_id(&self.db, id).await
     }

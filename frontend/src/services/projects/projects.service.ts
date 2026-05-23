@@ -26,3 +26,9 @@ export const listColumnsByKaneoId = async (kaneoProjectId: string): Promise<Colu
   });
   return response.columns;
 };
+
+interface ProjectsStats {
+  enabledCount: number;
+}
+
+export const getProjectsStats = (): Promise<ProjectsStats> => get<ProjectsStats>('/projects/stats');
