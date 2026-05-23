@@ -33,9 +33,6 @@ export const useDashboard = () => {
     error: statsError
   } = useApiQuery(['projectsStats'], () => getProjectsStats());
 
-  const loading = runsLoading || workersLoading || statsLoading;
-  const error = runsError || workersError || statsError;
-
   const dashboardStats: DashboardStats | null =
     stats && workers
       ? {
@@ -52,8 +49,12 @@ export const useDashboard = () => {
       stats: dashboardStats
     },
     status: {
-      loading,
-      error
+      runsLoading,
+      workersLoading,
+      statsLoading,
+      runsError,
+      workersError,
+      statsError
     }
   };
 };

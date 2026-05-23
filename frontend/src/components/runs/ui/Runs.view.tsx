@@ -3,6 +3,7 @@ import type { JSX } from 'preact';
 import type { WorkRunListItem, WorkRunStatus } from '../../../types/runs';
 import type { ApiError } from '../../../utils/api/client';
 import { formatDuration, formatRelativeTime } from '../../../utils/format';
+import { StatusBadge } from '../../shared/ui/StatusBadge.view';
 
 const STATUS_OPTIONS: { value: WorkRunStatus | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -32,25 +33,6 @@ interface RunsViewProps {
     prevPage: () => void;
   };
 }
-
-const statusBadge = (status: string): JSX.Element => {
-  const colors: Record<string, string> = {
-    pending: 'text-text-muted bg-bg-hover border-border-base',
-    dispatched: 'text-accent-secondary bg-warning-bg border-warning-border',
-    running: 'text-accent bg-success-bg border-success-border',
-    completed: 'text-success bg-success-bg border-success-border',
-    failed: 'text-error bg-error-bg border-error-border',
-    stalled: 'text-warning bg-warning-bg border-warning-border'
-  };
-
-  return (
-    <span
-      class={`text-xs uppercase tracking-wider px-2 py-0.5 border ${colors[status] ?? 'text-text-muted bg-bg-hover border-border-base'}`}
-    >
-      {status}
-    </span>
-  );
-};
 
 export const RunsView = ({
   data: { runs },
@@ -122,7 +104,9 @@ export const RunsView = ({
                 <td class='px-5 py-3'>
                   <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
                 </td>
-                <td class='px-5 py-3'>{statusBadge(run.status)}</td>
+                <td class='px-5 py-3'>
+                  <StatusBadge status={run.status} />
+                </td>
                 <td class='px-5 py-3'>
                   <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
                 </td>
@@ -159,7 +143,7 @@ export const RunsView = ({
           <button
             type='button'
             onClick={prevPage}
-            disabled={!hasPrevPage}
+            disabled={!hasPrevPage || loading}
             class='text-text-secondary text-sm uppercase tracking-wider hover:text-text-primary transition-colors disabled:opacity-30'
           >
             Previous
@@ -168,7 +152,7 @@ export const RunsView = ({
           <button
             type='button'
             onClick={nextPage}
-            disabled={!hasNextPage}
+            disabled={!hasNextPage || loading}
             class='text-text-secondary text-sm uppercase tracking-wider hover:text-text-primary transition-colors disabled:opacity-30'
           >
             Next

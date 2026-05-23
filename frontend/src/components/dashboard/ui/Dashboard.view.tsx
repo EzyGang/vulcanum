@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../types/runs';
 import type { ApiError } from '../../../utils/api/client';
 import { formatDuration, formatRelativeTime } from '../../../utils/format';
+import { StatusBadge } from '../../shared/ui/StatusBadge.view';
 
 interface StatsData {
   enabledProjects: number;
@@ -16,29 +17,14 @@ interface DashboardViewProps {
     stats: StatsData | null;
   };
   status: {
-    loading: boolean;
-    error: ApiError | null;
+    runsLoading: boolean;
+    workersLoading: boolean;
+    statsLoading: boolean;
+    runsError: ApiError | null;
+    workersError: ApiError | null;
+    statsError: ApiError | null;
   };
 }
-
-const statusBadge = (status: string): JSX.Element => {
-  const colors: Record<string, string> = {
-    pending: 'text-text-muted bg-bg-hover border-border-base',
-    dispatched: 'text-accent-secondary bg-warning-bg border-warning-border',
-    running: 'text-accent bg-success-bg border-success-border',
-    completed: 'text-success bg-success-bg border-success-border',
-    failed: 'text-error bg-error-bg border-error-border',
-    stalled: 'text-warning bg-warning-bg border-warning-border'
-  };
-
-  return (
-    <span
-      class={`text-xs uppercase tracking-wider px-2 py-0.5 border ${colors[status] ?? 'text-text-muted bg-bg-hover border-border-base'}`}
-    >
-      {status}
-    </span>
-  );
-};
 
 const StatCard = ({ label, value }: { label: string; value: number }): JSX.Element => (
   <div class='flex flex-col gap-1 bg-bg-card border border-border-base p-5'>
@@ -59,83 +45,105 @@ const DurationCell = ({ ms }: { ms: number | null }): JSX.Element => (
 
 export const DashboardView = ({
   data: { runs, stats },
-  status: { loading, error }
-}: DashboardViewProps): JSX.Element => (
-  <div class='flex flex-col gap-8'>
-    <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Dashboard</h2>
+  status: { runsLoading, workersLoading, statsLoading, runsError, workersError, statsError }
+}: DashboardViewProps): JSX.Element => {
+  const anyLoading = runsLoading || workersLoading || statsLoading;
 
-    {error && (
-      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-        {error.message}
-      </div>
-    )}
+  return (
+    <div class='flex flex-col gap-8'>
+      <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Dashboard</h2>
 
-    {loading && <div class='text-text-muted text-sm'>Loading...</div>}
+      {anyLoading && !stats && !runs.length && (
+        <div class='text-text-muted text-sm'>Loading...</div>
+      )}
 
-    {stats && (
-      <div class='grid grid-cols-4 gap-4'>
-        <StatCard label='Enabled Projects' value={stats.enabledProjects} />
-        <StatCard label='Idle Workers' value={stats.idleWorkers} />
-        <StatCard label='Busy Workers' value={stats.busyWorkers} />
-        <StatCard label='Disconnected Workers' value={stats.disconnectedWorkers} />
-      </div>
-    )}
+      {stats && (
+        <>
+          <div class='grid grid-cols-4 gap-4'>
+            <StatCard label='Enabled Projects' value={stats.enabledProjects} />
+            <StatCard label='Idle Workers' value={stats.idleWorkers} />
+            <StatCard label='Busy Workers' value={stats.busyWorkers} />
+            <StatCard label='Disconnected Workers' value={stats.disconnectedWorkers} />
+          </div>
 
-    <section class='flex flex-col gap-4'>
-      <h3 class='text-md font-semibold text-text-primary uppercase tracking-wide'>
-        Recent Work Runs
-      </h3>
+          {statsError && (
+            <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
+              {statsError.message}
+            </div>
+          )}
+        </>
+      )}
 
-      {runs.length === 0 && !loading && (
-        <div class='flex flex-col items-center gap-2 bg-bg-card border border-border-base p-8'>
-          <p class='text-text-muted text-sm'>No work runs yet.</p>
+      {workersError && (
+        <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
+          {workersError.message}
         </div>
       )}
 
-      {runs.length > 0 && (
-        <div class='overflow-x-auto'>
-          <table class='w-full border-collapse'>
-            <thead>
-              <tr class='border-b border-border-base'>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Task
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Status
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Worker
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Duration
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Created
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {runs.map((run) => (
-                <tr key={run.id} class='border-b border-border-base'>
-                  <td class='px-5 py-3'>
-                    <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
-                  </td>
-                  <td class='px-5 py-3'>{statusBadge(run.status)}</td>
-                  <td class='px-5 py-3'>
-                    <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
-                  </td>
-                  <td class='px-5 py-3'>
-                    <DurationCell ms={run.durationMs} />
-                  </td>
-                  <td class='px-5 py-3'>
-                    <TimeCell dateStr={run.createdAt} />
-                  </td>
+      <section class='flex flex-col gap-4'>
+        <h3 class='text-md font-semibold text-text-primary uppercase tracking-wide'>
+          Recent Work Runs
+        </h3>
+
+        {runsError && (
+          <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
+            {runsError.message}
+          </div>
+        )}
+
+        {runs.length === 0 && !runsLoading && (
+          <div class='flex flex-col items-center gap-2 bg-bg-card border border-border-base p-8'>
+            <p class='text-text-muted text-sm'>No work runs yet.</p>
+          </div>
+        )}
+
+        {runs.length > 0 && (
+          <div class='overflow-x-auto'>
+            <table class='w-full border-collapse'>
+              <thead>
+                <tr class='border-b border-border-base'>
+                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                    Task
+                  </th>
+                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                    Status
+                  </th>
+                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                    Worker
+                  </th>
+                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                    Duration
+                  </th>
+                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                    Created
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  </div>
-);
+              </thead>
+              <tbody>
+                {runs.map((run) => (
+                  <tr key={run.id} class='border-b border-border-base'>
+                    <td class='px-5 py-3'>
+                      <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
+                    </td>
+                    <td class='px-5 py-3'>
+                      <StatusBadge status={run.status} />
+                    </td>
+                    <td class='px-5 py-3'>
+                      <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
+                    </td>
+                    <td class='px-5 py-3'>
+                      <DurationCell ms={run.durationMs} />
+                    </td>
+                    <td class='px-5 py-3'>
+                      <TimeCell dateStr={run.createdAt} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+};
