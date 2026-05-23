@@ -1,0 +1,32 @@
+export const formatRelativeTime = (dateStr: string): string => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const seconds = Math.floor(diff / 1000);
+
+  if (seconds < 60) return 'Just now';
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return new Intl.RelativeTimeFormat('en', { style: 'long' }).format(-minutes, 'minute');
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return new Intl.RelativeTimeFormat('en', { style: 'long' }).format(-hours, 'hour');
+  }
+
+  const days = Math.floor(hours / 24);
+  return new Intl.RelativeTimeFormat('en', { style: 'long' }).format(-days, 'day');
+};
+
+export const formatDuration = (ms: number): string => {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 3_600_000) {
+    const m = Math.floor(ms / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    return `${m}m ${s}s`;
+  }
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return `${h}h ${m}m`;
+};

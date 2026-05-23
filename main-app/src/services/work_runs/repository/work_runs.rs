@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
+use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 pub struct InsertWorkRunParams {
@@ -97,6 +97,32 @@ impl WorkRunsRepository {
             r#"SELECT id FROM work_runs WHERE status = 'pending'::work_run_status ORDER BY created_at ASC LIMIT 1"#,
         )
         .fetch_optional(db)
+        .await
+        .map_err(WorkRunsError::from)
+    }
+
+    pub async fn list_all<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        status: Option<WorkRunStatus>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
+        sqlx::query_as!(
+            WorkRunListItem,
+            r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
+             w.name as worker_name,
+             wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
+             wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
+             wr.created_at as "created_at!: DateTime<Utc>"
+             FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
+             WHERE ($1::work_run_status IS NULL OR wr.status = $1)
+             ORDER BY wr.created_at DESC LIMIT $2 OFFSET $3"#,
+            status as Option<WorkRunStatus>,
+            limit,
+            offset,
+        )
+        .fetch_all(db)
         .await
         .map_err(WorkRunsError::from)
     }

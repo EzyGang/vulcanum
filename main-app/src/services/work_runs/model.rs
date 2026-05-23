@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, sqlx::Type, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "work_run_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum WorkRunStatus {
@@ -31,4 +31,21 @@ pub struct WorkRun {
     pub duration_ms: Option<i64>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct WorkRunListItem {
+    pub id: Uuid,
+    pub external_task_ref: String,
+    pub project_config_id: Uuid,
+    pub worker_id: Option<Uuid>,
+    pub worker_name: Option<String>,
+    pub status: WorkRunStatus,
+    pub prompt_text: String,
+    pub repo_url: String,
+    pub result_pr_url: Option<String>,
+    pub result_exit_code: Option<i32>,
+    pub tokens_used: Option<i64>,
+    pub duration_ms: Option<i64>,
+    pub created_at: DateTime<Utc>,
 }

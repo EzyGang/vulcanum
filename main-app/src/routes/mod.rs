@@ -3,6 +3,7 @@ pub mod instance_auth;
 pub mod jobs;
 pub mod project_configs;
 pub mod status;
+pub mod work_runs;
 pub mod worker_auth;
 pub mod workers;
 
@@ -27,6 +28,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 web::scope("/projects")
                     .route("", web::get().to(project_configs::list))
                     .route("", web::post().to(project_configs::create))
+                    .route("/stats", web::get().to(project_configs::stats))
                     .route(
                         "/columns",
                         web::get().to(project_configs::list_columns_by_kaneo_id),
@@ -46,7 +48,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/connect", web::post().to(workers::connect))
                     .route("/refresh", web::post().to(workers::refresh))
                     .route("/{id}", web::delete().to(workers::delete)),
-            ),
+            )
+            .service(web::scope("/runs").route("", web::get().to(work_runs::list))),
     );
 }
 
