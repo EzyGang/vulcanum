@@ -54,7 +54,7 @@ impl KaneoClient {
         let result: Result<BoardResponse, KaneoError> = client.get(&path).await.map_err(api_err);
         let duration_ms = start.elapsed().as_millis() as i64;
 
-        log_kaneo_result("GET", &path, 200, duration_ms, &result);
+        log_kaneo_result("GET", &path, duration_ms, &result);
 
         result.map(|board| filter_tasks_in_column(board, column_slug))
     }
@@ -85,7 +85,7 @@ impl KaneoClient {
             .map_err(api_err);
         let duration_ms = start.elapsed().as_millis() as i64;
 
-        log_kaneo_result("PUT", &path, 200, duration_ms, &result);
+        log_kaneo_result("PUT", &path, duration_ms, &result);
         result
     }
 
@@ -111,7 +111,7 @@ impl KaneoClient {
             .map_err(api_err);
         let duration_ms = start.elapsed().as_millis() as i64;
 
-        log_kaneo_result("POST", &path, 200, duration_ms, &result);
+        log_kaneo_result("POST", &path, duration_ms, &result);
         result
     }
 
@@ -123,7 +123,7 @@ impl KaneoClient {
         let result = client.get(&path).await.map_err(api_err);
         let duration_ms = start.elapsed().as_millis() as i64;
 
-        log_kaneo_result("GET", &path, 200, duration_ms, &result);
+        log_kaneo_result("GET", &path, duration_ms, &result);
         result
     }
 }
@@ -141,7 +141,6 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
 pub(crate) fn log_kaneo_result<T>(
     method: &str,
     path: &str,
-    status_code: u16,
     duration_ms: i64,
     result: &Result<T, KaneoError>,
 ) {
@@ -150,7 +149,6 @@ pub(crate) fn log_kaneo_result<T>(
             tracing::info!(
                 method = method,
                 path = path,
-                status_code = status_code,
                 duration_ms = duration_ms,
                 "Kaneo API call succeeded",
             );
@@ -159,7 +157,6 @@ pub(crate) fn log_kaneo_result<T>(
             tracing::warn!(
                 method = method,
                 path = path,
-                status_code = status_code,
                 duration_ms = duration_ms,
                 error = %e,
                 "Kaneo API call failed",

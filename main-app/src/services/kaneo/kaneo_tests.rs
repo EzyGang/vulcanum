@@ -207,7 +207,7 @@ mod tracing_tests {
     #[test]
     fn test_log_kaneo_result_success_emits_info() {
         let result: Result<(), KaneoError> = Ok(());
-        log_kaneo_result("GET", "/test", 200, 42, &result);
+        log_kaneo_result("GET", "/test", 42, &result);
         assert!(logs_contain("Kaneo API call succeeded"));
         assert!(logs_contain("GET"));
         assert!(logs_contain("/test"));
@@ -218,7 +218,7 @@ mod tracing_tests {
     #[test]
     fn test_log_kaneo_result_error_emits_warn() {
         let result: Result<(), KaneoError> = Err(KaneoError::Api("boom".to_owned()));
-        log_kaneo_result("POST", "/fail", 500, 99, &result);
+        log_kaneo_result("POST", "/fail", 99, &result);
         assert!(logs_contain("Kaneo API call failed"));
         assert!(logs_contain("POST"));
         assert!(logs_contain("boom"));
@@ -228,7 +228,7 @@ mod tracing_tests {
     #[test]
     fn test_log_kaneo_result_error_no_method_in_success() {
         let result: Result<(), KaneoError> = Err(KaneoError::Api("err".to_owned()));
-        log_kaneo_result("PUT", "/put", 200, 10, &result);
+        log_kaneo_result("PUT", "/put", 10, &result);
         assert!(!logs_contain("succeeded"));
         assert!(logs_contain("failed"));
     }

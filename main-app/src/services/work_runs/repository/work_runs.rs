@@ -92,13 +92,15 @@ impl WorkRunsRepository {
     pub async fn find_oldest_pending_id<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
-    ) -> Result<Option<Uuid>, WorkRunsError> {
-        sqlx::query_scalar!(
-            r#"SELECT id FROM work_runs WHERE status = 'pending'::work_run_status ORDER BY created_at ASC LIMIT 1"#,
+    ) -> Result<Option<(Uuid, String)>, WorkRunsError> {
+        let row = sqlx::query!(
+            r#"SELECT id, external_task_ref FROM work_runs WHERE status = 'pending'::work_run_status ORDER BY created_at ASC LIMIT 1"#,
         )
         .fetch_optional(db)
         .await
-        .map_err(WorkRunsError::from)
+        .map_err(WorkRunsError::from)?;
+
+        Ok(row.map(|r| (r.id, r.external_task_ref)))
     }
 
     pub async fn list_all<'c, Q: Queryer<'c>>(

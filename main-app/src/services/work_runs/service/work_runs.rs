@@ -35,19 +35,19 @@ impl WorkRunsService {
 
         let run_id = self.work_runs_repo.find_oldest_pending_id(&self.db).await?;
 
-        if let Some(id) = run_id {
-            let work_run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+        if let Some((id, external_task_ref)) = run_id {
             tracing::info!(
                 worker_id = worker_id.to_string().as_str(),
                 work_run_id = id.to_string().as_str(),
-                external_task_ref = work_run.external_task_ref.as_str(),
+                external_task_ref = external_task_ref.as_str(),
                 "dispatching work_run {} to worker {}",
                 id,
                 worker_id,
             );
+            return Ok(Some(id));
         }
 
-        Ok(run_id)
+        Ok(None)
     }
 
     pub async fn get_job(&self, id: Uuid) -> Result<WorkRun, WorkRunsError> {
