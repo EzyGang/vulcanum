@@ -15,7 +15,12 @@ pub(crate) async fn handle_job(
     state: &WorkerState,
     job_id: Uuid,
 ) -> TickOutcome {
-    tracing::info!("job received: {}", job_id);
+    tracing::info!(
+        worker_id = state.worker_id.to_string().as_str(),
+        work_run_id = job_id.to_string().as_str(),
+        "job received: {}",
+        job_id,
+    );
 
     let job = match client.get_job(job_id, &state.access_token).await {
         Ok(j) => j,
@@ -35,6 +40,9 @@ pub(crate) async fn handle_job(
     }
 
     tracing::info!(
+        worker_id = state.worker_id.to_string().as_str(),
+        work_run_id = job_id.to_string().as_str(),
+        external_task_ref = job.external_task_ref.as_str(),
         "executing job {} (task: {}, prompt length: {})",
         job_id,
         job.external_task_ref,
@@ -101,6 +109,11 @@ pub(crate) async fn handle_job(
     }
 
     tracing::info!(
+        worker_id = state.worker_id.to_string().as_str(),
+        work_run_id = job_id.to_string().as_str(),
+        tokens_used = harness_result.tokens_used,
+        duration_ms = harness_result.duration_ms,
+        exit_code = harness_result.exit_code,
         "job {} completed in {}ms (exit: {})",
         job_id,
         harness_result.duration_ms,

@@ -49,9 +49,14 @@ impl KaneoClient {
         let client = self.build_client()?;
         let path =
             format!("/task/tasks/{project_id}?limit={FETCH_TASKS_LIMIT}&status={column_slug}");
-        let board: BoardResponse = client.get(&path).await.map_err(api_err)?;
 
-        Ok(filter_tasks_in_column(board, column_slug))
+        let start = std::time::Instant::now();
+        let result: Result<BoardResponse, KaneoError> = client.get(&path).await.map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("GET", &path, 200, duration_ms, &result);
+
+        result.map(|board| filter_tasks_in_column(board, column_slug))
     }
 
     pub async fn update_task_status(
@@ -66,16 +71,22 @@ impl KaneoClient {
             status: String,
         }
 
-        client
+        let path = format!("/task/status/{task_id}");
+        let start = std::time::Instant::now();
+        let result = client
             .put(
-                &format!("/task/status/{task_id}"),
+                &path,
                 &StatusBody {
                     status: new_status.to_owned(),
                 },
             )
             .await
             .map(|_: Task| ())
-            .map_err(api_err)
+            .map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("PUT", &path, 200, duration_ms, &result);
+        result
     }
 
     pub async fn add_comment(&self, task_id: &str, content: &str) -> Result<(), KaneoError> {
@@ -86,26 +97,34 @@ impl KaneoClient {
             content: String,
         }
 
-        client
+        let path = format!("/comment/{task_id}");
+        let start = std::time::Instant::now();
+        let result = client
             .post(
-                &format!("/comment/{task_id}"),
+                &path,
                 &CommentBody {
                     content: content.to_owned(),
                 },
             )
             .await
             .map(|_: Comment| ())
-            .map_err(api_err)
+            .map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("POST", &path, 200, duration_ms, &result);
+        result
     }
 
     pub async fn fetch_columns(&self, project_id: &str) -> Result<Vec<Column>, KaneoError> {
         let client = self.build_client()?;
-        let columns: Vec<Column> = client
-            .get(&format!("/column/{project_id}"))
-            .await
-            .map_err(api_err)?;
+        let path = format!("/column/{project_id}");
 
-        Ok(columns)
+        let start = std::time::Instant::now();
+        let result = client.get(&path).await.map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("GET", &path, 200, duration_ms, &result);
+        result
     }
 }
 
@@ -117,4 +136,34 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
         .find(|col| col.name.to_lowercase() == column_slug.to_lowercase())
         .map(|col| col.tasks)
         .unwrap_or_default()
+}
+
+pub(crate) fn log_kaneo_result<T>(
+    method: &str,
+    path: &str,
+    status_code: u16,
+    duration_ms: i64,
+    result: &Result<T, KaneoError>,
+) {
+    match result {
+        Ok(_) => {
+            tracing::info!(
+                method = method,
+                path = path,
+                status_code = status_code,
+                duration_ms = duration_ms,
+                "Kaneo API call succeeded",
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                method = method,
+                path = path,
+                status_code = status_code,
+                duration_ms = duration_ms,
+                error = %e,
+                "Kaneo API call failed",
+            );
+        }
+    }
 }
