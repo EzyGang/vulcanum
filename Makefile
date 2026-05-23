@@ -1,8 +1,10 @@
 .PHONY: format check build build-all build-main-app build-host-server build-cli build-shared run-main-app run-host-server run-cli test
 
 # ── Formatting ──
+check-fe:
+	@cd frontend && pnpm fix
 
-# Auto-format all Rust code and apply clippy auto-fixes
+# Auto-format all code and apply clippy auto-fixes
 format:
 	@cargo fmt --all
 	@cargo clippy --all-targets --workspace --fix --allow-dirty

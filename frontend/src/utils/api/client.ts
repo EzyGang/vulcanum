@@ -2,7 +2,7 @@ import { accessToken } from '../../stores/auth.store';
 import { camelKeys, snakeKeys } from './snake-camel';
 
 const isDevelopment = import.meta.env.DEV;
-const baseURL = isDevelopment ? import.meta.env.VITE_API_URL || 'http://localhost:8000' : '/api/v1';
+const baseURL = isDevelopment ? import.meta.env.VITE_API_URL || '/api/v1' : '/api/v1';
 
 export class ApiError extends Error {
   status: number;

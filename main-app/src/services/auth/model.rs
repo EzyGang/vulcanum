@@ -29,6 +29,16 @@ pub struct UserInfo {
     pub email: String,
 }
 
+#[derive(Deserialize)]
+pub struct InstanceLoginRequest {
+    pub password: String,
+}
+
+#[derive(Serialize)]
+pub struct InstanceLoginResponse {
+    pub token: String,
+}
+
 impl From<User> for UserInfo {
     fn from(user: User) -> Self {
         Self {

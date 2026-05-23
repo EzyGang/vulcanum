@@ -6,6 +6,8 @@ use crate::services::users::errors::UsersError;
 pub enum AuthError {
     #[error("invalid token")]
     InvalidToken,
+    #[error("invalid password")]
+    InvalidPassword,
     #[error(transparent)]
     Users(#[from] UsersError),
 }
