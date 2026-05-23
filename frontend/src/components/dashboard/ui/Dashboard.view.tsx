@@ -26,10 +26,10 @@ interface DashboardViewProps {
   };
 }
 
-const PlaceholderStatCard = ({ label }: { label: string }): JSX.Element => (
-  <div class='flex flex-col gap-1 bg-bg-card border border-border-base p-5'>
+const SkeletonStatCard = ({ label }: { label: string }): JSX.Element => (
+  <div class='flex flex-col gap-2 bg-bg-card border border-border-base p-5'>
     <span class='text-text-muted text-xs uppercase tracking-wider'>{label}</span>
-    <span class='text-text-muted text-2xl font-semibold font-mono'>—</span>
+    <div class='h-8 w-12 bg-bg-hover animate-pulse' />
   </div>
 );
 
@@ -52,28 +52,30 @@ const StatCard = ({ label, value }: { label: string; value: number }): JSX.Eleme
 
 const StatsGrid = ({
   stats,
+  loading,
   statsError,
   workersError
 }: {
   stats: StatsData | null;
+  loading: boolean;
   statsError: ApiError | null;
   workersError: ApiError | null;
 }): JSX.Element => (
   <section class='flex flex-col gap-4'>
     <div class='grid grid-cols-4 gap-4'>
-      {stats ? (
+      {loading && !stats ? (
         <>
-          <StatCard label='Enabled Projects' value={stats.enabledProjects} />
-          <StatCard label='Idle Workers' value={stats.idleWorkers} />
-          <StatCard label='Busy Workers' value={stats.busyWorkers} />
-          <StatCard label='Disconnected Workers' value={stats.disconnectedWorkers} />
+          <SkeletonStatCard label='Enabled Projects' />
+          <SkeletonStatCard label='Idle Workers' />
+          <SkeletonStatCard label='Busy Workers' />
+          <SkeletonStatCard label='Disconnected Workers' />
         </>
       ) : (
         <>
-          <PlaceholderStatCard label='Enabled Projects' />
-          <PlaceholderStatCard label='Idle Workers' />
-          <PlaceholderStatCard label='Busy Workers' />
-          <PlaceholderStatCard label='Disconnected Workers' />
+          <StatCard label='Enabled Projects' value={stats?.enabledProjects ?? 0} />
+          <StatCard label='Idle Workers' value={stats?.idleWorkers ?? 0} />
+          <StatCard label='Busy Workers' value={stats?.busyWorkers ?? 0} />
+          <StatCard label='Disconnected Workers' value={stats?.disconnectedWorkers ?? 0} />
         </>
       )}
     </div>
@@ -105,7 +107,12 @@ export const DashboardView = ({
 
       {anyLoading && allDataMissing && <div class='text-text-muted text-sm'>Loading...</div>}
 
-      <StatsGrid stats={stats} statsError={statsError} workersError={workersError} />
+      <StatsGrid
+        stats={stats}
+        loading={statsLoading || workersLoading}
+        statsError={statsError}
+        workersError={workersError}
+      />
 
       <section class='flex flex-col gap-4'>
         <h3 class='text-md font-semibold text-text-primary uppercase tracking-wide'>
