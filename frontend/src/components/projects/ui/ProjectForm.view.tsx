@@ -207,8 +207,8 @@ export const ProjectFormView = ({
               Repo URL
             </label>
             <span class='text-text-muted text-xs'>
-              Git repository URL passed to the agent. For private repositories, include
-              authentication instructions in Agents.md.
+              Git repository URL. For private repositories, embed a PAT directly:
+              https://&lt;token&gt;@github.com/org/repo.
             </span>
           </div>
           <input
