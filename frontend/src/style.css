@@ -68,21 +68,21 @@
 
   /* Borders — subtle dark lines */
   --border-base: oklch(26% 0 0);
-  --border-focus: oklch(78% 0.17 145);
+  --border-focus: oklch(65% 0.2 30);
 
-  /* Accent — vivid green / emerald / orange */
-  --accent: oklch(82% 0.2 145);
-  --accent-light: oklch(78% 0.18 165);
-  --accent-dark: oklch(35% 0.1 285);
-  --accent-secondary: oklch(65% 0.2 45);
+  /* Accent — lava / volcano palette */
+  --accent: oklch(65% 0.22 30);
+  --accent-light: oklch(75% 0.15 40);
+  --accent-dark: oklch(45% 0.15 25);
+  --accent-secondary: oklch(72% 0.17 55);
 
   /* Status colors */
   --error: oklch(55% 0.2 25);
   --error-bg: oklch(55% 0.2 25 / 0.15);
   --error-border: oklch(55% 0.2 25 / 0.3);
-  --success: oklch(82% 0.2 145);
-  --success-bg: oklch(82% 0.2 145 / 0.15);
-  --success-border: oklch(82% 0.2 145 / 0.3);
+  --success: oklch(65% 0.16 155);
+  --success-bg: oklch(65% 0.16 155 / 0.15);
+  --success-border: oklch(65% 0.16 155 / 0.3);
   --warning: oklch(75% 0.15 85);
   --warning-bg: oklch(75% 0.15 85 / 0.15);
   --warning-border: oklch(75% 0.15 85 / 0.3);
@@ -115,19 +115,19 @@ html[data-theme="dark"] {
   --text-muted: oklch(65% 0 0);
 
   --border-base: oklch(26% 0 0);
-  --border-focus: oklch(78% 0.17 145);
+  --border-focus: oklch(65% 0.2 30);
 
-  --accent: oklch(82% 0.2 145);
-  --accent-light: oklch(78% 0.18 165);
-  --accent-dark: oklch(35% 0.1 285);
-  --accent-secondary: oklch(65% 0.2 45);
+  --accent: oklch(65% 0.22 30);
+  --accent-light: oklch(75% 0.15 40);
+  --accent-dark: oklch(45% 0.15 25);
+  --accent-secondary: oklch(72% 0.17 55);
 
   --error: oklch(55% 0.2 25);
   --error-bg: oklch(55% 0.2 25 / 0.15);
   --error-border: oklch(55% 0.2 25 / 0.3);
-  --success: oklch(82% 0.2 145);
-  --success-bg: oklch(82% 0.2 145 / 0.15);
-  --success-border: oklch(82% 0.2 145 / 0.3);
+  --success: oklch(65% 0.16 155);
+  --success-bg: oklch(65% 0.16 155 / 0.15);
+  --success-border: oklch(65% 0.16 155 / 0.3);
   --warning: oklch(75% 0.15 85);
   --warning-bg: oklch(75% 0.15 85 / 0.15);
   --warning-border: oklch(75% 0.15 85 / 0.3);
@@ -152,12 +152,12 @@ html[data-theme="light"] {
   --text-muted: oklch(70% 0.01 285);
 
   --border-base: oklch(90% 0.01 285);
-  --border-focus: oklch(40% 0.15 310);
+  --border-focus: oklch(50% 0.18 30);
 
-  --accent: oklch(40% 0.15 310);
-  --accent-light: oklch(75% 0.15 70);
-  --accent-dark: oklch(35% 0.1 285);
-  --accent-secondary: oklch(65% 0.12 60);
+  --accent: oklch(50% 0.2 30);
+  --accent-light: oklch(65% 0.15 40);
+  --accent-dark: oklch(35% 0.12 25);
+  --accent-secondary: oklch(58% 0.14 55);
 
   --error: oklch(55% 0.2 25);
   --error-bg: oklch(97% 0.01 25);

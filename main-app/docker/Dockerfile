@@ -16,5 +16,7 @@ RUN cargo build --release --bin vulcanum-main-app
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 RUN apt update && apt install --no-install-recommends -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN useradd --no-create-home --shell /usr/sbin/nologin app
 COPY --from=builder /app/target/release/vulcanum-main-app /usr/local/bin/
+USER app
 ENTRYPOINT ["/usr/local/bin/vulcanum-main-app"]
