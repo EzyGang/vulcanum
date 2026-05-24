@@ -20,6 +20,7 @@ jobs:
       - fmt
       - clippy
       - test
+      - build-cli
 
     steps:
       - uses: actions/setup-python@v6
@@ -126,3 +127,33 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
         run: cargo test --workspace
+
+  build-cli:
+    name: Build CLI (release)
+    runs-on: self-hosted
+    needs: [clippy]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Build Dependencies
+        run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build-cli"
+          key: "build-cli"
+
+      - name: Build CLI
+        run: cargo build --release --bin vulcanum-cli
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: vulcanum-cli
+          path: target/release/vulcanum-cli

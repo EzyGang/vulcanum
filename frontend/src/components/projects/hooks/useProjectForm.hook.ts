@@ -57,6 +57,7 @@ export const useProjectForm = (projectId: string | null) => {
 
   const scheduleColumnFetch = useCallback(
     (value: string) => {
+      kaneoProjectId.value = value;
       columnKaneoId.value = value;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
