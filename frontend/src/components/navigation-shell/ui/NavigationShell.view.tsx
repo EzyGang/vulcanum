@@ -2,6 +2,8 @@ import type { ComponentChildren, JSX } from 'preact';
 import { logout } from '../../../stores/auth.store';
 import { ThemeToggleContainer } from '../../theme/containers/ThemeToggle.container';
 
+const LOGO_SRC = '/logo.svg';
+
 interface NavLink {
   href: string;
   label: string;
@@ -35,7 +37,10 @@ export const NavigationShellView = ({
   <div class='flex flex-col min-h-screen bg-bg-page'>
     <header class='flex items-center justify-between px-6 py-4 border-b border-border-base'>
       <div class='flex items-center gap-8'>
-        <h1 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Vulcanum</h1>
+        <div class='flex items-center gap-3'>
+          <img src={LOGO_SRC} alt='Vulcanum' class='h-8 w-8' />
+          <h1 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Vulcanum</h1>
+        </div>
         <nav class='flex items-center gap-1'>
           {navLinks.map((link) => (
             <NavButton key={link.href} link={link} active={isActive(link.href)} />
