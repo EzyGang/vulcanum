@@ -2,11 +2,9 @@ use super::utils::which;
 
 pub fn verify_or_install_opencode() -> anyhow::Result<()> {
     if which("opencode") {
-        tracing::info!("OpenCode is already installed");
+        tracing::debug!("opencode already installed");
         return Ok(());
     }
-
-    tracing::info!("installing OpenCode...");
 
     let status = std::process::Command::new("sh")
         .args(["-c", "curl -fsSL https://opencode.ai/install.sh | sh"])
@@ -21,6 +19,5 @@ pub fn verify_or_install_opencode() -> anyhow::Result<()> {
         anyhow::bail!("OpenCode installation succeeded but the binary is not in PATH — ensure ~/.local/bin is on PATH and re-run setup");
     }
 
-    tracing::info!("OpenCode installed successfully");
     Ok(())
 }

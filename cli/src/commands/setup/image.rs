@@ -5,7 +5,7 @@ use crate::harness::kata::DEFAULT_KATA_IMAGE;
 
 pub fn pull_agent_image() -> anyhow::Result<()> {
     if is_image_pulled() {
-        tracing::info!("agent image '{DEFAULT_KATA_IMAGE}' is already pulled");
+        tracing::debug!("agent image '{DEFAULT_KATA_IMAGE}' already pulled");
         return Ok(());
     }
 
@@ -14,8 +14,6 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
             "docker is not installed — run `vulcanum worker setup` to install dependencies"
         );
     }
-
-    tracing::info!("pulling agent image '{DEFAULT_KATA_IMAGE}'...");
 
     let status = Command::new("docker")
         .args(["pull", DEFAULT_KATA_IMAGE])
@@ -26,7 +24,6 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
         anyhow::bail!("docker pull '{DEFAULT_KATA_IMAGE}' failed");
     }
 
-    tracing::info!("agent image pulled successfully");
     Ok(())
 }
 

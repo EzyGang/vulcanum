@@ -1,15 +1,20 @@
 use super::utils::{run_shell, which};
 
+pub(super) const KATA_MANAGER_URL: &str =
+    "https://raw.githubusercontent.com/kata-containers/kata-containers/main/utils/kata-manager.sh";
+
+const KATA_MANAGER_TMP: &str = "/tmp/kata-manager.sh";
+
 pub fn install_kata() -> anyhow::Result<()> {
     if which("kata-runtime") {
-        tracing::info!("kata-runtime is already installed");
+        tracing::debug!("kata-runtime already installed");
         return Ok(());
     }
 
-    tracing::info!("installing Kata Containers...");
+    run_shell(&format!(
+        "curl -fsSL {KATA_MANAGER_URL} -o {KATA_MANAGER_TMP} && bash {KATA_MANAGER_TMP} -D"
+    ))?;
 
-    run_shell("curl -fsSL https://raw.githubusercontent.com/kata-containers/kata-containers/main/utils/kata-manager/kata-manager.sh | bash -s install-packages")?;
-
-    tracing::info!("Kata Containers installed successfully");
+    let _ = std::fs::remove_file(KATA_MANAGER_TMP);
     Ok(())
 }

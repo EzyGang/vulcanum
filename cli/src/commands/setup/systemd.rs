@@ -5,14 +5,12 @@ const UNIT_PATH: &str = "/etc/systemd/system/vulcanum-worker.service";
 
 pub fn configure_systemd() -> anyhow::Result<()> {
     if is_unit_active() {
-        tracing::info!("systemd unit '{UNIT_NAME}' is already active");
+        tracing::debug!("systemd unit '{UNIT_NAME}' already active");
         return Ok(());
     }
 
-    tracing::info!("configuring systemd unit '{UNIT_NAME}'...");
-
     let binary_path = current_exe_path()?;
-    tracing::info!("binding systemd to binary at: {binary_path}");
+    tracing::debug!("binding systemd to binary at: {binary_path}");
 
     let unit_content = format!(
         "[Unit]\n\
@@ -36,7 +34,6 @@ pub fn configure_systemd() -> anyhow::Result<()> {
     run_systemctl("daemon-reload")?;
     run_systemctl(&format!("enable {UNIT_NAME}"))?;
 
-    tracing::info!("systemd unit installed and enabled");
     Ok(())
 }
 

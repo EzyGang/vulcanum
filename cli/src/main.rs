@@ -1,6 +1,7 @@
 mod api_error;
 mod client;
 mod commands;
+mod console;
 mod harness;
 mod state;
 mod token;
