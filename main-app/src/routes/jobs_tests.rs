@@ -19,6 +19,8 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
         instance_password: "test-password".to_owned(),
+        kaneo_instance: "cloud.kaneo.app".to_owned(),
+        kaneo_api_key: String::new(),
     };
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();

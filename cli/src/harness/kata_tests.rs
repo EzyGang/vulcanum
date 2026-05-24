@@ -74,7 +74,11 @@ async fn kata_harness_writes_agents_md() {
         .spawn("test", &workdir, &secrets, &limits, "", agents_content)
         .await;
 
-    let agents_path = workdir.join("AGENTS.md");
+    let agents_path = workdir
+        .join("home")
+        .join(".config")
+        .join("opencode")
+        .join("AGENTS.md");
     let contents =
         std::fs::read_to_string(&agents_path).expect("AGENTS.md should have been written");
     let _ = std::fs::remove_dir_all(&workdir);
@@ -97,7 +101,11 @@ async fn kata_harness_skips_agents_md_when_empty() {
         .spawn("test", &workdir, &secrets, &limits, "", "")
         .await;
 
-    let agents_path = workdir.join("AGENTS.md");
+    let agents_path = workdir
+        .join("home")
+        .join(".config")
+        .join("opencode")
+        .join("AGENTS.md");
     let exists = agents_path.exists();
     let _ = std::fs::remove_dir_all(&workdir);
 

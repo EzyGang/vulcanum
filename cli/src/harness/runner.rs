@@ -15,6 +15,7 @@ pub(super) struct RunnerEnv<'a> {
     pub workdir: &'a Path,
     pub limits: &'a ResourceLimits,
     pub agents_md: &'a str,
+    pub repo_url: &'a str,
     pub spawn_error_msg: &'a str,
 }
 
@@ -28,11 +29,22 @@ pub(super) async fn run_opencode_in_env(
         .await
         .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to write prompt: {e}")))?;
 
+    let home_dir = env.workdir.join("home");
+    let opencode_config = home_dir.join(".config").join("opencode");
+    tokio::fs::create_dir_all(&opencode_config)
+        .await
+        .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to create config dir: {e}")))?;
+
     if !env.agents_md.is_empty() {
-        let agents_path = env.workdir.join("AGENTS.md");
+        let agents_path = opencode_config.join("AGENTS.md");
         tokio::fs::write(&agents_path, env.agents_md)
             .await
             .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to write AGENTS.md: {e}")))?;
+    }
+
+    if !env.repo_url.is_empty() {
+        let repo_dir = env.workdir.join("repo");
+        clone_repo(env.repo_url, &repo_dir).await?;
     }
 
     let mut cmd = build_cmd().map_err(|e| {
@@ -89,6 +101,25 @@ pub(super) async fn run_opencode_in_env(
         pr_url,
         duration_ms,
     })
+}
+
+async fn clone_repo(url: &str, dest: &Path) -> Result<(), HarnessError> {
+    let output = Command::new("git")
+        .arg("clone")
+        .arg(url)
+        .arg(dest)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| HarnessError::Install(format!("failed to run git clone: {e}")))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(HarnessError::Install(format!("git clone failed: {stderr}")));
+    }
+
+    Ok(())
 }
 
 async fn kill_child_with_grace(child: &mut tokio::process::Child) {

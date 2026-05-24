@@ -7,6 +7,8 @@ pub struct AppConfig {
     pub jwt_secret: String,
     pub stale_worker_threshold_secs: u64,
     pub instance_password: String,
+    pub kaneo_instance: String,
+    pub kaneo_api_key: String,
 }
 
 impl AppConfig {
@@ -23,6 +25,9 @@ impl AppConfig {
             .unwrap_or_else(|_| "120".to_owned())
             .parse::<u64>()?;
         let instance_password = std::env::var("INSTANCE_PASSWORD")?;
+        let kaneo_instance =
+            std::env::var("KANEO_INSTANCE").unwrap_or_else(|_| "cloud.kaneo.app".to_owned());
+        let kaneo_api_key = std::env::var("KANEO_API_KEY").unwrap_or_default();
 
         Ok(AppConfig {
             db_url,
@@ -31,6 +36,8 @@ impl AppConfig {
             jwt_secret,
             stale_worker_threshold_secs,
             instance_password,
+            kaneo_instance,
+            kaneo_api_key,
         })
     }
 }

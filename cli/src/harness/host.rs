@@ -32,13 +32,13 @@ impl AgentHarness for HostHarness {
         agents_md: &str,
     ) -> Result<HarnessResult, HarnessError> {
         let workdir = workdir.to_path_buf();
-        let repo_url = repo_url.to_owned();
 
         let env = RunnerEnv {
             prompt,
             workdir: &workdir,
             limits,
             agents_md,
+            repo_url,
             spawn_error_msg: "opencode",
         };
 
@@ -46,14 +46,17 @@ impl AgentHarness for HostHarness {
             env,
             || {
                 let mut cmd = Command::new("opencode");
+                let repo_dir = workdir.join("repo");
+
                 cmd.arg("--prompt")
                     .arg(workdir.join("prompt.md"))
+                    .env("HOME", workdir.join("home"))
                     .current_dir(&workdir)
                     .stdout(std::process::Stdio::piped())
                     .stderr(std::process::Stdio::piped());
 
-                if !repo_url.is_empty() {
-                    cmd.arg("--repo-url").arg(&repo_url);
+                if repo_dir.exists() {
+                    cmd.arg("--dir").arg(&repo_dir);
                 }
 
                 for (key, value) in secrets {

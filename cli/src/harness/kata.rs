@@ -49,7 +49,6 @@ impl AgentHarness for KataHarness {
                 .unwrap_or("job")
         );
         let workdir_for_cmd = workdir.to_path_buf();
-        let repo_url_for_cmd = repo_url.to_owned();
         let image = self.image.clone();
         let limits_val = *limits;
 
@@ -61,6 +60,7 @@ impl AgentHarness for KataHarness {
             workdir: &workdir_ref,
             limits,
             agents_md,
+            repo_url,
             spawn_error_msg: "docker",
         };
 
@@ -68,6 +68,8 @@ impl AgentHarness for KataHarness {
             env,
             move || {
                 let mut cmd = Command::new("docker");
+                let repo_path = workdir_for_cmd.join("repo");
+
                 cmd.arg("run")
                     .arg("--runtime=kata-runtimes")
                     .arg("--rm")
@@ -75,6 +77,8 @@ impl AgentHarness for KataHarness {
                     .arg(&container_name)
                     .arg("-v")
                     .arg(format!("{}:/workdir", workdir_for_cmd.display()))
+                    .arg("-e")
+                    .arg("HOME=/workdir/home")
                     .arg(format!("--cpus={}", limits_val.vcpu_count))
                     .arg(format!("--memory={}m", limits_val.memory_mib))
                     .stdout(std::process::Stdio::piped())
@@ -89,8 +93,8 @@ impl AgentHarness for KataHarness {
                     .arg("--prompt")
                     .arg("/workdir/prompt.md");
 
-                if !repo_url_for_cmd.is_empty() {
-                    cmd.arg("--repo-url").arg(&repo_url_for_cmd);
+                if repo_path.exists() {
+                    cmd.arg("--dir").arg("/workdir/repo");
                 }
 
                 Ok(cmd)

@@ -15,7 +15,7 @@ interface ProjectsViewProps {
   };
   actions: {
     onEditClick: (id: string) => void;
-    onNewProject: () => void;
+    onConnectProject: () => void;
     onConfirmDelete: (id: string) => void;
     onCancelDelete: () => void;
     onDelete: (id: string) => void;
@@ -28,7 +28,7 @@ const columnsTriad = (pickup: string, progress: string, target: string): string 
 export const ProjectsView = ({
   data: { projects, deleteConfirmId, deleteError },
   status: { loading, error },
-  actions: { onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }
+  actions: { onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }
 }: ProjectsViewProps): JSX.Element => (
   <div class='flex flex-col gap-8'>
     <section class='flex flex-col gap-4'>
@@ -38,11 +38,11 @@ export const ProjectsView = ({
         </h2>
         <button
           type='button'
-          onClick={onNewProject}
+          onClick={onConnectProject}
           class='bg-text-primary text-bg-page text-sm font-medium uppercase tracking-wider
                  px-4 py-3 hover:opacity-90 transition-opacity'
         >
-          New Project
+          Connect Project
         </button>
       </div>
 

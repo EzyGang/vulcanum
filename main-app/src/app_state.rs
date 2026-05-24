@@ -36,10 +36,7 @@ impl AppState {
             .connect(&cfg.db_url)
             .await?;
 
-        let kaneo = KaneoClient::new(
-            std::env::var("KANEO_INSTANCE").unwrap_or_else(|_| "cloud.kaneo.app".to_owned()),
-            std::env::var("KANEO_API_KEY").unwrap_or_default(),
-        );
+        let kaneo = KaneoClient::new(cfg.kaneo_instance.clone(), cfg.kaneo_api_key.clone());
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
         let auth = AuthService::new(users, cfg.instance_password.clone());

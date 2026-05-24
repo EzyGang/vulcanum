@@ -22,7 +22,7 @@ export const ProjectsContainer = (): JSX.Element => {
       status={{ loading, error }}
       actions={{
         onEditClick: (id: string) => setLocation(`/projects/${id}/edit`),
-        onNewProject: () => setLocation('/projects/new'),
+        onConnectProject: () => setLocation('/projects/connect'),
         onConfirmDelete: handleConfirmDelete,
         onCancelDelete: handleCancelDelete,
         onDelete: handleDelete

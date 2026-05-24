@@ -207,6 +207,16 @@ html[data-theme="light"] {
    INTERACTIVE ELEMENTS
    ============================================ */
 
+button,
+a,
+select,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"] {
+  cursor: pointer;
+}
+
 /* ============================================
    ANIMATIONS
    ============================================ */

@@ -21,21 +21,21 @@ describe('Projects.view', () => {
   const deleteConfirmId = signal<string | null>(null);
   const deleteError = signal<string | null>(null);
   const onEditClick = vi.fn();
-  const onNewProject = vi.fn();
+  const onConnectProject = vi.fn();
   const onConfirmDelete = vi.fn();
   const onCancelDelete = vi.fn();
   const onDelete = vi.fn();
 
-  it('renders the new project button', () => {
+  it('renders the connect project button', () => {
     const { getByText } = render(
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
-    expect(getByText('New Project')).toBeDefined();
+    expect(getByText('Connect Project')).toBeDefined();
   });
 
   it('shows empty state when no projects', () => {
@@ -43,7 +43,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
@@ -55,7 +55,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: true, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
@@ -74,7 +74,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
@@ -91,7 +91,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
@@ -106,7 +106,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
@@ -121,7 +121,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 
@@ -136,7 +136,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        actions={{ onEditClick, onNewProject, onConfirmDelete, onCancelDelete, onDelete }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
 

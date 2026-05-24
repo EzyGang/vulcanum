@@ -104,7 +104,7 @@ export const ProjectFormView = ({
   <div class='flex flex-col gap-8'>
     <div class='flex items-center justify-between'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>
-        {isEdit ? 'Edit Project' : 'New Project'}
+        {isEdit ? 'Edit Project' : 'Connect Project'}
       </h2>
     </div>
 
@@ -180,9 +180,15 @@ export const ProjectFormView = ({
         />
 
         <div class='flex flex-col gap-2'>
-          <label for='field-prompt-template' class={labelClasses}>
-            Prompt Template
-          </label>
+          <div class='flex flex-col gap-1'>
+            <label for='field-prompt-template' class={labelClasses}>
+              Prompt Template
+            </label>
+            <span class='text-text-muted text-xs'>
+              Template used to generate agent prompts. Supports {'{{task_title}}'},{' '}
+              {'{{task_body}}'}, and {'{{repo_url}}'} variables.
+            </span>
+          </div>
           <textarea
             id='field-prompt-template'
             value={promptTemplate.value}
@@ -196,9 +202,15 @@ export const ProjectFormView = ({
         </div>
 
         <div class='flex flex-col gap-2'>
-          <label for='field-repo-url' class={labelClasses}>
-            Repo URL
-          </label>
+          <div class='flex flex-col gap-1'>
+            <label for='field-repo-url' class={labelClasses}>
+              Repo URL
+            </label>
+            <span class='text-text-muted text-xs'>
+              Git repository URL passed to the agent. For private repositories, include
+              authentication instructions in Agents.md.
+            </span>
+          </div>
           <input
             id='field-repo-url'
             type='text'
@@ -213,9 +225,15 @@ export const ProjectFormView = ({
         </div>
 
         <div class='flex flex-col gap-2'>
-          <label for='field-agents-md' class={labelClasses}>
-            Agents.md
-          </label>
+          <div class='flex flex-col gap-1'>
+            <label for='field-agents-md' class={labelClasses}>
+              Agents.md
+            </label>
+            <span class='text-text-muted text-xs'>
+              Project-specific instructions written to AGENTS.md in the agent's work directory.
+              Define conventions, repository access, and setup steps here.
+            </span>
+          </div>
           <textarea
             id='field-agents-md'
             value={agentsMd.value}

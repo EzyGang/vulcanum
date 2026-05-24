@@ -28,7 +28,7 @@ export const AppRouter = () => (
         <Workers />
       </AuthenticatedLayout>
     </Route>
-    <Route path='/projects/new'>
+    <Route path='/projects/connect'>
       <AuthenticatedLayout>
         <ProjectsFormPage />
       </AuthenticatedLayout>
