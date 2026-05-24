@@ -32,10 +32,23 @@ const buildUrl = (path: string, params?: Record<string, string | number | boolea
   return `${url}?${search.toString()}`;
 };
 
+const SENSITIVE_FIELDS = new Set(['password', 'token', 'secret', 'api_key']);
+
+const sanitizeLogBody = (body: unknown): unknown => {
+  if (body == null || typeof body !== 'object') return body;
+  if (Array.isArray(body)) return body.map(sanitizeLogBody);
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+    sanitized[key] = SENSITIVE_FIELDS.has(key) ? '***' : sanitizeLogBody(value);
+  }
+  return sanitized;
+};
+
 const logRequest = (method: string, url: string, body?: unknown) => {
   if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
   console.group(`API Request: ${method} ${url}`);
-  if (body) console.log('Request Body:', body);
+  if (body) console.log('Request Body:', sanitizeLogBody(body));
   console.groupEnd();
 };
 
@@ -43,7 +56,7 @@ const logResponse = (method: string, url: string, status: number, data: unknown)
   if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
   console.group(`API Response: ${method} ${url}`);
   console.log('Status:', status);
-  console.log('Response:', data);
+  console.log('Response:', sanitizeLogBody(data));
   console.groupEnd();
 };
 

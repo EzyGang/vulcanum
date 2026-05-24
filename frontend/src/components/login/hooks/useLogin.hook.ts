@@ -31,6 +31,7 @@ export const useLogin = () => {
 
     try {
       await login(password.value);
+      password.value = '';
       setLocation('/');
     } catch (err) {
       if (err instanceof ApiError) {
