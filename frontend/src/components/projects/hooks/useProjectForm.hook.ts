@@ -1,6 +1,6 @@
-import { useSignal, useSignalEffect } from '@preact/signals';
+import { useSignal } from '@preact/signals';
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useRef } from 'preact/hooks';
+import { useCallback, useEffect, useRef } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 import {
   createProject,
@@ -76,7 +76,7 @@ export const useProjectForm = (projectId: string | null) => {
     [fetchColumns]
   );
 
-  useSignalEffect(() => {
+  useEffect(() => {
     if (projectId && existingProject) {
       const p = existingProject;
       kaneoProjectId.value = p.kaneoProjectId;
@@ -88,14 +88,14 @@ export const useProjectForm = (projectId: string | null) => {
       repoUrl.value = p.repoUrl;
       agentsMd.value = p.agentsMd;
     }
-  });
+  }, [projectId, existingProject]);
 
-  useSignalEffect(() => {
+  useEffect(() => {
     if (projectId && existingProject) {
       columnKaneoId.value = existingProject.kaneoProjectId;
       fetchColumns(existingProject.kaneoProjectId);
     }
-  });
+  }, [projectId, existingProject]);
 
   const createMutation = useApiMutation(
     (input: Parameters<typeof createProject>[0]) => createProject(input),
