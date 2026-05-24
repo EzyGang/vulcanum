@@ -36,6 +36,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
                 pool.clone(),
             ),
             "test-password".to_owned(),
+            "test-secret".to_owned(),
         ),
         project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
             project_configs_repo.clone(),

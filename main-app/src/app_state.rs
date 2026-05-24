@@ -39,7 +39,7 @@ impl AppState {
         let kaneo = KaneoClient::new(cfg.kaneo_instance.clone(), cfg.kaneo_api_key.clone());
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
-        let auth = AuthService::new(users, cfg.instance_password.clone());
+        let auth = AuthService::new(users, cfg.instance_password.clone(), cfg.jwt_secret.clone());
         let project_configs_repo = ProjectConfigsRepository::new();
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),

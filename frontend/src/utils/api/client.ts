@@ -1,6 +1,8 @@
 import { accessToken } from '../../stores/auth.store';
 import { camelKeys, snakeKeys } from './snake-camel';
 
+const STORAGE_KEY = 'vulcanum-auth-token';
+
 const isDevelopment = import.meta.env.DEV;
 const baseURL = isDevelopment ? import.meta.env.VITE_API_URL || '/api/v1' : '/api/v1';
 
@@ -98,6 +100,11 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      accessToken.value = null;
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
     const errorMessage =
       data && typeof data === 'object' && 'error' in data
         ? String(data.error)

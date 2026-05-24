@@ -1,11 +1,16 @@
 use actix_web::{dev::Payload, Error, FromRequest, HttpRequest};
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use serde::Deserialize;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
 
-pub struct InstanceAuth {
-    pub token: String,
+#[derive(Deserialize)]
+struct InstanceClaims {
+    sub: String,
 }
+
+pub struct InstanceAuth;
 
 impl FromRequest for InstanceAuth {
     type Error = Error;
@@ -30,12 +35,12 @@ impl FromRequest for InstanceAuth {
             None => return std::future::ready(Err(AppError::Internal.into())),
         };
 
-        if state.auth.token_store.validate(token) {
-            std::future::ready(Ok(InstanceAuth {
-                token: token.to_owned(),
-            }))
-        } else {
-            std::future::ready(Err(AppError::InvalidToken.into()))
+        let decoding_key = DecodingKey::from_secret(state.jwt_secret.as_bytes());
+        let validation = Validation::default();
+
+        match decode::<InstanceClaims>(token, &decoding_key, &validation) {
+            Ok(data) if data.claims.sub == "instance" => std::future::ready(Ok(InstanceAuth)),
+            _ => std::future::ready(Err(AppError::InvalidToken.into())),
         }
     }
 }

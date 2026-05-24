@@ -41,10 +41,8 @@ pub async fn instance_login(
 }
 
 pub async fn logout(
-    state: web::Data<AppState>,
-    auth: InstanceAuth,
+    _state: web::Data<AppState>,
+    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
-    state.auth.revoke(&auth.token);
-
     Ok(HttpResponse::NoContent().finish())
 }

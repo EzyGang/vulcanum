@@ -1,7 +1,18 @@
+use chrono::{Duration, Utc};
+use jsonwebtoken::{encode, EncodingKey, Header};
+use serde::Serialize;
+
 use crate::services::auth::errors::AuthError;
 use crate::services::auth::service::AuthService;
 
-pub const INSTANCE_TOKEN_TTL_MINUTES: i64 = 15;
+const INSTANCE_TOKEN_TTL_HOURS: i64 = 24;
+
+#[derive(Serialize)]
+struct InstanceClaims {
+    sub: String,
+    exp: usize,
+    iat: usize,
+}
 
 impl AuthService {
     pub fn instance_login(&self, password: &str) -> Result<String, AuthError> {
@@ -9,11 +20,14 @@ impl AuthService {
             return Err(AuthError::InvalidPassword);
         }
 
-        let token = vulcanum_shared::crypto::generate_alphanumeric_string(32);
+        let now = Utc::now();
+        let claims = InstanceClaims {
+            sub: "instance".to_owned(),
+            iat: now.timestamp() as usize,
+            exp: (now + Duration::hours(INSTANCE_TOKEN_TTL_HOURS)).timestamp() as usize,
+        };
 
-        self.token_store
-            .insert(&token, "instance", INSTANCE_TOKEN_TTL_MINUTES);
-
-        Ok(token)
+        let encoding_key = EncodingKey::from_secret(self.jwt_secret.as_bytes());
+        encode(&Header::default(), &claims, &encoding_key).map_err(|_| AuthError::InvalidToken)
     }
 }

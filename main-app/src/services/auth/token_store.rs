@@ -31,6 +31,7 @@ impl TokenStore {
         map.insert(token.to_owned(), entry);
     }
 
+    #[must_use]
     pub fn consume(&self, token: &str) -> Option<String> {
         let mut map = self.inner.write().unwrap_or_else(|e| e.into_inner());
         let entry = map.remove(token)?;
@@ -40,14 +41,5 @@ impl TokenStore {
         }
 
         Some(entry.user_id)
-    }
-
-    #[must_use]
-    pub fn validate(&self, token: &str) -> bool {
-        self.inner
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(token)
-            .is_some_and(|entry| Utc::now() <= entry.expires_at)
     }
 }

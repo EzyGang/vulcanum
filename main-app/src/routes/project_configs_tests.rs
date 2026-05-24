@@ -35,6 +35,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             pool.clone(),
         ),
         TEST_PASSWORD.to_owned(),
+        "test-secret".to_owned(),
     );
 
     AppState {
