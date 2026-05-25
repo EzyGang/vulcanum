@@ -1,17 +1,19 @@
-FROM alpine:3.21
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     curl \
     git \
-    openssh-client
+    openssh-client \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/root/.local/bin:$HOME/.local/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
-RUN curl -fsSL https://opencode.ai/install | sh
-RUN curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash
-RUN kaneo install-skill --scope global --agent opencode
-
+RUN curl -fsSL https://opencode.ai/install | sh \
+    && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
+    && export PATH="/root/.local/bin:$PATH" \
+    && kaneo install-skill --scope global --agent opencode
 
 COPY docker/agent/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
