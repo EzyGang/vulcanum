@@ -143,7 +143,9 @@ impl From<WorkersError> for AppError {
             WorkersError::InvalidRefreshToken => Self::InvalidRefreshToken,
             WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
-            WorkersError::Database(_) | WorkersError::Jwt(_) => Self::Internal,
+            WorkersError::Database(_) | WorkersError::Jwt(_) | WorkersError::Redis(_) => {
+                Self::Internal
+            }
         }
     }
 }

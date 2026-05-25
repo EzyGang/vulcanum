@@ -9,6 +9,7 @@ pub struct AppConfig {
     pub instance_password: String,
     pub kaneo_instance: String,
     pub kaneo_api_key: String,
+    pub redis_url: String,
 }
 
 impl AppConfig {
@@ -28,8 +29,10 @@ impl AppConfig {
         let kaneo_instance =
             std::env::var("KANEO_INSTANCE").unwrap_or_else(|_| "cloud.kaneo.app".to_owned());
         let kaneo_api_key = std::env::var("KANEO_API_KEY").unwrap_or_default();
+        let redis_url =
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
 
-        Ok(AppConfig {
+        Ok(Self {
             db_url,
             max_conns,
             poll_period_secs,
@@ -38,6 +41,7 @@ impl AppConfig {
             instance_password,
             kaneo_instance,
             kaneo_api_key,
+            redis_url,
         })
     }
 }

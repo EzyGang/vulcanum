@@ -29,11 +29,11 @@ enum Command {
 enum WorkerCommand {
     /// Register a worker with an instance using a connection code
     Connect {
-        /// Instance URL (e.g. http://localhost:8080)
-        instance: String,
+        /// Instance URL (e.g. https://vulcanum.example.com)
+        instance: Option<String>,
         /// Connection code from the instance
         #[arg(long)]
-        code: String,
+        code: Option<String>,
     },
     /// Run the worker daemon (poll loop, job execution)
     Daemon,

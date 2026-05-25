@@ -21,6 +21,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         instance_password: TEST_PASSWORD.to_owned(),
         kaneo_instance: "cloud.kaneo.app".to_owned(),
         kaneo_api_key: String::new(),
+        redis_url: String::new(),
     };
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();
@@ -49,6 +50,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             workers_repo.clone(),
             pool.clone(),
             &cfg,
+            std::sync::Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
         ),
         jobs: crate::services::work_runs::service::WorkRunsService::new(
             work_runs_repo.clone(),
@@ -99,7 +101,11 @@ async fn generate_code_returns_201(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool);
-    let code = state.workers.generate_code().await;
+    let code = state
+        .workers
+        .generate_code()
+        .await
+        .expect("should generate");
 
     let app = test::init_service(
         App::new()
@@ -149,7 +155,11 @@ async fn connect_with_invalid_code_returns_400(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool);
-    let code = state.workers.generate_code().await;
+    let code = state
+        .workers
+        .generate_code()
+        .await
+        .expect("should generate");
     let connect = state
         .workers
         .connect(crate::services::workers::model::ConnectRequest {
@@ -205,7 +215,11 @@ async fn refresh_with_invalid_token_returns_401(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn delete_worker_returns_204(pool: sqlx::PgPool) {
     let state = build_state(pool);
-    let code = state.workers.generate_code().await;
+    let code = state
+        .workers
+        .generate_code()
+        .await
+        .expect("should generate");
     let connect = state
         .workers
         .connect(crate::services::workers::model::ConnectRequest {

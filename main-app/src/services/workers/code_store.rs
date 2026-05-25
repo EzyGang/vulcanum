@@ -1,0 +1,114 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+
+use crate::services::workers::errors::WorkersError;
+
+/// Abstract storage for ephemeral worker registration codes.
+#[async_trait]
+pub trait CodeStore: Send + Sync {
+    /// Save a code with its absolute expiration time.
+    ///
+    /// Codes are short-lived (minutes) and should auto-expire after `expires_at`.
+    async fn save(&self, code: &str, expires_at: DateTime<Utc>) -> Result<(), WorkersError>;
+
+    /// Consume a code atomically, returning its expiration time if it existed.
+    ///
+    /// The operation must be atomic (get + delete in one step) so that the same
+    /// code cannot be used twice.
+    async fn consume(&self, code: &str) -> Result<Option<DateTime<Utc>>, WorkersError>;
+}
+
+/// Redis-backed implementation.
+///
+/// Keys: `vulcanum:registration_code:{code}`
+/// Values: Unix timestamp (seconds)
+#[derive(Clone)]
+pub struct RedisCodeStore {
+    client: redis::Client,
+}
+
+impl RedisCodeStore {
+    pub fn new(redis_url: &str) -> Result<Self, redis::RedisError> {
+        let client = redis::Client::open(redis_url)?;
+        Ok(Self { client })
+    }
+}
+
+#[async_trait]
+impl CodeStore for RedisCodeStore {
+    async fn save(&self, code: &str, expires_at: DateTime<Utc>) -> Result<(), WorkersError> {
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        let key = code_redis_key(code);
+        let ttl_secs = (expires_at - Utc::now()).num_seconds().max(1) as u64;
+
+        redis::cmd("SETEX")
+            .arg(&key)
+            .arg(ttl_secs)
+            .arg(expires_at.timestamp())
+            .query_async::<()>(&mut conn)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn consume(&self, code: &str) -> Result<Option<DateTime<Utc>>, WorkersError> {
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        let key = code_redis_key(code);
+
+        // Atomic GET + DELETE via Lua so the code can never be reused.
+        let script = redis::Script::new(
+            r#"
+            local v = redis.call("GET", KEYS[1])
+            if v then
+                redis.call("DEL", KEYS[1])
+            end
+            return v
+        "#,
+        );
+
+        let value: Option<i64> = script.key(&key).invoke_async(&mut conn).await?;
+
+        match value {
+            None => Ok(None),
+            Some(ts) => Ok(Some(
+                DateTime::from_timestamp(ts, 0).unwrap_or(DateTime::UNIX_EPOCH),
+            )),
+        }
+    }
+}
+
+fn code_redis_key(code: &str) -> String {
+    format!("vulcanum:registration_code:{code}")
+}
+
+/// In-memory implementation for tests.
+#[allow(dead_code)]
+#[derive(Clone)]
+pub struct InMemoryCodeStore {
+    inner: Arc<tokio::sync::RwLock<std::collections::HashMap<String, DateTime<Utc>>>>,
+}
+
+#[allow(dead_code)]
+impl InMemoryCodeStore {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        }
+    }
+}
+
+#[async_trait]
+impl CodeStore for InMemoryCodeStore {
+    async fn save(&self, code: &str, expires_at: DateTime<Utc>) -> Result<(), WorkersError> {
+        let mut guard = self.inner.write().await;
+        guard.insert(code.to_owned(), expires_at);
+        Ok(())
+    }
+
+    async fn consume(&self, code: &str) -> Result<Option<DateTime<Utc>>, WorkersError> {
+        let mut guard = self.inner.write().await;
+        Ok(guard.remove(code))
+    }
+}
