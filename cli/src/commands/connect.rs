@@ -1,7 +1,17 @@
 use crate::client::ApiClient;
 use crate::state::{save_state, WorkerState};
 
-pub async fn run(code: String, instance: String) -> anyhow::Result<()> {
+pub async fn run(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
+    let instance = match instance {
+        Some(url) => url,
+        None => prompt_instance_url()?,
+    };
+
+    let code = match code {
+        Some(c) => c,
+        None => prompt_code()?,
+    };
+
     let worker_name = hostname::get()
         .ok()
         .and_then(|h| h.to_str().map(|s| s.to_owned()))
@@ -31,4 +41,32 @@ pub async fn run(code: String, instance: String) -> anyhow::Result<()> {
     );
 
     Ok(())
+}
+
+fn prompt_instance_url() -> anyhow::Result<String> {
+    let url = dialoguer::Input::<String>::new()
+        .with_prompt("Instance URL")
+        .validate_with(|input: &String| {
+            if input.trim().is_empty() {
+                Err("URL is required".to_owned())
+            } else {
+                Ok(())
+            }
+        })
+        .interact_text()?;
+    Ok(url.trim().to_owned())
+}
+
+fn prompt_code() -> anyhow::Result<String> {
+    let code = dialoguer::Input::<String>::new()
+        .with_prompt("Connection code")
+        .validate_with(|input: &String| {
+            if input.trim().is_empty() {
+                Err("Code is required".to_owned())
+            } else {
+                Ok(())
+            }
+        })
+        .interact_text()?;
+    Ok(code.trim().to_owned())
 }
