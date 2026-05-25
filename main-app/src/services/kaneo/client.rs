@@ -17,8 +17,8 @@ pub trait TaskFetcher: Send + Sync {
 
 #[derive(Clone)]
 pub struct KaneoClient {
-    instance: String,
-    api_key: String,
+    pub instance: String,
+    pub api_key: String,
 }
 
 #[async_trait]

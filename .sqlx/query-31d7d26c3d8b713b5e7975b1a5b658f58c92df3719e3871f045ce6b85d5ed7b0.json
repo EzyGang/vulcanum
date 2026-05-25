@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             prompt_template = COALESCE($5, prompt_template),\n             repo_url = COALESCE($6, repo_url),\n             agents_md = COALESCE($7, agents_md),\n             enabled = COALESCE($8, enabled)\n             WHERE id = $1\n             RETURNING id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -15,58 +15,55 @@
       },
       {
         "ordinal": 2,
+        "name": "kaneo_workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "pickup_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "target_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "progress_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Bool"
-      ]
+      "Left": []
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -79,5 +76,5 @@
       true
     ]
   },
-  "hash": "e1f897f8435bd2a0ac67aa1658b6b1952bbba8f53a56616fbe2c1302942dddd8"
+  "hash": "31d7d26c3d8b713b5e7975b1a5b658f58c92df3719e3871f045ce6b85d5ed7b0"
 }

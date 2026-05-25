@@ -150,8 +150,10 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
     assert_eq!(resp.status(), 200);
 
     let body: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(body["id"], wr_id.to_string());
     assert_eq!(body["external_task_ref"], "task-get-test");
+    assert_eq!(body["prompt_text"], "Review the PR");
+    assert_eq!(body["kaneo_instance"], "cloud.kaneo.app");
+    assert_eq!(body["repo_url"], "");
 }
 
 #[sqlx::test]

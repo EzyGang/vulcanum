@@ -7,6 +7,7 @@ use uuid::Uuid;
 pub struct ProjectConfig {
     pub id: Uuid,
     pub kaneo_project_id: String,
+    pub kaneo_workspace_id: String,
     pub enabled: bool,
     pub pickup_column: String,
     pub target_column: String,
@@ -20,6 +21,8 @@ pub struct ProjectConfig {
 #[derive(Debug, Deserialize)]
 pub struct CreateProjectConfigRequest {
     pub kaneo_project_id: String,
+    #[serde(default)]
+    pub kaneo_workspace_id: String,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
     #[serde(default = "default_pickup_column")]
@@ -49,6 +52,8 @@ pub struct UpdateProjectConfigRequest {
     pub repo_url: Option<String>,
     #[serde(default)]
     pub agents_md: Option<String>,
+    #[serde(default)]
+    pub kaneo_workspace_id: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
 }

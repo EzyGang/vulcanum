@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use super::utils::which;
 use crate::harness::kata::DEFAULT_KATA_IMAGE;
@@ -17,6 +17,8 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
 
     let status = Command::new("docker")
         .args(["pull", DEFAULT_KATA_IMAGE])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .map_err(|e| anyhow::anyhow!("failed to run docker pull: {e}"))?;
 

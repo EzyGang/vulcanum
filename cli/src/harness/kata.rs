@@ -23,6 +23,51 @@ impl KataHarness {
     pub fn with_image(image: String) -> Self {
         Self { image }
     }
+
+    async fn ensure_image(&self) {
+        let output = match Command::new("docker")
+            .args(["images", "-q", &self.image])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .output()
+            .await
+        {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::warn!("failed to check docker images: {e}");
+                return;
+            }
+        };
+
+        if !String::from_utf8_lossy(&output.stdout).trim().is_empty() {
+            return;
+        }
+
+        tracing::info!("agent image missing, pulling {}...", &self.image);
+
+        let status = match Command::new("docker")
+            .args(["pull", &self.image])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .await
+        {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!("failed to pull agent image: {e}");
+                return;
+            }
+        };
+
+        if !status.success() {
+            tracing::warn!(
+                "docker pull '{}' failed — will retry on next job",
+                &self.image
+            );
+        } else {
+            tracing::info!("agent image pulled successfully");
+        }
+    }
 }
 
 impl Default for KataHarness {
@@ -41,6 +86,8 @@ impl AgentHarness for KataHarness {
         repo_url: &str,
         agents_md: &str,
     ) -> Result<HarnessResult, HarnessError> {
+        self.ensure_image().await;
+
         let container_name = format!(
             "vulcanum-{}",
             workdir

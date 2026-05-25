@@ -24,6 +24,7 @@ pub struct UpdateProjectConfigParams<'a> {
     pub prompt_template: Option<&'a str>,
     pub repo_url: Option<&'a str>,
     pub agents_md: Option<&'a str>,
+    pub kaneo_workspace_id: Option<&'a str>,
     pub enabled: Option<bool>,
 }
 

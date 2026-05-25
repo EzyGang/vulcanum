@@ -5,7 +5,7 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
 use crate::services::work_runs::service::WorkRunsService;
-use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::api_types::{JobResponse, SubmitResultRequest};
 
 impl WorkRunsService {
     pub async fn poll(&self, worker_id: Uuid) -> Result<Option<Uuid>, WorkRunsError> {
@@ -50,8 +50,43 @@ impl WorkRunsService {
         Ok(None)
     }
 
-    pub async fn get_job(&self, id: Uuid) -> Result<WorkRun, WorkRunsError> {
-        self.work_runs_repo.find_by_id(&self.db, id).await
+    pub async fn get_job(&self, id: Uuid) -> Result<JobResponse, WorkRunsError> {
+        let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+
+        let config = self
+            .project_configs_repo
+            .find_by_id(&self.db, run.project_config_id)
+            .await;
+
+        let kaneo_project_id;
+        let kaneo_workspace_id;
+
+        match config {
+            Ok(c) => {
+                kaneo_project_id = c.kaneo_project_id;
+                kaneo_workspace_id = c.kaneo_workspace_id;
+            }
+            Err(_) => {
+                tracing::warn!(
+                    "Project config {} not found for work_run {}",
+                    run.project_config_id,
+                    id
+                );
+                kaneo_project_id = String::new();
+                kaneo_workspace_id = String::new();
+            }
+        }
+
+        Ok(JobResponse {
+            prompt_text: run.prompt_text,
+            repo_url: run.repo_url,
+            agents_md: run.agents_md,
+            external_task_ref: run.external_task_ref,
+            kaneo_instance: self.kaneo.instance.clone(),
+            kaneo_api_key: self.kaneo.api_key.clone(),
+            kaneo_project_id,
+            kaneo_workspace_id,
+        })
     }
 
     pub async fn ack_job(&self, id: Uuid, worker_id: Uuid) -> Result<WorkRun, WorkRunsError> {

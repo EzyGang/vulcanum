@@ -56,7 +56,12 @@ pub(crate) async fn handle_job(
 
     let harness = create_harness();
     let limits = crate::harness::ResourceLimits::default();
-    let secrets = HashMap::new();
+    let mut secrets = HashMap::new();
+    secrets.insert("KANEO_INSTANCE".to_owned(), job.kaneo_instance);
+    secrets.insert("KANEO_API_KEY".to_owned(), job.kaneo_api_key);
+    secrets.insert("KANEO_PROJECT_ID".to_owned(), job.kaneo_project_id);
+    secrets.insert("KANEO_WORKSPACE_ID".to_owned(), job.kaneo_workspace_id);
+    secrets.insert("KANEO_TASK_ID".to_owned(), job.external_task_ref.clone());
 
     let harness_result = match harness
         .spawn(

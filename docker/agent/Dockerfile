@@ -6,6 +6,16 @@ RUN apk add --no-cache \
     git \
     openssh-client
 
-RUN curl -fsSL https://opencode.ai/install.sh | sh
+RUN curl -fsSL https://opencode.ai/install.sh | sh \
+    && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
+    && export PATH="$HOME/.local/bin:$PATH" \
+    && kaneo install-skill --scope global --agent opencode
+
+ENV PATH="/root/.local/bin:$PATH"
+
+COPY docker/agent/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 WORKDIR /workdir

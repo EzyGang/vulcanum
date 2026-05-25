@@ -3,9 +3,8 @@ use crate::harness::validate::validate_environment;
 use crate::harness::validate::Severity;
 
 mod docker;
-mod image;
+pub(crate) mod image;
 mod kata;
-mod opencode;
 mod systemd;
 mod utils;
 
@@ -20,7 +19,6 @@ pub async fn run() -> anyhow::Result<()> {
     console::step("Docker", docker::install_docker)?;
     console::step("Kata Containers", kata::install_kata)?;
     console::step("Agent image", image::pull_agent_image)?;
-    console::step("OpenCode", opencode::verify_or_install_opencode)?;
     console::step("Systemd service", systemd::configure_systemd)?;
 
     eprintln!();

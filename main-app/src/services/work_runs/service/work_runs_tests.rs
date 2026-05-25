@@ -206,9 +206,9 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
 
     let job = svc.get_job(wr_id).await.expect("Should get job");
 
-    assert_eq!(job.id, wr_id);
     assert_eq!(job.external_task_ref, "task-get");
     assert_eq!(job.prompt_text, "Review the PR");
+    assert_eq!(job.repo_url, "");
 }
 
 #[sqlx::test]

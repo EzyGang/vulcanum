@@ -19,7 +19,6 @@ pub fn validate_environment() -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     check_kvm(&mut issues);
-    check_binary("opencode", &mut issues, Severity::Critical);
     check_binary("docker", &mut issues, Severity::Warning);
     check_binary("kata-runtime", &mut issues, Severity::Warning);
     issues

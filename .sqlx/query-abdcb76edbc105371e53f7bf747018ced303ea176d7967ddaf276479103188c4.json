@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, kaneo_project_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs ORDER BY created_at DESC",
+  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs WHERE kaneo_project_id = $1",
   "describe": {
     "columns": [
       {
@@ -15,49 +15,57 @@
       },
       {
         "ordinal": 2,
+        "name": "kaneo_workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "pickup_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "target_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "progress_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text"
+      ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -70,5 +78,5 @@
       true
     ]
   },
-  "hash": "d9cccdf0fb2356211c8981d6296eb55ab988ab26842d14f19f9bbfcc689cf449"
+  "hash": "abdcb76edbc105371e53f7bf747018ced303ea176d7967ddaf276479103188c4"
 }
