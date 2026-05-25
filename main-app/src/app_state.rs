@@ -13,6 +13,7 @@ use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::WorkRunsService;
+use crate::services::workers::code_store::RedisCodeStore;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 
@@ -30,7 +31,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn new(cfg: &AppConfig) -> Result<Self, sqlx::Error> {
+    pub async fn new(cfg: &AppConfig) -> Result<Self, eyre::Error> {
         let db_pool = sqlx::postgres::PgPoolOptions::new()
             .max_connections(cfg.max_conns)
             .connect(&cfg.db_url)
@@ -47,7 +48,13 @@ impl AppState {
             kaneo.clone(),
         );
         let workers_repo = WorkersRepository::new();
-        let workers = WorkersService::new(workers_repo.clone(), db_pool.clone(), cfg);
+        let code_store = RedisCodeStore::new(&cfg.redis_url)?;
+        let workers = WorkersService::new(
+            workers_repo.clone(),
+            db_pool.clone(),
+            cfg,
+            Arc::new(code_store),
+        );
         let work_runs = WorkRunsRepository::new();
         let work_notifier = WorkNotifier::new();
         let jobs = WorkRunsService::new(

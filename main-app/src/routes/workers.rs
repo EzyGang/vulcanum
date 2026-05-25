@@ -10,7 +10,7 @@ pub async fn generate_code(
     state: web::Data<AppState>,
     _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
-    let resp = state.workers.generate_code().await;
+    let resp = state.workers.generate_code().await?;
     Ok(HttpResponse::Created().json(resp))
 }
 

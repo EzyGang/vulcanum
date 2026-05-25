@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use crate::config::AppConfig;
+use crate::services::workers::code_store::InMemoryCodeStore;
 use crate::services::workers::errors::WorkersError;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
@@ -14,23 +17,32 @@ fn cfg() -> AppConfig {
         instance_password: "test-password".to_owned(),
         kaneo_instance: "cloud.kaneo.app".to_owned(),
         kaneo_api_key: String::new(),
+        redis_url: String::new(),
     }
+}
+
+fn svc(pool: sqlx::PgPool) -> WorkersService {
+    let c = cfg();
+    WorkersService::new(
+        WorkersRepository::new(),
+        pool,
+        &c,
+        Arc::new(InMemoryCodeStore::new()),
+    )
 }
 
 #[sqlx::test]
 async fn generate_code_returns_new_code(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool, &c);
-    let resp = svc.generate_code().await;
+    let svc = svc(pool);
+    let resp = svc.generate_code().await.expect("should generate");
     assert_eq!(resp.code.len(), 16);
     assert!(resp.expires_at > Utc::now());
 }
 
 #[sqlx::test]
 async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool, &c);
-    let code = svc.generate_code().await;
+    let svc = svc(pool);
+    let code = svc.generate_code().await.expect("should generate");
     let resp = svc
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
@@ -46,8 +58,7 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool, &c);
+    let svc = svc(pool);
     let err = svc
         .connect(crate::services::workers::model::ConnectRequest {
             code: "badcode".to_owned(),
@@ -61,14 +72,12 @@ async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool.clone(), &c);
+    let svc = svc(pool.clone());
 
-    // Insert an expired code directly into the store
-    {
-        let mut codes = svc.codes.write().await;
-        codes.insert("expired".to_owned(), Utc::now() - Duration::minutes(1));
-    }
+    svc.code_store
+        .save("expired", Utc::now() - Duration::minutes(1))
+        .await
+        .expect("pre-insert should succeed");
 
     let err = svc
         .connect(crate::services::workers::model::ConnectRequest {
@@ -83,9 +92,8 @@ async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_rotates_token(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool, &c);
-    let code = svc.generate_code().await;
+    let svc = svc(pool);
+    let code = svc.generate_code().await.expect("should generate");
     let connect = svc
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
@@ -111,9 +119,8 @@ async fn refresh_rotates_token(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool, &c);
-    let code = svc.generate_code().await;
+    let svc = svc(pool);
+    let code = svc.generate_code().await.expect("should generate");
     let connect = svc
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
@@ -142,8 +149,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_with_invalid_token_fails(pool: sqlx::PgPool) {
-    let c = cfg();
-    let svc = WorkersService::new(WorkersRepository::new(), pool, &c);
+    let svc = svc(pool);
     let err = svc
         .refresh(crate::services::workers::model::RefreshRequest {
             refresh_token: "garbage".to_owned(),
@@ -156,15 +162,15 @@ async fn refresh_with_invalid_token_fails(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_all_returns_workers(pool: sqlx::PgPool) {
-    let c = cfg();
-    let repo = WorkersRepository::new();
-    let svc = WorkersService::new(repo.clone(), pool.clone(), &c);
+    let svc = svc(pool.clone());
     let expiry = Utc::now() + Duration::days(30);
 
-    repo.create(&pool, "l1", "h1", expiry, &serde_json::json!({}))
+    svc.repo
+        .create(&pool, "l1", "h1", expiry, &serde_json::json!({}))
         .await
         .unwrap();
-    repo.create(&pool, "l2", "h2", expiry, &serde_json::json!({}))
+    svc.repo
+        .create(&pool, "l2", "h2", expiry, &serde_json::json!({}))
         .await
         .unwrap();
 

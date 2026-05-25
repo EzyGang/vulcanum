@@ -21,6 +21,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
         instance_password: TEST_PASSWORD.to_owned(),
         kaneo_instance: "cloud.kaneo.app".to_owned(),
         kaneo_api_key: String::new(),
+        redis_url: String::new(),
     };
 
     let workers_repo = crate::services::workers::repository::WorkersRepository::new();
@@ -49,6 +50,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             workers_repo.clone(),
             pool.clone(),
             &cfg,
+            std::sync::Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
         ),
         jobs: crate::services::work_runs::service::WorkRunsService::new(
             work_runs_repo.clone(),

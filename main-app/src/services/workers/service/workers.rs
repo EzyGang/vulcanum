@@ -12,10 +12,7 @@ use crate::services::workers::model::{
 use crate::services::workers::service::WorkersService;
 
 impl WorkersService {
-    pub async fn generate_code(&self) -> CodeResponse {
-        let mut codes = self.codes.write().await;
-        Self::evict_expired(&mut codes);
-
+    pub async fn generate_code(&self) -> Result<CodeResponse, WorkersError> {
         let code: String = rand::thread_rng()
             .sample_iter(&rand::distributions::Alphanumeric)
             .take(model::CODE_LENGTH)
@@ -23,14 +20,17 @@ impl WorkersService {
             .collect();
 
         let expires_at = Utc::now() + Duration::minutes(model::CODE_TTL_MINUTES);
-        codes.insert(code.clone(), expires_at);
+        self.code_store.save(&code, expires_at).await?;
 
-        CodeResponse { code, expires_at }
+        Ok(CodeResponse { code, expires_at })
     }
 
     pub async fn connect(&self, req: ConnectRequest) -> Result<ConnectResponse, WorkersError> {
-        let mut codes = self.codes.write().await;
-        let expiry = codes.remove(&req.code).ok_or(WorkersError::CodeNotFound)?;
+        let expiry = self
+            .code_store
+            .consume(&req.code)
+            .await?
+            .ok_or(WorkersError::CodeNotFound)?;
 
         if Utc::now() > expiry {
             return Err(WorkersError::CodeExpired);
@@ -106,11 +106,6 @@ impl WorkersService {
 
     pub async fn delete_worker(&self, worker_id: uuid::Uuid) -> Result<(), WorkersError> {
         self.repo.delete(&self.db, worker_id).await
-    }
-
-    fn evict_expired(codes: &mut std::collections::HashMap<String, DateTime<Utc>>) {
-        let now = Utc::now();
-        codes.retain(|_k, v| *v > now);
     }
 }
 

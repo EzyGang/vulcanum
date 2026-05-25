@@ -16,4 +16,6 @@ pub enum WorkersError {
     Database(#[from] sqlx::Error),
     #[error("jwt error: {0}")]
     Jwt(#[from] jsonwebtoken::errors::Error),
+    #[error("redis error: {0}")]
+    Redis(#[from] redis::RedisError),
 }
