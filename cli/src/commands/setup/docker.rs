@@ -1,4 +1,6 @@
-use super::utils::{run_shell, run_systemctl, which};
+use std::process::{Command, Stdio};
+
+use super::utils::{run_systemctl, which};
 
 pub fn install_docker() -> anyhow::Result<()> {
     if which("docker") {
@@ -6,7 +8,17 @@ pub fn install_docker() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    run_shell("curl -fsSL https://get.docker.com | sh")?;
+    let status = Command::new("sh")
+        .args(["-c", "curl -fsSL https://get.docker.com | sh"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map_err(|e| anyhow::anyhow!("failed to run docker install script: {e}"))?;
+
+    if !status.success() {
+        anyhow::bail!("docker install script failed");
+    }
+
     run_systemctl("enable --now docker")?;
     Ok(())
 }

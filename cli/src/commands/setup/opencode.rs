@@ -1,3 +1,5 @@
+use std::process::{Command, Stdio};
+
 use super::utils::which;
 
 pub fn verify_or_install_opencode() -> anyhow::Result<()> {
@@ -6,8 +8,10 @@ pub fn verify_or_install_opencode() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let status = std::process::Command::new("sh")
+    let status = Command::new("sh")
         .args(["-c", "curl -fsSL https://opencode.ai/install.sh | sh"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()
         .map_err(|e| anyhow::anyhow!("failed to run OpenCode install script: {e}"))?;
 
