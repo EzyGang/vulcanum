@@ -14,8 +14,9 @@ pub fn install_kata() -> anyhow::Result<()> {
     let status = Command::new("sh")
         .args([
             "-c",
-            &format!("curl -fsSL {KATA_MANAGER_URL} | bash -s -- -D"),
+            &format!("curl -fsSL {KATA_MANAGER_URL} | sudo bash -s -- -D"),
         ])
+        .current_dir("/")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
