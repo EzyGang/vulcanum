@@ -43,14 +43,21 @@ pub async fn run(code: Option<String>, instance: Option<String>) -> anyhow::Resu
     Ok(())
 }
 
+fn nonempty(field: &str, input: &str) -> Result<(), String> {
+    if input.trim().is_empty() {
+        return Err(format!("{field} is required"));
+    }
+    Ok(())
+}
+
 fn prompt_instance_url() -> anyhow::Result<String> {
     let url = dialoguer::Input::<String>::new()
         .with_prompt("Instance URL")
         .validate_with(|input: &String| {
-            if input.trim().is_empty() {
-                Err("URL is required".to_owned())
-            } else {
-                Ok(())
+            nonempty("Instance URL", input)?;
+            match url::Url::parse(input.trim()) {
+                Ok(_) => Ok(()),
+                Err(_) => Err("Please enter a valid URL".to_owned()),
             }
         })
         .interact_text()?;
@@ -60,13 +67,7 @@ fn prompt_instance_url() -> anyhow::Result<String> {
 fn prompt_code() -> anyhow::Result<String> {
     let code = dialoguer::Input::<String>::new()
         .with_prompt("Connection code")
-        .validate_with(|input: &String| {
-            if input.trim().is_empty() {
-                Err("Code is required".to_owned())
-            } else {
-                Ok(())
-            }
-        })
+        .validate_with(|input: &String| nonempty("Connection code", input))
         .interact_text()?;
     Ok(code.trim().to_owned())
 }
