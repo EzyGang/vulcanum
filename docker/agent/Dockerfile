@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV PATH="/root/.local/bin:$PATH"
 
-RUN curl -fsSL https://opencode.ai/install | sh \
+RUN curl -fsSL https://opencode.ai/install | bash \
     && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
     && export PATH="/root/.local/bin:$PATH" \
     && kaneo install-skill --scope global --agent opencode
