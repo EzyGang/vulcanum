@@ -6,7 +6,7 @@ RUN apk add --no-cache \
     git \
     openssh-client
 
-RUN curl -fsSL https://opencode.ai/install.sh | sh \
+RUN curl -fsSL https://opencode.ai/install | sh \
     && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
     && export PATH="$HOME/.local/bin:$PATH" \
     && kaneo install-skill --scope global --agent opencode

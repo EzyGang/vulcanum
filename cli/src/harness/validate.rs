@@ -18,7 +18,7 @@ pub struct ValidationIssue {
 pub fn validate_environment() -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
-    check_kvm(&mut issues);
+    check_kvm();
     check_binary("docker", &mut issues, Severity::Warning);
     check_binary("kata-runtime", &mut issues, Severity::Warning);
     issues
@@ -31,13 +31,10 @@ pub fn is_environment_ready() -> bool {
         .all(|i| i.severity != Severity::Critical)
 }
 
-fn check_kvm(issues: &mut Vec<ValidationIssue>) {
+fn check_kvm() {
     let kvm_path = PathBuf::from("/dev/kvm");
     if !kvm_path.exists() {
-        issues.push(ValidationIssue {
-            severity: Severity::Warning,
-            message: "/dev/kvm not found — KVM acceleration unavailable".to_owned(),
-        });
+        tracing::debug!("/dev/kvm not found — KVM acceleration unavailable");
         return;
     }
 
@@ -49,21 +46,15 @@ fn check_kvm(issues: &mut Vec<ValidationIssue>) {
                 use std::os::unix::fs::MetadataExt;
                 let mode = meta.mode() & 0o777;
                 if mode & 0o666 == 0 {
-                    issues.push(ValidationIssue {
-                        severity: Severity::Warning,
-                        message: format!(
-                            "/dev/kvm exists but permissions ({:03o}) may prevent access",
-                            mode
-                        ),
-                    });
+                    tracing::debug!(
+                        "/dev/kvm exists but permissions ({:03o}) may prevent access",
+                        mode,
+                    );
                 }
             }
         }
         Err(e) => {
-            issues.push(ValidationIssue {
-                severity: Severity::Warning,
-                message: format!("cannot read /dev/kvm metadata: {e}"),
-            });
+            tracing::debug!("cannot read /dev/kvm metadata: {e}");
         }
     }
 }

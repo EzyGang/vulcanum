@@ -25,26 +25,6 @@ impl KataHarness {
     }
 
     async fn ensure_image(&self) {
-        let output = match Command::new("docker")
-            .args(["images", "-q", &self.image])
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null())
-            .output()
-            .await
-        {
-            Ok(o) => o,
-            Err(e) => {
-                tracing::warn!("failed to check docker images: {e}");
-                return;
-            }
-        };
-
-        if !String::from_utf8_lossy(&output.stdout).trim().is_empty() {
-            return;
-        }
-
-        tracing::info!("agent image missing, pulling {}...", &self.image);
-
         let status = match Command::new("docker")
             .args(["pull", &self.image])
             .stdout(std::process::Stdio::null())
@@ -64,8 +44,6 @@ impl KataHarness {
                 "docker pull '{}' failed — will retry on next job",
                 &self.image
             );
-        } else {
-            tracing::info!("agent image pulled successfully");
         }
     }
 }
