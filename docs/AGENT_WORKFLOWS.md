@@ -138,7 +138,7 @@ Provisions the machine with:
 - Docker
 - Kata Containers runtime
 - OpenCode binary
-- The agent Docker image (`ghcr.io/vulcanum/agent:latest`)
+- The agent Docker image (`ghcr.io/ezygang/vulcanum/agent:latest`)
 - A systemd service (`vulcanum-worker.service`) configured with `VULCANUM_HARNESS=kata`
 
 ---
@@ -223,7 +223,7 @@ Resource limits (per job):
 | vCPUs | 2 |
 | Memory | 1024 MiB |
 
-Override the Docker image via `KATA_IMAGE` env var. Default: `ghcr.io/vulcanum/agent:latest`.
+Override the Docker image via `KATA_IMAGE` env var. Default: `ghcr.io/ezygang/vulcanum/agent:latest`.
 
 ### Timeout Behavior
 
@@ -318,7 +318,7 @@ All endpoints under `/api/v1`.
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `VULCANUM_HARNESS` | `host` | Harness selection: `host` or `kata` |
-| `KATA_IMAGE` | `ghcr.io/vulcanum/agent:latest` | Docker image for Kata harness |
+| `KATA_IMAGE` | `ghcr.io/ezygang/vulcanum/agent:latest` | Docker image for Kata harness |
 | `RUST_LOG` | `info` | Tracing level filter |
 | `LOG_FORMAT` | (text) | Set to `json` for structured logging |
 

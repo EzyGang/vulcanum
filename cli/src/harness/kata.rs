@@ -7,7 +7,7 @@ use crate::harness::errors::HarnessError;
 use crate::harness::runner::{self, RunnerEnv};
 use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
 
-pub(crate) const DEFAULT_KATA_IMAGE: &str = "ghcr.io/vulcanum/agent:latest";
+pub(crate) const DEFAULT_KATA_IMAGE: &str = "ghcr.io/ezygang/vulcanum/agent:latest";
 
 pub struct KataHarness {
     pub(crate) image: String,

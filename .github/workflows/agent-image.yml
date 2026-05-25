@@ -34,7 +34,7 @@ jobs:
           file: docker/agent/Dockerfile
           push: true
           tags: |
-            ghcr.io/vulcanum/agent:latest
-            ghcr.io/vulcanum/agent:${{ github.sha }}
+            ghcr.io/ezygang/vulcanum/agent:latest
+            ghcr.io/ezygang/vulcanum/agent:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
