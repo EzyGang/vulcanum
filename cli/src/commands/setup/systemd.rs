@@ -32,7 +32,17 @@ pub fn configure_systemd() -> anyhow::Result<()> {
     std::fs::write(UNIT_PATH, unit_content)?;
 
     run_systemctl("daemon-reload")?;
-    run_systemctl(&format!("enable {UNIT_NAME}"))?;
+
+    Ok(())
+}
+
+pub fn enable_and_start_service() -> anyhow::Result<()> {
+    if is_unit_active() {
+        tracing::debug!("systemd unit '{UNIT_NAME}' already active");
+        return Ok(());
+    }
+
+    run_systemctl(&format!("enable --now {UNIT_NAME}"))?;
 
     Ok(())
 }

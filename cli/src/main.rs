@@ -37,8 +37,18 @@ enum WorkerCommand {
     },
     /// Run the worker daemon (poll loop, job execution)
     Daemon,
-    /// Install Docker, Kata Containers, pull agent image, and configure systemd
-    Setup,
+    /// Install Docker, Kata Containers, pull agent image, configure systemd, and register with an instance
+    Setup {
+        /// Instance URL (e.g. https://vulcanum.example.com)
+        #[arg(long)]
+        instance: Option<String>,
+        /// Connection code from the instance
+        #[arg(long)]
+        code: Option<String>,
+        /// Force re-registration even if already connected
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[tokio::main]
@@ -53,7 +63,11 @@ async fn main() -> anyhow::Result<()> {
                 commands::connect::run(code, instance).await
             }
             WorkerCommand::Daemon => commands::daemon::run().await,
-            WorkerCommand::Setup => commands::setup::run().await,
+            WorkerCommand::Setup {
+                instance,
+                code,
+                force,
+            } => commands::setup::run(code, instance, force).await,
         },
     }
 }
