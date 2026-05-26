@@ -11,7 +11,7 @@ pub trait TaskFetcher: Send + Sync {
     async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
-        column_slug: &str,
+        column_name: &str,
     ) -> Result<Vec<Task>, KaneoError>;
 }
 
@@ -26,9 +26,9 @@ impl TaskFetcher for KaneoClient {
     async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
-        column_slug: &str,
+        column_name: &str,
     ) -> Result<Vec<Task>, KaneoError> {
-        self.do_fetch_tasks_in_column(project_id, column_slug).await
+        self.do_fetch_tasks_in_column(project_id, column_name).await
     }
 }
 
@@ -44,9 +44,9 @@ impl KaneoClient {
     async fn do_fetch_tasks_in_column(
         &self,
         project_id: &str,
-        column_slug: &str,
+        column_name: &str,
     ) -> Result<Vec<Task>, KaneoError> {
-        let column_slug = slugify(column_slug);
+        let column_slug = slugify(column_name);
         let client = self.build_client()?;
         let path =
             format!("/task/tasks/{project_id}?limit={FETCH_TASKS_LIMIT}&status={column_slug}");
@@ -60,6 +60,7 @@ impl KaneoClient {
         result.map(|board| filter_tasks_in_column(board, &column_slug))
     }
 
+    /// Accepts both slugs and display names — normalizes to a slug internally.
     pub async fn update_task_status(
         &self,
         task_id: &str,
