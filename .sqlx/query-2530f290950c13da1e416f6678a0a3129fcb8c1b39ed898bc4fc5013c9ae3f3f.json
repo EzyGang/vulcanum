@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,\n             w.name as worker_name,\n             wr.status as \"status: WorkRunStatus\", wr.prompt_text, wr.repo_url,\n             wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,\n             wr.created_at as \"created_at!: DateTime<Utc>\"\n             FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id\n             WHERE ($1::work_run_status IS NULL OR wr.status = $1)\n             ORDER BY wr.created_at DESC LIMIT $2 OFFSET $3",
+  "query": "SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,\n             w.name as \"worker_name: Option<String>\",\n             wr.status as \"status: WorkRunStatus\", wr.prompt_text, wr.repo_url,\n             wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,\n             wr.created_at as \"created_at!: DateTime<Utc>\"\n             FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id\n             WHERE ($1::work_run_status IS NULL OR wr.status = $1)\n             ORDER BY wr.created_at DESC LIMIT $2 OFFSET $3",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "worker_name",
+        "name": "worker_name: Option<String>",
         "type_info": "Text"
       },
       {
@@ -120,5 +120,5 @@
       true
     ]
   },
-  "hash": "bd831f1845cff766423e979137fa1071234841c44cfc6510f0236b7bb9f1ad9a"
+  "hash": "2530f290950c13da1e416f6678a0a3129fcb8c1b39ed898bc4fc5013c9ae3f3f"
 }
