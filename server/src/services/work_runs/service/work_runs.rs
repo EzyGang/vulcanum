@@ -8,6 +8,14 @@ use vulcanum_shared::api_types::{JobResponse, SubmitResultRequest};
 
 impl WorkRunsService {
     pub async fn poll(&self, worker_id: Uuid) -> Result<Option<Uuid>, WorkRunsError> {
+        if let Err(e) = self
+            .workers_repo
+            .update_last_seen(&self.db, worker_id, chrono::Utc::now())
+            .await
+        {
+            tracing::warn!("failed to update last_seen for worker {worker_id}: {e}");
+        }
+
         let dispatched_id = self.dispatch_store.take_dispatched(worker_id).await?;
 
         Ok(dispatched_id)

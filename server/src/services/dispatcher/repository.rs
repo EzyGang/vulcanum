@@ -88,22 +88,4 @@ impl DispatchRepository {
 
         Ok(())
     }
-
-    pub async fn mark_stale_disconnected<'c, Q: Queryer<'c>>(
-        &self,
-        db: Q,
-        threshold: chrono::Duration,
-    ) -> Result<u64, DispatchError> {
-        let cutoff = Utc::now() - threshold;
-
-        sqlx::query!(
-            r#"UPDATE workers SET status = 'disconnected'::worker_status
-             WHERE last_seen < $1 AND status != 'disconnected'::worker_status"#,
-            cutoff,
-        )
-        .execute(db)
-        .await
-        .map(|result| result.rows_affected())
-        .map_err(map_sqlx_error)
-    }
 }

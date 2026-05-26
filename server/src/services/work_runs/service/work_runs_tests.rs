@@ -85,7 +85,7 @@ async fn ack_transitions_dispatched_to_running(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -107,7 +107,7 @@ async fn ack_fails_when_already_claimed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-2").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-race").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_a)
         .await
@@ -132,7 +132,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -167,7 +167,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-fail-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-fail").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -217,7 +217,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-owner-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-owner").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_a)
         .await

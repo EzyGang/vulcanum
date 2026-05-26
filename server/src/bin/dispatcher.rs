@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use sqlx::postgres::PgPoolOptions;
+use tokio::signal;
 
 use vulcanum_server::services::dispatcher::flag_store::RedisDispatchStore;
 use vulcanum_server::services::dispatcher::repository::DispatchRepository;
@@ -59,7 +60,7 @@ async fn main() -> eyre::Result<()> {
         RedisDispatchStore::new(&cfg.redis_url).map_err(|e| eyre::eyre!(e.to_string()))?;
 
     let svc = DispatcherService::new(
-        DispatchRepository::new(),
+        DispatchRepository,
         WorkersRepository::new(),
         db_pool,
         std::sync::Arc::new(dispatch_store),
@@ -75,19 +76,26 @@ async fn main() -> eyre::Result<()> {
         tokio::time::interval(std::time::Duration::from_secs(cfg.dispatch_interval_secs));
 
     loop {
-        interval.tick().await;
-        match svc.dispatch_once().await {
-            Ok(summary) => {
-                tracing::debug!(
-                    dispatched = summary.dispatched,
-                    workers = summary.workers_available,
-                    pending = summary.pending_jobs,
-                    disconnected = summary.disconnected,
-                    "dispatch cycle complete",
-                );
+        tokio::select! {
+            _ = signal::ctrl_c() => {
+                tracing::info!("received SIGINT, shutting down");
+                return Ok(());
             }
-            Err(e) => {
-                tracing::error!("dispatch cycle failed: {e}");
+            _ = interval.tick() => {
+                match svc.dispatch_once().await {
+                    Ok(summary) => {
+                        tracing::debug!(
+                            dispatched = summary.dispatched,
+                            workers = summary.workers_available,
+                            pending = summary.pending_jobs,
+                            disconnected = summary.disconnected,
+                            "dispatch cycle complete",
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("dispatch cycle failed: {e}");
+                    }
+                }
             }
         }
     }

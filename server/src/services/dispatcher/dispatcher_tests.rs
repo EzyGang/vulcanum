@@ -11,7 +11,7 @@ use crate::test_helpers;
 
 fn build_service(pool: PgPool) -> DispatcherService {
     DispatcherService::new(
-        DispatchRepository::new(),
+        DispatchRepository,
         crate::services::workers::repository::WorkersRepository::new(),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
@@ -75,7 +75,7 @@ async fn dispatch_sets_redis_flag(pool: PgPool) {
     let _wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-flag").await;
 
     let svc = DispatcherService::new(
-        DispatchRepository::new(),
+        DispatchRepository,
         crate::services::workers::repository::WorkersRepository::new(),
         pool,
         store.clone(),

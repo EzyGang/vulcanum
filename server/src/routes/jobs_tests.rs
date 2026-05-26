@@ -191,7 +191,7 @@ async fn ack_job_returns_200(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-test").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -225,7 +225,7 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-race").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-race").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_a)
         .await
@@ -260,7 +260,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result-test").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository::new();
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
