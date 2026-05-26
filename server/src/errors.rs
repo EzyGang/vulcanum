@@ -108,7 +108,7 @@ impl From<UsersError> for AppError {
         match err {
             UsersError::UserNotFound => Self::UserNotFound,
             UsersError::Database(e) => {
-                tracing::error!("database error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
         }
@@ -121,15 +121,15 @@ impl From<ProjectConfigsError> for AppError {
             ProjectConfigsError::NotFound => Self::ProjectConfigNotFound,
             ProjectConfigsError::DuplicateKaneoProjectId => Self::DuplicateProjectConfig,
             ProjectConfigsError::Database(e) => {
-                tracing::error!("database error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
             ProjectConfigsError::Kaneo(e) => {
-                tracing::error!("kaneo error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
             ProjectConfigsError::ColumnNotFound(e) => {
-                tracing::error!("column not found: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
         }
@@ -144,7 +144,7 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::NotOwned => Self::NotOwned,
             WorkRunsError::InvalidStatusTransition => Self::InvalidStatusTransition,
             WorkRunsError::Database(e) => {
-                tracing::error!("database error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
         }
@@ -160,15 +160,15 @@ impl From<WorkersError> for AppError {
             WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
             WorkersError::Database(e) => {
-                tracing::error!("database error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
             WorkersError::Jwt(e) => {
-                tracing::error!("jwt error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
             WorkersError::Redis(e) => {
-                tracing::error!("redis error: {e}");
+                tracing::error!("{e}");
                 Self::Internal
             }
         }
