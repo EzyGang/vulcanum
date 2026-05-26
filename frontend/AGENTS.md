@@ -220,7 +220,7 @@ export const featureStore: FeatureStore = {
 
 ### Service Files
 
-Service files live in `src/services/<domain>/`. Each exports pure async functions that call `utils/api/request.ts` methods and return typed responses matching main-app models.
+Service files live in `src/services/<domain>/`. Each exports pure async functions that call `utils/api/request.ts` methods and return typed responses matching server models.
 
 ```typescript
 import { get, post } from "../../utils/api/request";

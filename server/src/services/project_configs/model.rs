@@ -69,10 +69,15 @@ pub struct ColumnInfo {
 
 impl ColumnInfo {
     pub fn from_kaneo(col: &kaneo_cli::api::types::Column) -> Self {
+        let slug = col
+            .status
+            .as_deref()
+            .map(|s| s.to_owned())
+            .unwrap_or_else(|| slugify(&col.name));
         Self {
             id: col.id.clone(),
             name: col.name.clone(),
-            slug: slugify(&col.name),
+            slug,
         }
     }
 }

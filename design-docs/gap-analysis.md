@@ -38,7 +38,7 @@ Vulcanum is a **thin metadata/trigger broker** between Kaneo and OpenCode. It po
 ## 1. Architecture (MVP)
 
 ```
-Kaneo                          Main App                        Worker
+Kaneo                          Server                        Worker
   │                                │                               │
   │  poll "todo" column            │                               │
   │  (per enabled project)         │                               │
@@ -207,7 +207,7 @@ Fetched live from Kaneo API. If a project lacks a progress column, that transiti
 
 | Priority | Item | Rationale |
 |---|---|---|
-| **P0** | Main app background poller + Kaneo integration | Source of work — nothing happens without it |
+| **P0** | Server background poller + Kaneo integration | Source of work — nothing happens without it |
 | **P0** | Work run DB schema + unique constraint | Idempotency, duplicate prevention |
 | **P0** | Worker auth: registration codes → token pair | Workers can't connect without it |
 | **P0** | HTTP polling endpoints (worker ↔ server) | Core communication channel |

@@ -120,7 +120,7 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
-        run: sqlx migrate run --source main-app/migrations
+        run: sqlx migrate run --source server/migrations
 
       - name: Run tests
         env:

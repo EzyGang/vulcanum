@@ -9,7 +9,7 @@ Kaneo board (pickup column)
         │
         ▼
 ┌──────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   Main App       │────▶│  PostgreSQL   │◀────│  Worker Daemon  │
+│   Server         │────▶│  PostgreSQL   │◀────│  Worker Daemon  │
 │ (actix-web)      │     │ (work_runs,   │     │ (CLI binary)    │
 │                  │     │  workers,     │     │                 │
 │ Poller ──────────┤     │  project_     │     │ Poll ───────────┤
@@ -27,7 +27,7 @@ Kaneo board (pickup column)
 ```
 
 Two components run independently:
-- **Main App** — HTTP server, database, background poller, REST API
+- **Server** — HTTP server, database, background poller, REST API
 - **Worker Daemon** — Single binary per machine; polls for work, runs agents, reports results
 
 Communication is HTTP-only. Workers short-poll a lightweight in-memory flag (not the database) to check for work.
@@ -172,7 +172,7 @@ Provisions the machine with:
        │
 13. Worker POST /jobs/{id}/result → exit_code, pr_url, tokens, duration
        │
-14. Main app syncs Kaneo:
+14. Server syncs Kaneo:
     - Success → moves task to target column + posts PR comment
     - Failure → task stays in pickup column for retry
        │
@@ -300,7 +300,7 @@ All endpoints under `/api/v1`.
 
 ## Environment Variables
 
-### Main App
+### Server
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|

@@ -11,7 +11,7 @@ pub trait TaskFetcher: Send + Sync {
     async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
-        column_slug: &str,
+        column_name: &str,
     ) -> Result<Vec<Task>, KaneoError>;
 }
 
@@ -26,9 +26,9 @@ impl TaskFetcher for KaneoClient {
     async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
-        column_slug: &str,
+        column_name: &str,
     ) -> Result<Vec<Task>, KaneoError> {
-        self.do_fetch_tasks_in_column(project_id, column_slug).await
+        self.do_fetch_tasks_in_column(project_id, column_name).await
     }
 }
 
@@ -44,8 +44,9 @@ impl KaneoClient {
     async fn do_fetch_tasks_in_column(
         &self,
         project_id: &str,
-        column_slug: &str,
+        column_name: &str,
     ) -> Result<Vec<Task>, KaneoError> {
+        let column_slug = slugify(column_name);
         let client = self.build_client()?;
         let path =
             format!("/task/tasks/{project_id}?limit={FETCH_TASKS_LIMIT}&status={column_slug}");
@@ -56,14 +57,16 @@ impl KaneoClient {
 
         log_kaneo_result("GET", &path, duration_ms, &result);
 
-        result.map(|board| filter_tasks_in_column(board, column_slug))
+        result.map(|board| filter_tasks_in_column(board, &column_slug))
     }
 
+    /// Accepts both slugs and display names — normalizes to a slug internally.
     pub async fn update_task_status(
         &self,
         task_id: &str,
         new_status: &str,
     ) -> Result<(), KaneoError> {
+        let new_status = slugify(new_status);
         let client = self.build_client()?;
 
         #[derive(serde::Serialize)]
@@ -133,17 +136,22 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
         .data
         .columns
         .into_iter()
-        .find(|col| slugify(&col.name) == column_slug)
+        .find(|col| match col.status.as_deref() {
+            Some(status) => status == column_slug,
+            None => slugify(&col.name) == column_slug,
+        })
         .map(|col| col.tasks)
         .unwrap_or_default()
 }
 
 pub fn slugify(name: &str) -> String {
     name.chars()
-        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .map(|c| if c.is_whitespace() { '-' } else { c })
+        .filter(|c| c.is_alphanumeric() || *c == '-')
         .collect::<String>()
         .to_lowercase()
-        .split_whitespace()
+        .split('-')
+        .filter(|s| !s.is_empty())
         .collect::<Vec<&str>>()
         .join("-")
 }

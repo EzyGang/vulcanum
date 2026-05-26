@@ -5,6 +5,7 @@ use thiserror::Error;
 pub enum KaneoError {
     #[error("kaneo API error: {0}")]
     Api(String),
+    #[cfg(test)]
     #[error("column not found in project: {0}")]
     ColumnNotFound(String),
 }

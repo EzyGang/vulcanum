@@ -1,20 +1,20 @@
-# AGENTS.md - vulcanum-main-app
+# AGENTS.md - vulcanum-server
 
 This crate is a member of the Vulcanum Cargo workspace.
 Refer to the root-level `AGENTS.md` for shared project conventions, Rust code guidelines, and build instructions.
 
 ## Overview
 
-Main Application Server for the Vulcanum orchestrator.
+Server for the Vulcanum orchestrator.
 
 ## Build & Run
 
 ```bash
 # From the repo root
-cargo run -p vulcanum-main-app
+cargo run -p vulcanum-server
 
 # Or from this directory
-cd main-app
+cd server
 cargo run
 ```
 

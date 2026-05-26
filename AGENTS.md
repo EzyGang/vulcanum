@@ -14,7 +14,7 @@ Vulcanum is a symphony-like agentic work orchestrator. It provides:
 |--------|------|------------|--------|
 | CLI | `cli/` | Rust | Active |
 | Host Machine Server | `host-server/` | Rust | Active |
-| Main Application Server | `main-app/` | Rust | Active |
+| Server | `server/` | Rust | Active |
 | Shared Types & Utilities | `shared/` | Rust | Active |
 | Frontend UI | `frontend/` | TypeScript/Preact | Active |
 | Agent Server | *(omitted for now)* | — | — |
@@ -23,7 +23,7 @@ Non-Rust components (Frontend UI, Agent Server) are **not** part of the Cargo wo
 
 ## Rust Workspace
 
-The Rust crates (`cli/`, `host-server/`, `main-app/`, `shared/`) are organized as a Cargo workspace defined in the root `Cargo.toml`. This enables:
+The Rust crates (`cli/`, `host-server/`, `server/`, `shared/`) are organized as a Cargo workspace defined in the root `Cargo.toml`. This enables:
 
 - Shared dependency resolution and locking.
 - The `shared` crate to be used as a path dependency by other workspace members.
@@ -38,13 +38,13 @@ From the repository root you can build any workspace member:
 cargo build --workspace
 
 # Build a specific crate
-cargo build -p vulcanum-main-app
+cargo build -p vulcanum-server
 cargo build -p vulcanum-host-server
 cargo build -p vulcanum-cli
 cargo build -p vulcanum-shared
 
 # Run from the root
-cargo run -p vulcanum-main-app
+cargo run -p vulcanum-server
 cargo run -p vulcanum-host-server
 cargo run -p vulcanum-cli
 ```
@@ -52,7 +52,7 @@ cargo run -p vulcanum-cli
 You can also enter a crate directory and build it independently:
 
 ```bash
-cd main-app/
+cd server/
 cargo run
 ```
 
@@ -97,7 +97,7 @@ All formatting, import ordering, and style conventions (generics, documentation,
 
 ## Web Service Architecture
 
-All web service crates (e.g. `main-app`, future `agent-server`) must follow a strict layered architecture.
+All web service crates (e.g. `server`, future `agent-server`) must follow a strict layered architecture.
 
 ### Layers
 
@@ -243,7 +243,7 @@ Do NOT use display names (`"To Do"`, `"In Progress"`) — these will fail with a
 
 For module-specific details, refer to the local `AGENTS.md` in each module directory:
 
-- `main-app/AGENTS.md` — Rust backend (migrations, SQLx, actix-web, env vars)
+- `server/AGENTS.md` — Rust backend (migrations, SQLx, actix-web, env vars)
 - `host-server/AGENTS.md`
 - `cli/AGENTS.md`
 - `frontend/AGENTS.md` — TypeScript/Preact UI (component patterns, API layer, design system)
