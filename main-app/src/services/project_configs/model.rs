@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+use crate::services::kaneo::client::slugify;
+
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
     pub id: Uuid,
@@ -89,8 +91,4 @@ fn default_progress_column() -> String {
 
 fn default_target_column() -> String {
     "in-review".to_owned()
-}
-
-pub fn slugify(name: &str) -> String {
-    name.to_lowercase().replace(' ', "-")
 }

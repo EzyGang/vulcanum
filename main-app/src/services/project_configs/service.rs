@@ -1,10 +1,10 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::kaneo::client::KaneoClient;
+use crate::services::kaneo::client::{slugify, KaneoClient};
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
-    slugify, ColumnInfo, CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
+    ColumnInfo, CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
 };
 use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
