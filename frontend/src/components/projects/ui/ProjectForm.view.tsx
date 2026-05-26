@@ -74,7 +74,7 @@ const ColumnSelect = ({
       >
         <option value=''>{placeholderText}</option>
         {columns.value.map((col) => (
-          <option key={col.id} value={col.name}>
+          <option key={col.id} value={col.slug}>
             {col.name}
           </option>
         ))}

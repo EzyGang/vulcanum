@@ -58,6 +58,23 @@ pub struct UpdateProjectConfigRequest {
     pub enabled: Option<bool>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ColumnInfo {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+}
+
+impl ColumnInfo {
+    pub fn from_kaneo(col: &kaneo_cli::api::types::Column) -> Self {
+        Self {
+            id: col.id.clone(),
+            name: col.name.clone(),
+            slug: slugify(&col.name),
+        }
+    }
+}
+
 fn default_enabled() -> bool {
     true
 }
@@ -72,4 +89,8 @@ fn default_progress_column() -> String {
 
 fn default_target_column() -> String {
     "in-review".to_owned()
+}
+
+pub fn slugify(name: &str) -> String {
+    name.to_lowercase().replace(' ', "-")
 }

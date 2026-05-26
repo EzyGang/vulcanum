@@ -133,7 +133,10 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
         .data
         .columns
         .into_iter()
-        .find(|col| col.name.to_lowercase() == column_slug.to_lowercase())
+        .find(|col| {
+            let slug = col.name.to_lowercase().replace(' ', "-");
+            slug == column_slug
+        })
         .map(|col| col.tasks)
         .unwrap_or_default()
 }
