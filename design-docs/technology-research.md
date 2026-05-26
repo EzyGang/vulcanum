@@ -74,7 +74,7 @@ For the single-user, self-hosted MVP, secrets flow through the main app over pla
 
 No persistent connections. Stateless HTTP, horizontally scalable.
 
-### Worker → Main App
+### Worker → Server
 
 | Endpoint | Purpose |
 |---|---|
@@ -85,7 +85,7 @@ No persistent connections. Stateless HTTP, horizontally scalable.
 | `POST /jobs/:id/result` | Final result (PR URL, exit code, tokens, duration) |
 | `POST /workers/refresh` | Refresh access token |
 
-### Main App → Kaneo
+### Server → Kaneo
 
 - Poll Kaneo API per enabled project for tasks in configured "pickup" column
 - Filter: only tasks not yet in Vulcanum DB (`ON CONFLICT DO NOTHING`)
@@ -157,7 +157,7 @@ OpenCode adapter implements this trait. Additional harnesses (Claude Code, Codex
 1. User generates a short-lived registration code in the main app (`POST /workers/codes`)
 2. Code is valid for 10 minutes, single-use
 3. Worker runs: `vulcanum connect --instance https://vulcanum.example.com --code <code>`
-4. Main app validates code, generates token pair (access + refresh)
+4. Server validates code, generates token pair (access + refresh)
 5. Worker stores tokens locally (`~/.vulcanum/credentials`, 0600 permissions)
 6. Worker uses access token for all API calls, refreshes when expired
 7. User can revoke from main app → worker disconnected, no more jobs dispatched

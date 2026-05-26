@@ -3557,7 +3557,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vulcanum-main-app"
+name = "vulcanum-server"
 version = "0.1.0"
 dependencies = [
  "actix-cors",

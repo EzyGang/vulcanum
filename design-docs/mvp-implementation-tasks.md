@@ -2,9 +2,9 @@
 
 ## P0 — Core Infrastructure (nothing works without these)
 
-- [ ] **Main app background poller**: `tokio::spawn` + `tokio::time::interval`, polls Kaneo per enabled project, filters against DB, inserts work_runs with `ON CONFLICT DO NOTHING`
+- [ ] **Server background poller**: `tokio::spawn` + `tokio::time::interval`, polls Kaneo per enabled project, filters against DB, inserts work_runs with `ON CONFLICT DO NOTHING`
 - [ ] **Kaneo API client**: fetch tasks by project + column slug, PATCH task status, POST comment. Configurable base URL + API key (set by user per-project)
-- [ ] **Work runs DB schema + migrations**: `project_configs`, `workers`, `work_runs` tables with unique constraint. SQLx migrations in `main-app/migrations/`
+- [ ] **Work runs DB schema + migrations**: `project_configs`, `workers`, `work_runs` tables with unique constraint. SQLx migrations in `server/migrations/`
 - [ ] **Project config CRUD**: `GET/POST/PUT /projects`, `POST /projects/:id/columns` (fetch Kaneo columns for mapping UI). Service + repository layers
 - [ ] **Worker registration flow**: `POST /workers/codes` (generate short-lived code), `POST /workers/connect` (exchange code for token pair), `POST /workers/refresh` (refresh access token). In-memory code store + DB token hashing
 - [ ] **HTTP polling endpoints**: `GET /poll?worker_id=X` (in-memory boolean cache flag, 200/204), `GET /jobs/:id` (full work spec), `POST /jobs/:id/ack`, `POST /jobs/:id/result`. Service + route layers
