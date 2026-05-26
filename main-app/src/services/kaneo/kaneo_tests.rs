@@ -42,7 +42,7 @@ fn test_filter_tasks_in_column_exact_match() {
         },
     };
 
-    let result = filter_tasks_in_column(board, "To Do");
+    let result = filter_tasks_in_column(board, "to-do");
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t1");
 }
@@ -85,7 +85,7 @@ fn test_filter_tasks_in_column_case_insensitive() {
         },
     };
 
-    let result = filter_tasks_in_column(board, "in progress");
+    let result = filter_tasks_in_column(board, "in-progress");
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t2");
 }
@@ -178,7 +178,7 @@ fn test_filter_tasks_in_column_multiple_columns_selects_correct_one() {
         },
     };
 
-    let result = filter_tasks_in_column(board, "Done");
+    let result = filter_tasks_in_column(board, "done");
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t4");
 }

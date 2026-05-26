@@ -133,9 +133,19 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
         .data
         .columns
         .into_iter()
-        .find(|col| col.name.to_lowercase() == column_slug.to_lowercase())
+        .find(|col| slugify(&col.name) == column_slug)
         .map(|col| col.tasks)
         .unwrap_or_default()
+}
+
+pub fn slugify(name: &str) -> String {
+    name.chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .collect::<String>()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .join("-")
 }
 
 pub(crate) fn log_kaneo_result<T>(

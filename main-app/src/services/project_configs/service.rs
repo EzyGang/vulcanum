@@ -1,10 +1,10 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::kaneo::client::KaneoClient;
+use crate::services::kaneo::client::{slugify, KaneoClient};
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
-    CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
+    ColumnInfo, CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
 };
 use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
@@ -41,8 +41,14 @@ impl ProjectConfigsService {
 
     pub async fn create(
         &self,
-        params: CreateProjectConfigRequest,
+        mut params: CreateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
+        normalize_columns(
+            &mut params.pickup_column,
+            &mut params.progress_column,
+            &mut params.target_column,
+        );
+
         self.validate_columns_exist(&params.kaneo_project_id, &params.pickup_column)
             .await?;
         self.validate_columns_exist(&params.kaneo_project_id, &params.progress_column)
@@ -56,7 +62,7 @@ impl ProjectConfigsService {
     pub async fn update(
         &self,
         id: Uuid,
-        params: UpdateProjectConfigRequest,
+        mut params: UpdateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         let existing = self.repo.find_by_id(&self.db, id).await?;
 
@@ -72,6 +78,8 @@ impl ProjectConfigsService {
             self.validate_columns_exist(&existing.kaneo_project_id, col)
                 .await?;
         }
+
+        validate_and_normalize_optional_columns(&mut params);
 
         self.repo
             .update(
@@ -95,26 +103,19 @@ impl ProjectConfigsService {
         self.repo.delete(&self.db, id).await
     }
 
-    pub async fn fetch_columns(
-        &self,
-        id: Uuid,
-    ) -> Result<Vec<kaneo_cli::api::types::Column>, ProjectConfigsError> {
+    pub async fn fetch_columns(&self, id: Uuid) -> Result<Vec<ColumnInfo>, ProjectConfigsError> {
         let config = self.repo.find_by_id(&self.db, id).await?;
+        let columns = self.kaneo.fetch_columns(&config.kaneo_project_id).await?;
 
-        self.kaneo
-            .fetch_columns(&config.kaneo_project_id)
-            .await
-            .map_err(ProjectConfigsError::from)
+        Ok(columns.iter().map(ColumnInfo::from_kaneo).collect())
     }
 
     pub async fn fetch_columns_by_kaneo_id(
         &self,
         kaneo_project_id: &str,
-    ) -> Result<Vec<kaneo_cli::api::types::Column>, ProjectConfigsError> {
-        self.kaneo
-            .fetch_columns(kaneo_project_id)
-            .await
-            .map_err(ProjectConfigsError::from)
+    ) -> Result<Vec<ColumnInfo>, ProjectConfigsError> {
+        let columns = self.kaneo.fetch_columns(kaneo_project_id).await?;
+        Ok(columns.iter().map(ColumnInfo::from_kaneo).collect())
     }
 
     async fn validate_columns_exist(
@@ -124,14 +125,33 @@ impl ProjectConfigsService {
     ) -> Result<(), ProjectConfigsError> {
         let columns = self.kaneo.fetch_columns(project_id).await?;
 
-        let found = columns
-            .iter()
-            .any(|col| col.name.to_lowercase() == column_slug.to_lowercase());
+        let found = columns.iter().any(|col| {
+            slugify(&col.name) == column_slug
+                || col.name.to_lowercase() == column_slug.to_lowercase()
+        });
 
         if found {
             Ok(())
         } else {
             Err(ProjectConfigsError::ColumnNotFound(column_slug.to_owned()))
         }
+    }
+}
+
+fn normalize_columns(pickup: &mut String, progress: &mut String, target: &mut String) {
+    *pickup = slugify(pickup);
+    *progress = slugify(progress);
+    *target = slugify(target);
+}
+
+fn validate_and_normalize_optional_columns(params: &mut UpdateProjectConfigRequest) {
+    if let Some(ref mut col) = params.pickup_column {
+        *col = slugify(col);
+    }
+    if let Some(ref mut col) = params.progress_column {
+        *col = slugify(col);
+    }
+    if let Some(ref mut col) = params.target_column {
+        *col = slugify(col);
     }
 }

@@ -6,7 +6,7 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::instance_auth::InstanceAuth;
 use crate::services::project_configs::model::{
-    CreateProjectConfigRequest, UpdateProjectConfigRequest,
+    ColumnInfo, CreateProjectConfigRequest, UpdateProjectConfigRequest,
 };
 
 pub async fn list(
@@ -64,7 +64,7 @@ pub async fn delete(
 
 #[derive(Serialize)]
 pub struct ColumnsResponse {
-    pub columns: Vec<kaneo_cli::api::types::Column>,
+    pub columns: Vec<ColumnInfo>,
 }
 
 pub async fn list_columns(

@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+use crate::services::kaneo::client::slugify;
+
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
     pub id: Uuid,
@@ -56,6 +58,23 @@ pub struct UpdateProjectConfigRequest {
     pub kaneo_workspace_id: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ColumnInfo {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+}
+
+impl ColumnInfo {
+    pub fn from_kaneo(col: &kaneo_cli::api::types::Column) -> Self {
+        Self {
+            id: col.id.clone(),
+            name: col.name.clone(),
+            slug: slugify(&col.name),
+        }
+    }
 }
 
 fn default_enabled() -> bool {

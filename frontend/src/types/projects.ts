@@ -35,6 +35,7 @@ export interface UpdateProjectRequest {
 export interface ColumnInfo {
   id: string;
   name: string;
+  slug: string;
 }
 
 export interface ColumnsResponse {

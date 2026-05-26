@@ -1,6 +1,8 @@
+use crate::commands::connect;
 use crate::console;
 use crate::harness::validate::validate_environment;
 use crate::harness::validate::Severity;
+use crate::state;
 
 mod docker;
 pub(crate) mod image;
@@ -13,7 +15,11 @@ mod kata_tests;
 #[cfg(test)]
 mod mod_tests;
 
-pub async fn run() -> anyhow::Result<()> {
+pub async fn run(
+    code: Option<String>,
+    instance: Option<String>,
+    force: bool,
+) -> anyhow::Result<()> {
     console::info("Provisioning worker environment...");
 
     console::step("Docker", docker::install_docker)?;
@@ -56,5 +62,24 @@ pub async fn run() -> anyhow::Result<()> {
     } else {
         eprintln!("Provisioning complete — worker environment is ready.");
     }
+
+    let already_connected = state::load_state().ok().flatten().is_some();
+
+    if already_connected && !force {
+        console::info("Already connected to an instance — skipping registration.");
+    } else if force {
+        console::info("Forcing re-registration...");
+        connect::run(code, instance).await?;
+    } else {
+        console::info("Registering worker with instance...");
+        connect::run(code, instance).await?;
+    }
+
+    eprintln!();
+    console::info("Enabling and starting worker service...");
+    systemd::enable_and_start_service()?;
+
+    eprintln!();
+    eprintln!("Worker setup complete — daemon is running via systemd.");
     Ok(())
 }
