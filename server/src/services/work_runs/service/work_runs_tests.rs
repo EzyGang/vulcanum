@@ -1,7 +1,8 @@
+use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
 use crate::services::kaneo::client::KaneoClient;
-use crate::services::poller::notifier::WorkNotifier;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
@@ -17,31 +18,35 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         WorkersRepository::new(),
         ProjectConfigsRepository::new(),
         pool,
-        WorkNotifier::new(),
+        Arc::new(InMemoryDispatchStore::default()),
         KaneoClient::new("cloud.kaneo.app".to_owned(), String::new()),
-        120,
     )
 }
 
 #[sqlx::test]
-async fn poll_returns_none_when_no_work(pool: sqlx::PgPool) {
+async fn poll_returns_none_when_no_dispatch(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "idle-worker").await;
 
     let result = svc.poll(worker_id).await.expect("Should succeed");
 
-    assert!(result.is_none(), "Should return None when no pending work");
+    assert!(
+        result.is_none(),
+        "Should return None when nothing dispatched"
+    );
 }
 
 #[sqlx::test]
-async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
+async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "busy-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-poll").await;
 
-    svc.notifier.add_worker(worker_id).await;
-    svc.notifier.notify_all().await;
+    svc.dispatch_store
+        .set_dispatched(worker_id, wr_id)
+        .await
+        .expect("Should set dispatched");
 
     let result = svc.poll(worker_id).await.expect("Should succeed");
 
@@ -49,26 +54,42 @@ async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn poll_updates_last_seen(pool: sqlx::PgPool) {
+async fn poll_consumes_dispatch_flag(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
-    let worker_id = test_helpers::insert_worker(&pool, "heartbeat-worker").await;
+    let worker_id = test_helpers::insert_worker(&pool, "consume-worker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-2").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-consume").await;
 
-    svc.poll(worker_id).await.expect("Should succeed");
-
-    let row = sqlx::query!("SELECT last_seen FROM workers WHERE id = $1", worker_id)
-        .fetch_one(&pool)
+    svc.dispatch_store
+        .set_dispatched(worker_id, wr_id)
         .await
-        .expect("Should query worker");
+        .expect("Should set dispatched");
 
-    assert!(row.last_seen.is_some(), "Should update last_seen");
+    let first = svc.poll(worker_id).await.expect("Should succeed");
+    assert!(
+        first.is_some(),
+        "First poll should return the dispatched job"
+    );
+
+    let second = svc.poll(worker_id).await.expect("Should succeed");
+    assert!(
+        second.is_none(),
+        "Second poll should return None — flag consumed"
+    );
 }
 
 #[sqlx::test]
-async fn ack_claims_pending_job(pool: sqlx::PgPool) {
+async fn ack_transitions_dispatched_to_running(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "claimer").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack").await;
+
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
 
     let job = svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
@@ -86,14 +107,20 @@ async fn ack_fails_when_already_claimed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-2").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-race").await;
 
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_a)
+        .await
+        .expect("Should dispatch to A");
+
     svc.ack_job(wr_id, worker_a)
         .await
-        .expect("First should succeed");
+        .expect("First ack should succeed");
 
     let err = svc
         .ack_job(wr_id, worker_b)
         .await
-        .expect_err("Second should fail");
+        .expect_err("Second ack should fail");
 
     assert!(matches!(err, WorkRunsError::AlreadyClaimed));
 }
@@ -105,6 +132,11 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result").await;
 
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {
@@ -135,6 +167,11 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-fail-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-fail").await;
 
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {
@@ -180,6 +217,11 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-owner-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-owner").await;
 
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_a)
+        .await
+        .expect("Should dispatch");
     svc.ack_job(wr_id, worker_a)
         .await
         .expect("Worker A should ack");

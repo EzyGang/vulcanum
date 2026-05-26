@@ -3,6 +3,18 @@ name = "vulcanum-server"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "vulcanum_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vulcanum-server"
+path = "src/main.rs"
+
+[[bin]]
+name = "vulcanum-dispatcher"
+path = "src/bin/dispatcher.rs"
+
 [dependencies]
 vulcanum-shared = { path = "../shared" }
 actix-web = "4"

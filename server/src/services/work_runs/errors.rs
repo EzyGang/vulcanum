@@ -1,6 +1,6 @@
-use thiserror::Error;
+use crate::services::dispatcher::errors::DispatchError;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum WorkRunsError {
     #[error("work run not found")]
     NotFound,
@@ -12,4 +12,6 @@ pub enum WorkRunsError {
     NotOwned,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("dispatch error: {0}")]
+    Dispatch(#[from] DispatchError),
 }

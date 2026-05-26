@@ -3,11 +3,12 @@ pub mod work_runs;
 #[cfg(test)]
 mod work_runs_tests;
 
-use chrono::Duration;
+use std::sync::Arc;
+
 use sqlx::PgPool;
 
+use crate::services::dispatcher::flag_store::DispatchStore;
 use crate::services::kaneo::client::KaneoClient;
-use crate::services::poller::notifier::WorkNotifier;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::repository::WorkersRepository;
@@ -17,9 +18,8 @@ pub struct WorkRunsService {
     pub workers_repo: WorkersRepository,
     pub project_configs_repo: ProjectConfigsRepository,
     pub db: PgPool,
-    pub notifier: WorkNotifier,
+    pub dispatch_store: Arc<dyn DispatchStore>,
     pub kaneo: KaneoClient,
-    pub stale_threshold: Duration,
 }
 
 impl Clone for WorkRunsService {
@@ -29,9 +29,8 @@ impl Clone for WorkRunsService {
             workers_repo: self.workers_repo.clone(),
             project_configs_repo: self.project_configs_repo.clone(),
             db: self.db.clone(),
-            notifier: self.notifier.clone(),
+            dispatch_store: self.dispatch_store.clone(),
             kaneo: self.kaneo.clone(),
-            stale_threshold: self.stale_threshold,
         }
     }
 }
@@ -42,18 +41,16 @@ impl WorkRunsService {
         workers_repo: WorkersRepository,
         project_configs_repo: ProjectConfigsRepository,
         db: PgPool,
-        notifier: WorkNotifier,
+        dispatch_store: Arc<dyn DispatchStore>,
         kaneo: KaneoClient,
-        stale_threshold_secs: u64,
     ) -> Self {
         Self {
             work_runs_repo,
             workers_repo,
             project_configs_repo,
             db,
-            notifier,
+            dispatch_store,
             kaneo,
-            stale_threshold: Duration::seconds(stale_threshold_secs as i64),
         }
     }
 }

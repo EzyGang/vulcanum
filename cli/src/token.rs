@@ -16,7 +16,7 @@ pub async fn ensure_valid_token(
         state.refresh_token = resp.refresh_token;
         state.expires_at = resp.expires_at;
         crate::state::save_state(state)?;
-        tracing::info!("token refreshed, new expiry: {}", state.expires_at);
+        tracing::debug!("token refreshed, new expiry: {}", state.expires_at);
     }
 
     Ok(())

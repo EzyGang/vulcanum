@@ -4,9 +4,8 @@ use sqlx::PgPool;
 
 use crate::config::AppConfig;
 use crate::services::auth::service::AuthService;
+use crate::services::dispatcher::flag_store::DispatchStore;
 use crate::services::kaneo::client::KaneoClient;
-use crate::services::poller::notifier::WorkNotifier;
-use crate::services::poller::service::PollerService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::users::repository::UsersRepository;
@@ -26,7 +25,7 @@ pub struct AppState {
     pub db_pool: PgPool,
     pub kaneo: KaneoClient,
     pub work_runs: WorkRunsRepository,
-    pub work_notifier: WorkNotifier,
+    pub dispatch_store: Arc<dyn DispatchStore>,
     pub jwt_secret: String,
 }
 
@@ -56,15 +55,16 @@ impl AppState {
             Arc::new(code_store),
         );
         let work_runs = WorkRunsRepository::new();
-        let work_notifier = WorkNotifier::new();
+        let dispatch_store: Arc<dyn DispatchStore> = Arc::new(
+            crate::services::dispatcher::flag_store::RedisDispatchStore::new(&cfg.redis_url)?,
+        );
         let jobs = WorkRunsService::new(
             work_runs.clone(),
             workers_repo,
-            project_configs_repo.clone(),
+            project_configs_repo,
             db_pool.clone(),
-            work_notifier.clone(),
+            dispatch_store.clone(),
             kaneo.clone(),
-            cfg.stale_worker_threshold_secs,
         );
 
         let jwt_secret = cfg.jwt_secret.clone();
@@ -77,19 +77,21 @@ impl AppState {
             db_pool,
             kaneo,
             work_runs,
-            work_notifier,
+            dispatch_store,
             jwt_secret,
         })
     }
 
-    pub fn into_poller(self, poll_period_secs: u64) -> PollerService {
-        PollerService::new(
+    pub fn into_poller(
+        self,
+        poll_period_secs: u64,
+    ) -> crate::services::poller::service::PollerService {
+        crate::services::poller::service::PollerService::new(
             Arc::new(self.kaneo.clone()),
             self.project_configs.repo.clone(),
             self.work_runs.clone(),
             self.db_pool.clone(),
             poll_period_secs,
-            self.work_notifier.clone(),
         )
     }
 }

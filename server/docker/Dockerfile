@@ -11,12 +11,13 @@ COPY --from=planner /app/recipe.json recipe.json
 ENV SQLX_OFFLINE=true
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --bin vulcanum-server
+RUN cargo build --release --bin vulcanum-server --bin vulcanum-dispatcher
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 RUN apt update && apt install --no-install-recommends -y ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN useradd --no-create-home --shell /usr/sbin/nologin app
 COPY --from=builder /app/target/release/vulcanum-server /usr/local/bin/
+COPY --from=builder /app/target/release/vulcanum-dispatcher /usr/local/bin/
 USER app
 ENTRYPOINT ["/usr/local/bin/vulcanum-server"]

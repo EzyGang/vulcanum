@@ -91,6 +91,12 @@ pub struct InMemoryCodeStore {
 }
 
 #[allow(dead_code)]
+impl Default for InMemoryCodeStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryCodeStore {
     pub fn new() -> Self {
         Self {

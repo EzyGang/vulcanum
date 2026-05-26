@@ -147,6 +147,10 @@ impl From<WorkRunsError> for AppError {
                 tracing::error!("{e}");
                 Self::Internal
             }
+            WorkRunsError::Dispatch(e) => {
+                tracing::error!("{e}");
+                Self::Internal
+            }
         }
     }
 }

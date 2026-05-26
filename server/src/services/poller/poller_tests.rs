@@ -9,7 +9,6 @@ use uuid::Uuid;
 
 use crate::services::kaneo::client::TaskFetcher;
 use crate::services::kaneo::errors::KaneoError;
-use crate::services::poller::notifier::WorkNotifier;
 use crate::services::poller::service::PollerService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -92,7 +91,7 @@ async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
     id
 }
 
-fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool, notifier: WorkNotifier) -> PollerService {
+fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
     let kaneo: Arc<dyn TaskFetcher> = mock;
 
     PollerService::new(
@@ -101,14 +100,12 @@ fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool, notifier: WorkNotifier)
         WorkRunsRepository::new(),
         db,
         30,
-        notifier,
     )
 }
 
 #[sqlx::test]
 async fn poller_inserts_tasks(pool: PgPool) {
     let mock = Arc::new(MockTaskFetcher::new());
-    let notifier = WorkNotifier::new();
 
     let project_id = insert_project_config(&pool, "kaneo-proj-1").await;
 
@@ -122,7 +119,7 @@ async fn poller_inserts_tasks(pool: PgPool) {
     )
     .await;
 
-    let service = build_service(mock, pool.clone(), notifier);
+    let service = build_service(mock, pool.clone());
     service.poll_once().await;
 
     let rows = sqlx::query!(
@@ -143,7 +140,6 @@ async fn poller_inserts_tasks(pool: PgPool) {
 #[sqlx::test]
 async fn poller_skips_duplicates(pool: PgPool) {
     let mock = Arc::new(MockTaskFetcher::new());
-    let notifier = WorkNotifier::new();
 
     let _project_id = insert_project_config(&pool, "kaneo-proj-2").await;
 
@@ -154,7 +150,7 @@ async fn poller_skips_duplicates(pool: PgPool) {
     )
     .await;
 
-    let service = build_service(mock.clone(), pool.clone(), notifier);
+    let service = build_service(mock.clone(), pool.clone());
 
     service.poll_once().await;
 
@@ -178,7 +174,6 @@ async fn poller_skips_duplicates(pool: PgPool) {
 #[sqlx::test]
 async fn poller_handles_unreachable_kaneo(pool: PgPool) {
     let mock = Arc::new(MockTaskFetcher::new());
-    let notifier = WorkNotifier::new();
 
     insert_project_config(&pool, "kaneo-good").await;
     insert_project_config(&pool, "kaneo-bad").await;
@@ -196,7 +191,7 @@ async fn poller_handles_unreachable_kaneo(pool: PgPool) {
     )
     .await;
 
-    let service = build_service(mock, pool.clone(), notifier);
+    let service = build_service(mock, pool.clone());
     service.poll_once().await;
 
     let row = sqlx::query!(
@@ -212,28 +207,4 @@ async fn poller_handles_unreachable_kaneo(pool: PgPool) {
         1,
         "Should insert task from working project despite failing one"
     );
-}
-
-#[sqlx::test]
-async fn poller_flips_notifier(pool: PgPool) {
-    let mock = Arc::new(MockTaskFetcher::new());
-    let notifier = WorkNotifier::new();
-
-    let worker_id = Uuid::new_v4();
-    notifier.add_worker(worker_id).await;
-
-    insert_project_config(&pool, "kaneo-notify").await;
-
-    mock.set_tasks(
-        "kaneo-notify",
-        "to-do",
-        vec![make_task("task-new", "New task")],
-    )
-    .await;
-
-    let service = build_service(mock, pool.clone(), notifier.clone());
-    service.poll_once().await;
-
-    let has_work = notifier.take(&worker_id).await;
-    assert!(has_work, "Notifier should flag new work");
 }

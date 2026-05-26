@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE work_runs SET worker_id = $2, status = 'running'::work_run_status\n             WHERE id = $1 AND status = 'pending'::work_run_status\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: chrono::DateTime<Utc>\", updated_at as \"updated_at!: chrono::DateTime<Utc>\"\n             FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL\n             ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -79,20 +79,17 @@
       },
       {
         "ordinal": 12,
-        "name": "created_at!: DateTime<Utc>",
+        "name": "created_at!: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 13,
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "updated_at!: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -111,5 +108,5 @@
       true
     ]
   },
-  "hash": "f63bef4557847ac092d8b03df7fd9ef1a072238d3d5c1cc2597c7781e90006a2"
+  "hash": "1ea0b8641d37e10d95e3066e44fe983dab04784a02bfdee45f8d45c64f881a8e"
 }

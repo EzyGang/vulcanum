@@ -23,7 +23,7 @@ const BACKOFF_MULTIPLIER: u64 = 2;
 enum TickOutcome {
     Success,
     Fatal(String),
-    Transient,
+    Transient(String),
 }
 
 pub async fn run() -> anyhow::Result<()> {
@@ -50,10 +50,10 @@ pub async fn run() -> anyhow::Result<()> {
     let refresh_buffer_secs = status.access_token_ttl_minutes * 60 / 3;
 
     tracing::info!(
-        "daemon started, worker_id: {}, poll_interval: {}s, refresh_buffer: {}s",
-        state.worker_id,
-        POLL_INTERVAL_SECS,
-        refresh_buffer_secs
+        worker_id = state.worker_id.to_string().as_str(),
+        poll_interval = POLL_INTERVAL_SECS,
+        refresh_buffer = refresh_buffer_secs,
+        "daemon started",
     );
 
     let mut backoff_ms = INITIAL_BACKOFF_MS;
@@ -64,8 +64,7 @@ pub async fn run() -> anyhow::Result<()> {
                 tracing::info!("received SIGINT, shutting down");
                 return Ok(());
             }
-            result = tick(&client, &mut state, refresh_buffer_secs,
-            ) => {
+            result = tick(&client, &mut state, refresh_buffer_secs) => {
                 match result {
                     TickOutcome::Success => {
                         backoff_ms = INITIAL_BACKOFF_MS;
@@ -74,8 +73,8 @@ pub async fn run() -> anyhow::Result<()> {
                         tracing::error!("{msg}");
                         return Ok(());
                     }
-                    TickOutcome::Transient => {
-                        tracing::error!("tick failed, retrying in {}ms", backoff_ms);
+                    TickOutcome::Transient(msg) => {
+                        tracing::warn!("tick failed: {msg}, retrying in {backoff_ms}ms");
                         sleep(Duration::from_millis(backoff_ms)).await;
                         backoff_ms = (backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
                     }
@@ -93,11 +92,11 @@ async fn tick(
     if let Err(e) = ensure_valid_token(client, state, refresh_buffer_secs).await {
         if is_fatal_api_error(&e) {
             return TickOutcome::Fatal(format!(
-                "token refresh failed permanently — reconnection required: {:#}",
-                e
+                "token refresh failed permanently: {e:#} — run `vulcanum worker connect <instance> --code <code>` to reconnect"
             ));
         }
-        return TickOutcome::Transient;
+        tracing::warn!("token refresh failed: {e:#} — if this persists, try `vulcanum worker connect <instance> --code <code>`");
+        return TickOutcome::Transient(e.to_string());
     }
 
     match client.poll(&state.access_token).await {
@@ -110,9 +109,11 @@ async fn tick(
         }
         Err(e) => {
             if is_fatal_api_error(&e) {
-                return TickOutcome::Fatal(format!("poll failed with fatal error: {:#}", e));
+                return TickOutcome::Fatal(format!(
+                    "poll failed permanently: {e:#} — run `vulcanum worker connect <instance> --code <code>` to reconnect"
+                ));
             }
-            TickOutcome::Transient
+            TickOutcome::Transient(e.to_string())
         }
     }
 }

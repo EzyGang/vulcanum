@@ -31,6 +31,12 @@ pub struct UpdateProjectConfigParams<'a> {
 #[derive(Clone)]
 pub struct ProjectConfigsRepository {}
 
+impl Default for ProjectConfigsRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ProjectConfigsRepository {
     pub fn new() -> Self {
         Self {}

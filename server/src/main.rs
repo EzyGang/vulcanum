@@ -1,16 +1,9 @@
-mod app_state;
-mod config;
-mod errors;
-mod queryer;
-mod routes;
-mod services;
-
-#[cfg(test)]
-mod test_helpers;
-
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use tracing_actix_web::TracingLogger;
+
+use vulcanum_server::app_state;
+use vulcanum_server::config;
 
 #[actix_web::main]
 async fn main() -> eyre::Result<()> {
@@ -34,7 +27,7 @@ async fn main() -> eyre::Result<()> {
             .wrap(TracingLogger::default())
             .wrap(cors)
             .app_data(web::Data::new(app_state.clone()))
-            .configure(routes::configure)
+            .configure(vulcanum_server::routes::configure)
     })
     .bind("0.0.0.0:8000")?
     .run()

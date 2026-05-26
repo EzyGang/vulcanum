@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use actix_web::{test, web, App};
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::routes;
+use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
 use crate::test_helpers;
 
 fn build_state(pool: sqlx::PgPool) -> AppState {
@@ -28,7 +31,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo = crate::services::work_runs::repository::WorkRunsRepository::new();
     let project_configs_repo =
         crate::services::project_configs::repository::ProjectConfigsRepository::new();
-    let work_notifier = crate::services::poller::notifier::WorkNotifier::new();
+    let dispatch_store = Arc::new(InMemoryDispatchStore::default());
 
     AppState {
         auth: crate::services::auth::service::AuthService::new(
@@ -48,21 +51,20 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             workers_repo.clone(),
             pool.clone(),
             &cfg,
-            std::sync::Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
+            Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
         ),
         jobs: crate::services::work_runs::service::WorkRunsService::new(
             work_runs_repo.clone(),
             workers_repo,
             project_configs_repo,
             pool.clone(),
-            work_notifier.clone(),
+            dispatch_store.clone(),
             kaneo.clone(),
-            120,
         ),
         db_pool: pool,
         kaneo,
         work_runs: work_runs_repo,
-        work_notifier,
+        dispatch_store,
         jwt_secret: cfg.jwt_secret.clone(),
     }
 }
@@ -80,7 +82,7 @@ fn build_worker_token(worker_id: Uuid) -> String {
 }
 
 #[sqlx::test]
-async fn poll_returns_204_when_no_work(pool: sqlx::PgPool) {
+async fn poll_returns_204_when_no_dispatch(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "test-poll-noop").await;
 
@@ -101,14 +103,17 @@ async fn poll_returns_204_when_no_work(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn poll_returns_job_id_when_work_available(pool: sqlx::PgPool) {
+async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
     let state = build_state(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "test-poll-work").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-poll-test").await;
 
-    state.work_notifier.add_worker(worker_id).await;
-    state.work_notifier.notify_all().await;
+    state
+        .dispatch_store
+        .set_dispatched(worker_id, wr_id)
+        .await
+        .expect("Should set dispatched");
 
     let app = test::init_service(
         App::new()
@@ -186,6 +191,12 @@ async fn ack_job_returns_200(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-test").await;
 
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
+
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(state))
@@ -213,6 +224,12 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
     let worker_b = test_helpers::insert_worker(&pool, "test-acker-b").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-race").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-race").await;
+
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_a)
+        .await
+        .expect("Should dispatch");
 
     let app = test::init_service(
         App::new()
@@ -242,6 +259,12 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
     let worker_id = test_helpers::insert_worker(&pool, "test-result").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result-test").await;
+
+    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
 
     let app = test::init_service(
         App::new()
@@ -309,7 +332,7 @@ async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn poll_rejects_missing_auth(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool);
 
     let app = test::init_service(
         App::new()
@@ -326,7 +349,7 @@ async fn poll_rejects_missing_auth(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn poll_rejects_invalid_token(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool);
 
     let app = test::init_service(
         App::new()
