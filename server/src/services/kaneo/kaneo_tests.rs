@@ -34,6 +34,7 @@ fn test_filter_tasks_in_column_exact_match() {
             columns: vec![BoardColumn {
                 id: "c1".to_owned(),
                 name: "To Do".to_owned(),
+                status: None,
                 is_final: None,
                 tasks: vec![task.clone()],
             }],
@@ -77,6 +78,7 @@ fn test_filter_tasks_in_column_case_insensitive() {
             columns: vec![BoardColumn {
                 id: "c2".to_owned(),
                 name: "In Progress".to_owned(),
+                status: None,
                 is_final: None,
                 tasks: vec![task.clone()],
             }],
@@ -100,6 +102,7 @@ fn test_filter_tasks_in_column_not_found_returns_empty() {
             columns: vec![BoardColumn {
                 id: "c1".to_owned(),
                 name: "To Do".to_owned(),
+                status: None,
                 is_final: None,
                 tasks: vec![],
             }],
@@ -163,12 +166,14 @@ fn test_filter_tasks_in_column_multiple_columns_selects_correct_one() {
                 BoardColumn {
                     id: "c1".to_owned(),
                     name: "To Do".to_owned(),
+                    status: None,
                     is_final: None,
                     tasks: vec![task_todo],
                 },
                 BoardColumn {
                     id: "c2".to_owned(),
                     name: "Done".to_owned(),
+                    status: None,
                     is_final: Some(true),
                     tasks: vec![task_done],
                 },
@@ -181,6 +186,50 @@ fn test_filter_tasks_in_column_multiple_columns_selects_correct_one() {
     let result = filter_tasks_in_column(board, "done");
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t4");
+}
+
+#[test]
+fn test_filter_tasks_in_column_uses_status_slug() {
+    let task = Task {
+        id: "t5".to_owned(),
+        project_id: "p1".to_owned(),
+        position: None,
+        number: None,
+        user_id: None,
+        title: "Review task".to_owned(),
+        description: None,
+        status: "in-review".to_owned(),
+        priority: "medium".to_owned(),
+        due_date: None,
+        created_at: "2024-01-01".to_owned(),
+        start_date: None,
+        updated_at: None,
+        column_id: None,
+        assignee_name: None,
+        assignee_id: None,
+        assignee_image: None,
+    };
+
+    let board = BoardResponse {
+        data: BoardData {
+            id: "p1".to_owned(),
+            name: "Project".to_owned(),
+            slug: "proj".to_owned(),
+            columns: vec![BoardColumn {
+                id: "c3".to_owned(),
+                name: "In Review".to_owned(),
+                status: Some("in-review".to_owned()),
+                is_final: None,
+                tasks: vec![task.clone()],
+            }],
+            planned_tasks: vec![],
+            archived_tasks: vec![],
+        },
+    };
+
+    let result = filter_tasks_in_column(board, "in-review");
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].id, "t5");
 }
 
 #[test]

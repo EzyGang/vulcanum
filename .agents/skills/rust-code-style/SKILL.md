@@ -9,7 +9,7 @@ Enforces Rust coding style rules across the Vulcanum monorepo.
 
 ## When to Use
 
-Apply before committing, during code review, or when generating/editing Rust code in any `cli/`, `host-server/`, or `main-app/` crate.
+Apply before committing, during code review, or when generating/editing Rust code in any `cli/`, `host-server/`, or `server/` crate.
 
 ## Rules
 

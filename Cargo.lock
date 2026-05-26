@@ -1383,7 +1383,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -1618,8 +1618,8 @@ dependencies = [
 
 [[package]]
 name = "kaneo-cli"
-version = "0.1.6"
-source = "git+https://github.com/EzyGang/kaneo-cli.git?branch=main#4d72f301b2cbbb2c14d6be9291054dc4cc3cc26a"
+version = "0.1.8"
+source = "git+https://github.com/EzyGang/kaneo-cli.git?branch=main#3b2694815c7b7de4fb39eb90e76b612991f3513a"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2131,7 +2131,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -2168,7 +2168,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.3",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.59.0",
 ]
@@ -3557,7 +3557,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "vulcanum-main-app"
+name = "vulcanum-server"
 version = "0.1.0"
 dependencies = [
  "actix-cors",

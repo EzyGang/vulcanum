@@ -1,4 +1,4 @@
-.PHONY: format check build build-all build-release build-main-app build-main-app-release build-host-server build-cli build-cli-release build-shared run-main-app run-host-server run-cli test
+.PHONY: format check build build-all build-release build-server build-server-release build-host-server build-cli build-cli-release build-shared run-server run-host-server run-cli test
 
 # ── Formatting ──
 check-fe:
@@ -33,8 +33,8 @@ build:
 build-all: build
 
 # Build a specific crate
-build-main-app:
-	cargo build -p vulcanum-main-app
+build-server:
+	cargo build -p vulcanum-server
 
 build-host-server:
 	cargo build -p vulcanum-host-server
@@ -49,16 +49,16 @@ build-shared:
 build-release:
 	cargo build --release --workspace
 
-build-main-app-release:
-	cargo build --release -p vulcanum-main-app
+build-server-release:
+	cargo build --release -p vulcanum-server
 
 build-cli-release:
 	cargo build --release -p vulcanum-cli
 
 # ── Run ──
 
-run-main-app:
-	cargo run -p vulcanum-main-app
+run-server:
+	cargo run -p vulcanum-server
 
 run-host-server:
 	cargo run -p vulcanum-host-server

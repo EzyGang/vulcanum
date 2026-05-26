@@ -8,7 +8,7 @@
 
 Vulcanum has two components:
 
-### Main App (Control Panel)
+### Server (Control Panel)
 - **actix-web** HTTP server
 - **PostgreSQL** for work runs, worker registry, project configs, run history
 - Background poller watches enabled Kaneo projects for new tasks
@@ -18,7 +18,7 @@ Vulcanum has two components:
 
 ### Worker Daemon
 - Single binary: `vulcanum connect --instance <url> --code <code>` → registers, gets token pair, daemonizes
-- Short-polls main app for pending work (hits cache flag, not DB)
+- Short-polls server for pending work (hits cache flag, not DB)
 - Spawns OpenCode inside a Kata Container VM on each work item
 - Reports results back, then idles
 - Linux-only (requires KVM for Kata Containers)
@@ -26,12 +26,12 @@ Vulcanum has two components:
 ## How It Works
 
 ```
-Kaneo (todo column)  →  Main App polls, creates work_run  →  Worker polls cache flag
+Kaneo (todo column)  →  Server polls, creates work_run  →  Worker polls cache flag
                                                               ↓
                                                           Worker runs Kata container
                                                          OpenCode does work, submits PR
                                                               ↓
-Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /result
+Kaneo (in review)    ←  Server syncs status + comment  ←  Worker POSTs /result
 ```
 
 ## Key Design Decisions (MVP)
@@ -44,15 +44,15 @@ Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /re
 | **Communication** | HTTP polling (in-memory cache flags, stateless) |
 | **Task source** | Kaneo only — per-project opt-in with configurable column mapping |
 | **Worker auth** | Short-lived registration codes → token pair (refresh + access), revocable |
-| **Verification** | Mechanical: PR exists? Worker reports exit code. Main app doesn't validate. |
-| **Language** | Rust (workspace: cli, host-server, main-app, shared) |
+| **Verification** | Mechanical: PR exists? Worker reports exit code. Server doesn't validate. |
+| **Language** | Rust (workspace: cli, host-server, server, shared) |
 | **Database** | PostgreSQL via SQLx |
 
 ## Repository Layout
 
 | Crate | Purpose | Status |
 |---|---|---|
-| `main-app/` | Control panel server (actix-web + SQLx) | Active |
+| `server/` | Control panel server (actix-web + SQLx) | Active |
 | `host-server/` | Worker daemon (polling, Kata container, harness spawning) | Placeholder |
 | `cli/` | Worker bootstrap (`vulcanum connect`) + future TUI | Placeholder |
 | `shared/` | Shared types and utilities | Empty |
@@ -65,7 +65,7 @@ Kaneo (in review)    ←  Main App syncs status + comment  ←  Worker POSTs /re
 cargo build --workspace
 
 # Run main app (needs DATABASE_URL in .env)
-cargo run -p vulcanum-main-app
+cargo run -p vulcanum-server
 
 # Run checks
 make check

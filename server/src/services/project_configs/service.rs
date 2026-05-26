@@ -126,8 +126,11 @@ impl ProjectConfigsService {
         let columns = self.kaneo.fetch_columns(project_id).await?;
 
         let found = columns.iter().any(|col| {
-            slugify(&col.name) == column_slug
-                || col.name.to_lowercase() == column_slug.to_lowercase()
+            let slug_match = match col.status.as_deref() {
+                Some(status) => status == column_slug,
+                None => slugify(&col.name) == column_slug,
+            };
+            slug_match || col.name.to_lowercase() == column_slug.to_lowercase()
         });
 
         if found {
