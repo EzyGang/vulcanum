@@ -1,4 +1,3 @@
-use chrono::Utc;
 use uuid::Uuid;
 
 use crate::services::work_runs::errors::WorkRunsError;
@@ -9,45 +8,9 @@ use vulcanum_shared::api_types::{JobResponse, SubmitResultRequest};
 
 impl WorkRunsService {
     pub async fn poll(&self, worker_id: Uuid) -> Result<Option<Uuid>, WorkRunsError> {
-        if let Err(e) = self
-            .workers_repo
-            .update_last_seen(&self.db, worker_id, Utc::now())
-            .await
-        {
-            tracing::warn!("Failed to update last_seen for worker {}: {}", worker_id, e);
-        }
+        let dispatched_id = self.dispatch_store.take_dispatched(worker_id).await?;
 
-        if let Err(e) = self
-            .workers_repo
-            .mark_stale_disconnected(&self.db, self.stale_threshold)
-            .await
-        {
-            tracing::warn!("Failed to mark stale workers: {}", e);
-        }
-
-        self.notifier.add_worker(worker_id).await;
-
-        let work_run_id = self.notifier.take(&worker_id).await;
-
-        if !work_run_id {
-            return Ok(None);
-        }
-
-        let run_id = self.work_runs_repo.find_oldest_pending_id(&self.db).await?;
-
-        if let Some((id, external_task_ref)) = run_id {
-            tracing::info!(
-                worker_id = worker_id.to_string().as_str(),
-                work_run_id = id.to_string().as_str(),
-                external_task_ref = external_task_ref.as_str(),
-                "dispatching work_run {} to worker {}",
-                id,
-                worker_id,
-            );
-            return Ok(Some(id));
-        }
-
-        Ok(None)
+        Ok(dispatched_id)
     }
 
     pub async fn get_job(&self, id: Uuid) -> Result<JobResponse, WorkRunsError> {

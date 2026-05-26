@@ -137,8 +137,8 @@ impl WorkRunsRepository {
     ) -> Result<WorkRun, WorkRunsError> {
         sqlx::query_as!(
             WorkRun,
-            r#"UPDATE work_runs SET worker_id = $2, status = 'running'::work_run_status
-             WHERE id = $1 AND status = 'pending'::work_run_status
+            r#"UPDATE work_runs SET status = 'running'::work_run_status
+             WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,

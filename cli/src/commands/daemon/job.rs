@@ -28,7 +28,7 @@ pub(crate) async fn handle_job(
             if is_fatal_api_error(&e) {
                 return TickOutcome::Fatal(format!("get_job failed: {:#}", e));
             }
-            return TickOutcome::Transient;
+            return TickOutcome::Transient(format!("get_job failed: {e:#}"));
         }
     };
 
@@ -36,7 +36,7 @@ pub(crate) async fn handle_job(
         if is_fatal_api_error(&e) {
             return TickOutcome::Fatal(format!("ack failed: {:#}", e));
         }
-        return TickOutcome::Transient;
+        return TickOutcome::Transient(format!("ack failed: {e:#}"));
     }
 
     tracing::info!(
@@ -104,7 +104,7 @@ pub(crate) async fn handle_job(
                 if is_fatal_api_error(&e) {
                     return TickOutcome::Fatal(format!("submit_result failed: {:#}", e));
                 }
-                return TickOutcome::Transient;
+                return TickOutcome::Transient(format!("submit_result failed: {e:#}"));
             }
             return TickOutcome::Success;
         }
@@ -124,7 +124,7 @@ pub(crate) async fn handle_job(
         if is_fatal_api_error(&e) {
             return TickOutcome::Fatal(format!("submit_result failed: {:#}", e));
         }
-        return TickOutcome::Transient;
+        return TickOutcome::Transient(format!("submit_result failed: {e:#}"));
     }
 
     tracing::info!(
@@ -150,11 +150,11 @@ pub(crate) fn create_harness() -> HarnessKind {
 
     match harness_type.as_str() {
         "kata" => {
-            tracing::info!("using Kata Containers harness");
+            tracing::debug!("using Kata Containers harness");
             HarnessKind::Kata(KataHarness::new())
         }
         _ => {
-            tracing::info!("using host harness");
+            tracing::debug!("using host harness");
             HarnessKind::Host(HostHarness::new())
         }
     }

@@ -5,8 +5,6 @@ use sqlx::PgPool;
 
 use crate::services::kaneo::client::TaskFetcher;
 use crate::services::kaneo::errors::KaneoError;
-use crate::services::poller::notifier::WorkNotifier;
-use crate::services::poller::template::{self, TemplateVars};
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::model::WorkRunStatus;
@@ -38,7 +36,6 @@ pub struct PollerService {
     work_runs_repo: WorkRunsRepository,
     db: PgPool,
     poll_period: Duration,
-    notifier: WorkNotifier,
 }
 
 impl PollerService {
@@ -48,7 +45,6 @@ impl PollerService {
         work_runs_repo: WorkRunsRepository,
         db: PgPool,
         poll_period_secs: u64,
-        notifier: WorkNotifier,
     ) -> Self {
         Self {
             kaneo,
@@ -56,7 +52,6 @@ impl PollerService {
             work_runs_repo,
             db,
             poll_period: Duration::from_secs(poll_period_secs),
-            notifier,
         }
     }
 
@@ -95,7 +90,6 @@ impl PollerService {
                             inserted,
                             config.kaneo_project_id,
                         );
-                        self.notifier.notify_all().await;
                     }
                 }
                 Err(e) => {
@@ -126,9 +120,9 @@ impl PollerService {
         let mut inserted = 0;
 
         for task in &tasks {
-            let prompt_text = template::render_template(
+            let prompt_text = crate::services::poller::template::render_template(
                 &config.prompt_template,
-                &TemplateVars {
+                &crate::services::poller::template::TemplateVars {
                     task_title: &task.title,
                     task_body: task.description.as_deref().unwrap_or(""),
                     repo_url: &config.repo_url,

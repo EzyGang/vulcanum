@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use actix_web::{test, web, App};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::routes;
+use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
 
 const TEST_PASSWORD: &str = "test-password";
 
@@ -28,7 +31,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo = crate::services::work_runs::repository::WorkRunsRepository::new();
     let project_configs_repo =
         crate::services::project_configs::repository::ProjectConfigsRepository::new();
-    let work_notifier = crate::services::poller::notifier::WorkNotifier::new();
+    let dispatch_store = Arc::new(InMemoryDispatchStore::default());
 
     let auth = crate::services::auth::service::AuthService::new(
         crate::services::users::service::UsersService::new(
@@ -50,21 +53,20 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             workers_repo.clone(),
             pool.clone(),
             &cfg,
-            std::sync::Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
+            Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
         ),
         jobs: crate::services::work_runs::service::WorkRunsService::new(
             work_runs_repo.clone(),
             workers_repo,
             project_configs_repo,
             pool.clone(),
-            work_notifier.clone(),
+            dispatch_store.clone(),
             kaneo.clone(),
-            120,
         ),
         db_pool: pool,
         kaneo,
         work_runs: work_runs_repo,
-        work_notifier,
+        dispatch_store,
         jwt_secret: cfg.jwt_secret.clone(),
     }
 }

@@ -13,6 +13,12 @@ pub struct TokenStore {
     inner: Arc<RwLock<HashMap<String, TokenEntry>>>,
 }
 
+impl Default for TokenStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TokenStore {
     pub fn new() -> Self {
         Self {

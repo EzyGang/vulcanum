@@ -1,4 +1,3 @@
-pub mod notifier;
 pub mod service;
 pub mod template;
 
