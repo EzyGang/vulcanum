@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT status as \"status: WorkerStatus\" FROM workers WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status: WorkerStatus",
+        "type_info": {
+          "Custom": {
+            "name": "worker_status",
+            "kind": {
+              "Enum": [
+                "idle",
+                "busy",
+                "disconnected"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c47bc677957c97b6e519b84d121023068db636846662509f31c04143b016f945"
+}
