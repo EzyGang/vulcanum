@@ -135,7 +135,10 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
         .data
         .columns
         .into_iter()
-        .find(|col| slugify(&col.name) == column_slug)
+        .find(|col| match col.status.as_deref() {
+            Some(status) => status == column_slug,
+            None => slugify(&col.name) == column_slug,
+        })
         .map(|col| col.tasks)
         .unwrap_or_default()
 }
