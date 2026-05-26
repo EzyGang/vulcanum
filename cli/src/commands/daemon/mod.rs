@@ -14,7 +14,7 @@ use crate::harness::validate::is_environment_ready;
 use crate::state::{load_state, WorkerState};
 use crate::token::ensure_valid_token;
 
-const POLL_INTERVAL_SECS: u64 = 5;
+const POLL_INTERVAL_SECS: u64 = 15;
 const INITIAL_BACKOFF_MS: u64 = 1_000;
 const MAX_BACKOFF_MS: u64 = 60_000;
 const BACKOFF_MULTIPLIER: u64 = 2;

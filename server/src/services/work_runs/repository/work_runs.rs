@@ -113,7 +113,7 @@ impl WorkRunsRepository {
         sqlx::query_as!(
             WorkRunListItem,
             r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
-             w.name as worker_name,
+             w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.created_at as "created_at!: DateTime<Utc>"

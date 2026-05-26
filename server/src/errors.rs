@@ -107,7 +107,10 @@ impl From<UsersError> for AppError {
     fn from(err: UsersError) -> Self {
         match err {
             UsersError::UserNotFound => Self::UserNotFound,
-            UsersError::Database(_) => Self::Internal,
+            UsersError::Database(e) => {
+                tracing::error!("database error: {e}");
+                Self::Internal
+            }
         }
     }
 }
@@ -117,8 +120,18 @@ impl From<ProjectConfigsError> for AppError {
         match err {
             ProjectConfigsError::NotFound => Self::ProjectConfigNotFound,
             ProjectConfigsError::DuplicateKaneoProjectId => Self::DuplicateProjectConfig,
-            ProjectConfigsError::Database(_) | ProjectConfigsError::Kaneo(_) => Self::Internal,
-            ProjectConfigsError::ColumnNotFound(_) => Self::Internal,
+            ProjectConfigsError::Database(e) => {
+                tracing::error!("database error: {e}");
+                Self::Internal
+            }
+            ProjectConfigsError::Kaneo(e) => {
+                tracing::error!("kaneo error: {e}");
+                Self::Internal
+            }
+            ProjectConfigsError::ColumnNotFound(e) => {
+                tracing::error!("column not found: {e}");
+                Self::Internal
+            }
         }
     }
 }
@@ -130,7 +143,10 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::AlreadyClaimed => Self::AlreadyClaimed,
             WorkRunsError::NotOwned => Self::NotOwned,
             WorkRunsError::InvalidStatusTransition => Self::InvalidStatusTransition,
-            WorkRunsError::Database(_) => Self::Internal,
+            WorkRunsError::Database(e) => {
+                tracing::error!("database error: {e}");
+                Self::Internal
+            }
         }
     }
 }
@@ -143,7 +159,16 @@ impl From<WorkersError> for AppError {
             WorkersError::InvalidRefreshToken => Self::InvalidRefreshToken,
             WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
-            WorkersError::Database(_) | WorkersError::Jwt(_) | WorkersError::Redis(_) => {
+            WorkersError::Database(e) => {
+                tracing::error!("database error: {e}");
+                Self::Internal
+            }
+            WorkersError::Jwt(e) => {
+                tracing::error!("jwt error: {e}");
+                Self::Internal
+            }
+            WorkersError::Redis(e) => {
+                tracing::error!("redis error: {e}");
                 Self::Internal
             }
         }
