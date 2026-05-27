@@ -28,7 +28,12 @@ jobs:
       - name: Build CLI (release)
         run: cargo build --release --bin vulcanum-cli
 
-      - name: Upload Release Asset
+      - name: Build Worker Server (release)
+        run: cargo build --release --bin vulcanum-worker-server
+
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v3
         with:
-          files: target/release/vulcanum-cli
+          files: |
+            target/release/vulcanum-cli
+            target/release/vulcanum-worker-server
