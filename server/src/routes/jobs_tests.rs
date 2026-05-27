@@ -279,6 +279,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
     let ack_req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
         .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
+        .set_json(serde_json::json!({}))
         .to_request();
     test::call_service(&app, ack_req).await;
 
