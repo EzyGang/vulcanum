@@ -99,11 +99,14 @@ async fn tick(
         return TickOutcome::Transient(e.to_string());
     }
 
+    tracing::info!("polling server for jobs");
+
     match client.poll(&state.access_token).await {
         Ok(Some(job_id)) => {
             return handle_job(client, state, job_id).await;
         }
         Ok(None) => {
+            tracing::info!("no jobs available, sleeping {POLL_INTERVAL_SECS}s");
             sleep(Duration::from_secs(POLL_INTERVAL_SECS)).await;
             TickOutcome::Success
         }

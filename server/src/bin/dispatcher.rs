@@ -6,6 +6,7 @@ use tokio::signal;
 use vulcanum_server::services::dispatcher::flag_store::RedisDispatchStore;
 use vulcanum_server::services::dispatcher::repository::DispatchRepository;
 use vulcanum_server::services::dispatcher::service::DispatcherService;
+use vulcanum_server::services::work_runs::repository::WorkRunsRepository;
 use vulcanum_server::services::workers::repository::WorkersRepository;
 
 struct DispatcherConfig {
@@ -60,8 +61,9 @@ async fn main() -> eyre::Result<()> {
         RedisDispatchStore::new(&cfg.redis_url).map_err(|e| eyre::eyre!(e.to_string()))?;
 
     let svc = DispatcherService::new(
-        DispatchRepository,
+        DispatchRepository::new(),
         WorkersRepository::new(),
+        WorkRunsRepository::new(),
         db_pool,
         std::sync::Arc::new(dispatch_store),
         cfg.stale_worker_threshold_secs,

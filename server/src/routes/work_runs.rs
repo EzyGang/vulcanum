@@ -1,5 +1,6 @@
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
@@ -23,4 +24,13 @@ pub async fn list(
     let runs = state.jobs.list_all(query.status, limit, offset).await?;
 
     Ok(HttpResponse::Ok().json(runs))
+}
+
+pub async fn delete(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    state.jobs.delete_run(path.into_inner()).await?;
+    Ok(HttpResponse::NoContent().finish())
 }

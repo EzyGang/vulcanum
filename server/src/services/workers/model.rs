@@ -12,6 +12,7 @@ pub const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
 pub const TOKEN_LENGTH: usize = 64;
 pub const CODE_LENGTH: usize = 16;
+pub const DEFAULT_MAX_CONCURRENT_JOBS: i32 = 3;
 
 #[derive(Debug, Clone, sqlx::Type, Serialize)]
 #[sqlx(type_name = "worker_status", rename_all = "snake_case")]
@@ -32,6 +33,8 @@ pub struct Worker {
     pub status: WorkerStatus,
     pub capabilities: serde_json::Value,
     pub created_at: DateTime<Utc>,
+    pub active_jobs: i32,
+    pub max_concurrent_jobs: i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -42,6 +45,8 @@ pub struct WorkerResponse {
     pub status: WorkerStatus,
     pub capabilities: serde_json::Value,
     pub created_at: DateTime<Utc>,
+    pub active_jobs: i32,
+    pub max_concurrent_jobs: i32,
 }
 
 impl From<Worker> for WorkerResponse {
@@ -53,6 +58,8 @@ impl From<Worker> for WorkerResponse {
             status: w.status,
             capabilities: w.capabilities,
             created_at: w.created_at,
+            active_jobs: w.active_jobs,
+            max_concurrent_jobs: w.max_concurrent_jobs,
         }
     }
 }

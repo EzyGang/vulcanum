@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2\n             WHERE id = $3\n             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs\n             FROM workers WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -53,12 +53,20 @@
         "ordinal": 7,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "active_jobs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "max_concurrent_jobs",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Timestamptz",
         "Uuid"
       ]
     },
@@ -70,8 +78,10 @@
       true,
       false,
       true,
-      true
+      true,
+      false,
+      false
     ]
   },
-  "hash": "e1b89364c5141aebf0d0391cd6e84ac26d64b11395b5ba903c5efab732a18b9d"
+  "hash": "057d407353c822f48dfb529e8ad745305bf8c01e0f608cc9b2c2db12764b0e7a"
 }

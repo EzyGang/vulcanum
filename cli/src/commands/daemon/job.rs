@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
+use crate::api_error::ApiError;
 use crate::client::{ApiClient, SubmitResultRequest};
 use crate::harness::host::HostHarness;
 use crate::harness::kata::KataHarness;
@@ -28,6 +29,15 @@ pub(crate) async fn handle_job(
             if is_fatal_api_error(&e) {
                 return TickOutcome::Fatal(format!("get_job failed: {:#}", e));
             }
+            if let Some(api_err) = e.downcast_ref::<ApiError>() {
+                if api_err.status == 404 {
+                    tracing::info!(
+                        work_run_id = job_id.to_string().as_str(),
+                        "job was deleted or cancelled, skipping"
+                    );
+                    return TickOutcome::Success;
+                }
+            }
             return TickOutcome::Transient(format!("get_job failed: {e:#}"));
         }
     };
@@ -35,6 +45,15 @@ pub(crate) async fn handle_job(
     if let Err(e) = client.ack_job(job_id, &state.access_token).await {
         if is_fatal_api_error(&e) {
             return TickOutcome::Fatal(format!("ack failed: {:#}", e));
+        }
+        if let Some(api_err) = e.downcast_ref::<ApiError>() {
+            if api_err.status == 404 {
+                tracing::info!(
+                    work_run_id = job_id.to_string().as_str(),
+                    "job was deleted or cancelled before ack, skipping"
+                );
+                return TickOutcome::Success;
+            }
         }
         return TickOutcome::Transient(format!("ack failed: {e:#}"));
     }

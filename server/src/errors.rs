@@ -37,6 +37,8 @@ pub enum AppError {
     NotOwned,
     #[error("invalid status transition")]
     InvalidStatusTransition,
+    #[error("cannot delete a running work run")]
+    CannotDeleteRunning,
     #[error("internal server error")]
     Internal,
 }
@@ -86,6 +88,9 @@ impl ResponseError for AppError {
             Self::InvalidStatusTransition => HttpResponse::Conflict().json(ErrorBody {
                 error: "Invalid status transition".to_owned(),
             }),
+            Self::CannotDeleteRunning => HttpResponse::Conflict().json(ErrorBody {
+                error: "Cannot delete a running work run".to_owned(),
+            }),
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
             }),
@@ -108,7 +113,7 @@ impl From<UsersError> for AppError {
         match err {
             UsersError::UserNotFound => Self::UserNotFound,
             UsersError::Database(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "users", "database error");
                 Self::Internal
             }
         }
@@ -121,15 +126,15 @@ impl From<ProjectConfigsError> for AppError {
             ProjectConfigsError::NotFound => Self::ProjectConfigNotFound,
             ProjectConfigsError::DuplicateKaneoProjectId => Self::DuplicateProjectConfig,
             ProjectConfigsError::Database(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "project_configs", "database error");
                 Self::Internal
             }
             ProjectConfigsError::Kaneo(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "project_configs", "kaneo error");
                 Self::Internal
             }
             ProjectConfigsError::ColumnNotFound(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "project_configs", "column not found");
                 Self::Internal
             }
         }
@@ -144,13 +149,14 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::NotOwned => Self::NotOwned,
             WorkRunsError::InvalidStatusTransition => Self::InvalidStatusTransition,
             WorkRunsError::Database(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "work_runs", "database error");
                 Self::Internal
             }
             WorkRunsError::Dispatch(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "work_runs", "dispatch error");
                 Self::Internal
             }
+            WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
         }
     }
 }
@@ -164,15 +170,15 @@ impl From<WorkersError> for AppError {
             WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
             WorkersError::Database(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "workers", "database error");
                 Self::Internal
             }
             WorkersError::Jwt(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "workers", "jwt error");
                 Self::Internal
             }
             WorkersError::Redis(e) => {
-                tracing::error!("{e}");
+                tracing::error!(error = %e, operation = "workers", "redis error");
                 Self::Internal
             }
         }

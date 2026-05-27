@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities)\n             VALUES ($1, $2, $3, $4, $5::worker_status, $6)\n             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs\n             FROM workers WHERE refresh_token_hash = $1",
   "describe": {
     "columns": [
       {
@@ -53,27 +53,21 @@
         "ordinal": 7,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "active_jobs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "max_concurrent_jobs",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Timestamptz",
-        {
-          "Custom": {
-            "name": "worker_status",
-            "kind": {
-              "Enum": [
-                "idle",
-                "busy",
-                "disconnected"
-              ]
-            }
-          }
-        },
-        "Jsonb"
+        "Text"
       ]
     },
     "nullable": [
@@ -84,8 +78,10 @@
       true,
       false,
       true,
-      true
+      true,
+      false,
+      false
     ]
   },
-  "hash": "249459c076d1f19171efdcc90e1fca75841c665c29237ad4dde9018efaaa1001"
+  "hash": "ada1fac325e7086f55a4425f320d6e870a08680759175e95105fbb451fce1c39"
 }

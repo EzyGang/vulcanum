@@ -13,7 +13,7 @@ impl WorkRunsService {
             .update_last_seen(&self.db, worker_id, chrono::Utc::now())
             .await
         {
-            tracing::warn!("failed to update last_seen for worker {worker_id}: {e}");
+            tracing::warn!(error = %e, worker_id = %worker_id, "failed to update last_seen");
         }
 
         let dispatched_id = self.dispatch_store.take_dispatched(worker_id).await?;
@@ -39,9 +39,9 @@ impl WorkRunsService {
             }
             Err(_) => {
                 tracing::warn!(
-                    "Project config {} not found for work_run {}",
-                    run.project_config_id,
-                    id
+                    project_config_id = %run.project_config_id,
+                    work_run_id = %id,
+                    "project config not found for work run"
                 );
                 kaneo_project_id = String::new();
                 kaneo_workspace_id = String::new();
@@ -77,6 +77,33 @@ impl WorkRunsService {
             .await
     }
 
+    pub async fn delete_run(&self, id: Uuid) -> Result<(), WorkRunsError> {
+        let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+
+        if matches!(run.status, WorkRunStatus::Running) {
+            return Err(WorkRunsError::DeleteRunning);
+        }
+
+        if let Some(worker_id) = run.worker_id {
+            if matches!(run.status, WorkRunStatus::Dispatched) {
+                if let Err(e) = self
+                    .workers_repo
+                    .decrement_active_jobs(&self.db, worker_id)
+                    .await
+                {
+                    tracing::warn!(
+                        error = %e,
+                        worker_id = %worker_id,
+                        work_run_id = %id,
+                        "failed to decrement active_jobs on run deletion"
+                    );
+                }
+            }
+        }
+
+        self.work_runs_repo.delete(&self.db, id).await
+    }
+
     pub async fn submit_result(
         &self,
         id: Uuid,
@@ -99,10 +126,12 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
+        let mut tx = self.db.begin().await.map_err(WorkRunsError::Database)?;
+
         let updated = self
             .work_runs_repo
             .set_result(
-                &self.db,
+                &mut *tx,
                 id,
                 SetResultParams {
                     pr_url: &params.pr_url,
@@ -114,6 +143,20 @@ impl WorkRunsService {
             )
             .await?;
 
+        if let Err(e) = self
+            .workers_repo
+            .decrement_active_jobs(&mut *tx, worker_id)
+            .await
+        {
+            tracing::warn!(
+                error = %e,
+                worker_id = %worker_id,
+                "failed to decrement active_jobs"
+            );
+        }
+
+        tx.commit().await.map_err(WorkRunsError::Database)?;
+
         tracing::info!(
             worker_id = worker_id.to_string().as_str(),
             work_run_id = id.to_string().as_str(),
@@ -121,9 +164,7 @@ impl WorkRunsService {
             duration_ms = params.duration_ms,
             exit_code = params.exit_code,
             has_pr_url = !params.pr_url.is_empty(),
-            "work_run {} completed by worker {}",
-            id,
-            worker_id,
+            "work_run completed by worker",
         );
 
         self.sync_kaneo_on_result(&run, &params, status).await;
@@ -145,10 +186,10 @@ impl WorkRunsService {
             Ok(c) => c,
             Err(e) => {
                 tracing::warn!(
-                    "Failed to look up project config {} for work_run {}: {}",
-                    run.project_config_id,
-                    run.id,
-                    e,
+                    project_config_id = %run.project_config_id,
+                    work_run_id = %run.id,
+                    error = %e,
+                    "failed to look up project config",
                 );
                 return;
             }
@@ -165,10 +206,10 @@ impl WorkRunsService {
             .await
         {
             tracing::warn!(
-                "Failed to update kaneo task {} status to {}: {}",
-                run.external_task_ref,
-                new_column,
-                e,
+                task_ref = %run.external_task_ref,
+                column = %new_column,
+                error = %e,
+                "failed to update kaneo task status",
             );
         }
 
@@ -178,9 +219,9 @@ impl WorkRunsService {
             .await
         {
             tracing::warn!(
-                "Failed to add kaneo comment for task {}: {}",
-                run.external_task_ref,
-                e,
+                task_ref = %run.external_task_ref,
+                error = %e,
+                "failed to add kaneo comment",
             );
         }
     }
