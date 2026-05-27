@@ -5,8 +5,10 @@ type EffectiveTheme = 'light' | 'dark';
 
 const STORAGE_KEY = 'vulcanum-theme';
 
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
 const getSystemTheme = (): EffectiveTheme => {
-  return window.matchMedia('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
+  return prefersDark.matches ? 'dark' : 'light';
 };
 
 const getInitialMode = (): ThemeMode => {
@@ -38,12 +40,12 @@ const setupSystemListener = () => {
     }
   };
 
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', systemListener);
+  prefersDark.addEventListener('change', systemListener);
 };
 
 const removeSystemListener = () => {
   if (systemListener) {
-    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', systemListener);
+    prefersDark.removeEventListener('change', systemListener);
     systemListener = null;
   }
 };
@@ -57,16 +59,17 @@ export const cycleThemeMode = (): void => {
 
 effect(() => {
   const mode = themeModeSignal.value;
-  const effective = computeEffectiveTheme(mode);
-  effectiveThemeSignal.value = effective;
-
-  document.documentElement.setAttribute('data-theme', effective);
+  effectiveThemeSignal.value = computeEffectiveTheme(mode);
 
   if (mode === 'system') {
     setupSystemListener();
   } else {
     removeSystemListener();
   }
+});
+
+effect(() => {
+  document.documentElement.setAttribute('data-theme', effectiveThemeSignal.value);
 });
 
 setupSystemListener();
