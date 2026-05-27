@@ -84,11 +84,17 @@ impl WorkRunsService {
             return Err(WorkRunsError::DeleteRunning);
         }
 
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(WorkRunsError::Database)?;
+
         if let Some(worker_id) = run.worker_id {
             if matches!(run.status, WorkRunStatus::Dispatched) {
                 if let Err(e) = self
                     .workers_repo
-                    .decrement_active_jobs(&self.db, worker_id)
+                    .decrement_active_jobs(&mut *tx, worker_id)
                     .await
                 {
                     tracing::warn!(
@@ -101,7 +107,13 @@ impl WorkRunsService {
             }
         }
 
-        self.work_runs_repo.delete(&self.db, id).await
+        let delete_r = self.work_runs_repo.delete(&mut *tx, id).await;
+        if let Err(e) = delete_r {
+            let _ = tx.rollback().await;
+            return Err(e);
+        }
+
+        tx.commit().await.map_err(WorkRunsError::Database)
     }
 
     pub async fn submit_result(
@@ -158,8 +170,8 @@ impl WorkRunsService {
         tx.commit().await.map_err(WorkRunsError::Database)?;
 
         tracing::info!(
-            worker_id = worker_id.to_string().as_str(),
-            work_run_id = id.to_string().as_str(),
+            worker_id = %worker_id,
+            work_run_id = %id,
             tokens_used = params.tokens_used,
             duration_ms = params.duration_ms,
             exit_code = params.exit_code,
