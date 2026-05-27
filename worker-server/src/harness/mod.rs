@@ -85,7 +85,7 @@ impl AgentHarness for HarnessKind {
 /// Abstract contract for spawning an agent job executor.
 ///
 /// Implementations may run on the host (HostHarness) or inside a Kata
-/// Containers VM (KataHarness) via Docker with --runtime=kata-runtimes.
+/// Containers VM (KataHarness) via Docker with --runtime=kata-runtime.
 pub trait AgentHarness {
     /// Spawn the job, returning the result once the agent exits.
     fn spawn(

@@ -13,7 +13,7 @@
 
 - [ ] **Worker daemon binary**: `vulcanum` with subcommands (`connect`, `daemon`, future: `setup-worker`, `tui`). Tokio-based async runtime
 - [ ] **Poll loop in worker**: `GET /poll` every 15s, backoff on unreachable. Token refresh before expiry. Worker status updates (idle/busy)
-- [ ] **Kata Containers isolation**: run container via Docker with `--runtime=kata-runtimes`, mount tmpfs workdir as volume, network egress-only, CPU/memory limits. Container lifecycle management (run, wait, collect, destroy)
+- [ ] **Kata Containers isolation**: run container via Docker with `--runtime=kata-runtime`, mount tmpfs workdir as volume, network egress-only, CPU/memory limits. Container lifecycle management (run, wait, collect, destroy)
 - [ ] **OpenCode harness adapter**: spawn OpenCode inside Kata container with rendered prompt + secrets in env. Parse output (exit code, PR URL, token usage). Timeout enforcement
 - [ ] **Prompt template rendering**: interpolate `{task_title}`, `{task_body}`, `{repo_url}`, `{branch}` into per-project template. Default template shipped in code
 - [ ] **Result submission + Kaneo sync**: worker POSTs `/jobs/:id/result` → main app PATCHes Kaneo status to target column, posts comment with PR link. Handle failure case (status back to pickup)

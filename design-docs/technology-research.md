@@ -28,7 +28,7 @@ For MVP, we standardize on Kata Containers. It provides hardware-level isolation
 
 1. Worker receives work spec from main app
 2. Pre-built Docker image with OpenCode, git, curl, SSH already pulled on worker machine
-3. Docker runs container with `--runtime=kata-runtimes`:
+3. Docker runs container with `--runtime=kata-runtime`:
    - Ephemeral workdir mounted as Docker volume
    - Network egress-only via Kata network policy
    - CPU/memory limits via Docker resource flags

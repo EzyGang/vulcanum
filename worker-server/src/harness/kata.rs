@@ -96,7 +96,7 @@ impl AgentHarness for KataHarness {
                 let repo_path = workdir_for_cmd.join("repo");
 
                 cmd.arg("run")
-                    .arg("--runtime=kata-runtimes")
+                    .arg("--runtime=kata-runtime")
                     .arg("--rm")
                     .arg("--name")
                     .arg(&container_name)

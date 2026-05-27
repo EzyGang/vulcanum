@@ -207,7 +207,7 @@ Secrets (when implemented) become environment variables on the process.
 
 Spawns `opencode` inside a Kata Containers VM via Docker:
 ```
-docker run --runtime=kata-runtimes --rm \
+docker run --runtime=kata-runtime --rm \
   -v <workdir>:/workdir \
   -e HOME=/workdir/home \
   --cpus=2 --memory=1024m \
