@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::worker_auth::WorkerAuth;
-use vulcanum_shared::api_types::{PollResponse, SubmitResultRequest};
+use vulcanum_shared::api_types::{AckRequest, PollResponse, SubmitResultRequest};
 
 pub async fn poll(state: web::Data<AppState>, auth: WorkerAuth) -> Result<HttpResponse, AppError> {
     match state.jobs.poll(auth.worker_id).await {
@@ -27,6 +27,7 @@ pub async fn get_job(
 pub async fn ack_job(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
+    _body: web::Json<AckRequest>,
     auth: WorkerAuth,
 ) -> Result<HttpResponse, AppError> {
     let job = state

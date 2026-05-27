@@ -42,6 +42,9 @@ pub struct PollResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct AckRequest {}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct JobResponse {
     pub prompt_text: String,
     pub repo_url: String,
