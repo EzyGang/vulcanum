@@ -1,6 +1,7 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { ApiError } from '../../../utils/api/client';
+import { ProgressBar } from '../../shared/ui/ProgressBar.view';
 import type { FormattedWorker } from '../hooks/useWorkers.hook';
 
 interface WorkersViewProps {
@@ -114,6 +115,9 @@ export const WorkersView = ({
                   Last Seen
                 </th>
                 <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                  Load
+                </th>
+                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
                   Actions
                 </th>
               </tr>
@@ -127,6 +131,13 @@ export const WorkersView = ({
                   <td class='px-5 py-3'>{statusBadge(worker.status)}</td>
                   <td class='px-5 py-3'>
                     <span class='text-text-secondary text-sm'>{worker.lastSeen}</span>
+                  </td>
+                  <td class='px-5 py-3'>
+                    <ProgressBar
+                      value={worker.activeJobs}
+                      max={worker.maxConcurrentJobs}
+                      showFraction
+                    />
                   </td>
                   <td class='px-5 py-3'>
                     {deletingId.value === worker.id ? (

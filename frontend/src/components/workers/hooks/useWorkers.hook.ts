@@ -32,6 +32,8 @@ export interface FormattedWorker {
   name: string;
   status: Worker['status'];
   lastSeen: string;
+  activeJobs: number;
+  maxConcurrentJobs: number;
 }
 
 const formatWorkers = (workers: Worker[]): FormattedWorker[] =>
@@ -39,7 +41,9 @@ const formatWorkers = (workers: Worker[]): FormattedWorker[] =>
     id: w.id,
     name: w.name,
     status: w.status,
-    lastSeen: formatRelativeTime(w.lastSeen)
+    lastSeen: formatRelativeTime(w.lastSeen),
+    activeJobs: w.activeJobs,
+    maxConcurrentJobs: w.maxConcurrentJobs
   }));
 
 export const useCodeCountdown = (expiresAt: string | null) => {
