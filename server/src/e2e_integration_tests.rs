@@ -110,6 +110,12 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
         .await
         .expect("Should dispatch");
 
+    state
+        .dispatch_store
+        .set_dispatched(worker_uuid, wr_id)
+        .await
+        .expect("Should set dispatched");
+
     let poll_req = test::TestRequest::get()
         .uri("/api/v1/poll")
         .insert_header(("Authorization", format!("Bearer {access_token}")))
