@@ -2,7 +2,6 @@ target/
 .git/
 .gitignore
 node_modules/
-frontend/
 *.md
 AGENTS.md
 **/Dockerfile
