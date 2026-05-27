@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use uuid::Uuid;
 
-use crate::api_error::ApiError;
-use crate::client::{ApiClient, SubmitResultRequest};
+use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::worker_state::WorkerState;
+
 use crate::harness::host::HostHarness;
 use crate::harness::kata::KataHarness;
 use crate::harness::{AgentHarness, HarnessKind};
-use crate::state::WorkerState;
 
 use super::{is_fatal_api_error, TickOutcome};
 

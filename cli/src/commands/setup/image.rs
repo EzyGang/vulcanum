@@ -1,7 +1,7 @@
 use std::process::{Command, Stdio};
 
 use super::utils::which;
-use crate::harness::kata::DEFAULT_KATA_IMAGE;
+use vulcanum_shared::constants::DEFAULT_KATA_IMAGE;
 
 pub fn pull_agent_image() -> anyhow::Result<()> {
     if !which("docker") {

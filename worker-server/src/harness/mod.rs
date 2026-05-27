@@ -3,7 +3,6 @@ pub mod host;
 pub mod kata;
 mod parse;
 pub(crate) mod runner;
-pub mod validate;
 
 #[cfg(test)]
 mod errors_tests;

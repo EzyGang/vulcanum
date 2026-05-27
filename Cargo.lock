@@ -3528,22 +3528,13 @@ name = "vulcanum-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "clap",
  "dialoguer",
- "dirs 5.0.1",
  "hostname",
  "indicatif",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "url",
- "uuid",
  "vulcanum-shared",
 ]
 
@@ -3582,9 +3573,14 @@ dependencies = [
 name = "vulcanum-shared"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
+ "dirs 5.0.1",
  "rand 0.8.6",
+ "reqwest",
  "serde",
+ "serde_json",
+ "tokio",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -3596,8 +3592,15 @@ dependencies = [
 name = "vulcanum-worker-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "uuid",
  "vulcanum-shared",
 ]
 

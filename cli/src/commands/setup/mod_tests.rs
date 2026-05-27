@@ -14,7 +14,7 @@ fn test_step_err() {
 
 #[test]
 fn test_severity_discrimination() {
-    use crate::harness::validate::{Severity, ValidationIssue};
+    use vulcanum_shared::validate::{Severity, ValidationIssue};
 
     let issues = [
         ValidationIssue {

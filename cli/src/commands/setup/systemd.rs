@@ -4,7 +4,7 @@ const UNIT_NAME: &str = "vulcanum-worker";
 const UNIT_PATH: &str = "/etc/systemd/system/vulcanum-worker.service";
 
 pub fn configure_systemd() -> anyhow::Result<()> {
-    let binary_path = current_exe_path()?;
+    let binary_path = worker_server_path()?;
     tracing::debug!("binding systemd to binary at: {binary_path}");
 
     let unit_content = format!(
@@ -15,7 +15,7 @@ pub fn configure_systemd() -> anyhow::Result<()> {
          \n\
          [Service]\n\
          Type=simple\n\
-         ExecStart={binary_path} worker daemon\n\
+         ExecStart={binary_path}\n\
          Restart=always\n\
          RestartSec=10\n\
          Environment=VULCANUM_HARNESS=kata\n\
@@ -46,10 +46,22 @@ pub fn enable_and_start_service() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn current_exe_path() -> anyhow::Result<String> {
-    std::env::current_exe()
-        .map_err(|e| anyhow::anyhow!("cannot determine current binary path: {e}"))?
-        .to_str()
+fn worker_server_path() -> anyhow::Result<String> {
+    let exe = std::env::current_exe()
+        .map_err(|e| anyhow::anyhow!("cannot determine current binary path: {e}"))?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("cannot determine binary directory"))?;
+    let name = if cfg!(windows) {
+        "vulcanum-worker-server.exe"
+    } else {
+        "vulcanum-worker-server"
+    };
+    let path = dir.join(name);
+    if !path.exists() {
+        anyhow::bail!("worker-server binary not found at {}", path.display());
+    }
+    path.to_str()
         .map(|s| s.to_owned())
-        .ok_or_else(|| anyhow::anyhow!("binary path is not valid UTF-8"))
+        .ok_or_else(|| anyhow::anyhow!("worker-server path is not valid UTF-8"))
 }

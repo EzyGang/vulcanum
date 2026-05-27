@@ -1,18 +1,18 @@
 mod job;
 
-use job::handle_job;
-
-use anyhow::Context;
 use std::time::Duration;
 
+use anyhow::Context;
 use tokio::signal;
 use tokio::time::sleep;
 
-use crate::api_error::ApiError;
-use crate::client::ApiClient;
-use crate::harness::validate::is_environment_ready;
-use crate::state::{load_state, WorkerState};
-use crate::token::ensure_valid_token;
+use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::token::ensure_valid_token;
+use vulcanum_shared::validate::is_environment_ready;
+use vulcanum_shared::worker_state::{load_state, WorkerState};
+
+use job::handle_job;
 
 const POLL_INTERVAL_SECS: u64 = 15;
 const INITIAL_BACKOFF_MS: u64 = 1_000;
@@ -74,9 +74,12 @@ pub async fn run() -> anyhow::Result<()> {
                         return Ok(());
                     }
                     TickOutcome::Transient(msg) => {
-                        tracing::warn!("tick failed: {msg}, retrying in {backoff_ms}ms");
+                        tracing::warn!(
+                            "tick failed: {msg}, retrying in {backoff_ms}ms"
+                        );
                         sleep(Duration::from_millis(backoff_ms)).await;
-                        backoff_ms = (backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
+                        backoff_ms =
+                            (backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
                     }
                 }
             }

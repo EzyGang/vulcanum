@@ -1,6 +1,7 @@
-use crate::client::ApiClient;
+use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::worker_state::{save_state, WorkerState};
+
 use crate::commands::setup::systemd;
-use crate::state::{save_state, WorkerState};
 
 pub async fn run(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
     let instance = match instance {
