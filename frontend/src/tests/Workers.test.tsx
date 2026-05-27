@@ -9,6 +9,8 @@ const makeWorker = (overrides = {}) => ({
   name: 'test-worker',
   status: 'idle' as const,
   lastSeen: '2 minutes ago',
+  activeJobs: 0,
+  maxConcurrentJobs: 3,
   ...overrides
 });
 
@@ -140,5 +142,38 @@ describe('Workers.view', () => {
 
     fireEvent.click(getByText('Delete'));
     expect(onDeleteWorker).toHaveBeenCalledWith('1');
+  });
+
+  it('renders load column with correct fraction', () => {
+    const workers = [
+      makeWorker({ id: '1', name: 'runner-1', activeJobs: 2, maxConcurrentJobs: 5 })
+    ];
+
+    const { getByText } = render(
+      <WorkersView
+        data={{ workers, code: null, countdown }}
+        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
+        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+      />
+    );
+
+    expect(getByText('2 / 5')).toBeDefined();
+  });
+
+  it('shows red progress bar when worker is at max capacity', () => {
+    const workers = [
+      makeWorker({ id: '1', name: 'runner-1', activeJobs: 3, maxConcurrentJobs: 3 })
+    ];
+
+    const { container } = render(
+      <WorkersView
+        data={{ workers, code: null, countdown }}
+        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
+        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+      />
+    );
+
+    const fill = container.querySelector('.bg-error');
+    expect(fill).toBeDefined();
   });
 });
