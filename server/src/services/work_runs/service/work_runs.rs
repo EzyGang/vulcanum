@@ -84,11 +84,7 @@ impl WorkRunsService {
             return Err(WorkRunsError::DeleteRunning);
         }
 
-        let mut tx = self
-            .db
-            .begin()
-            .await
-            .map_err(WorkRunsError::Database)?;
+        let mut tx = self.db.begin().await.map_err(WorkRunsError::Database)?;
 
         if let Some(worker_id) = run.worker_id {
             if matches!(run.status, WorkRunStatus::Dispatched) {

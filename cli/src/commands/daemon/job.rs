@@ -83,11 +83,12 @@ pub(crate) async fn handle_job(
         .await
     {
         Ok(r) => r,
-        Err(_e) => {
+        Err(e) => {
             tracing::error!(
                 worker_id = %state.worker_id,
                 work_run_id = %job_id,
                 external_task_ref = %job.external_task_ref,
+                error = %e,
                 "job execution failed",
             );
             let result = SubmitResultRequest {
