@@ -72,6 +72,7 @@ cargo run
 - Every Rust crate keeps its own `AGENTS.md` with **crate-specific** conventions.
 - All Rust crates share the same `rustfmt.toml` at the repository root.
 - All Rust code must follow the `rust-code-style` skill rules defined in `.agents/skills/rust-code-style/SKILL.md`.
+- All frontend UI component work must follow the `base-ui` skill rules defined in `.agents/skills/base-ui/SKILL.md`.
 - Once done implementing run `pnpm run format && pnpm run validate`, both should succeed with no warnings.
 - If you have changed/added new queries, run `pnpm run prep-queries` before committing.
 
