@@ -18,16 +18,18 @@ impl WorkersRepository {
 
         sqlx::query_as!(
             Worker,
-            r#"INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities)
-             VALUES ($1, $2, $3, $4, $5::worker_status, $6)
+            r#"INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs)
+             VALUES ($1, $2, $3, $4, $5::worker_status, $6, 0, $7)
              RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>""#,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
+             active_jobs, max_concurrent_jobs"#,
             id,
             name,
             refresh_token_hash,
             refresh_expires_at,
             WorkerStatus::Idle as WorkerStatus,
             capabilities,
+            crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS,
         )
         .fetch_one(db)
         .await
@@ -43,7 +45,8 @@ impl WorkersRepository {
         sqlx::query_as!(
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>"
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
+             active_jobs, max_concurrent_jobs
              FROM workers WHERE id = $1"#,
             id,
         )
@@ -60,7 +63,8 @@ impl WorkersRepository {
         sqlx::query_as!(
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>"
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
+             active_jobs, max_concurrent_jobs
              FROM workers WHERE refresh_token_hash = $1"#,
             hash,
         )
@@ -81,7 +85,8 @@ impl WorkersRepository {
             r#"UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2
              WHERE id = $3
              RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>""#,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
+             active_jobs, max_concurrent_jobs"#,
             new_hash,
             new_expires_at,
             worker_id,
@@ -108,7 +113,8 @@ impl WorkersRepository {
         sqlx::query_as!(
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>"
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
+             active_jobs, max_concurrent_jobs
              FROM workers ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -154,6 +160,51 @@ impl WorkersRepository {
         Ok(())
     }
 
+    pub async fn increment_active_jobs<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+    ) -> Result<(), WorkersError> {
+        sqlx::query!(
+            "UPDATE workers SET active_jobs = active_jobs + 1 WHERE id = $1 AND active_jobs < max_concurrent_jobs",
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(map_sqlx_error)?;
+        Ok(())
+    }
+
+    pub async fn decrement_active_jobs<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+    ) -> Result<(), WorkersError> {
+        sqlx::query!(
+            "UPDATE workers SET active_jobs = active_jobs - 1, status = CASE WHEN active_jobs - 1 = 0 THEN 'idle'::worker_status ELSE status END WHERE id = $1 AND active_jobs > 0",
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(map_sqlx_error)?;
+        Ok(())
+    }
+
+    pub async fn reset_active_jobs<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+    ) -> Result<(), WorkersError> {
+        sqlx::query!(
+            "UPDATE workers SET active_jobs = 0, status = 'idle'::worker_status WHERE id = $1",
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(map_sqlx_error)?;
+        Ok(())
+    }
+
     pub async fn mark_stale_disconnected<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -162,7 +213,7 @@ impl WorkersRepository {
         let cutoff = chrono::Utc::now() - threshold;
 
         sqlx::query!(
-            r#"UPDATE workers SET status = 'disconnected'::worker_status
+            r#"UPDATE workers SET status = 'disconnected'::worker_status, active_jobs = 0
              WHERE last_seen < $1 AND status != 'disconnected'::worker_status"#,
             cutoff,
         )

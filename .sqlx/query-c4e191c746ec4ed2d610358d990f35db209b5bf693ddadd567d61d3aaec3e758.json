@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\"\n             FROM workers WHERE refresh_token_hash = $1",
+  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: chrono::DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs\n             FROM workers WHERE active_jobs < max_concurrent_jobs AND status != 'disconnected'::worker_status\n             ORDER BY last_seen DESC NULLS LAST",
   "describe": {
     "columns": [
       {
@@ -51,14 +51,22 @@
       },
       {
         "ordinal": 7,
-        "name": "created_at!: DateTime<Utc>",
+        "name": "created_at!: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "active_jobs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "max_concurrent_jobs",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -68,8 +76,10 @@
       true,
       false,
       true,
-      true
+      true,
+      false,
+      false
     ]
   },
-  "hash": "c5e25e39e8d554982e2d86c9a56666ca96ea082b06c4fc599d1b3108ef8db0e4"
+  "hash": "c4e191c746ec4ed2d610358d990f35db209b5bf693ddadd567d61d3aaec3e758"
 }

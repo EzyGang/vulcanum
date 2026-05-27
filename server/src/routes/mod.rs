@@ -51,7 +51,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/refresh", web::post().to(workers::refresh))
                     .route("/{id}", web::delete().to(workers::delete)),
             )
-            .service(web::scope("/runs").route("", web::get().to(work_runs::list))),
+            .service(
+                web::scope("/runs")
+                    .route("", web::get().to(work_runs::list))
+                    .route("/{id}", web::delete().to(work_runs::delete)),
+            ),
     );
 }
 

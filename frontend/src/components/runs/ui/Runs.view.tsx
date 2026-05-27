@@ -22,6 +22,8 @@ interface RunsViewProps {
   status: {
     loading: boolean;
     error: ApiError | null;
+    deleteError: Signal<string | null>;
+    deletingId: Signal<string | null>;
     statusFilter: Signal<WorkRunStatus | undefined>;
     page: Signal<number>;
     hasNextPage: boolean;
@@ -31,13 +33,23 @@ interface RunsViewProps {
     setStatusFilter: (status: WorkRunStatus | undefined) => void;
     nextPage: () => void;
     prevPage: () => void;
+    handleDeleteRun: (id: string) => void;
+    handleConfirmDelete: (id: string) => void;
+    handleCancelDelete: () => void;
   };
 }
 
 export const RunsView = ({
   data: { runs },
-  status: { loading, error, statusFilter, page, hasNextPage, hasPrevPage },
-  actions: { setStatusFilter, nextPage, prevPage }
+  status: { loading, error, deleteError, deletingId, statusFilter, page, hasNextPage, hasPrevPage },
+  actions: {
+    setStatusFilter,
+    nextPage,
+    prevPage,
+    handleDeleteRun,
+    handleConfirmDelete,
+    handleCancelDelete
+  }
 }: RunsViewProps): JSX.Element => (
   <div class='flex flex-col gap-6'>
     <div class='flex items-center justify-between'>
@@ -62,6 +74,12 @@ export const RunsView = ({
     {error && (
       <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
         {error.message}
+      </div>
+    )}
+
+    {deleteError.value && (
+      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
+        {deleteError.value}
       </div>
     )}
 
@@ -95,6 +113,9 @@ export const RunsView = ({
               </th>
               <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
                 Created
+              </th>
+              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
+                Actions
               </th>
             </tr>
           </thead>
@@ -133,6 +154,35 @@ export const RunsView = ({
                   <span class='text-text-secondary text-sm'>
                     {formatRelativeTime(run.createdAt)}
                   </span>
+                </td>
+                <td class='px-5 py-3'>
+                  {deletingId.value === run.id ? (
+                    <div class='flex items-center gap-2'>
+                      <span class='text-text-muted text-xs'>Confirm?</span>
+                      <button
+                        type='button'
+                        onClick={() => handleDeleteRun(run.id)}
+                        class='text-error text-xs uppercase tracking-wider hover:opacity-80 transition-opacity'
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type='button'
+                        onClick={handleCancelDelete}
+                        class='text-text-muted text-xs uppercase tracking-wider hover:text-text-primary transition-colors'
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type='button'
+                      onClick={() => handleConfirmDelete(run.id)}
+                      class='text-text-muted text-xs uppercase tracking-wider hover:text-error transition-colors'
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

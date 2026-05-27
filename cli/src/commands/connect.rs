@@ -1,4 +1,5 @@
 use crate::client::ApiClient;
+use crate::commands::setup::systemd;
 use crate::state::{save_state, WorkerState};
 
 pub async fn run(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
@@ -39,6 +40,11 @@ pub async fn run(code: Option<String>, instance: Option<String>) -> anyhow::Resu
         resp.worker_id,
         resp.expires_at
     );
+
+    if systemd::is_unit_installed() {
+        tracing::info!("restarting systemd service after connect");
+        systemd::enable_and_start_service()?;
+    }
 
     Ok(())
 }

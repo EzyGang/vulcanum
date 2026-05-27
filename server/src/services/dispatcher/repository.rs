@@ -19,15 +19,16 @@ impl DispatchRepository {
         Self
     }
 
-    pub async fn find_idle_workers<'c, Q: Queryer<'c>>(
+    pub async fn find_available_workers<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
     ) -> Result<Vec<Worker>, DispatchError> {
         sqlx::query_as!(
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: chrono::DateTime<Utc>"
-             FROM workers WHERE status = 'idle'::worker_status
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: chrono::DateTime<Utc>",
+             active_jobs, max_concurrent_jobs
+             FROM workers WHERE active_jobs < max_concurrent_jobs AND status != 'disconnected'::worker_status
              ORDER BY last_seen DESC NULLS LAST"#,
         )
         .fetch_all(db)
@@ -73,19 +74,19 @@ impl DispatchRepository {
         .map_err(map_sqlx_error)
     }
 
-    pub async fn set_worker_busy<'c, Q: Queryer<'c>>(
+    pub async fn increment_worker_jobs<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
         worker_id: Uuid,
     ) -> Result<(), DispatchError> {
         sqlx::query!(
-            r#"UPDATE workers SET status = 'busy'::worker_status WHERE id = $1 AND status = 'idle'::worker_status"#,
+            "UPDATE workers SET active_jobs = active_jobs + 1, status = 'busy'::worker_status
+             WHERE id = $1 AND active_jobs < max_concurrent_jobs",
             worker_id,
         )
         .execute(db)
         .await
         .map_err(map_sqlx_error)?;
-
         Ok(())
     }
 }

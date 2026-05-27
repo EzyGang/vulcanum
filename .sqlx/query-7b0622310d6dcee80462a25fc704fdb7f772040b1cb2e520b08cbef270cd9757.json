@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET active_jobs = active_jobs + 1 WHERE id = $1 AND active_jobs < max_concurrent_jobs",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7b0622310d6dcee80462a25fc704fdb7f772040b1cb2e520b08cbef270cd9757"
+}

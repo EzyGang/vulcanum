@@ -129,6 +129,77 @@ impl WorkRunsRepository {
         .map_err(WorkRunsError::from)
     }
 
+    pub async fn delete<'c, Q: Queryer<'c>>(&self, db: Q, id: Uuid) -> Result<(), WorkRunsError> {
+        let rows = sqlx::query!("DELETE FROM work_runs WHERE id = $1", id)
+            .execute(db)
+            .await
+            .map_err(WorkRunsError::from)?
+            .rows_affected();
+
+        if rows == 0 {
+            return Err(WorkRunsError::NotFound);
+        }
+
+        Ok(())
+    }
+
+    pub async fn reset_orphaned_dispatched<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        threshold_secs: i64,
+    ) -> Result<u64, WorkRunsError> {
+        let rows = sqlx::query!(
+            r#"UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
+             WHERE status = 'dispatched'::work_run_status
+             AND updated_at < NOW() - INTERVAL '1 second' * $1"#,
+            threshold_secs as f64,
+        )
+        .execute(db)
+        .await
+        .map_err(WorkRunsError::from)?
+        .rows_affected();
+
+        Ok(rows)
+    }
+
+    pub async fn reset_orphaned_worker_runs<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+    ) -> Result<u64, WorkRunsError> {
+        let rows = sqlx::query!(
+            r#"UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
+             WHERE status IN ('dispatched'::work_run_status, 'running'::work_run_status)
+             AND worker_id IS NULL"#,
+        )
+        .execute(db)
+        .await
+        .map_err(WorkRunsError::from)?
+        .rows_affected();
+
+        Ok(rows)
+    }
+
+    pub async fn reset_worker_dispatched<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        worker_id: Uuid,
+        threshold_secs: i64,
+    ) -> Result<u64, WorkRunsError> {
+        let rows = sqlx::query!(
+            r#"UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
+             WHERE worker_id = $1 AND status = 'dispatched'::work_run_status
+             AND updated_at < NOW() - INTERVAL '1 second' * $2"#,
+            worker_id,
+            threshold_secs as f64,
+        )
+        .execute(db)
+        .await
+        .map_err(WorkRunsError::from)?
+        .rows_affected();
+
+        Ok(rows)
+    }
+
     pub async fn acknowledge<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

@@ -10,6 +10,8 @@ pub enum WorkRunsError {
     InvalidStatusTransition,
     #[error("work run not owned by this worker")]
     NotOwned,
+    #[error("cannot delete a running work run")]
+    DeleteRunning,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]

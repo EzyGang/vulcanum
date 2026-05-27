@@ -7,7 +7,7 @@ use crate::state;
 mod docker;
 pub(crate) mod image;
 mod kata;
-mod systemd;
+pub(crate) mod systemd;
 mod utils;
 
 #[cfg(test)]
@@ -77,6 +77,7 @@ pub async fn run(
 
     eprintln!();
     console::info("Enabling and starting worker service...");
+    systemd::configure_systemd()?;
     systemd::enable_and_start_service()?;
 
     eprintln!();
