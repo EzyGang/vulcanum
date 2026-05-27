@@ -1,6 +1,10 @@
+mod daemon;
+mod harness;
+
+use anyhow::Context;
+
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     vulcanum_shared::telemetry::init();
-    tracing::info!("vulcanum-worker-server placeholder");
-    std::process::exit(0);
+    daemon::run().await.context("daemon exited with error")
 }

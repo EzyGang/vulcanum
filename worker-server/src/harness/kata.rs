@@ -3,11 +3,11 @@ use std::path::Path;
 
 use tokio::process::Command;
 
+use vulcanum_shared::constants::DEFAULT_KATA_IMAGE;
+
 use crate::harness::errors::HarnessError;
 use crate::harness::runner::{self, RunnerEnv};
 use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
-
-pub(crate) const DEFAULT_KATA_IMAGE: &str = "ghcr.io/ezygang/vulcanum/agent:latest";
 
 pub struct KataHarness {
     pub(crate) image: String,

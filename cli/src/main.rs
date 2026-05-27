@@ -1,11 +1,7 @@
-mod api_error;
-mod client;
 mod commands;
 mod console;
-mod harness;
-mod state;
-mod token;
 
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -62,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
             WorkerCommand::Connect { instance, code } => {
                 commands::connect::run(code, instance).await
             }
-            WorkerCommand::Daemon => commands::daemon::run().await,
+            WorkerCommand::Daemon => run_daemon_subcommand().await,
             WorkerCommand::Setup {
                 instance,
                 code,
@@ -70,4 +66,28 @@ async fn main() -> anyhow::Result<()> {
             } => commands::setup::run(code, instance, force).await,
         },
     }
+}
+
+async fn run_daemon_subcommand() -> anyhow::Result<()> {
+    let exe = std::env::current_exe().context("failed to get current exe")?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("failed to get exe directory"))?;
+    let name = if cfg!(windows) {
+        "vulcanum-worker-server.exe"
+    } else {
+        "vulcanum-worker-server"
+    };
+    let path = dir.join(name);
+    if !path.exists() {
+        anyhow::bail!("worker-server binary not found at {}", path.display());
+    }
+    let mut child = tokio::process::Command::new(&path)
+        .spawn()
+        .with_context(|| format!("failed to spawn {}", path.display()))?;
+    let status = child
+        .wait()
+        .await
+        .with_context(|| format!("failed to wait for {}", path.display()))?;
+    std::process::exit(status.code().unwrap_or(1));
 }

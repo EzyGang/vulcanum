@@ -1,11 +1,13 @@
+use std::fmt;
+
 #[derive(Debug)]
 pub struct ApiError {
     pub status: u16,
     pub body: String,
 }
 
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.body.is_empty() {
             write!(f, "HTTP {}", self.status)
         } else {

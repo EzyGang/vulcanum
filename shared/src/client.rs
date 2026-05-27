@@ -1,16 +1,11 @@
-mod types;
-
-pub(crate) use types::ConnectRequest;
-pub(crate) use types::RefreshRequest;
-pub use types::{
-    ConnectResponse, JobResponse, PollResponse, RefreshResponse, StatusResponse,
-    SubmitResultRequest,
-};
-
 use anyhow::Context;
 use uuid::Uuid;
 
 use crate::api_error::ApiError;
+use crate::api_types::{
+    ConnectRequest, ConnectResponse, JobResponse, PollResponse, RefreshRequest, RefreshResponse,
+    StatusResponse, SubmitResultRequest,
+};
 
 pub struct ApiClient {
     http: reqwest::Client,
@@ -19,7 +14,8 @@ pub struct ApiClient {
 
 impl ApiClient {
     #[must_use]
-    pub fn new(base_url: String) -> Self {
+    pub fn new(base_url: impl Into<String>) -> Self {
+        let base_url = base_url.into();
         Self {
             http: reqwest::Client::new(),
             base_url: base_url.trim_end_matches('/').to_owned(),

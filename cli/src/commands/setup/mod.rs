@@ -1,8 +1,8 @@
+use vulcanum_shared::validate::{validate_environment, Severity};
+use vulcanum_shared::worker_state;
+
 use crate::commands::connect;
 use crate::console;
-use crate::harness::validate::validate_environment;
-use crate::harness::validate::Severity;
-use crate::state;
 
 mod docker;
 pub(crate) mod image;
@@ -63,7 +63,7 @@ pub async fn run(
         eprintln!("Provisioning complete — worker environment is ready.");
     }
 
-    let already_connected = state::load_state().ok().flatten().is_some();
+    let already_connected = worker_state::load_state().ok().flatten().is_some();
 
     if already_connected && !force {
         console::info("Already connected to an instance — skipping registration.");
