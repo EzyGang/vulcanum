@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 vulcanum-shared = { path = "../shared" }
 anyhow = "1"
+serde_json = "1"
 clap = { version = "4", features = ["derive"] }
 hostname = "0.4"
 url = "2"

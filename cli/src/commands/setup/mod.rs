@@ -24,6 +24,7 @@ pub async fn run(
 
     console::step("Docker", docker::install_docker)?;
     console::step("Kata Containers", kata::install_kata)?;
+    console::step("Docker Kata runtime", kata::configure_docker_for_kata)?;
     console::step("Agent image", image::pull_agent_image)?;
     console::step("Systemd service", systemd::configure_systemd)?;
 
