@@ -13,39 +13,50 @@ Vulcanum is a symphony-like agentic work orchestrator. It provides:
 | Module | Path | Technology | Status |
 |--------|------|------------|--------|
 | CLI | `cli/` | Rust | Active |
-| Host Machine Server | `host-server/` | Rust | Active |
+| Host Machine Server | `worker-server/` | Rust | Active |
 | Server | `server/` | Rust | Active |
 | Shared Types & Utilities | `shared/` | Rust | Active |
 | Frontend UI | `frontend/` | TypeScript/Preact | Active |
 | Agent Server | *(omitted for now)* | — | — |
 
-Non-Rust components (Frontend UI, Agent Server) are **not** part of the Cargo workspace and will live in their own top-level directories when added.
-
-## Rust Workspace
-
-The Rust crates (`cli/`, `host-server/`, `server/`, `shared/`) are organized as a Cargo workspace defined in the root `Cargo.toml`. This enables:
-
-- Shared dependency resolution and locking.
-- The `shared` crate to be used as a path dependency by other workspace members.
-- A single `cargo check --workspace` or `cargo build --workspace` command.
+All packages (Rust and JS/TS) are managed as a single monorepo via **pnpm workspaces** and **Turborepo**. The Rust crates are also part of a Cargo workspace defined in the root `Cargo.toml`.
 
 ## Build & Run
 
-From the repository root you can build any workspace member:
+From the repository root, use turbo commands to build, lint, test, and format:
 
 ```bash
-# Build everything
-cargo build --workspace
+# Install all dependencies
+pnpm install
 
-# Build a specific crate
-cargo build -p vulcanum-server
-cargo build -p vulcanum-host-server
-cargo build -p vulcanum-cli
-cargo build -p vulcanum-shared
+# Build everything (Rust + frontend)
+pnpm run build
 
-# Run from the root
+# Build a specific package
+pnpm run build --filter=@repo/server
+pnpm run build --filter=@repo/cli
+
+# Run lints (Rust clippy + frontend biome)
+pnpm run lint
+
+# Type-check (frontend only)
+pnpm run type-check
+
+# Lint + type-check (full validation)
+pnpm run validate
+
+# Format everything
+pnpm run format
+
+# Run all tests
+pnpm run test
+
+# Dev server (frontend)
+pnpm run dev
+
+# Run a specific Rust binary
 cargo run -p vulcanum-server
-cargo run -p vulcanum-host-server
+cargo run -p vulcanum-worker-server
 cargo run -p vulcanum-cli
 ```
 
@@ -61,8 +72,8 @@ cargo run
 - Every Rust crate keeps its own `AGENTS.md` with **crate-specific** conventions.
 - All Rust crates share the same `rustfmt.toml` at the repository root.
 - All Rust code must follow the `rust-code-style` skill rules defined in `.agents/skills/rust-code-style/SKILL.md`.
-- Once done implementing run `make format && make check`, both should succeed with no warnings.
-- If you have changed/added new queries, run `make prep-queries` before committing.
+- Once done implementing run `pnpm run format && pnpm run validate`, both should succeed with no warnings.
+- If you have changed/added new queries, run `pnpm run prep-queries` before committing.
 
 ## Rust Code Guidelines
 
@@ -244,7 +255,7 @@ Do NOT use display names (`"To Do"`, `"In Progress"`) — these will fail with a
 For module-specific details, refer to the local `AGENTS.md` in each module directory:
 
 - `server/AGENTS.md` — Rust backend (migrations, SQLx, actix-web, env vars)
-- `host-server/AGENTS.md`
+- `worker-server/AGENTS.md`
 - `cli/AGENTS.md`
 - `frontend/AGENTS.md` — TypeScript/Preact UI (component patterns, API layer, design system)
 

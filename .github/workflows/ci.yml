@@ -15,12 +15,9 @@ jobs:
     name: CI succeeded
     runs-on: self-hosted
     if: always()
-
     needs:
-      - fmt
-      - clippy
+      - lint
       - test
-
     steps:
       - uses: actions/setup-python@v6
         with:
@@ -30,57 +27,35 @@ jobs:
         with:
           jobs: ${{ toJSON(needs) }}
 
-  fmt:
-    name: fmt
+  lint:
+    name: Format & Lint & Type-Check
     runs-on: self-hosted
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "fmt"
-          key: "fmt"
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-  clippy:
-    name: Run linter
-    runs-on: self-hosted
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
       - name: Install Build Dependencies
         run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
-
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2
+          components: clippy, rustfmt
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          shared-key: "clippy"
-          key: "clippy"
-
-      - name: clippy
-        run: cargo clippy --all-targets -- -D warnings
+          node-version: 22
+          cache: pnpm
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "lint"
+          key: "lint"
+      - run: pnpm install
+      - name: Run format, lint, and type-check
+        run: pnpm run validate
 
   test:
-    name: Run tests
+    name: Test
     runs-on: self-hosted
-    needs: [fmt, clippy]
+    needs: [lint]
     services:
       postgres:
         image: postgres
@@ -95,34 +70,30 @@ jobs:
           --health-retries 5
         ports:
           - 172.17.0.1:5432:5432
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
       - name: Install Build Dependencies
         run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          components: clippy
-
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2
+          node-version: 22
+          cache: pnpm
+      - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "test"
           key: "test"
-
       - name: Install SQLx CLI
         run: cargo install sqlx-cli
-
       - name: Run migrations
         env:
           DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
         run: sqlx migrate run --source server/migrations
-
+      - run: pnpm install
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
-        run: cargo test --workspace
+        run: pnpm run test

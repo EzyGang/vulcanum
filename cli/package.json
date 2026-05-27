@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "@repo/cli",
+  "scripts": {
+    "build": "cargo build -p vulcanum-cli",
+    "lint": "cargo fmt --check && cargo clippy --all-targets -p vulcanum-cli -- -D warnings",
+    "test": "cargo test -p vulcanum-cli",
+    "format": "cargo fmt"
+  }
+}

@@ -8,7 +8,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
-
+.turbo
 # Rust
 target/
 **/*.rs.bk
@@ -19,7 +19,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
- coverage/
+.turbo/
+coverage/
 .nyc_output/
 
 # Python

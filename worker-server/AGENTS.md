@@ -1,4 +1,4 @@
-# AGENTS.md - vulcanum-host-server
+# AGENTS.md - vulcanum-worker-server
 
 This crate is a member of the Vulcanum Cargo workspace.
 Refer to the root-level `AGENTS.md` for shared project conventions, Rust code guidelines, and build instructions.
@@ -11,9 +11,9 @@ Host Machine Server for the Vulcanum orchestrator.
 
 ```bash
 # From the repo root
-cargo run -p vulcanum-host-server
+cargo run -p vulcanum-worker-server
 
 # Or from this directory
-cd host-server
+cd worker-server
 cargo run
 ```

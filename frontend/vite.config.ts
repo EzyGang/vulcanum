@@ -18,5 +18,11 @@ export default defineConfig({
         secure: false
       }
     }
+  },
+  resolve: {
+    alias: {
+      'react': 'preact/compat',
+      'react-dom': 'preact/compat',
+    }
   }
 });

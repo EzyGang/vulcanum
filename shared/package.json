@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "@repo/shared",
+  "scripts": {
+    "build": "cargo build -p vulcanum-shared",
+    "lint": "cargo fmt --check && cargo clippy --all-targets -p vulcanum-shared -- -D warnings",
+    "test": "cargo test -p vulcanum-shared",
+    "format": "cargo fmt"
+  }
+}

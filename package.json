@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "format": "turbo format",
+    "validate": "turbo validate",
+    "prep-queries": "cargo sqlx prepare --workspace -- --all-targets",
+    "dev": "turbo dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.14"
+  },
+  "packageManager": "pnpm@11.3.0"
+}

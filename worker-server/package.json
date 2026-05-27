@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "@repo/worker-server",
+  "scripts": {
+    "build": "cargo build -p vulcanum-worker-server",
+    "lint": "cargo fmt --check && cargo clippy --all-targets -p vulcanum-worker-server -- -D warnings",
+    "test": "cargo test -p vulcanum-worker-server",
+    "format": "cargo fmt"
+  }
+}

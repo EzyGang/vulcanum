@@ -1,75 +1,82 @@
-# Vulcanum 🔥
+# Vulcanum
 
-**Kaneo-to-OpenCode automation bridge.** Poll Kaneo for tasks, dispatch to sandboxed workers, sync status back. Thin metadata/trigger broker — doesn't validate code, doesn't run agents itself.
+**Kaneo-to-OpenCode automation bridge.** Poll Kaneo for tasks, dispatch to workers, sync status back. Thin metadata/trigger broker — doesn't validate code, doesn't run agents itself.
 
 ## Architecture
 
 ![Architecture Diagram](design-docs/architecture-diagram.html)
 
-Vulcanum has two components:
+Vulcanum has three components:
 
 ### Server (Control Panel)
-- **actix-web** HTTP server
-- **PostgreSQL** for work runs, worker registry, project configs, run history
+- **actix-web** HTTP server with PostgreSQL
 - Background poller watches enabled Kaneo projects for new tasks
-- In-memory boolean cache per worker for lightweight "work pending?" checks
-- HTTP API for worker communication and user configuration
-- Single-user MVP — auth exists in code/DB but API not gated
+- Dispatcher assigns pending work runs to available workers via Redis flags
+- Full layered architecture (HTTP → Service → Repository)
 
 ### Worker Daemon
-- Single binary: `vulcanum connect --instance <url> --code <code>` → registers, gets token pair, daemonizes
-- Short-polls server for pending work (hits cache flag, not DB)
-- Spawns OpenCode inside a Kata Container VM on each work item
-- Reports results back, then idles
-- Linux-only (requires KVM for Kata Containers)
+- Single binary: `vulcanum worker connect <instance> --code <code>` — registers, gets token pair
+- Daemonized with systemd, runs polling loop
+- Short-polls server via `/api/v1/poll`, dispatches jobs, acks them to start execution
+- Spawns OpenCode inside a sandboxed harness (Kata Containers or host)
+- Reports results back via `/api/v1/jobs/{id}/result`
+
+### Frontend UI
+- Preact + @preact/signals + Tailwind CSS v4
+- Dashboard, workers, projects, and runs management
+- Served via nginx alongside the API
 
 ## How It Works
 
 ```
-Kaneo (todo column)  →  Server polls, creates work_run  →  Worker polls cache flag
-                                                              ↓
-                                                          Worker runs Kata container
-                                                         OpenCode does work, submits PR
-                                                              ↓
-Kaneo (in review)    ←  Server syncs status + comment  ←  Worker POSTs /result
+Kaneo (to-do column)   →  Server polls, creates work_run (pending)
+                               ↓
+                          Dispatcher assigns to idle worker (dispatched)
+                               ↓
+Worker polls /api/v1/poll  →  Claims via /api/v1/jobs/{id}/ack (running)
+                               ↓
+                          Worker runs harness, OpenCode does work
+                               ↓
+Kaneo (in-review)       ←  Server syncs status + PR comment  ←  Worker POSTs /result
 ```
-
-## Key Design Decisions (MVP)
-
-| Domain | Decision |
-|---|---|
-| **Harness** | OpenCode only |
-| **Isolation** | Kata Containers (Linux/KVM required) |
-| **Secrets** | Plain HTTPS (single-user, own infra; agent-vault for v2) |
-| **Communication** | HTTP polling (in-memory cache flags, stateless) |
-| **Task source** | Kaneo only — per-project opt-in with configurable column mapping |
-| **Worker auth** | Short-lived registration codes → token pair (refresh + access), revocable |
-| **Verification** | Mechanical: PR exists? Worker reports exit code. Server doesn't validate. |
-| **Language** | Rust (workspace: cli, host-server, server, shared) |
-| **Database** | PostgreSQL via SQLx |
 
 ## Repository Layout
 
-| Crate | Purpose | Status |
-|---|---|---|
-| `server/` | Control panel server (actix-web + SQLx) | Active |
-| `host-server/` | Worker daemon (polling, Kata container, harness spawning) | Placeholder |
-| `cli/` | Worker bootstrap (`vulcanum connect`) + future TUI | Placeholder |
-| `shared/` | Shared types and utilities | Empty |
-| `design-docs/` | Architecture analysis, technology research, diagrams | Active |
+| Package | Path | Technology | Status |
+|---------|------|------------|--------|
+| CLI | `cli/` | Rust | Active |
+| Worker Server | `worker-server/` | Rust | Active |
+| Server | `server/` | Rust | Active |
+| Shared | `shared/` | Rust | Active |
+| Frontend | `frontend/` | TypeScript/Preact | Active |
+
+All packages are managed via **pnpm workspaces** and **Turborepo**. Rust crates are also part of a Cargo workspace.
 
 ## Getting Started
 
 ```bash
-# Build everything
-cargo build --workspace
+# Install all dependencies
+pnpm install
 
-# Run main app (needs DATABASE_URL in .env)
+# Build everything (Rust + frontend)
+pnpm run build
+
+# Run main server (needs DATABASE_URL, REDIS_URL, JWT_SECRET in .env)
 cargo run -p vulcanum-server
 
-# Run checks
-make check
+# Run frontend dev server
+pnpm run dev
+
+# Run checks (format + lint + type-check)
+pnpm run validate
+
+# Run tests
+pnpm run test
 ```
+
+## CI
+
+CI runs on every push via `pnpm run validate` (format, clippy, lint, type-check) and `pnpm run test` (migrations + test suite). Configured in `.github/workflows/ci.yml`.
 
 ## Design Docs
 

@@ -193,6 +193,7 @@ html[data-theme="light"] {
     min-height: 100vh;
     width: 100%;
     overflow-x: hidden;
+    position: relative;
   }
 
   #app {
@@ -237,4 +238,8 @@ input[type="file"] {
   html {
     scroll-behavior: auto;
   }
+}
+
+.root {
+  isolation: isolate;
 }
