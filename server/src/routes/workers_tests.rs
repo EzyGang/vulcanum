@@ -1,74 +1,13 @@
-use std::sync::Arc;
-
 use actix_web::{test, web, App};
 
 use crate::app_state::AppState;
 use crate::routes;
-use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
 use crate::test_helpers;
 
 const TEST_PASSWORD: &str = "test-password";
 
 fn build_state(pool: sqlx::PgPool) -> AppState {
-    let kaneo = crate::services::kaneo::client::KaneoClient::new(
-        "cloud.kaneo.app".to_owned(),
-        String::new(),
-    );
-
-    let cfg = crate::config::AppConfig {
-        db_url: String::new(),
-        max_conns: 1,
-        poll_period_secs: 30,
-        jwt_secret: "test-secret".to_owned(),
-        stale_worker_threshold_secs: 120,
-        instance_password: TEST_PASSWORD.to_owned(),
-        kaneo_instance: "cloud.kaneo.app".to_owned(),
-        kaneo_api_key: String::new(),
-        redis_url: String::new(),
-    };
-
-    let workers_repo = crate::services::workers::repository::WorkersRepository::new();
-    let work_runs_repo = crate::services::work_runs::repository::WorkRunsRepository::new();
-    let project_configs_repo =
-        crate::services::project_configs::repository::ProjectConfigsRepository::new();
-    let dispatch_store = Arc::new(InMemoryDispatchStore::default());
-
-    let auth = crate::services::auth::service::AuthService::new(
-        crate::services::users::service::UsersService::new(
-            crate::services::users::repository::UsersRepository::new(),
-            pool.clone(),
-        ),
-        TEST_PASSWORD.to_owned(),
-        "test-secret".to_owned(),
-    );
-
-    AppState {
-        auth,
-        project_configs: crate::services::project_configs::service::ProjectConfigsService::new(
-            project_configs_repo.clone(),
-            pool.clone(),
-            kaneo.clone(),
-        ),
-        workers: crate::services::workers::service::WorkersService::new(
-            workers_repo.clone(),
-            pool.clone(),
-            &cfg,
-            Arc::new(crate::services::workers::code_store::InMemoryCodeStore::new()),
-        ),
-        jobs: crate::services::work_runs::service::WorkRunsService::new(
-            work_runs_repo.clone(),
-            workers_repo,
-            project_configs_repo,
-            pool.clone(),
-            dispatch_store.clone(),
-            kaneo.clone(),
-        ),
-        db_pool: pool,
-        kaneo,
-        work_runs: work_runs_repo,
-        dispatch_store,
-        jwt_secret: cfg.jwt_secret.clone(),
-    }
+    test_helpers::build_state(pool)
 }
 
 fn auth_header(token: &str) -> (&str, String) {

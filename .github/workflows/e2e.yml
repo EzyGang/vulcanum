@@ -1,0 +1,77 @@
+name: E2E Integration Tests
+
+concurrency:
+  group: e2e-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+
+env:
+  SQLX_OFFLINE: true
+
+jobs:
+  e2e:
+    name: E2E Worker-Server Protocol
+    runs-on: self-hosted
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vulcanum_e2e
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 172.17.0.1:5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 172.17.0.1:6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Build Dependencies
+        run: |
+          sudo dpkg --configure -a
+          sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "e2e"
+          key: "e2e"
+
+      - name: Install SQLx CLI
+        run: cargo install sqlx-cli
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_e2e
+        run: sqlx migrate run --source server/migrations
+
+      - run: pnpm install
+      - name: Run e2e tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_e2e
+          REDIS_URL: redis://172.17.0.1:6379
+        run: pnpm --filter=@repo/server run test -- e2e
