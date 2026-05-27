@@ -15,7 +15,8 @@
     },
     "test": {
       "dependsOn": ["build"],
-      "cache": true
+      "cache": true,
+      "passThroughEnv": ["DATABASE_URL"]
     },
     "validate": {
       "dependsOn": ["lint", "type-check"]

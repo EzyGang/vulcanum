@@ -3,8 +3,8 @@ use uuid::Uuid;
 
 use crate::api_error::ApiError;
 use crate::api_types::{
-    ConnectRequest, ConnectResponse, JobResponse, PollResponse, RefreshRequest, RefreshResponse,
-    StatusResponse, SubmitResultRequest,
+    AckRequest, ConnectRequest, ConnectResponse, JobResponse, PollResponse, RefreshRequest,
+    RefreshResponse, StatusResponse, SubmitResultRequest,
 };
 
 pub struct ApiClient {
@@ -104,6 +104,7 @@ impl ApiClient {
             .http
             .post(&url)
             .bearer_auth(access_token)
+            .json(&AckRequest {})
             .send()
             .await
             .context("ack request failed")?;

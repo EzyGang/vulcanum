@@ -207,6 +207,7 @@ async fn ack_job_returns_200(pool: sqlx::PgPool) {
     let req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
         .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
+        .set_json(serde_json::json!({}))
         .to_request();
     let resp = test::call_service(&app, req).await;
 
@@ -241,6 +242,7 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
     let req_a = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
         .insert_header(("Authorization", build_worker_token(worker_a).as_str()))
+        .set_json(serde_json::json!({}))
         .to_request();
     let resp_a = test::call_service(&app, req_a).await;
     assert_eq!(resp_a.status(), 200);
@@ -248,6 +250,7 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
     let req_b = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
         .insert_header(("Authorization", build_worker_token(worker_b).as_str()))
+        .set_json(serde_json::json!({}))
         .to_request();
     let resp_b = test::call_service(&app, req_b).await;
     assert_eq!(resp_b.status(), 409);
@@ -276,6 +279,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
     let ack_req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))
         .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
+        .set_json(serde_json::json!({}))
         .to_request();
     test::call_service(&app, ack_req).await;
 
