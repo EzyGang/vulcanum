@@ -1,7 +1,7 @@
 use std::process::{Command, Stdio};
 
 use super::utils::which;
-use vulcanum_shared::constants::DEFAULT_AGENT_IMAGE;
+use vulcanum_shared::constants::DEFAULT_IMAGE;
 
 pub fn pull_agent_image() -> anyhow::Result<()> {
     if !which("docker") {
@@ -11,14 +11,14 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
     }
 
     let status = Command::new("docker")
-        .args(["pull", DEFAULT_AGENT_IMAGE])
+        .args(["pull", DEFAULT_IMAGE])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .map_err(|e| anyhow::anyhow!("failed to run docker pull: {e}"))?;
 
     if !status.success() {
-        anyhow::bail!("docker pull '{DEFAULT_AGENT_IMAGE}' failed");
+        anyhow::bail!("docker pull '{DEFAULT_IMAGE}' failed");
     }
 
     Ok(())

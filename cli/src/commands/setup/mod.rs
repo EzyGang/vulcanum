@@ -147,34 +147,28 @@ fn resolve_backend(
     mode: InteractionMode,
     isolation: Option<crate::IsolationBackend>,
 ) -> anyhow::Result<Backend> {
-    match mode {
-        InteractionMode::NonInteractive => match isolation {
-            Some(crate::IsolationBackend::Kata) => {
-                if !utils::is_kvm_available() {
-                    anyhow::bail!("--isolation=kata requires KVM, but /dev/kvm is not available");
-                }
-                Ok(Backend::Kata)
+    let backend = match isolation {
+        Some(crate::IsolationBackend::Kata) => {
+            if !utils::is_kvm_available() {
+                anyhow::bail!("--isolation=kata requires KVM, but /dev/kvm is not available");
             }
-            Some(crate::IsolationBackend::Gvisor) => Ok(Backend::Gvisor),
-            Some(crate::IsolationBackend::None) => Ok(Backend::None),
-            None => {
+            Backend::Kata
+        }
+        Some(crate::IsolationBackend::Gvisor) => Backend::Gvisor,
+        Some(crate::IsolationBackend::None) => Backend::None,
+        None => match mode {
+            InteractionMode::NonInteractive => {
                 anyhow::bail!(
                     "--isolation is required in non-interactive mode (kata, gvisor, or none)"
                 );
             }
-        },
-        InteractionMode::Interactive => match isolation {
-            Some(crate::IsolationBackend::Kata) => {
-                if !utils::is_kvm_available() {
-                    anyhow::bail!("--isolation=kata requires KVM, but /dev/kvm is not available");
-                }
-                Ok(Backend::Kata)
+            InteractionMode::Interactive => {
+                return prompt_backend();
             }
-            Some(crate::IsolationBackend::Gvisor) => Ok(Backend::Gvisor),
-            Some(crate::IsolationBackend::None) => Ok(Backend::None),
-            None => prompt_backend(),
         },
-    }
+    };
+
+    Ok(backend)
 }
 
 fn prompt_backend() -> anyhow::Result<Backend> {

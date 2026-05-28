@@ -1,9 +1,13 @@
+pub mod container;
 pub mod errors;
 pub mod gvisor;
 pub mod host;
 pub mod kata;
 mod parse;
 pub(crate) mod runner;
+
+#[cfg(test)]
+mod container_tests;
 
 #[cfg(test)]
 mod errors_tests;
