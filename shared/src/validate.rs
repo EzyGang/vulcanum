@@ -14,27 +14,42 @@ pub struct ValidationIssue {
     pub message: String,
 }
 
-/// Runs all environment checks and returns a list of issues.
-pub fn validate_environment() -> Vec<ValidationIssue> {
+/// Runs all environment checks for a specific backend and returns a list of issues.
+pub fn validate_environment_for_backend(backend: &str) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
-    check_kvm();
     check_binary("docker", &mut issues, Severity::Warning);
-    check_binary("kata-runtime", &mut issues, Severity::Warning);
+
+    match backend {
+        "kata" => {
+            check_kvm(&mut issues);
+            check_binary("kata-runtime", &mut issues, Severity::Warning);
+        }
+        "gvisor" => {
+            check_binary("runsc", &mut issues, Severity::Warning);
+        }
+        _ => {
+            check_binary("opencode", &mut issues, Severity::Warning);
+        }
+    }
+
     issues
 }
 
-/// Validates the environment and returns true if no critical issues exist.
-pub fn is_environment_ready() -> bool {
-    validate_environment()
+/// Validates the environment for a specific backend and returns true if no critical issues exist.
+pub fn is_environment_ready_for_backend(backend: &str) -> bool {
+    validate_environment_for_backend(backend)
         .iter()
         .all(|i| i.severity != Severity::Critical)
 }
 
-fn check_kvm() {
+fn check_kvm(issues: &mut Vec<ValidationIssue>) {
     let kvm_path = PathBuf::from("/dev/kvm");
     if !kvm_path.exists() {
-        tracing::debug!("/dev/kvm not found — KVM acceleration unavailable");
+        issues.push(ValidationIssue {
+            severity: Severity::Critical,
+            message: "/dev/kvm not found — KVM acceleration unavailable".to_owned(),
+        });
         return;
     }
 
@@ -46,15 +61,20 @@ fn check_kvm() {
                 use std::os::unix::fs::MetadataExt;
                 let mode = meta.mode() & 0o777;
                 if mode & 0o666 == 0 {
-                    tracing::debug!(
-                        "/dev/kvm exists but permissions ({:03o}) may prevent access",
-                        mode,
-                    );
+                    issues.push(ValidationIssue {
+                        severity: Severity::Warning,
+                        message: format!(
+                            "/dev/kvm exists but permissions ({mode:03o}) may prevent access"
+                        ),
+                    });
                 }
             }
         }
         Err(e) => {
-            tracing::debug!("cannot read /dev/kvm metadata: {e}");
+            issues.push(ValidationIssue {
+                severity: Severity::Warning,
+                message: format!("cannot read /dev/kvm metadata: {e}"),
+            });
         }
     }
 }

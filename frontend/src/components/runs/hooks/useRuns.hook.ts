@@ -28,7 +28,7 @@ export const useRuns = () => {
   const hasPrevPage = page.value > 0;
 
   const deleteRunMutation = useApiMutation((id: string) => deleteRun(id), {
-    onSuccess: () => invalidate(['runs'])
+    onSuccess: () => invalidate('runs')
   });
 
   const deleteError = useSignal<string | null>(null);

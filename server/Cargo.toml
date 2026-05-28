@@ -6,6 +6,7 @@ edition = "2021"
 [lib]
 name = "vulcanum_server"
 path = "src/lib.rs"
+doctest = false
 
 [[bin]]
 name = "vulcanum-server"

@@ -3532,6 +3532,7 @@ dependencies = [
  "dialoguer",
  "hostname",
  "indicatif",
+ "serde_json",
  "tokio",
  "tracing",
  "url",

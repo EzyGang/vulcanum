@@ -7,6 +7,7 @@ use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
+use crate::harness::gvisor::GvisorHarness;
 use crate::harness::host::HostHarness;
 use crate::harness::kata::KataHarness;
 use crate::harness::{AgentHarness, HarnessKind};
@@ -150,6 +151,10 @@ pub(crate) fn create_harness() -> HarnessKind {
         "kata" => {
             tracing::debug!("using Kata Containers harness");
             HarnessKind::Kata(KataHarness::new())
+        }
+        "gvisor" => {
+            tracing::debug!("using gVisor harness");
+            HarnessKind::Gvisor(GvisorHarness::new())
         }
         _ => {
             tracing::debug!("using host harness");

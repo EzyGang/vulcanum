@@ -9,7 +9,7 @@ use tokio::time::sleep;
 use vulcanum_shared::api_error::ApiError;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::token::ensure_valid_token;
-use vulcanum_shared::validate::is_environment_ready;
+use vulcanum_shared::validate::is_environment_ready_for_backend;
 use vulcanum_shared::worker_state::{load_state, WorkerState};
 
 use job::handle_job;
@@ -27,7 +27,8 @@ enum TickOutcome {
 }
 
 pub async fn run() -> anyhow::Result<()> {
-    if !is_environment_ready() {
+    let harness = std::env::var("VULCANUM_HARNESS").unwrap_or_else(|_| "host".to_owned());
+    if !is_environment_ready_for_backend(&harness) {
         tracing::error!("environment validation failed — run `vulcanum worker setup` for details");
         return Err(anyhow::anyhow!(
             "worker environment is not ready — run `vulcanum worker setup` to diagnose"
@@ -36,7 +37,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let mut state = load_state()?.ok_or_else(|| {
         anyhow::anyhow!(
-            "no worker state found — run `vulcanum worker connect <instance> --code <code>` first"
+            "no worker state found — run `vulcanum worker setup --instance <instance> --code <code>` first"
         )
     })?;
 
@@ -95,10 +96,10 @@ async fn tick(
     if let Err(e) = ensure_valid_token(client, state, refresh_buffer_secs).await {
         if is_fatal_api_error(&e) {
             return TickOutcome::Fatal(format!(
-                "token refresh failed permanently: {e:#} — run `vulcanum worker connect <instance> --code <code>` to reconnect"
+                "token refresh failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"
             ));
         }
-        tracing::warn!("token refresh failed: {e:#} — if this persists, try `vulcanum worker connect <instance> --code <code>`");
+        tracing::warn!("token refresh failed: {e:#} — if this persists, try `vulcanum worker setup --instance <instance> --code <code>`");
         return TickOutcome::Transient(e.to_string());
     }
 
@@ -116,7 +117,7 @@ async fn tick(
         Err(e) => {
             if is_fatal_api_error(&e) {
                 return TickOutcome::Fatal(format!(
-                    "poll failed permanently: {e:#} — run `vulcanum worker connect <instance> --code <code>` to reconnect"
+                    "poll failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"
                 ));
             }
             TickOutcome::Transient(e.to_string())

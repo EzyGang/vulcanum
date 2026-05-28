@@ -2,7 +2,7 @@ mod commands;
 mod console;
 
 use anyhow::Context;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(name = "vulcanum", about = "Vulcanum worker CLI")]
@@ -13,7 +13,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Worker commands (connect, daemon, setup)
+    /// Worker commands (daemon, setup)
     #[command(visible_alias = "wrk")]
     Worker {
         #[command(subcommand)]
@@ -23,17 +23,9 @@ enum Command {
 
 #[derive(Subcommand)]
 enum WorkerCommand {
-    /// Register a worker with an instance using a connection code
-    Connect {
-        /// Instance URL (e.g. https://vulcanum.example.com)
-        instance: Option<String>,
-        /// Connection code from the instance
-        #[arg(long)]
-        code: Option<String>,
-    },
     /// Run the worker daemon (poll loop, job execution)
     Daemon,
-    /// Install Docker, Kata Containers, pull agent image, configure systemd, and register with an instance
+    /// Install dependencies, configure systemd, and register with an instance
     Setup {
         /// Instance URL (e.g. https://vulcanum.example.com)
         #[arg(long)]
@@ -44,7 +36,17 @@ enum WorkerCommand {
         /// Force re-registration even if already connected
         #[arg(long)]
         force: bool,
+        /// Isolation backend to use (kata, gvisor, or none)
+        #[arg(long, value_enum)]
+        isolation: Option<IsolationBackend>,
     },
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum IsolationBackend {
+    Kata,
+    Gvisor,
+    None,
 }
 
 #[tokio::main]
@@ -55,15 +57,13 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Worker { cmd } => match cmd {
-            WorkerCommand::Connect { instance, code } => {
-                commands::connect::run(code, instance).await
-            }
             WorkerCommand::Daemon => run_daemon_subcommand().await,
             WorkerCommand::Setup {
                 instance,
                 code,
                 force,
-            } => commands::setup::run(code, instance, force).await,
+                isolation,
+            } => commands::setup::run(code, instance, force, isolation).await,
         },
     }
 }

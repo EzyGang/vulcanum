@@ -1,11 +1,19 @@
+pub mod container;
 pub mod errors;
+pub mod gvisor;
 pub mod host;
 pub mod kata;
 mod parse;
 pub(crate) mod runner;
 
 #[cfg(test)]
+mod container_tests;
+
+#[cfg(test)]
 mod errors_tests;
+
+#[cfg(test)]
+mod gvisor_tests;
 
 #[cfg(test)]
 mod host_tests;
@@ -20,6 +28,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::harness::errors::HarnessError;
+use crate::harness::gvisor::GvisorHarness;
 use crate::harness::host::HostHarness;
 use crate::harness::kata::KataHarness;
 
@@ -52,11 +61,12 @@ impl Default for ResourceLimits {
 
 /// Enum dispatch over harness implementations.
 ///
-/// Allows the daemon to select between host and Kata harnesses at runtime
+/// Allows the daemon to select between host, Kata, and gVisor harnesses at runtime
 /// without requiring trait objects or the async_trait crate.
 pub enum HarnessKind {
     Host(HostHarness),
     Kata(KataHarness),
+    Gvisor(GvisorHarness),
 }
 
 impl AgentHarness for HarnessKind {
@@ -78,14 +88,19 @@ impl AgentHarness for HarnessKind {
                 k.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
                     .await
             }
+            Self::Gvisor(g) => {
+                g.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
+                    .await
+            }
         }
     }
 }
 
 /// Abstract contract for spawning an agent job executor.
 ///
-/// Implementations may run on the host (HostHarness) or inside a Kata
-/// Containers VM (KataHarness) via Docker with --runtime=kata-runtime.
+/// Implementations may run on the host (HostHarness), inside a Kata
+/// Containers VM (KataHarness) via Docker with --runtime=kata-runtime,
+/// or inside a gVisor sandbox (GvisorHarness) via Docker with --runtime=runsc.
 pub trait AgentHarness {
     /// Spawn the job, returning the result once the agent exits.
     fn spawn(
