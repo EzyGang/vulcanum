@@ -1,7 +1,8 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::kaneo::client::{slugify, KaneoClient};
+use crate::services::integrations::client::IntegrationClient;
+use crate::services::kaneo::client::slugify;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
     ColumnInfo, CreateProjectConfigRequest, ProjectConfig, UpdateProjectConfigRequest,
@@ -14,12 +15,16 @@ use crate::services::project_configs::repository::{
 pub struct ProjectConfigsService {
     pub repo: ProjectConfigsRepository,
     pub db: PgPool,
-    pub kaneo: KaneoClient,
+    pub integration: IntegrationClient,
 }
 
 impl ProjectConfigsService {
-    pub fn new(repo: ProjectConfigsRepository, db: PgPool, kaneo: KaneoClient) -> Self {
-        Self { repo, db, kaneo }
+    pub fn new(repo: ProjectConfigsRepository, db: PgPool, integration: IntegrationClient) -> Self {
+        Self {
+            repo,
+            db,
+            integration,
+        }
     }
 
     pub async fn list_all(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
@@ -94,6 +99,7 @@ impl ProjectConfigsService {
                     agents_md: params.agents_md.as_deref(),
                     kaneo_workspace_id: params.kaneo_workspace_id.as_deref(),
                     enabled: params.enabled,
+                    integration_type: params.integration_type,
                 },
             )
             .await
@@ -105,17 +111,25 @@ impl ProjectConfigsService {
 
     pub async fn fetch_columns(&self, id: Uuid) -> Result<Vec<ColumnInfo>, ProjectConfigsError> {
         let config = self.repo.find_by_id(&self.db, id).await?;
-        let columns = self.kaneo.fetch_columns(&config.kaneo_project_id).await?;
+        let columns = self
+            .integration
+            .fetch_columns(&config.kaneo_project_id)
+            .await
+            .map_err(ProjectConfigsError::Integration)?;
 
-        Ok(columns.iter().map(ColumnInfo::from_kaneo).collect())
+        Ok(columns.iter().map(ColumnInfo::from_integration).collect())
     }
 
     pub async fn fetch_columns_by_kaneo_id(
         &self,
         kaneo_project_id: &str,
     ) -> Result<Vec<ColumnInfo>, ProjectConfigsError> {
-        let columns = self.kaneo.fetch_columns(kaneo_project_id).await?;
-        Ok(columns.iter().map(ColumnInfo::from_kaneo).collect())
+        let columns = self
+            .integration
+            .fetch_columns(kaneo_project_id)
+            .await
+            .map_err(ProjectConfigsError::Integration)?;
+        Ok(columns.iter().map(ColumnInfo::from_integration).collect())
     }
 
     async fn validate_columns_exist(
@@ -123,12 +137,13 @@ impl ProjectConfigsService {
         project_id: &str,
         column_slug: &str,
     ) -> Result<(), ProjectConfigsError> {
-        let columns = self.kaneo.fetch_columns(project_id).await?;
+        let columns = self
+            .integration
+            .fetch_columns(project_id)
+            .await
+            .map_err(ProjectConfigsError::Integration)?;
 
-        let found = columns.iter().any(|col| match col.status.as_deref() {
-            Some(status) => status == column_slug,
-            None => slugify(&col.name) == column_slug,
-        });
+        let found = columns.iter().any(|col| col.slug == column_slug);
 
         if found {
             Ok(())

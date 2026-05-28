@@ -3,13 +3,14 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::services::kaneo::client::slugify;
+use crate::services::integrations::model::{IntegrationColumn, IntegrationType};
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
     pub id: Uuid,
     pub kaneo_project_id: String,
     pub kaneo_workspace_id: String,
+    pub integration_type: IntegrationType,
     pub enabled: bool,
     pub pickup_column: String,
     pub target_column: String,
@@ -38,6 +39,8 @@ pub struct CreateProjectConfigRequest {
     pub repo_url: String,
     #[serde(default)]
     pub agents_md: String,
+    #[serde(default)]
+    pub integration_type: IntegrationType,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,6 +61,8 @@ pub struct UpdateProjectConfigRequest {
     pub kaneo_workspace_id: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
+    #[serde(default)]
+    pub integration_type: Option<IntegrationType>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -68,16 +73,11 @@ pub struct ColumnInfo {
 }
 
 impl ColumnInfo {
-    pub fn from_kaneo(col: &kaneo_cli::api::types::Column) -> Self {
-        let slug = col
-            .status
-            .as_deref()
-            .map(|s| s.to_owned())
-            .unwrap_or_else(|| slugify(&col.name));
+    pub fn from_integration(col: &IntegrationColumn) -> Self {
         Self {
             id: col.id.clone(),
             name: col.name.clone(),
-            slug,
+            slug: col.slug.clone(),
         }
     }
 }

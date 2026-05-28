@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::integrations::client::IntegrationClient;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::users::repository::UsersRepository;
@@ -37,7 +38,7 @@ pub async fn insert_project_config(pool: &sqlx::PgPool, kaneo_project_id: &str) 
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template) VALUES ($1, $2, 'Review {{task_title}}')",
+        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo')",
         id,
         kaneo_project_id,
     )
@@ -70,10 +71,7 @@ pub async fn insert_pending_work_run(
 }
 
 pub fn build_state(pool: sqlx::PgPool) -> AppState {
-    let kaneo = crate::services::kaneo::client::KaneoClient::new(
-        "cloud.kaneo.app".to_owned(),
-        String::new(),
-    );
+    let kaneo = IntegrationClient::new_kaneo("cloud.kaneo.app".to_owned(), String::new());
 
     let cfg = crate::config::AppConfig {
         db_url: String::new(),
@@ -120,7 +118,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
             kaneo.clone(),
         ),
         db_pool: pool,
-        kaneo,
+        integration: kaneo,
         work_runs: work_runs_repo,
         dispatch_store,
         jwt_secret: cfg.jwt_secret.clone(),

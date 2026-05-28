@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use crate::config::AppConfig;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::flag_store::DispatchStore;
-use crate::services::kaneo::client::KaneoClient;
+use crate::services::integrations::client::IntegrationClient;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::users::repository::UsersRepository;
@@ -23,7 +23,7 @@ pub struct AppState {
     pub workers: WorkersService,
     pub jobs: WorkRunsService,
     pub db_pool: PgPool,
-    pub kaneo: KaneoClient,
+    pub integration: IntegrationClient,
     pub work_runs: WorkRunsRepository,
     pub dispatch_store: Arc<dyn DispatchStore>,
     pub jwt_secret: String,
@@ -36,7 +36,8 @@ impl AppState {
             .connect(&cfg.db_url)
             .await?;
 
-        let kaneo = KaneoClient::new(cfg.kaneo_instance.clone(), cfg.kaneo_api_key.clone());
+        let kaneo =
+            IntegrationClient::new_kaneo(cfg.kaneo_instance.clone(), cfg.kaneo_api_key.clone());
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
         let auth = AuthService::new(users, cfg.instance_password.clone(), cfg.jwt_secret.clone());
@@ -75,7 +76,7 @@ impl AppState {
             workers,
             jobs,
             db_pool,
-            kaneo,
+            integration: kaneo,
             work_runs,
             dispatch_store,
             jwt_secret,
@@ -87,7 +88,7 @@ impl AppState {
         poll_period_secs: u64,
     ) -> crate::services::poller::service::PollerService {
         crate::services::poller::service::PollerService::new(
-            Arc::new(self.kaneo.clone()),
+            Arc::new(self.integration.clone()),
             self.project_configs.repo.clone(),
             self.work_runs.clone(),
             self.db_pool.clone(),

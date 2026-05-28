@@ -129,8 +129,8 @@ impl From<ProjectConfigsError> for AppError {
                 tracing::error!(error = %e, operation = "project_configs", "database error");
                 Self::Internal
             }
-            ProjectConfigsError::Kaneo(e) => {
-                tracing::error!(error = %e, operation = "project_configs", "kaneo error");
+            ProjectConfigsError::Integration(e) => {
+                tracing::error!(error = %e, operation = "project_configs", "integration error");
                 Self::Internal
             }
             ProjectConfigsError::ColumnNotFound(e) => {
