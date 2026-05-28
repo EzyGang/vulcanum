@@ -3,6 +3,10 @@ name = "vulcanum-cli"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "vulcanum"
+path = "src/main.rs"
+
 [dependencies]
 vulcanum-shared = { path = "../shared" }
 anyhow = "1"

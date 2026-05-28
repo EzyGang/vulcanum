@@ -11,9 +11,9 @@ Host Machine Server for the Vulcanum orchestrator.
 
 ```bash
 # From the repo root
-cargo run -p vulcanum-worker-server
+cargo run -p vulcanum-worker-server --bin vulcanum-server
 
 # Or from this directory
 cd worker-server
-cargo run
+cargo run --bin vulcanum-server
 ```

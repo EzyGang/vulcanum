@@ -55,16 +55,16 @@ pnpm run test
 pnpm run dev
 
 # Run a specific Rust binary
-cargo run -p vulcanum-server
-cargo run -p vulcanum-worker-server
-cargo run -p vulcanum-cli
+cargo run -p vulcanum-server --bin vulcanum-web
+cargo run -p vulcanum-worker-server --bin vulcanum-server
+cargo run -p vulcanum-cli --bin vulcanum
 ```
 
 You can also enter a crate directory and build it independently:
 
 ```bash
 cd server/
-cargo run
+cargo run --bin vulcanum-web
 ```
 
 ## Conventions

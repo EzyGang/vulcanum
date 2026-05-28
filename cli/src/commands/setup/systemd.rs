@@ -53,9 +53,9 @@ fn worker_server_path() -> anyhow::Result<String> {
         .parent()
         .ok_or_else(|| anyhow::anyhow!("cannot determine binary directory"))?;
     let name = if cfg!(windows) {
-        "vulcanum-worker-server.exe"
+        "vulcanum-server.exe"
     } else {
-        "vulcanum-worker-server"
+        "vulcanum-server"
     };
     let path = dir.join(name);
     if !path.exists() {

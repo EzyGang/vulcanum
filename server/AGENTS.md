@@ -11,11 +11,11 @@ Server for the Vulcanum orchestrator.
 
 ```bash
 # From the repo root
-cargo run -p vulcanum-server
+cargo run -p vulcanum-server --bin vulcanum-web
 
 # Or from this directory
 cd server
-cargo run
+cargo run --bin vulcanum-web
 ```
 
 ## Migrations

@@ -26,14 +26,14 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build CLI (release)
-        run: cargo build --release --bin vulcanum-cli
+        run: cargo build --release --bin vulcanum
 
       - name: Build Worker Server (release)
-        run: cargo build --release --bin vulcanum-worker-server
+        run: cargo build --release --bin vulcanum-server
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            target/release/vulcanum-cli
-            target/release/vulcanum-worker-server
+            target/release/vulcanum
+            target/release/vulcanum-server

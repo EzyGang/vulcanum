@@ -3,6 +3,10 @@ name = "vulcanum-worker-server"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "vulcanum-server"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }

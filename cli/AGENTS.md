@@ -11,9 +11,9 @@ CLI for the Vulcanum orchestrator.
 
 ```bash
 # From the repo root
-cargo run -p vulcanum-cli
+cargo run -p vulcanum-cli --bin vulcanum
 
 # Or from this directory
 cd cli
-cargo run
+cargo run --bin vulcanum
 ```

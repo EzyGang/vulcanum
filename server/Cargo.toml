@@ -9,7 +9,7 @@ path = "src/lib.rs"
 doctest = false
 
 [[bin]]
-name = "vulcanum-server"
+name = "vulcanum-web"
 path = "src/main.rs"
 
 [[bin]]

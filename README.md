@@ -55,23 +55,8 @@ All packages are managed via **pnpm workspaces** and **Turborepo**. Rust crates 
 ## Getting Started
 
 ```bash
-# Install all dependencies
-pnpm install
-
-# Build everything (Rust + frontend)
-pnpm run build
-
 # Run main server (needs DATABASE_URL, REDIS_URL, JWT_SECRET in .env)
-cargo run -p vulcanum-server
-
-# Run frontend dev server
-pnpm run dev
-
-# Run checks (format + lint + type-check)
-pnpm run validate
-
-# Run tests
-pnpm run test
+cargo run -p vulcanum-server --bin vulcanum-web
 ```
 
 ## CI

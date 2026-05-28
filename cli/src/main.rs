@@ -74,9 +74,9 @@ async fn run_daemon_subcommand() -> anyhow::Result<()> {
         .parent()
         .ok_or_else(|| anyhow::anyhow!("failed to get exe directory"))?;
     let name = if cfg!(windows) {
-        "vulcanum-worker-server.exe"
+        "vulcanum-server.exe"
     } else {
-        "vulcanum-worker-server"
+        "vulcanum-server"
     };
     let path = dir.join(name);
     if !path.exists() {
