@@ -1,6 +1,6 @@
 #[derive(Debug, thiserror::Error)]
 pub enum HarnessError {
-    /// Docker or kata-runtime are missing, or the container image is not pulled.
+    /// Docker or the container runtime are missing, or the container image is not pulled.
     #[error("install error: {0}")]
     Install(String),
 

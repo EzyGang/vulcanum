@@ -3,7 +3,7 @@ use super::utils::run_systemctl;
 const UNIT_NAME: &str = "vulcanum-worker";
 const UNIT_PATH: &str = "/etc/systemd/system/vulcanum-worker.service";
 
-pub fn configure_systemd() -> anyhow::Result<()> {
+pub fn configure_systemd(harness: &str) -> anyhow::Result<()> {
     let binary_path = worker_server_path()?;
     tracing::debug!("binding systemd to binary at: {binary_path}");
 
@@ -18,7 +18,7 @@ pub fn configure_systemd() -> anyhow::Result<()> {
          ExecStart={binary_path}\n\
          Restart=always\n\
          RestartSec=10\n\
-         Environment=VULCANUM_HARNESS=kata\n\
+         Environment=VULCANUM_HARNESS={harness}\n\
          \n\
          [Install]\n\
          WantedBy=multi-user.target\n"

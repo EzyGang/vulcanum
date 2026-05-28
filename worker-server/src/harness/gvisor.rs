@@ -9,11 +9,11 @@ use crate::harness::errors::HarnessError;
 use crate::harness::runner::{self, RunnerEnv};
 use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
 
-pub struct KataHarness {
+pub struct GvisorHarness {
     pub(crate) image: String,
 }
 
-impl KataHarness {
+impl GvisorHarness {
     pub fn new() -> Self {
         let image = std::env::var("KATA_IMAGE").unwrap_or_else(|_| DEFAULT_AGENT_IMAGE.to_owned());
         Self { image }
@@ -48,13 +48,13 @@ impl KataHarness {
     }
 }
 
-impl Default for KataHarness {
+impl Default for GvisorHarness {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl AgentHarness for KataHarness {
+impl AgentHarness for GvisorHarness {
     async fn spawn(
         &self,
         prompt: &str,
@@ -96,7 +96,7 @@ impl AgentHarness for KataHarness {
                 let repo_path = workdir_for_cmd.join("repo");
 
                 cmd.arg("run")
-                    .arg("--runtime=kata-runtime")
+                    .arg("--runtime=runsc")
                     .arg("--rm")
                     .arg("--name")
                     .arg(&container_name)
