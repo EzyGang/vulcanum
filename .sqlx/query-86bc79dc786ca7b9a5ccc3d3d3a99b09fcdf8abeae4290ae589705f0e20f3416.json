@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86bc79dc786ca7b9a5ccc3d3d3a99b09fcdf8abeae4290ae589705f0e20f3416"
+}

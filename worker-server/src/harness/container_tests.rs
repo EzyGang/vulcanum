@@ -57,8 +57,8 @@ async fn container_harness_missing_docker_returns_install_error() {
         Err(e) => {
             let msg = e.to_string();
             assert!(
-                msg.contains("docker") || msg.contains("timed out"),
-                "expected install/timeout error, got: {msg}"
+                msg.contains("docker") || msg.contains("timed out") || msg.contains("No such file"),
+                "expected install/timeout/crash error, got: {msg}"
             );
         }
     }

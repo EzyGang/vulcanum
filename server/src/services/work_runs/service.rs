@@ -8,7 +8,7 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::services::dispatcher::flag_store::DispatchStore;
-use crate::services::integrations::client::IntegrationClient;
+use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::repository::WorkersRepository;
@@ -19,7 +19,7 @@ pub struct WorkRunsService {
     pub project_configs_repo: ProjectConfigsRepository,
     pub db: PgPool,
     pub dispatch_store: Arc<dyn DispatchStore>,
-    pub integration: IntegrationClient,
+    pub providers_repo: IntegrationProvidersRepository,
 }
 
 impl Clone for WorkRunsService {
@@ -30,7 +30,7 @@ impl Clone for WorkRunsService {
             project_configs_repo: self.project_configs_repo.clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
-            integration: self.integration.clone(),
+            providers_repo: self.providers_repo.clone(),
         }
     }
 }
@@ -42,7 +42,7 @@ impl WorkRunsService {
         project_configs_repo: ProjectConfigsRepository,
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
-        integration: IntegrationClient,
+        providers_repo: IntegrationProvidersRepository,
     ) -> Self {
         Self {
             work_runs_repo,
@@ -50,7 +50,7 @@ impl WorkRunsService {
             project_configs_repo,
             db,
             dispatch_store,
-            integration,
+            providers_repo,
         }
     }
 }

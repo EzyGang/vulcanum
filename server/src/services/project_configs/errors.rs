@@ -14,4 +14,6 @@ pub enum ProjectConfigsError {
     Integration(#[from] IntegrationError),
     #[error("column not found: {0}")]
     ColumnNotFound(String),
+    #[error("no provider configured for this project")]
+    NoProvider,
 }

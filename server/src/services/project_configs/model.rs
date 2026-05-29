@@ -19,6 +19,7 @@ pub struct ProjectConfig {
     pub repo_url: String,
     pub agents_md: String,
     pub created_at: DateTime<Utc>,
+    pub provider_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +42,7 @@ pub struct CreateProjectConfigRequest {
     pub agents_md: String,
     #[serde(default)]
     pub integration_type: IntegrationType,
+    pub provider_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,6 +65,14 @@ pub struct UpdateProjectConfigRequest {
     pub enabled: Option<bool>,
     #[serde(default)]
     pub integration_type: Option<IntegrationType>,
+    #[serde(default)]
+    pub provider_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LookupProjectResult {
+    pub name: String,
+    pub columns: Vec<ColumnInfo>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -4,7 +4,7 @@ use crate::services::kaneo::client::slugify;
 use crate::services::kaneo::client::KaneoClient;
 
 use super::errors::IntegrationError;
-use super::model::{IntegrationColumn, IntegrationTask};
+use super::model::{IntegrationColumn, IntegrationProject, IntegrationTask};
 
 #[derive(Clone)]
 pub enum IntegrationClient {
@@ -67,6 +67,27 @@ impl IntegrationClient {
                 .map_err(IntegrationError::from)?,
         };
         Ok(())
+    }
+
+    pub async fn lookup_project(
+        &self,
+        project_id: &str,
+    ) -> Result<IntegrationProject, IntegrationError> {
+        match self {
+            Self::Kaneo(client) => {
+                let project = client
+                    .lookup_project(project_id)
+                    .await
+                    .map_err(IntegrationError::from)?;
+                Ok(IntegrationProject { name: project.name })
+            }
+        }
+    }
+
+    pub fn instance_and_key(&self) -> (&str, &str) {
+        match self {
+            Self::Kaneo(client) => (&client.instance, &client.api_key),
+        }
     }
 }
 

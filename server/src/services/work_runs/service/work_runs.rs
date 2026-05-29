@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+use crate::services::integrations::client::IntegrationClient;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
@@ -29,30 +30,41 @@ impl WorkRunsService {
             .find_by_id(&self.db, run.project_config_id)
             .await;
 
-        let kaneo_project_id;
-        let kaneo_workspace_id;
-
-        match config {
-            Ok(c) => {
-                kaneo_project_id = c.kaneo_project_id;
-                kaneo_workspace_id = c.kaneo_workspace_id;
-            }
+        let (kaneo_project_id, kaneo_workspace_id, provider_id) = match config {
+            Ok(ref c) => (
+                c.kaneo_project_id.clone(),
+                c.kaneo_workspace_id.clone(),
+                c.provider_id,
+            ),
             Err(_) => {
                 tracing::warn!(
                     project_config_id = %run.project_config_id,
                     work_run_id = %id,
                     "project config not found for work run"
                 );
-                kaneo_project_id = String::new();
-                kaneo_workspace_id = String::new();
-            }
-        }
-
-        let (kaneo_instance, kaneo_api_key) = match &self.integration {
-            crate::services::integrations::client::IntegrationClient::Kaneo(client) => {
-                (client.instance.clone(), client.api_key.clone())
+                (String::new(), String::new(), None)
             }
         };
+
+        let kaneo_instance;
+        let kaneo_api_key;
+
+        match provider_id {
+            Some(pid) => match self.providers_repo.find_by_id(&self.db, pid).await {
+                Ok(provider) => {
+                    kaneo_instance = provider.instance_url;
+                    kaneo_api_key = provider.api_key;
+                }
+                Err(_) => {
+                    kaneo_instance = String::new();
+                    kaneo_api_key = String::new();
+                }
+            },
+            None => {
+                kaneo_instance = String::new();
+                kaneo_api_key = String::new();
+            }
+        }
 
         Ok(JobResponse {
             prompt_text: run.prompt_text,
@@ -209,13 +221,39 @@ impl WorkRunsService {
             }
         };
 
+        let provider_id = match project_config.provider_id {
+            Some(pid) => pid,
+            None => {
+                tracing::warn!(
+                    project_config_id = %run.project_config_id,
+                    work_run_id = %run.id,
+                    "no provider configured for project config",
+                );
+                return;
+            }
+        };
+
+        let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!(
+                    provider_id = %provider_id,
+                    work_run_id = %run.id,
+                    error = %e,
+                    "failed to look up provider",
+                );
+                return;
+            }
+        };
+
+        let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
+
         let new_column = match status {
             WorkRunStatus::Completed => &project_config.target_column,
             _ => &project_config.pickup_column,
         };
 
-        if let Err(e) = self
-            .integration
+        if let Err(e) = client
             .update_task_status(&run.external_task_ref, new_column)
             .await
         {
@@ -227,8 +265,7 @@ impl WorkRunsService {
             );
         }
 
-        if let Err(e) = self
-            .integration
+        if let Err(e) = client
             .add_comment(&run.external_task_ref, &format!("PR: {}", params.pr_url))
             .await
         {

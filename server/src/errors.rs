@@ -2,6 +2,7 @@ use actix_web::{HttpResponse, ResponseError};
 use thiserror::Error;
 
 use crate::services::auth::errors::AuthError;
+use crate::services::integration_providers::errors::IntegrationProvidersError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::users::errors::UsersError;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -39,6 +40,14 @@ pub enum AppError {
     InvalidStatusTransition,
     #[error("cannot delete a running work run")]
     CannotDeleteRunning,
+    #[error("provider not found")]
+    ProviderNotFound,
+    #[error("duplicate provider name")]
+    DuplicateProviderName,
+    #[error("column not found")]
+    ColumnNotFound,
+    #[error("no provider configured")]
+    NoProvider,
     #[error("internal server error")]
     Internal,
 }
@@ -91,6 +100,18 @@ impl ResponseError for AppError {
             Self::CannotDeleteRunning => HttpResponse::Conflict().json(ErrorBody {
                 error: "Cannot delete a running work run".to_owned(),
             }),
+            Self::ProviderNotFound => HttpResponse::NotFound().json(ErrorBody {
+                error: "Provider not found".to_owned(),
+            }),
+            Self::DuplicateProviderName => HttpResponse::Conflict().json(ErrorBody {
+                error: "A provider with this name already exists".to_owned(),
+            }),
+            Self::ColumnNotFound => HttpResponse::BadRequest().json(ErrorBody {
+                error: "Column not found in project".to_owned(),
+            }),
+            Self::NoProvider => HttpResponse::BadRequest().json(ErrorBody {
+                error: "No provider configured for this project".to_owned(),
+            }),
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
             }),
@@ -133,10 +154,8 @@ impl From<ProjectConfigsError> for AppError {
                 tracing::error!(error = %e, operation = "project_configs", "integration error");
                 Self::Internal
             }
-            ProjectConfigsError::ColumnNotFound(e) => {
-                tracing::error!(error = %e, operation = "project_configs", "column not found");
-                Self::Internal
-            }
+            ProjectConfigsError::ColumnNotFound(_) => Self::ColumnNotFound,
+            ProjectConfigsError::NoProvider => Self::NoProvider,
         }
     }
 }
@@ -179,6 +198,19 @@ impl From<WorkersError> for AppError {
             }
             WorkersError::Redis(e) => {
                 tracing::error!(error = %e, operation = "workers", "redis error");
+                Self::Internal
+            }
+        }
+    }
+}
+
+impl From<IntegrationProvidersError> for AppError {
+    fn from(err: IntegrationProvidersError) -> Self {
+        match err {
+            IntegrationProvidersError::NotFound => Self::ProviderNotFound,
+            IntegrationProvidersError::DuplicateName => Self::DuplicateProviderName,
+            IntegrationProvidersError::Database(e) => {
+                tracing::error!(error = %e, operation = "providers", "database error");
                 Self::Internal
             }
         }

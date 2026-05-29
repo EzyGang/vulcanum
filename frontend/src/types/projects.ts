@@ -1,6 +1,7 @@
 export interface ProjectConfig {
   id: string;
   kaneoProjectId: string;
+  kaneoWorkspaceId: string;
   enabled: boolean;
   pickupColumn: string;
   targetColumn: string;
@@ -9,10 +10,12 @@ export interface ProjectConfig {
   repoUrl: string;
   agentsMd: string;
   createdAt: string;
+  providerId?: string;
 }
 
 export interface CreateProjectRequest {
   kaneoProjectId: string;
+  providerId: string;
   enabled?: boolean;
   pickupColumn?: string;
   progressColumn?: string;
@@ -30,6 +33,7 @@ export interface UpdateProjectRequest {
   promptTemplate?: string;
   repoUrl?: string;
   agentsMd?: string;
+  providerId?: string;
 }
 
 export interface ColumnInfo {
@@ -39,5 +43,31 @@ export interface ColumnInfo {
 }
 
 export interface ColumnsResponse {
+  columns: ColumnInfo[];
+}
+
+export interface IntegrationProvider {
+  id: string;
+  name: string;
+  providerType: string;
+  instanceUrl: string;
+  apiKey: string;
+  createdAt: string;
+}
+
+export interface CreateProviderRequest {
+  name: string;
+  instanceUrl: string;
+  apiKey: string;
+}
+
+export interface UpdateProviderRequest {
+  name?: string;
+  instanceUrl?: string;
+  apiKey?: string;
+}
+
+export interface LookupProjectResponse {
+  name: string;
   columns: ColumnInfo[];
 }

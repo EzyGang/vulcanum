@@ -1,6 +1,4 @@
 import type {
-  ColumnInfo,
-  ColumnsResponse,
   CreateProjectRequest,
   ProjectConfig,
   UpdateProjectRequest
@@ -19,13 +17,6 @@ export const updateProject = (id: string, input: UpdateProjectRequest): Promise<
   put<ProjectConfig>(`/projects/${id}`, input);
 
 export const deleteProject = (id: string): Promise<void> => del<void>(`/projects/${id}`);
-
-export const listColumnsByKaneoId = async (kaneoProjectId: string): Promise<ColumnInfo[]> => {
-  const response = await get<ColumnsResponse>('/projects/columns', {
-    kaneo_project_id: kaneoProjectId
-  });
-  return response.columns;
-};
 
 interface ProjectsStats {
   enabledCount: number;

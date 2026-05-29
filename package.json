@@ -8,6 +8,8 @@
     "format": "turbo format",
     "validate": "turbo validate",
     "prep-queries": "cargo sqlx prepare --workspace -- --all-targets",
+    "migrate-server-up": "cargo sqlx migrate run --source server/migrations",
+    "migrate-server-down": "cargo sqlx migrate revert --source server/migrations",
     "dev": "turbo dev"
   },
   "devDependencies": {

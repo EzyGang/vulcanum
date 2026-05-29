@@ -1,28 +1,31 @@
 import { useSignal } from '@preact/signals';
-import { useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef } from 'preact/hooks';
+import { useCallback, useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 import {
   createProject,
   getProject,
-  listColumnsByKaneoId,
   updateProject
 } from '../../../services/projects/projects.service';
-import type { ColumnInfo, ProjectConfig } from '../../../types/projects';
+import {
+  createProvider,
+  listProviders,
+  lookupProject
+} from '../../../services/providers/providers.service';
+import type { ColumnInfo } from '../../../types/projects';
 import { invalidate } from '../../../utils/api/query/client';
-import { useApiMutation } from '../../../utils/api/query/hooks';
-
-const COLUMN_DEBOUNCE_MS = 400;
+import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
 export const useProjectForm = (projectId: string | null) => {
   const [_, setLocation] = useLocation();
 
-  const { data: existingProject, isLoading: projectLoading } = useQuery<ProjectConfig>({
-    queryKey: ['project', projectId ?? ''],
-    queryFn: () => getProject(projectId ?? ''),
-    enabled: !!projectId
-  });
+  const { data: existingProject, isLoading: projectLoading } = useApiQuery(
+    ['project', projectId ?? ''],
+    () => getProject(projectId ?? '')
+  );
 
+  const { data: providers = [] } = useApiQuery(['providers'], () => listProviders());
+
+  const providerId = useSignal('');
   const kaneoProjectId = useSignal(projectId ? '' : '');
   const enabled = useSignal(true);
   const pickupColumn = useSignal('');
@@ -35,51 +38,74 @@ export const useProjectForm = (projectId: string | null) => {
   const formError = useSignal<string | null>(null);
   const columns = useSignal<ColumnInfo[]>([]);
   const columnsLoading = useSignal(false);
-  const columnsFetched = useSignal(false);
+  const lookupProjectName = useSignal('');
+  const lookupError = useSignal<string | null>(null);
+  const lookedUp = useSignal(false);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const columnKaneoId = useSignal('');
+  const showProviderForm = useSignal(false);
+  const newProviderName = useSignal('');
+  const newProviderUrl = useSignal('');
+  const newProviderKey = useSignal('');
+  const providerFormError = useSignal<string | null>(null);
+  const providerSubmitting = useSignal(false);
 
-  const fetchColumns = useCallback(async (kaneoId: string) => {
-    if (!kaneoId) return;
-    columnsLoading.value = true;
+  const refetchProviders = () => invalidate('providers');
+
+  const handleCreateProvider = useCallback(async (e: Event) => {
+    e.preventDefault();
+    providerFormError.value = null;
+
+    if (!newProviderName.value || !newProviderUrl.value || !newProviderKey.value) {
+      providerFormError.value = 'All fields are required';
+      return;
+    }
+
+    providerSubmitting.value = true;
     try {
-      const result = await listColumnsByKaneoId(kaneoId);
-      columns.value = result;
-      columnsFetched.value = true;
-    } catch {
+      const created = await createProvider({
+        name: newProviderName.value,
+        instanceUrl: newProviderUrl.value,
+        apiKey: newProviderKey.value
+      });
+      refetchProviders();
+      providerId.value = created.id;
+      showProviderForm.value = false;
+      newProviderName.value = '';
+      newProviderUrl.value = '';
+      newProviderKey.value = '';
+    } catch (err) {
+      providerFormError.value = err instanceof Error ? err.message : 'Failed to create provider';
+    } finally {
+      providerSubmitting.value = false;
+    }
+  }, []);
+
+  const handleLookup = useCallback(async () => {
+    if (!providerId.value || !kaneoProjectId.value) return;
+
+    lookupError.value = null;
+    columnsLoading.value = true;
+    lookedUp.value = false;
+
+    try {
+      const result = await lookupProject(providerId.value, kaneoProjectId.value);
+      lookupProjectName.value = result.name;
+      columns.value = result.columns;
+      lookedUp.value = true;
+    } catch (err) {
+      lookupError.value = err instanceof Error ? err.message : 'Lookup failed';
       columns.value = [];
-      columnsFetched.value = true;
+      lookupProjectName.value = '';
     } finally {
       columnsLoading.value = false;
     }
   }, []);
 
-  const scheduleColumnFetch = useCallback(
-    (value: string) => {
-      kaneoProjectId.value = value;
-      columnKaneoId.value = value;
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      if (!value) {
-        columns.value = [];
-        columnsFetched.value = false;
-        return;
-      }
-      columnsLoading.value = true;
-      columnsFetched.value = false;
-      debounceRef.current = setTimeout(() => {
-        fetchColumns(value);
-      }, COLUMN_DEBOUNCE_MS);
-    },
-    [fetchColumns]
-  );
-
   useEffect(() => {
     if (projectId && existingProject) {
       const p = existingProject;
       kaneoProjectId.value = p.kaneoProjectId;
+      providerId.value = p.providerId ?? '';
       enabled.value = p.enabled;
       pickupColumn.value = p.pickupColumn;
       progressColumn.value = p.progressColumn;
@@ -91,11 +117,24 @@ export const useProjectForm = (projectId: string | null) => {
   }, [projectId, existingProject]);
 
   useEffect(() => {
-    if (projectId && existingProject) {
-      columnKaneoId.value = existingProject.kaneoProjectId;
-      fetchColumns(existingProject.kaneoProjectId);
+    if (projectId && existingProject && providerId.value) {
+      lookupError.value = null;
+      columnsLoading.value = true;
+      lookedUp.value = false;
+      lookupProject(providerId.value, existingProject.kaneoProjectId)
+        .then((result) => {
+          lookupProjectName.value = result.name;
+          columns.value = result.columns;
+          lookedUp.value = true;
+        })
+        .catch((err) => {
+          lookupError.value = err instanceof Error ? err.message : 'Lookup failed';
+        })
+        .finally(() => {
+          columnsLoading.value = false;
+        });
     }
-  }, [projectId, existingProject]);
+  }, [projectId, existingProject, providerId.value]);
 
   const createMutation = useApiMutation(
     (input: Parameters<typeof createProject>[0]) => createProject(input),
@@ -123,11 +162,6 @@ export const useProjectForm = (projectId: string | null) => {
       e.preventDefault();
       formError.value = null;
 
-      if (!kaneoProjectId.value && !projectId) {
-        formError.value = 'Kaneo project ID is required';
-        return;
-      }
-
       if (!promptTemplate.value) {
         formError.value = 'Prompt template is required';
         return;
@@ -146,12 +180,19 @@ export const useProjectForm = (projectId: string | null) => {
               targetColumn: targetColumn.value || undefined,
               promptTemplate: promptTemplate.value || undefined,
               repoUrl: repoUrl.value || undefined,
-              agentsMd: agentsMd.value || undefined
+              agentsMd: agentsMd.value || undefined,
+              providerId: providerId.value || undefined
             }
           });
         } else {
+          if (!providerId.value) {
+            formError.value = 'Provider is required';
+            submitting.value = false;
+            return;
+          }
           await createMutation.mutateAsync({
             kaneoProjectId: kaneoProjectId.value,
+            providerId: providerId.value,
             enabled: enabled.value,
             pickupColumn: pickupColumn.value || undefined,
             progressColumn: progressColumn.value || undefined,
@@ -173,6 +214,8 @@ export const useProjectForm = (projectId: string | null) => {
   return {
     isEdit: !!projectId,
     projectLoading: projectId ? projectLoading : false,
+    providers,
+    providerId,
     kaneoProjectId,
     enabled,
     pickupColumn,
@@ -185,9 +228,24 @@ export const useProjectForm = (projectId: string | null) => {
     formError,
     columns,
     columnsLoading,
-    columnsFetched,
-    columnKaneoId,
-    handleKaneoIdChange: scheduleColumnFetch,
-    handleSubmit
+    lookupProjectName,
+    lookupError,
+    lookedUp,
+    showProviderForm,
+    newProviderName,
+    newProviderUrl,
+    newProviderKey,
+    providerFormError,
+    providerSubmitting,
+    handleLookup,
+    handleSubmit,
+    handleCreateProvider,
+    onShowProviderForm: () => {
+      showProviderForm.value = true;
+    },
+    onCancelProviderForm: () => {
+      showProviderForm.value = false;
+      providerFormError.value = null;
+    }
   };
 };

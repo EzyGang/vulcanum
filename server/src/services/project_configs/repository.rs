@@ -1,5 +1,7 @@
 pub mod project_configs;
 
+use uuid::Uuid;
+
 use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::errors::ProjectConfigsError;
 
@@ -27,6 +29,7 @@ pub struct UpdateProjectConfigParams<'a> {
     pub kaneo_workspace_id: Option<&'a str>,
     pub enabled: Option<bool>,
     pub integration_type: Option<IntegrationType>,
+    pub provider_id: Option<Uuid>,
 }
 
 #[derive(Clone)]

@@ -3,6 +3,7 @@ pub mod health;
 pub mod instance_auth;
 pub mod jobs;
 pub mod project_configs;
+pub mod providers;
 pub mod status;
 pub mod work_runs;
 pub mod worker_auth;
@@ -31,16 +32,20 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("", web::get().to(project_configs::list))
                     .route("", web::post().to(project_configs::create))
                     .route("/stats", web::get().to(project_configs::stats))
-                    .route(
-                        "/columns",
-                        web::get().to(project_configs::list_columns_by_kaneo_id),
-                    )
                     .route("/{id}", web::get().to(project_configs::get))
                     .route("/{id}", web::put().to(project_configs::update))
-                    .route("/{id}", web::delete().to(project_configs::delete))
+                    .route("/{id}", web::delete().to(project_configs::delete)),
+            )
+            .service(
+                web::scope("/providers")
+                    .route("", web::get().to(providers::list))
+                    .route("", web::post().to(providers::create))
+                    .route("/{id}", web::get().to(providers::get))
+                    .route("/{id}", web::put().to(providers::update))
+                    .route("/{id}", web::delete().to(providers::delete))
                     .route(
-                        "/{id}/columns",
-                        web::post().to(project_configs::list_columns),
+                        "/{id}/projects/lookup",
+                        web::get().to(providers::lookup_project),
                     ),
             )
             .service(

@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod dispatcher;
+pub mod integration_providers;
 pub mod integrations;
 pub mod kaneo;
 pub mod poller;

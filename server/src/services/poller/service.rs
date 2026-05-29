@@ -3,7 +3,8 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::services::integrations::client::TaskFetcher;
+use crate::services::integration_providers::repository::IntegrationProvidersRepository;
+use crate::services::integrations::client::{IntegrationClient, TaskFetcher};
 use crate::services::integrations::errors::IntegrationError;
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
@@ -31,25 +32,25 @@ impl From<IntegrationError> for PollError {
 }
 
 pub struct PollerService {
-    integration: Arc<dyn TaskFetcher>,
     project_configs_repo: ProjectConfigsRepository,
     work_runs_repo: WorkRunsRepository,
+    providers_repo: IntegrationProvidersRepository,
     db: PgPool,
     poll_period: Duration,
 }
 
 impl PollerService {
     pub fn new(
-        integration: Arc<dyn TaskFetcher>,
         project_configs_repo: ProjectConfigsRepository,
         work_runs_repo: WorkRunsRepository,
+        providers_repo: IntegrationProvidersRepository,
         db: PgPool,
         poll_period_secs: u64,
     ) -> Self {
         Self {
-            integration,
             project_configs_repo,
             work_runs_repo,
+            providers_repo,
             db,
             poll_period: Duration::from_secs(poll_period_secs),
         }
@@ -111,8 +112,34 @@ impl PollerService {
     }
 
     async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
-        let tasks = self
-            .integration
+        let provider_id = match config.provider_id {
+            Some(pid) => pid,
+            None => {
+                tracing::warn!(
+                    project_id = %config.kaneo_project_id,
+                    "skipping poll — no provider configured for project"
+                );
+                return Ok((0, 0));
+            }
+        };
+
+        let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!(
+                    provider_id = %provider_id,
+                    project_id = %config.kaneo_project_id,
+                    error = %e,
+                    "skipping poll — provider not found"
+                );
+                return Ok((0, 0));
+            }
+        };
+
+        let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
+        let fetcher: Arc<dyn TaskFetcher> = Arc::new(client);
+
+        let tasks = fetcher
             .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
             .await?;
 
