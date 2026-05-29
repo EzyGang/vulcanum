@@ -117,7 +117,7 @@ impl ProjectConfigsService {
             .await
             .map_err(ProjectConfigsError::Integration)?;
 
-        Ok(columns.iter().map(ColumnInfo::from_integration).collect())
+        Ok(columns.iter().map(ColumnInfo::from).collect())
     }
 
     pub async fn fetch_columns_by_kaneo_id(
@@ -129,7 +129,7 @@ impl ProjectConfigsService {
             .fetch_columns(kaneo_project_id)
             .await
             .map_err(ProjectConfigsError::Integration)?;
-        Ok(columns.iter().map(ColumnInfo::from_integration).collect())
+        Ok(columns.iter().map(ColumnInfo::from).collect())
     }
 
     async fn validate_columns_exist(

@@ -72,8 +72,8 @@ pub struct ColumnInfo {
     pub slug: String,
 }
 
-impl ColumnInfo {
-    pub fn from_integration(col: &IntegrationColumn) -> Self {
+impl From<&IntegrationColumn> for ColumnInfo {
+    fn from(col: &IntegrationColumn) -> Self {
         Self {
             id: col.id.clone(),
             name: col.name.clone(),

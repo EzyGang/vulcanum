@@ -48,11 +48,11 @@ impl WorkRunsService {
             }
         }
 
-        let (kaneo_instance, kaneo_api_key) = self
-            .integration
-            .as_kaneo()
-            .map(|c| (c.instance.clone(), c.api_key.clone()))
-            .unwrap_or((String::new(), String::new()));
+        let (kaneo_instance, kaneo_api_key) = match &self.integration {
+            crate::services::integrations::client::IntegrationClient::Kaneo(client) => {
+                (client.instance.clone(), client.api_key.clone())
+            }
+        };
 
         Ok(JobResponse {
             prompt_text: run.prompt_text,
