@@ -1,6 +1,6 @@
 pub mod project_configs;
 
-use crate::queryer::Queryer;
+use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::errors::ProjectConfigsError;
 
 fn is_unique_violation(err: &sqlx::Error) -> bool {
@@ -26,6 +26,7 @@ pub struct UpdateProjectConfigParams<'a> {
     pub agents_md: Option<&'a str>,
     pub kaneo_workspace_id: Option<&'a str>,
     pub enabled: Option<bool>,
+    pub integration_type: Option<IntegrationType>,
 }
 
 #[derive(Clone)]

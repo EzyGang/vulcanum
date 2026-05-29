@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::CreateProjectConfigRequest;
 use crate::services::project_configs::repository::{
@@ -20,6 +21,7 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
         repo_url: "https://github.com/test/repo".to_owned(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
 
     let created = repo
@@ -59,6 +61,7 @@ async fn list_all_returns_configs(pool: PgPool) {
         repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
     let p2 = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-list-b".to_owned(),
@@ -70,6 +73,7 @@ async fn list_all_returns_configs(pool: PgPool) {
         repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
 
     repo.create(&pool, &p1).await.expect("Should create p1");
@@ -92,6 +96,7 @@ async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
         repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
 
     repo.create(&pool, &params)
@@ -118,6 +123,7 @@ async fn update_partial_fields(pool: PgPool) {
         repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
 
     let created = repo.create(&pool, &params).await.expect("Should create");
@@ -135,6 +141,7 @@ async fn update_partial_fields(pool: PgPool) {
                 agents_md: None,
                 kaneo_workspace_id: None,
                 enabled: Some(false),
+                integration_type: None,
             },
         )
         .await
@@ -163,6 +170,7 @@ async fn update_nonexistent_returns_not_found(pool: PgPool) {
                 agents_md: None,
                 kaneo_workspace_id: None,
                 enabled: None,
+                integration_type: None,
             },
         )
         .await;
@@ -194,6 +202,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
         repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
 
     let disabled_params = CreateProjectConfigRequest {
@@ -206,6 +215,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
         repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
+        integration_type: IntegrationType::Kaneo,
     };
 
     let created = repo
@@ -225,6 +235,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
             agents_md: None,
             kaneo_workspace_id: None,
             enabled: Some(false),
+            integration_type: None,
         },
     )
     .await

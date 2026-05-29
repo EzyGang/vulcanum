@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::services::kaneo::client::TaskFetcher;
-use crate::services::kaneo::errors::KaneoError;
+use crate::services::integrations::client::TaskFetcher;
+use crate::services::integrations::errors::IntegrationError;
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::model::WorkRunStatus;
@@ -13,25 +13,25 @@ use crate::services::work_runs::repository::WorkRunsRepository;
 
 #[derive(Debug)]
 enum PollError {
-    Kaneo(KaneoError),
+    Integration(IntegrationError),
 }
 
 impl std::fmt::Display for PollError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Kaneo(e) => write!(f, "{}", e),
+            Self::Integration(e) => write!(f, "{}", e),
         }
     }
 }
 
-impl From<KaneoError> for PollError {
-    fn from(e: KaneoError) -> Self {
-        Self::Kaneo(e)
+impl From<IntegrationError> for PollError {
+    fn from(e: IntegrationError) -> Self {
+        Self::Integration(e)
     }
 }
 
 pub struct PollerService {
-    kaneo: Arc<dyn TaskFetcher>,
+    integration: Arc<dyn TaskFetcher>,
     project_configs_repo: ProjectConfigsRepository,
     work_runs_repo: WorkRunsRepository,
     db: PgPool,
@@ -40,14 +40,14 @@ pub struct PollerService {
 
 impl PollerService {
     pub fn new(
-        kaneo: Arc<dyn TaskFetcher>,
+        integration: Arc<dyn TaskFetcher>,
         project_configs_repo: ProjectConfigsRepository,
         work_runs_repo: WorkRunsRepository,
         db: PgPool,
         poll_period_secs: u64,
     ) -> Self {
         Self {
-            kaneo,
+            integration,
             project_configs_repo,
             work_runs_repo,
             db,
@@ -95,7 +95,7 @@ impl PollerService {
                 Err(e) => {
                     tracing::error!(
                         project_id = config.kaneo_project_id.as_str(),
-                        "Kaneo poll failed for project {}: {}",
+                        "Integration poll failed for project {}: {}",
                         config.kaneo_project_id,
                         e,
                     );
@@ -112,7 +112,7 @@ impl PollerService {
 
     async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
         let tasks = self
-            .kaneo
+            .integration
             .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
             .await?;
 

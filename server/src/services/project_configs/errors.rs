@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::services::integrations::errors::IntegrationError;
+
 #[derive(Debug, Error)]
 pub enum ProjectConfigsError {
     #[error("project config not found")]
@@ -8,8 +10,8 @@ pub enum ProjectConfigsError {
     DuplicateKaneoProjectId,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
-    #[error("kaneo API error: {0}")]
-    Kaneo(#[from] crate::services::kaneo::errors::KaneoError),
+    #[error("integration error: {0}")]
+    Integration(#[from] IntegrationError),
     #[error("column not found: {0}")]
     ColumnNotFound(String),
 }

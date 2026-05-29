@@ -2,7 +2,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
-use crate::services::kaneo::client::KaneoClient;
+use crate::services::integrations::client::IntegrationClient;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
@@ -19,7 +19,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         ProjectConfigsRepository::new(),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
-        KaneoClient::new("cloud.kaneo.app".to_owned(), String::new()),
+        IntegrationClient::new_kaneo("cloud.kaneo.app".to_owned(), String::new()),
     )
 }
 

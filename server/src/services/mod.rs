@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod dispatcher;
+pub mod integrations;
 pub mod kaneo;
 pub mod poller;
 pub mod project_configs;

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use kaneo_cli::api::client::ApiClient;
 use kaneo_cli::api::types::{BoardResponse, Column, Comment, Task};
 
@@ -6,30 +5,10 @@ use super::errors::{api_err, KaneoError};
 
 const FETCH_TASKS_LIMIT: u32 = 200;
 
-#[async_trait]
-pub trait TaskFetcher: Send + Sync {
-    async fn fetch_tasks_in_column(
-        &self,
-        project_id: &str,
-        column_name: &str,
-    ) -> Result<Vec<Task>, KaneoError>;
-}
-
 #[derive(Clone)]
 pub struct KaneoClient {
     pub instance: String,
     pub api_key: String,
-}
-
-#[async_trait]
-impl TaskFetcher for KaneoClient {
-    async fn fetch_tasks_in_column(
-        &self,
-        project_id: &str,
-        column_name: &str,
-    ) -> Result<Vec<Task>, KaneoError> {
-        self.do_fetch_tasks_in_column(project_id, column_name).await
-    }
 }
 
 impl KaneoClient {
@@ -41,7 +20,7 @@ impl KaneoClient {
         ApiClient::new(&self.instance, &self.api_key).map_err(api_err)
     }
 
-    async fn do_fetch_tasks_in_column(
+    pub async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
         column_name: &str,

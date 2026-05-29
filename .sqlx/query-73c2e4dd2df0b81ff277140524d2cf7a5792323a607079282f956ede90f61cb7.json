@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs WHERE id = $1",
+  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\"\n             FROM project_configs ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -20,51 +20,64 @@
       },
       {
         "ordinal": 3,
+        "name": "integration_type!: _",
+        "type_info": {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
         "name": "enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "pickup_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "target_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "progress_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -78,5 +91,5 @@
       true
     ]
   },
-  "hash": "1a56fe3563418793c1d161924fdb197f9da4de3c110869f05d65891d05c4e44c"
+  "hash": "73c2e4dd2df0b81ff277140524d2cf7a5792323a607079282f956ede90f61cb7"
 }

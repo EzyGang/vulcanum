@@ -48,13 +48,19 @@ impl WorkRunsService {
             }
         }
 
+        let (kaneo_instance, kaneo_api_key) = match &self.integration {
+            crate::services::integrations::client::IntegrationClient::Kaneo(client) => {
+                (client.instance.clone(), client.api_key.clone())
+            }
+        };
+
         Ok(JobResponse {
             prompt_text: run.prompt_text,
             repo_url: run.repo_url,
             agents_md: run.agents_md,
             external_task_ref: run.external_task_ref,
-            kaneo_instance: self.kaneo.instance.clone(),
-            kaneo_api_key: self.kaneo.api_key.clone(),
+            kaneo_instance,
+            kaneo_api_key,
             kaneo_project_id,
             kaneo_workspace_id,
         })
@@ -209,7 +215,7 @@ impl WorkRunsService {
         };
 
         if let Err(e) = self
-            .kaneo
+            .integration
             .update_task_status(&run.external_task_ref, new_column)
             .await
         {
@@ -222,7 +228,7 @@ impl WorkRunsService {
         }
 
         if let Err(e) = self
-            .kaneo
+            .integration
             .add_comment(&run.external_task_ref, &format!("PR: {}", params.pr_url))
             .await
         {

@@ -6,14 +6,12 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::routes;
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::integrations::client::IntegrationClient;
 
 const TEST_PASSWORD: &str = "test-password";
 
 fn build_state(pool: sqlx::PgPool) -> AppState {
-    let kaneo = crate::services::kaneo::client::KaneoClient::new(
-        "cloud.kaneo.app".to_owned(),
-        String::new(),
-    );
+    let kaneo = IntegrationClient::new_kaneo("cloud.kaneo.app".to_owned(), String::new());
 
     let cfg = crate::config::AppConfig {
         db_url: String::new(),
@@ -64,7 +62,7 @@ fn build_state(pool: sqlx::PgPool) -> AppState {
             kaneo.clone(),
         ),
         db_pool: pool,
-        kaneo,
+        integration: kaneo,
         work_runs: work_runs_repo,
         dispatch_store,
         jwt_secret: cfg.jwt_secret.clone(),
@@ -75,7 +73,7 @@ async fn insert_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template) VALUES ($1, $2, $3)",
+        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'kaneo')",
         id,
         kaneo_project_id,
         "Review {{task_title}}",

@@ -2,19 +2,19 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use kaneo_cli::api::types::Task;
 use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::services::kaneo::client::TaskFetcher;
-use crate::services::kaneo::errors::KaneoError;
+use crate::services::integrations::client::TaskFetcher;
+use crate::services::integrations::errors::IntegrationError;
+use crate::services::integrations::model::IntegrationTask;
 use crate::services::poller::service::PollerService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 struct MockTaskFetcher {
-    responses: RwLock<HashMap<String, Result<Vec<Task>, KaneoError>>>,
+    responses: RwLock<HashMap<String, Result<Vec<IntegrationTask>, IntegrationError>>>,
 }
 
 impl MockTaskFetcher {
@@ -24,12 +24,12 @@ impl MockTaskFetcher {
         }
     }
 
-    async fn set_tasks(&self, project_id: &str, column_slug: &str, tasks: Vec<Task>) {
+    async fn set_tasks(&self, project_id: &str, column_slug: &str, tasks: Vec<IntegrationTask>) {
         let key = format!("{}:{}", project_id, column_slug);
         self.responses.write().await.insert(key, Ok(tasks));
     }
 
-    async fn set_error(&self, project_id: &str, column_slug: &str, error: KaneoError) {
+    async fn set_error(&self, project_id: &str, column_slug: &str, error: IntegrationError) {
         let key = format!("{}:{}", project_id, column_slug);
         self.responses.write().await.insert(key, Err(error));
     }
@@ -41,37 +41,24 @@ impl TaskFetcher for MockTaskFetcher {
         &self,
         project_id: &str,
         column_slug: &str,
-    ) -> Result<Vec<Task>, KaneoError> {
+    ) -> Result<Vec<IntegrationTask>, IntegrationError> {
         let key = format!("{}:{}", project_id, column_slug);
         match self.responses.read().await.get(&key) {
             Some(result) => match result {
                 Ok(tasks) => Ok(tasks.clone()),
-                Err(e) => Err(KaneoError::Api(format!("{}", e))),
+                Err(e) => Err(IntegrationError::Other(format!("{}", e))),
             },
-            None => Err(KaneoError::Api("unreachable".to_owned())),
+            None => Err(IntegrationError::Other("unreachable".to_owned())),
         }
     }
 }
 
-fn make_task(id: &str, title: &str) -> Task {
-    Task {
+fn make_task(id: &str, title: &str) -> IntegrationTask {
+    IntegrationTask {
         id: id.to_owned(),
-        project_id: "test-proj".to_owned(),
-        position: None,
-        number: None,
-        user_id: None,
         title: title.to_owned(),
+        project_id: "test-proj".to_owned(),
         description: None,
-        status: "to-do".to_owned(),
-        priority: "medium".to_owned(),
-        due_date: None,
-        created_at: "2026-01-01T00:00:00Z".to_owned(),
-        start_date: None,
-        updated_at: None,
-        column_id: None,
-        assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
     }
 }
 
@@ -79,8 +66,8 @@ async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url) \
-         VALUES ($1, $2, true, 'to-do', 'in-review', 'in-progress', 'Review {{task_title}}', '')",
+        "INSERT INTO project_configs (id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, prompt_template, repo_url, integration_type) \
+         VALUES ($1, $2, true, 'to-do', 'in-review', 'in-progress', 'Review {{task_title}}', '', 'kaneo')",
         id,
         kaneo_project_id,
     )
@@ -92,10 +79,10 @@ async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
 }
 
 fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
-    let kaneo: Arc<dyn TaskFetcher> = mock;
+    let integration: Arc<dyn TaskFetcher> = mock;
 
     PollerService::new(
-        kaneo,
+        integration,
         ProjectConfigsRepository::new(),
         WorkRunsRepository::new(),
         db,
@@ -187,7 +174,7 @@ async fn poller_handles_unreachable_kaneo(pool: PgPool) {
     mock.set_error(
         "kaneo-bad",
         "to-do",
-        KaneoError::Api("connection refused".to_owned()),
+        IntegrationError::Other("connection refused".to_owned()),
     )
     .await;
 
