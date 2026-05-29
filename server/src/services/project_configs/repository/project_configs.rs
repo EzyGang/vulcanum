@@ -17,7 +17,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>"
+             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -33,7 +33,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>"
+             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE id = $1"#,
             id,
         )
@@ -51,7 +51,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>"
+             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE kaneo_project_id = $1"#,
             kaneo_project_id,
         )
@@ -67,7 +67,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>"
+             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -85,10 +85,10 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"INSERT INTO project_configs (id, kaneo_project_id, kaneo_workspace_id, integration_type, enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             progress_column, prompt_template, repo_url, agents_md, provider_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>""#,
+             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
             &params.kaneo_project_id,
             &params.kaneo_workspace_id,
@@ -100,6 +100,7 @@ impl ProjectConfigsRepository {
             &params.prompt_template,
             &params.repo_url,
             &params.agents_md,
+            params.provider_id,
         )
         .fetch_one(db)
         .await
@@ -123,10 +124,11 @@ impl ProjectConfigsRepository {
              agents_md = COALESCE($7, agents_md),
              enabled = COALESCE($8, enabled),
              kaneo_workspace_id = COALESCE($9, kaneo_workspace_id),
-             integration_type = COALESCE($10, integration_type)
+             integration_type = COALESCE($10, integration_type),
+             provider_id = COALESCE($11, provider_id)
              WHERE id = $1
              RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>""#,
+             progress_column, prompt_template, repo_url, agents_md, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
             params.pickup_column,
             params.target_column,
@@ -137,6 +139,7 @@ impl ProjectConfigsRepository {
             params.enabled,
             params.kaneo_workspace_id,
             params.integration_type.as_ref() as Option<&IntegrationType>,
+            params.provider_id,
         )
         .fetch_optional(db)
         .await?

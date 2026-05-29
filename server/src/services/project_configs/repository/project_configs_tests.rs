@@ -8,21 +8,45 @@ use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
 };
 
-#[sqlx::test]
-async fn create_finds_and_deletes_config(pool: PgPool) {
-    let repo = ProjectConfigsRepository::new();
-    let params = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-test-create".to_owned(),
+fn test_provider_id() -> Uuid {
+    Uuid::new_v4()
+}
+
+fn test_params(kaneo_project_id: &str) -> CreateProjectConfigRequest {
+    CreateProjectConfigRequest {
+        kaneo_project_id: kaneo_project_id.to_owned(),
         enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
         prompt_template: "Review {{task_title}}".to_owned(),
-        repo_url: "https://github.com/test/repo".to_owned(),
+        repo_url: String::new(),
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
         integration_type: IntegrationType::Kaneo,
-    };
+        provider_id: test_provider_id(),
+    }
+}
+
+fn test_update_params() -> UpdateProjectConfigParams<'static> {
+    UpdateProjectConfigParams {
+        pickup_column: None,
+        target_column: None,
+        progress_column: None,
+        prompt_template: None,
+        repo_url: None,
+        agents_md: None,
+        kaneo_workspace_id: None,
+        enabled: None,
+        integration_type: None,
+        provider_id: None,
+    }
+}
+
+#[sqlx::test]
+async fn create_finds_and_deletes_config(pool: PgPool) {
+    let repo = ProjectConfigsRepository::new();
+    let params = test_params("kaneo-proj-test-create");
 
     let created = repo
         .create(&pool, &params)
@@ -51,29 +75,11 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
 async fn list_all_returns_configs(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
 
-    let p1 = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-list-a".to_owned(),
-        enabled: true,
-        pickup_column: "to-do".to_owned(),
-        progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
-        prompt_template: "Template A".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        kaneo_workspace_id: String::new(),
-        integration_type: IntegrationType::Kaneo,
-    };
+    let p1 = test_params("kaneo-proj-list-a");
     let p2 = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-list-b".to_owned(),
-        enabled: true,
-        pickup_column: "to-do".to_owned(),
-        progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
         prompt_template: "Template B".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        kaneo_workspace_id: String::new(),
-        integration_type: IntegrationType::Kaneo,
+        ..test_params("kaneo-proj-list-b")
     };
 
     repo.create(&pool, &p1).await.expect("Should create p1");
@@ -86,18 +92,7 @@ async fn list_all_returns_configs(pool: PgPool) {
 #[sqlx::test]
 async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
-    let params = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-dup".to_owned(),
-        enabled: true,
-        pickup_column: "to-do".to_owned(),
-        progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
-        prompt_template: "Template".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        kaneo_workspace_id: String::new(),
-        integration_type: IntegrationType::Kaneo,
-    };
+    let params = test_params("kaneo-proj-dup");
 
     repo.create(&pool, &params)
         .await
@@ -113,18 +108,7 @@ async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
 #[sqlx::test]
 async fn update_partial_fields(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
-    let params = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-update".to_owned(),
-        enabled: true,
-        pickup_column: "to-do".to_owned(),
-        progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
-        prompt_template: "Original".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        kaneo_workspace_id: String::new(),
-        integration_type: IntegrationType::Kaneo,
-    };
+    let params = test_params("kaneo-proj-update");
 
     let created = repo.create(&pool, &params).await.expect("Should create");
 
@@ -133,15 +117,9 @@ async fn update_partial_fields(pool: PgPool) {
             &pool,
             created.id,
             &UpdateProjectConfigParams {
-                pickup_column: None,
-                target_column: None,
-                progress_column: None,
                 prompt_template: Some("Updated template"),
-                repo_url: None,
-                agents_md: None,
-                kaneo_workspace_id: None,
                 enabled: Some(false),
-                integration_type: None,
+                ..test_update_params()
             },
         )
         .await
@@ -158,21 +136,7 @@ async fn update_nonexistent_returns_not_found(pool: PgPool) {
     let nonexistent_id = Uuid::new_v4();
 
     let result = repo
-        .update(
-            &pool,
-            nonexistent_id,
-            &UpdateProjectConfigParams {
-                pickup_column: None,
-                target_column: None,
-                progress_column: None,
-                prompt_template: None,
-                repo_url: None,
-                agents_md: None,
-                kaneo_workspace_id: None,
-                enabled: None,
-                integration_type: None,
-            },
-        )
+        .update(&pool, nonexistent_id, &test_update_params())
         .await;
 
     assert!(matches!(result, Err(ProjectConfigsError::NotFound)));
@@ -192,31 +156,8 @@ async fn delete_nonexistent_returns_not_found(pool: PgPool) {
 async fn list_enabled_only_returns_enabled(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
 
-    let enabled_params = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-enabled".to_owned(),
-        enabled: true,
-        pickup_column: "to-do".to_owned(),
-        progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
-        prompt_template: "Enabled".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        kaneo_workspace_id: String::new(),
-        integration_type: IntegrationType::Kaneo,
-    };
-
-    let disabled_params = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-disabled".to_owned(),
-        enabled: true,
-        pickup_column: "to-do".to_owned(),
-        progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
-        prompt_template: "Disabled".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        kaneo_workspace_id: String::new(),
-        integration_type: IntegrationType::Kaneo,
-    };
+    let enabled_params = test_params("kaneo-proj-enabled");
+    let disabled_params = test_params("kaneo-proj-disabled");
 
     let created = repo
         .create(&pool, &disabled_params)
@@ -227,15 +168,8 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
         &pool,
         created.id,
         &UpdateProjectConfigParams {
-            pickup_column: None,
-            target_column: None,
-            progress_column: None,
-            prompt_template: None,
-            repo_url: None,
-            agents_md: None,
-            kaneo_workspace_id: None,
             enabled: Some(false),
-            integration_type: None,
+            ..test_update_params()
         },
     )
     .await

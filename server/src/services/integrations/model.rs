@@ -18,6 +18,11 @@ pub struct IntegrationTask {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct IntegrationProject {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct IntegrationColumn {
     pub id: String,
     pub name: String,

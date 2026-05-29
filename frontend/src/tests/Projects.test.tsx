@@ -6,6 +6,7 @@ import { ProjectsView } from '../components/projects/ui/Projects.view';
 const makeProject = (overrides = {}) => ({
   id: '1',
   kaneoProjectId: 'test-project-1',
+  kaneoWorkspaceId: '',
   enabled: true,
   pickupColumn: 'to-do',
   targetColumn: 'in-review',

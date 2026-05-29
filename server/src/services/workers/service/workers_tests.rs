@@ -15,8 +15,6 @@ fn cfg() -> AppConfig {
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
         instance_password: "test-password".to_owned(),
-        kaneo_instance: "cloud.kaneo.app".to_owned(),
-        kaneo_api_key: String::new(),
         redis_url: String::new(),
     }
 }

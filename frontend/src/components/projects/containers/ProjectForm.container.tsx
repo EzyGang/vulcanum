@@ -9,48 +9,46 @@ interface ProjectFormContainerProps {
 
 export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): JSX.Element => {
   const [_, setLocation] = useLocation();
-  const {
-    isEdit,
-    projectLoading,
-    kaneoProjectId,
-    enabled,
-    pickupColumn,
-    progressColumn,
-    targetColumn,
-    promptTemplate,
-    repoUrl,
-    agentsMd,
-    submitting,
-    formError,
-    columns,
-    columnsLoading,
-    columnsFetched,
-    columnKaneoId: _columnKaneoId,
-    handleKaneoIdChange,
-    handleSubmit
-  } = useProjectForm(projectId);
+  const form = useProjectForm(projectId);
 
   return (
     <ProjectFormView
       data={{
-        isEdit,
-        kaneoProjectId,
-        enabled,
-        pickupColumn,
-        progressColumn,
-        targetColumn,
-        promptTemplate,
-        repoUrl,
-        agentsMd,
-        columns,
-        columnsLoading,
-        columnsFetched
+        isEdit: form.isEdit,
+        providers: form.providers,
+        providerId: form.providerId,
+        kaneoProjectId: form.kaneoProjectId,
+        enabled: form.enabled,
+        pickupColumn: form.pickupColumn,
+        progressColumn: form.progressColumn,
+        targetColumn: form.targetColumn,
+        promptTemplate: form.promptTemplate,
+        repoUrl: form.repoUrl,
+        agentsMd: form.agentsMd,
+        columns: form.columns,
+        columnsLoading: form.columnsLoading,
+        lookupProjectName: form.lookupProjectName,
+        lookupError: form.lookupError,
+        lookedUp: form.lookedUp,
+        showProviderForm: form.showProviderForm,
+        newProviderName: form.newProviderName,
+        newProviderUrl: form.newProviderUrl,
+        newProviderKey: form.newProviderKey,
+        providerFormError: form.providerFormError,
+        providerSubmitting: form.providerSubmitting
       }}
-      status={{ submitting, formError, projectLoading }}
+      status={{
+        submitting: form.submitting,
+        formError: form.formError,
+        projectLoading: form.projectLoading
+      }}
       actions={{
-        onKaneoIdChange: handleKaneoIdChange,
-        onSubmit: handleSubmit,
-        onCancel: () => setLocation('/projects')
+        onLookup: form.handleLookup,
+        onSubmit: form.handleSubmit,
+        onCancel: () => setLocation('/projects'),
+        onCreateProvider: form.handleCreateProvider,
+        onShowProviderForm: form.onShowProviderForm,
+        onCancelProviderForm: form.onCancelProviderForm
       }}
     />
   );

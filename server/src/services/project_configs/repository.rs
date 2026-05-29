@@ -27,6 +27,7 @@ pub struct UpdateProjectConfigParams<'a> {
     pub kaneo_workspace_id: Option<&'a str>,
     pub enabled: Option<bool>,
     pub integration_type: Option<IntegrationType>,
+    pub provider_id: Option<Uuid>,
 }
 
 #[derive(Clone)]

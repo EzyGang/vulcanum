@@ -1,5 +1,5 @@
 use kaneo_cli::api::client::ApiClient;
-use kaneo_cli::api::types::{BoardResponse, Column, Comment, Task};
+use kaneo_cli::api::types::{BoardResponse, Column, Comment, Project, Task};
 
 use super::errors::{api_err, KaneoError};
 
@@ -100,6 +100,18 @@ impl KaneoClient {
     pub async fn fetch_columns(&self, project_id: &str) -> Result<Vec<Column>, KaneoError> {
         let client = self.build_client()?;
         let path = format!("/column/{project_id}");
+
+        let start = std::time::Instant::now();
+        let result = client.get(&path).await.map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("GET", &path, duration_ms, &result);
+        result
+    }
+
+    pub async fn lookup_project(&self, project_id: &str) -> Result<Project, KaneoError> {
+        let client = self.build_client()?;
+        let path = format!("/project/{project_id}");
 
         let start = std::time::Instant::now();
         let result = client.get(&path).await.map_err(api_err);
