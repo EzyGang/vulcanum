@@ -73,6 +73,13 @@ export const useProjectForm = (projectId: string | null) => {
       newProviderName.value = '';
       newProviderUrl.value = '';
       newProviderKey.value = '';
+      lookedUp.value = false;
+      columns.value = [];
+      lookupProjectName.value = '';
+      lookupError.value = null;
+      pickupColumn.value = '';
+      progressColumn.value = '';
+      targetColumn.value = '';
     } catch (err) {
       providerFormError.value = err instanceof Error ? err.message : 'Failed to create provider';
     } finally {
@@ -246,6 +253,26 @@ export const useProjectForm = (projectId: string | null) => {
     onCancelProviderForm: () => {
       showProviderForm.value = false;
       providerFormError.value = null;
+    },
+    onProviderChange: (id: string) => {
+      providerId.value = id;
+      lookedUp.value = false;
+      columns.value = [];
+      lookupProjectName.value = '';
+      lookupError.value = null;
+      pickupColumn.value = '';
+      progressColumn.value = '';
+      targetColumn.value = '';
+    },
+    onProjectIdChange: (id: string) => {
+      kaneoProjectId.value = id;
+      lookedUp.value = false;
+      columns.value = [];
+      lookupProjectName.value = '';
+      lookupError.value = null;
+      pickupColumn.value = '';
+      progressColumn.value = '';
+      targetColumn.value = '';
     }
   };
 };

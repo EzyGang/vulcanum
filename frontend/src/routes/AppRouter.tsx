@@ -6,6 +6,7 @@ import { Dashboard } from '../pages/Dashboard';
 import { Login } from '../pages/Login';
 import { Projects } from '../pages/Projects';
 import { ProjectsFormPage } from '../pages/ProjectsForm';
+import { Providers } from '../pages/Providers';
 import { Runs } from '../pages/Runs';
 import { Workers } from '../pages/Workers';
 
@@ -26,6 +27,11 @@ export const AppRouter = () => (
     <Route path='/workers'>
       <AuthenticatedLayout>
         <Workers />
+      </AuthenticatedLayout>
+    </Route>
+    <Route path='/providers'>
+      <AuthenticatedLayout>
+        <Providers />
       </AuthenticatedLayout>
     </Route>
     <Route path='/projects/connect'>

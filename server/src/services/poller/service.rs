@@ -37,6 +37,7 @@ pub struct PollerService {
     providers_repo: IntegrationProvidersRepository,
     db: PgPool,
     poll_period: Duration,
+    task_fetcher: Option<Arc<dyn TaskFetcher>>,
 }
 
 impl PollerService {
@@ -53,7 +54,14 @@ impl PollerService {
             providers_repo,
             db,
             poll_period: Duration::from_secs(poll_period_secs),
+            task_fetcher: None,
         }
+    }
+
+    #[cfg(test)]
+    pub fn with_fetcher(mut self, fetcher: Arc<dyn TaskFetcher>) -> Self {
+        self.task_fetcher = Some(fetcher);
+        self
     }
 
     pub async fn run(self) {
@@ -136,8 +144,13 @@ impl PollerService {
             }
         };
 
-        let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
-        let fetcher: Arc<dyn TaskFetcher> = Arc::new(client);
+        let fetcher: Arc<dyn TaskFetcher> = match &self.task_fetcher {
+            Some(f) => Arc::clone(f),
+            None => {
+                let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
+                Arc::new(client)
+            }
+        };
 
         let tasks = fetcher
             .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)

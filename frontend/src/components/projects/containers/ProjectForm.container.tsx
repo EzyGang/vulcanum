@@ -48,7 +48,9 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         onCancel: () => setLocation('/projects'),
         onCreateProvider: form.handleCreateProvider,
         onShowProviderForm: form.onShowProviderForm,
-        onCancelProviderForm: form.onCancelProviderForm
+        onCancelProviderForm: form.onCancelProviderForm,
+        onProviderChange: form.onProviderChange,
+        onProjectIdChange: form.onProjectIdChange
       }}
     />
   );
