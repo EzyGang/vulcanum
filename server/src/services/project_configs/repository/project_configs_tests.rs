@@ -8,11 +8,24 @@ use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
 };
 
-fn test_provider_id() -> Uuid {
-    Uuid::new_v4()
+async fn insert_provider(pool: &PgPool) -> Uuid {
+    let id = Uuid::new_v4();
+
+    sqlx::query!(
+        "INSERT INTO integration_providers (id, name, instance_url, api_key) VALUES ($1, $2, $3, $4)",
+        id,
+        "test-provider",
+        "cloud.kaneo.app",
+        "test-key",
+    )
+    .execute(pool)
+    .await
+    .expect("Should insert provider");
+
+    id
 }
 
-fn test_params(kaneo_project_id: &str) -> CreateProjectConfigRequest {
+fn test_params(kaneo_project_id: &str, provider_id: Uuid) -> CreateProjectConfigRequest {
     CreateProjectConfigRequest {
         kaneo_project_id: kaneo_project_id.to_owned(),
         enabled: true,
@@ -24,7 +37,7 @@ fn test_params(kaneo_project_id: &str) -> CreateProjectConfigRequest {
         agents_md: String::new(),
         kaneo_workspace_id: String::new(),
         integration_type: IntegrationType::Kaneo,
-        provider_id: test_provider_id(),
+        provider_id,
     }
 }
 
@@ -46,7 +59,8 @@ fn test_update_params() -> UpdateProjectConfigParams<'static> {
 #[sqlx::test]
 async fn create_finds_and_deletes_config(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
-    let params = test_params("kaneo-proj-test-create");
+    let provider_id = insert_provider(&pool).await;
+    let params = test_params("kaneo-proj-test-create", provider_id);
 
     let created = repo
         .create(&pool, &params)
@@ -74,12 +88,13 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
 #[sqlx::test]
 async fn list_all_returns_configs(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
 
-    let p1 = test_params("kaneo-proj-list-a");
+    let p1 = test_params("kaneo-proj-list-a", provider_id);
     let p2 = CreateProjectConfigRequest {
         kaneo_project_id: "kaneo-proj-list-b".to_owned(),
         prompt_template: "Template B".to_owned(),
-        ..test_params("kaneo-proj-list-b")
+        ..test_params("kaneo-proj-list-b", provider_id)
     };
 
     repo.create(&pool, &p1).await.expect("Should create p1");
@@ -92,7 +107,8 @@ async fn list_all_returns_configs(pool: PgPool) {
 #[sqlx::test]
 async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
-    let params = test_params("kaneo-proj-dup");
+    let provider_id = insert_provider(&pool).await;
+    let params = test_params("kaneo-proj-dup", provider_id);
 
     repo.create(&pool, &params)
         .await
@@ -108,7 +124,8 @@ async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
 #[sqlx::test]
 async fn update_partial_fields(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
-    let params = test_params("kaneo-proj-update");
+    let provider_id = insert_provider(&pool).await;
+    let params = test_params("kaneo-proj-update", provider_id);
 
     let created = repo.create(&pool, &params).await.expect("Should create");
 
@@ -135,9 +152,7 @@ async fn update_nonexistent_returns_not_found(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let nonexistent_id = Uuid::new_v4();
 
-    let result = repo
-        .update(&pool, nonexistent_id, &test_update_params())
-        .await;
+    let result = repo.update(&pool, nonexistent_id, &test_update_params()).await;
 
     assert!(matches!(result, Err(ProjectConfigsError::NotFound)));
 }
@@ -155,9 +170,10 @@ async fn delete_nonexistent_returns_not_found(pool: PgPool) {
 #[sqlx::test]
 async fn list_enabled_only_returns_enabled(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
 
-    let enabled_params = test_params("kaneo-proj-enabled");
-    let disabled_params = test_params("kaneo-proj-disabled");
+    let enabled_params = test_params("kaneo-proj-enabled", provider_id);
+    let disabled_params = test_params("kaneo-proj-disabled", provider_id);
 
     let created = repo
         .create(&pool, &disabled_params)
