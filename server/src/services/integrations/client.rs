@@ -16,12 +16,6 @@ impl IntegrationClient {
         Self::Kaneo(KaneoClient::new(instance, api_key))
     }
 
-    pub fn as_kaneo(&self) -> Option<&KaneoClient> {
-        match self {
-            Self::Kaneo(ref client) => Some(client),
-        }
-    }
-
     pub async fn fetch_columns(
         &self,
         project_id: &str,
