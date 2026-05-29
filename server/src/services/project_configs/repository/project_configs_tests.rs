@@ -152,7 +152,9 @@ async fn update_nonexistent_returns_not_found(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let nonexistent_id = Uuid::new_v4();
 
-    let result = repo.update(&pool, nonexistent_id, &test_update_params()).await;
+    let result = repo
+        .update(&pool, nonexistent_id, &test_update_params())
+        .await;
 
     assert!(matches!(result, Err(ProjectConfigsError::NotFound)));
 }
