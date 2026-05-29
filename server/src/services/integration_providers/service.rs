@@ -5,6 +5,7 @@ use crate::services::integration_providers::errors::IntegrationProvidersError;
 use crate::services::integration_providers::model::{
     CreateProviderRequest, IntegrationProvider, UpdateProviderRequest,
 };
+use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 
 #[derive(Clone)]
 pub struct IntegrationProvidersService {

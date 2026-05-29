@@ -1,9 +1,6 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::project_configs::repository::ProjectConfigsRepository;
-use crate::services::work_runs::repository::WorkRunsRepository;
-
 async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 

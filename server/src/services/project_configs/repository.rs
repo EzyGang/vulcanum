@@ -1,5 +1,7 @@
 pub mod project_configs;
 
+use uuid::Uuid;
+
 use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::errors::ProjectConfigsError;
 

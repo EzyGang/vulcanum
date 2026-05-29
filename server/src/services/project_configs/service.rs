@@ -102,17 +102,17 @@ impl ProjectConfigsService {
                 .map_err(ProjectConfigsError::Integration)?;
 
             if let Some(ref col) = params.pickup_column {
-                if !all_columns.iter().any(|c| c.slug == col) {
+                if !all_columns.iter().any(|c| &c.slug == col) {
                     return Err(ProjectConfigsError::ColumnNotFound(col.to_owned()));
                 }
             }
             if let Some(ref col) = params.progress_column {
-                if !all_columns.iter().any(|c| c.slug == col) {
+                if !all_columns.iter().any(|c| &c.slug == col) {
                     return Err(ProjectConfigsError::ColumnNotFound(col.to_owned()));
                 }
             }
             if let Some(ref col) = params.target_column {
-                if !all_columns.iter().any(|c| c.slug == col) {
+                if !all_columns.iter().any(|c| &c.slug == col) {
                     return Err(ProjectConfigsError::ColumnNotFound(col.to_owned()));
                 }
             }

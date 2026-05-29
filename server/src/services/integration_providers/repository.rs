@@ -1,6 +1,6 @@
 pub mod providers;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct IntegrationProvidersRepository {}
 
 impl IntegrationProvidersRepository {
