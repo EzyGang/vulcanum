@@ -144,35 +144,6 @@ impl ProjectConfigsService {
         self.repo.delete(&self.db, id).await
     }
 
-    #[allow(dead_code)]
-    pub async fn fetch_columns(&self, id: Uuid) -> Result<Vec<ColumnInfo>, ProjectConfigsError> {
-        let config = self.repo.find_by_id(&self.db, id).await?;
-        let client = self
-            .resolve_client(&config.provider_id.ok_or(ProjectConfigsError::NoProvider)?)
-            .await?;
-
-        let columns = client
-            .fetch_columns(&config.kaneo_project_id)
-            .await
-            .map_err(ProjectConfigsError::Integration)?;
-
-        Ok(columns.iter().map(ColumnInfo::from).collect())
-    }
-
-    #[allow(dead_code)]
-    pub async fn fetch_columns_by_kaneo_id(
-        &self,
-        provider_id: &Uuid,
-        kaneo_project_id: &str,
-    ) -> Result<Vec<ColumnInfo>, ProjectConfigsError> {
-        let client = self.resolve_client(provider_id).await?;
-        let columns = client
-            .fetch_columns(kaneo_project_id)
-            .await
-            .map_err(ProjectConfigsError::Integration)?;
-        Ok(columns.iter().map(ColumnInfo::from).collect())
-    }
-
     pub async fn lookup_project(
         &self,
         provider_id: &Uuid,

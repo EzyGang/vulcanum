@@ -114,12 +114,26 @@ impl PollerService {
     async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
         let provider_id = match config.provider_id {
             Some(pid) => pid,
-            None => return Ok((0, 0)),
+            None => {
+                tracing::warn!(
+                    project_id = %config.kaneo_project_id,
+                    "skipping poll — no provider configured for project"
+                );
+                return Ok((0, 0));
+            }
         };
 
         let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
             Ok(p) => p,
-            Err(_) => return Ok((0, 0)),
+            Err(e) => {
+                tracing::warn!(
+                    provider_id = %provider_id,
+                    project_id = %config.kaneo_project_id,
+                    error = %e,
+                    "skipping poll — provider not found"
+                );
+                return Ok((0, 0));
+            }
         };
 
         let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
