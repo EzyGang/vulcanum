@@ -10,14 +10,14 @@ Vulcanum is a symphony-like agentic work orchestrator. It provides:
 
 ## Repository Layout
 
-| Module | Path | Technology | Status |
-|--------|------|------------|--------|
-| CLI | `cli/` | Rust | Active |
-| Host Machine Server | `worker-server/` | Rust | Active |
-| Server | `server/` | Rust | Active |
-| Shared Types & Utilities | `shared/` | Rust | Active |
-| Frontend UI | `frontend/` | TypeScript/Preact | Active |
-| Agent Server | *(omitted for now)* | — | — |
+| Module                   | Path                | Technology        | Status |
+| ------------------------ | ------------------- | ----------------- | ------ |
+| CLI                      | `cli/`              | Rust              | Active |
+| Host Machine Server      | `worker-server/`    | Rust              | Active |
+| Server                   | `server/`           | Rust              | Active |
+| Shared Types & Utilities | `shared/`           | Rust              | Active |
+| Frontend UI              | `frontend/`         | TypeScript/Preact | Active |
+| Agent Server             | _(omitted for now)_ | —                 | —      |
 
 All packages (Rust and JS/TS) are managed as a single monorepo via **pnpm workspaces** and **Turborepo**. The Rust crates are also part of a Cargo workspace defined in the root `Cargo.toml`.
 
@@ -91,6 +91,7 @@ cargo run --bin vulcanum-web
 ### Important Rules
 
 <important_rules>
+
 - Comments should explain **why**, not **what** — only add them when the intent is genuinely hard to infer from the code.
 - Doc comments (`///`) are for public API surfaces, and for non-trivial logic where a single-line description prevents confusion.
 - The length of a single file should not be more than 200 lines; if it exceeds that, split it.
@@ -111,7 +112,7 @@ cargo run --bin vulcanum-web
 - Prefer **composition over inheritance**. Build behavior by combining small single-responsibility components rather than deep class hierarchies.
 - NO inline test modules (`#[cfg(test)] mod tests { ... }` inside source files). Always place tests in separate `*_tests.rs` files alongside the module and include them in `mod.rs` with `#[cfg(test)] mod tests_module;`.
 - Only test application-specific business logic. Do not write tests for framework internals (actix-web routing, SQLx pool management, serde serialization), third-party library behavior, or trivial glue code. Focus tests on: state transitions, input validation, error handling, and business rules.
-</important_rules>
+  </important_rules>
 
 ### Style & Formatting
 
@@ -123,13 +124,14 @@ All web service crates (e.g. `server`, future `agent-server`) must follow a stri
 
 ### Layers
 
-| Layer | Responsibility | Location |
-|-------|--------------|----------|
-| HTTP | Routing, handlers, request/response serialization | `src/routes/` or `src/handlers/` |
-| Service | Business logic, auth, validation, caching, orchestration | `src/services/<domain>/service/` |
-| Repository | Database queries, SQLx execution | `src/services/<domain>/repository/` |
+| Layer      | Responsibility                                           | Location                            |
+| ---------- | -------------------------------------------------------- | ----------------------------------- |
+| HTTP       | Routing, handlers, request/response serialization        | `src/routes/` or `src/handlers/`    |
+| Service    | Business logic, auth, validation, caching, orchestration | `src/services/<domain>/service/`    |
+| Repository | Database queries, SQLx execution                         | `src/services/<domain>/repository/` |
 
 Rules:
+
 - Each layer may only communicate with the layer directly above or below it.
 - The HTTP layer **never** calls repositories directly.
 - The repository layer **never** contains business logic, caching, or auth checks.
@@ -193,13 +195,13 @@ When creating or updating tasks, always load these skills first:
 
 ### Column Statuses
 
-| Slug | Status | Meaning |
-|------|--------|---------|
-| `planned` | Planned | Backlog — accepted but not ready to start |
-| `to-do` | To Do | Ready for implementation |
-| `in-progress` | In Progress | Currently being worked on |
-| `in-review` | In Review | Implementation done, awaiting review |
-| `done` | Done | Validated and complete (final) |
+| Slug          | Status      | Meaning                                   |
+| ------------- | ----------- | ----------------------------------------- |
+| `planned`     | Planned     | Backlog — accepted but not ready to start |
+| `to-do`       | To Do       | Ready for implementation                  |
+| `in-progress` | In Progress | Currently being worked on                 |
+| `in-review`   | In Review   | Implementation done, awaiting review      |
+| `done`        | Done        | Validated and complete (final)            |
 
 ### Task Lifecycle
 
@@ -215,12 +217,12 @@ planned → to-do → in-progress → in-review → done
 
 ### Priority Conventions
 
-| Tier | Kaneo Priority | When to Use |
-|------|---------------|-------------|
-| P0 | `high` | Core infrastructure — nothing works without these |
-| P1 | `medium` | Feature work that depends on P0 |
-| P2 | `low` | Reliability, optimizations, CLI polish |
-| P3 | `low` | Developer experience, tooling, documentation |
+| Tier | Kaneo Priority | When to Use                                       |
+| ---- | -------------- | ------------------------------------------------- |
+| P0   | `high`         | Core infrastructure — nothing works without these |
+| P1   | `medium`       | Feature work that depends on P0                   |
+| P2   | `low`          | Reliability, optimizations, CLI polish            |
+| P3   | `low`          | Developer experience, tooling, documentation      |
 
 ### Creating a Task
 
@@ -271,3 +273,10 @@ For module-specific details, refer to the local `AGENTS.md` in each module direc
 - `frontend/AGENTS.md` — TypeScript/Preact UI (component patterns, API layer, design system)
 
 **Always read the module's local `AGENTS.md` before working on code in that directory.**
+
+## Feature implementation checklist
+
+[ ] - tests for relevant logic blocks worth covering are added
+[ ] - `pnpm format` in root is successful
+[ ] - `pnpm validate` passes
+[ ] - `pnpm test` passes

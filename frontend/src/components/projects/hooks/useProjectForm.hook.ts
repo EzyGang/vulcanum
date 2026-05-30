@@ -169,6 +169,7 @@ export const useProjectForm = (projectId: string | null) => {
     newProviderName: providerForm.newProviderName,
     newProviderUrl: providerForm.newProviderUrl,
     newProviderKey: providerForm.newProviderKey,
+    newProviderType: providerForm.newProviderType,
     providerFormError: providerForm.providerFormError,
     providerSubmitting: providerForm.providerSubmitting,
     handleLookup: lookup.handleLookup,

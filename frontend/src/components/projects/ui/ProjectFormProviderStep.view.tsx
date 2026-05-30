@@ -12,6 +12,7 @@ interface ProjectFormProviderStepProps {
   newProviderName: Signal<string>;
   newProviderUrl: Signal<string>;
   newProviderKey: Signal<string>;
+  newProviderType: Signal<string>;
   providerFormError: Signal<string | null>;
   providerSubmitting: Signal<boolean>;
   isEdit: boolean;
@@ -31,6 +32,7 @@ export const ProjectFormProviderStep = ({
   newProviderName,
   newProviderUrl,
   newProviderKey,
+  newProviderType,
   providerFormError,
   providerSubmitting,
   isEdit,
@@ -68,6 +70,7 @@ export const ProjectFormProviderStep = ({
         name={newProviderName}
         url={newProviderUrl}
         apiKey={newProviderKey}
+        providerType={newProviderType}
         error={providerFormError}
         submitting={providerSubmitting}
         mode='create'

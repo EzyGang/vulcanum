@@ -46,6 +46,7 @@ impl IntegrationProvidersService {
                 &self.db,
                 id,
                 params.name.as_deref(),
+                params.provider_type,
                 params.instance_url.as_deref(),
                 params.api_key.as_deref(),
             )

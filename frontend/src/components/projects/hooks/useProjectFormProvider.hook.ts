@@ -8,6 +8,7 @@ export const useProjectFormProvider = (onProviderCreated: (id: string) => void) 
   const newProviderName = useSignal('');
   const newProviderUrl = useSignal('');
   const newProviderKey = useSignal('');
+  const newProviderType = useSignal('kaneo');
   const providerFormError = useSignal<string | null>(null);
   const providerSubmitting = useSignal(false);
 
@@ -24,6 +25,7 @@ export const useProjectFormProvider = (onProviderCreated: (id: string) => void) 
     try {
       const created = await createProvider({
         name: newProviderName.value,
+        providerType: newProviderType.value,
         instanceUrl: newProviderUrl.value,
         apiKey: newProviderKey.value
       });
@@ -33,6 +35,7 @@ export const useProjectFormProvider = (onProviderCreated: (id: string) => void) 
       newProviderName.value = '';
       newProviderUrl.value = '';
       newProviderKey.value = '';
+      newProviderType.value = 'kaneo';
     } catch (err) {
       providerFormError.value = err instanceof Error ? err.message : 'Failed to create provider';
     } finally {
@@ -54,6 +57,7 @@ export const useProjectFormProvider = (onProviderCreated: (id: string) => void) 
     newProviderName,
     newProviderUrl,
     newProviderKey,
+    newProviderType,
     providerFormError,
     providerSubmitting,
     handleCreateProvider,

@@ -16,6 +16,7 @@ export const ProvidersContainer = (): JSX.Element => {
     name,
     url,
     apiKey,
+    providerType,
     handleShowCreate,
     handleShowEdit,
     handleCancelForm,
@@ -36,6 +37,7 @@ export const ProvidersContainer = (): JSX.Element => {
         name,
         url,
         apiKey,
+        providerType,
         formError,
         formSubmitting
       }}

@@ -2,11 +2,17 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
+import { Label } from '../../shared/ui/Label.view';
+
+const PROVIDER_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'kaneo', label: 'Kaneo' }
+];
 
 interface ProviderFormFieldsProps {
   name: Signal<string>;
   url: Signal<string>;
   apiKey: Signal<string>;
+  providerType: Signal<string>;
   error: Signal<string | null>;
   submitting: Signal<boolean>;
   mode: 'create' | 'edit';
@@ -18,6 +24,7 @@ export const ProviderFormFields = ({
   name,
   url,
   apiKey,
+  providerType,
   error,
   submitting,
   mode,
@@ -38,6 +45,24 @@ export const ProviderFormFields = ({
       <span class='text-text-primary text-sm font-medium'>
         {mode === 'create' ? 'New Provider' : 'Edit Provider'}
       </span>
+      <div class='flex flex-col gap-2'>
+        <Label for='field-provider-type'>Type</Label>
+        <select
+          id='field-provider-type'
+          value={providerType.value}
+          onChange={(e) => {
+            providerType.value = (e.target as HTMLSelectElement).value;
+          }}
+          disabled={submitting.value}
+          class='bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full'
+        >
+          {PROVIDER_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <Input
         type='text'
         value={name.value}

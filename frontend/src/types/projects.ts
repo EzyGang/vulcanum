@@ -57,12 +57,14 @@ export interface IntegrationProvider {
 
 export interface CreateProviderRequest {
   name: string;
+  providerType?: string;
   instanceUrl: string;
   apiKey: string;
 }
 
 export interface UpdateProviderRequest {
   name?: string;
+  providerType?: string;
   instanceUrl?: string;
   apiKey?: string;
 }

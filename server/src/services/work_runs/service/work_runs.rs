@@ -1,6 +1,7 @@
 use uuid::Uuid;
 
 use crate::services::integrations::client::IntegrationClient;
+use crate::services::integrations::model::IntegrationType;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
@@ -246,7 +247,11 @@ impl WorkRunsService {
             }
         };
 
-        let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
+        let client = match provider.provider_type {
+            IntegrationType::Kaneo => {
+                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
+            }
+        };
 
         let new_column = match status {
             WorkRunStatus::Completed => &project_config.target_column,

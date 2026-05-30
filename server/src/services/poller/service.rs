@@ -6,6 +6,7 @@ use sqlx::PgPool;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::integrations::client::{IntegrationClient, TaskFetcher};
 use crate::services::integrations::errors::IntegrationError;
+use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::model::WorkRunStatus;
@@ -147,7 +148,11 @@ impl PollerService {
         let fetcher: Arc<dyn TaskFetcher> = match &self.task_fetcher {
             Some(f) => Arc::clone(f),
             None => {
-                let client = IntegrationClient::new_kaneo(provider.instance_url, provider.api_key);
+                let client = match provider.provider_type {
+                    IntegrationType::Kaneo => {
+                        IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
+                    }
+                };
                 Arc::new(client)
             }
         };

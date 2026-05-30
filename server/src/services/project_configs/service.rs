@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::integrations::client::IntegrationClient;
+use crate::services::integrations::model::IntegrationType;
 use crate::services::kaneo::client::slugify;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
@@ -177,10 +178,12 @@ impl ProjectConfigsService {
             .await
             .map_err(|_| ProjectConfigsError::NoProvider)?;
 
-        Ok(IntegrationClient::new_kaneo(
-            provider.instance_url,
-            provider.api_key,
-        ))
+        let client = match provider.provider_type {
+            IntegrationType::Kaneo => {
+                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
+            }
+        };
+        Ok(client)
     }
 }
 

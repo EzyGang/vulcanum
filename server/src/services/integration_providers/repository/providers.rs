@@ -5,6 +5,7 @@ use crate::queryer::Queryer;
 use crate::services::integration_providers::errors::IntegrationProvidersError;
 use crate::services::integration_providers::model::{CreateProviderRequest, IntegrationProvider};
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
+use crate::services::integrations::model::IntegrationType;
 
 impl IntegrationProvidersRepository {
     pub async fn list_all<'c, Q: Queryer<'c>>(
@@ -43,14 +44,16 @@ impl IntegrationProvidersRepository {
         params: &CreateProviderRequest,
     ) -> Result<IntegrationProvider, IntegrationProvidersError> {
         let id = Uuid::new_v4();
+        let provider_type = params.provider_type.unwrap_or_default();
 
         sqlx::query_as!(
             IntegrationProvider,
-            r#"INSERT INTO integration_providers (id, name, instance_url, api_key)
-             VALUES ($1, $2, $3, $4)
+            r#"INSERT INTO integration_providers (id, name, provider_type, instance_url, api_key)
+             VALUES ($1, $2, $3, $4, $5)
              RETURNING id, name, provider_type as "provider_type!: _", instance_url, api_key, created_at as "created_at!: DateTime<Utc>""#,
             id,
             &params.name,
+            provider_type as _,
             &params.instance_url,
             &params.api_key,
         )
@@ -64,6 +67,7 @@ impl IntegrationProvidersRepository {
         db: Q,
         id: Uuid,
         name: Option<&str>,
+        provider_type: Option<IntegrationType>,
         instance_url: Option<&str>,
         api_key: Option<&str>,
     ) -> Result<IntegrationProvider, IntegrationProvidersError> {
@@ -71,12 +75,14 @@ impl IntegrationProvidersRepository {
             IntegrationProvider,
             r#"UPDATE integration_providers SET
              name = COALESCE($2, name),
-             instance_url = COALESCE($3, instance_url),
-             api_key = COALESCE($4, api_key)
+             provider_type = COALESCE($3, provider_type),
+             instance_url = COALESCE($4, instance_url),
+             api_key = COALESCE($5, api_key)
              WHERE id = $1
              RETURNING id, name, provider_type as "provider_type!: _", instance_url, api_key, created_at as "created_at!: DateTime<Utc>""#,
             id,
             name,
+            provider_type as _,
             instance_url,
             api_key,
         )

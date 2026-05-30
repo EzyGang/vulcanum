@@ -29,6 +29,7 @@ interface ProjectFormViewProps {
     newProviderName: Signal<string>;
     newProviderUrl: Signal<string>;
     newProviderKey: Signal<string>;
+    newProviderType: Signal<string>;
     providerFormError: Signal<string | null>;
     providerSubmitting: Signal<boolean>;
   };
@@ -78,6 +79,7 @@ export const ProjectFormView = ({
             newProviderName={d.newProviderName}
             newProviderUrl={d.newProviderUrl}
             newProviderKey={d.newProviderKey}
+            newProviderType={d.newProviderType}
             providerFormError={d.providerFormError}
             providerSubmitting={d.providerSubmitting}
             isEdit={d.isEdit}

@@ -34,6 +34,7 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         newProviderName: form.newProviderName,
         newProviderUrl: form.newProviderUrl,
         newProviderKey: form.newProviderKey,
+        newProviderType: form.newProviderType,
         providerFormError: form.providerFormError,
         providerSubmitting: form.providerSubmitting
       }}

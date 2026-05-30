@@ -9,6 +9,10 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Table } from '../../shared/ui/Table.view';
 import { ProviderFormFields } from './ProviderFormFields.view';
 
+const PROVIDER_TYPE_LABELS: Record<string, string> = {
+  kaneo: 'Kaneo'
+};
+
 interface ProvidersViewProps {
   data: {
     providers: IntegrationProvider[];
@@ -19,6 +23,7 @@ interface ProvidersViewProps {
     name: Signal<string>;
     url: Signal<string>;
     apiKey: Signal<string>;
+    providerType: Signal<string>;
     formError: Signal<string | null>;
     formSubmitting: Signal<boolean>;
   };
@@ -47,6 +52,7 @@ export const ProvidersView = ({
     name,
     url,
     apiKey,
+    providerType,
     formError,
     formSubmitting
   },
@@ -81,7 +87,7 @@ export const ProvidersView = ({
       {!loading && !error && providers.length === 0 && !showForm.value && (
         <EmptyState
           title='No providers configured yet.'
-          description='Add a provider to connect Kaneo projects.'
+          description='Add a provider to connect to your projects.'
         />
       )}
 
@@ -90,6 +96,7 @@ export const ProvidersView = ({
           name={name}
           url={url}
           apiKey={apiKey}
+          providerType={providerType}
           error={formError}
           submitting={formSubmitting}
           mode={editId.value ? 'edit' : 'create'}
@@ -102,6 +109,7 @@ export const ProvidersView = ({
         <Table>
           <Table.Head>
             <Table.HeadCell>Name</Table.HeadCell>
+            <Table.HeadCell>Type</Table.HeadCell>
             <Table.HeadCell>Instance URL</Table.HeadCell>
             <Table.HeadCell>Created</Table.HeadCell>
             <Table.HeadCell>Actions</Table.HeadCell>
@@ -111,6 +119,11 @@ export const ProvidersView = ({
               <Table.Row key={provider.id}>
                 <Table.Cell>
                   <span class='text-text-primary text-sm'>{provider.name}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <span class='text-text-secondary text-sm'>
+                    {PROVIDER_TYPE_LABELS[provider.providerType] ?? provider.providerType}
+                  </span>
                 </Table.Cell>
                 <Table.Cell>
                   <span class='text-text-secondary text-sm font-mono'>{provider.instanceUrl}</span>

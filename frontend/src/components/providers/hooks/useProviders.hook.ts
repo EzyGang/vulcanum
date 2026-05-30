@@ -53,11 +53,13 @@ export const useProviders = () => {
   const name = useSignal('');
   const url = useSignal('');
   const apiKey = useSignal('');
+  const providerType = useSignal('kaneo');
 
   const resetForm = useCallback(() => {
     name.value = '';
     url.value = '';
     apiKey.value = '';
+    providerType.value = 'kaneo';
     formError.value = null;
     formSubmitting.value = false;
     editId.value = null;
@@ -73,6 +75,7 @@ export const useProviders = () => {
     name.value = provider.name;
     url.value = provider.instanceUrl;
     apiKey.value = provider.apiKey;
+    providerType.value = provider.providerType;
     formError.value = null;
     formSubmitting.value = false;
     editId.value = provider.id;
@@ -100,6 +103,7 @@ export const useProviders = () => {
             id: editId.value,
             input: {
               name: name.value,
+              providerType: providerType.value,
               instanceUrl: url.value,
               apiKey: apiKey.value
             }
@@ -107,6 +111,7 @@ export const useProviders = () => {
         } else {
           await createMutation.mutateAsync({
             name: name.value,
+            providerType: providerType.value,
             instanceUrl: url.value,
             apiKey: apiKey.value
           });
@@ -134,6 +139,7 @@ export const useProviders = () => {
     name,
     url,
     apiKey,
+    providerType,
     handleShowCreate,
     handleShowEdit,
     handleCancelForm,
