@@ -131,6 +131,85 @@ impl WorkRunsService {
         tx.commit().await.map_err(WorkRunsError::Database)
     }
 
+    pub async fn fail_run(&self, id: Uuid) -> Result<WorkRun, WorkRunsError> {
+        let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+
+        match run.status {
+            WorkRunStatus::Running | WorkRunStatus::Dispatched => (),
+            _ => return Err(WorkRunsError::InvalidStatusTransition),
+        }
+
+        let mut tx = self.db.begin().await.map_err(WorkRunsError::Database)?;
+
+        let updated = self
+            .work_runs_repo
+            .force_fail(&mut *tx, id)
+            .await?
+            .ok_or(WorkRunsError::NotFound)?;
+
+        if let Some(worker_id) = updated.worker_id {
+            if let Err(e) = self
+                .workers_repo
+                .decrement_active_jobs(&mut *tx, worker_id)
+                .await
+            {
+                tracing::warn!(
+                    error = %e,
+                    worker_id = %worker_id,
+                    "failed to decrement active_jobs on force fail"
+                );
+            }
+        }
+
+        tx.commit().await.map_err(WorkRunsError::Database)?;
+
+        Ok(updated)
+    }
+
+    pub async fn bulk_delete_runs(&self, ids: &[Uuid]) -> Result<u64, WorkRunsError> {
+        let mut tx = self.db.begin().await.map_err(WorkRunsError::Database)?;
+        let mut deleted = 0u64;
+
+        for id in ids {
+            match self.work_runs_repo.find_by_id(&mut *tx, *id).await {
+                Ok(run) => {
+                    if matches!(run.status, WorkRunStatus::Running) {
+                        tracing::warn!(work_run_id = %id, "skipping running run in bulk delete");
+                        continue;
+                    }
+
+                    if let Some(worker_id) = run.worker_id {
+                        if matches!(run.status, WorkRunStatus::Dispatched) {
+                            if let Err(e) = self
+                                .workers_repo
+                                .decrement_active_jobs(&mut *tx, worker_id)
+                                .await
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    worker_id = %worker_id,
+                                    work_run_id = %id,
+                                    "failed to decrement active_jobs on bulk delete"
+                                );
+                            }
+                        }
+                    }
+
+                    self.work_runs_repo.delete(&mut *tx, *id).await?;
+
+                    deleted += 1;
+                }
+                Err(e) => {
+                    tracing::warn!(work_run_id = %id, error = %e, "skipping not found run in bulk delete");
+                }
+            }
+        }
+
+        tx.commit().await.map_err(WorkRunsError::Database)?;
+
+        Ok(deleted)
+    }
+
     pub async fn submit_result(
         &self,
         id: Uuid,

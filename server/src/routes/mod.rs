@@ -60,7 +60,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/runs")
                     .route("", web::get().to(work_runs::list))
-                    .route("/{id}", web::delete().to(work_runs::delete)),
+                    .route("/bulk-delete", web::post().to(work_runs::bulk_delete))
+                    .route("/{id}", web::delete().to(work_runs::delete))
+                    .route("/{id}/fail", web::post().to(work_runs::fail_run)),
             ),
     );
 }

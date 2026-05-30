@@ -6,6 +6,7 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::instance_auth::InstanceAuth;
 use crate::services::work_runs::model::WorkRunStatus;
+use vulcanum_shared::api_types::{BulkDeleteRunsRequest, BulkDeleteRunsResponse};
 
 #[derive(Deserialize)]
 pub struct ListRunsQuery {
@@ -33,4 +34,22 @@ pub async fn delete(
 ) -> Result<HttpResponse, AppError> {
     state.jobs.delete_run(path.into_inner()).await?;
     Ok(HttpResponse::NoContent().finish())
+}
+
+pub async fn bulk_delete(
+    state: web::Data<AppState>,
+    body: web::Json<BulkDeleteRunsRequest>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let deleted = state.jobs.bulk_delete_runs(&body.ids).await?;
+    Ok(HttpResponse::Ok().json(BulkDeleteRunsResponse { deleted }))
+}
+
+pub async fn fail_run(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let run = state.jobs.fail_run(path.into_inner()).await?;
+    Ok(HttpResponse::Ok().json(run))
 }

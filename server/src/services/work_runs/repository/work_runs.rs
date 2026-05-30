@@ -264,6 +264,25 @@ impl WorkRunsRepository {
         .ok_or(WorkRunsError::AlreadyClaimed)
     }
 
+    pub async fn force_fail<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+    ) -> Result<Option<WorkRun>, WorkRunsError> {
+        sqlx::query_as!(
+            WorkRun,
+            r#"UPDATE work_runs SET status = 'failed'::work_run_status, result_exit_code = 1, tokens_used = 0, duration_ms = 0
+             WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
+             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(WorkRunsError::from)
+    }
+
     pub async fn set_result<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
