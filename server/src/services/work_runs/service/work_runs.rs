@@ -182,6 +182,72 @@ impl WorkRunsService {
             );
         }
 
+        match status {
+            WorkRunStatus::Completed => {
+                if let Err(e) = self
+                    .workers_repo
+                    .reset_consecutive_errors(&mut *tx, worker_id)
+                    .await
+                {
+                    tracing::warn!(
+                        error = %e,
+                        worker_id = %worker_id,
+                        "failed to reset consecutive errors"
+                    );
+                }
+            }
+            WorkRunStatus::Failed => {
+                match self
+                    .workers_repo
+                    .increment_consecutive_errors(&mut *tx, worker_id, self.unhealthy_threshold)
+                    .await
+                {
+                    Ok(consecutive_errors) => {
+                        if consecutive_errors >= self.unhealthy_threshold {
+                            tracing::warn!(
+                                worker_id = %worker_id,
+                                consecutive_errors,
+                                threshold = self.unhealthy_threshold,
+                                "worker reached unhealthy threshold, marking unhealthy"
+                            );
+
+                            if let Err(e) = self
+                                .work_runs_repo
+                                .reset_worker_active_jobs(&mut *tx, worker_id)
+                                .await
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    worker_id = %worker_id,
+                                    "failed to reset worker active jobs on unhealthy transition"
+                                );
+                            }
+
+                            if let Err(e) = self
+                                .workers_repo
+                                .reset_active_jobs(&mut *tx, worker_id)
+                                .await
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    worker_id = %worker_id,
+                                    "failed to reset worker active_jobs on unhealthy transition"
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            worker_id = %worker_id,
+                            "failed to increment consecutive errors"
+                        );
+                    }
+                }
+            }
+            _ => (),
+        }
+
         tx.commit().await.map_err(WorkRunsError::Database)?;
 
         tracing::info!(

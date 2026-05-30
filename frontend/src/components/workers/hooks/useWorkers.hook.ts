@@ -1,8 +1,13 @@
 import { useSignal, useSignalEffect } from '@preact/signals';
 import { useCallback } from 'preact/hooks';
 import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
-import { deleteWorker, generateCode, listWorkers } from '../../../services/workers/workers.service';
-import type { Worker } from '../../../types/workers';
+import {
+  deleteWorker,
+  generateCode,
+  listWorkers,
+  updateWorkerStatus
+} from '../../../services/workers/workers.service';
+import type { UpdateWorkerStatusRequest, Worker } from '../../../types/workers';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { formatRelativeTime } from '../../../utils/format';
@@ -14,6 +19,7 @@ export interface FormattedWorker {
   lastSeen: string;
   activeJobs: number;
   maxConcurrentJobs: number;
+  consecutiveErrors: number;
 }
 
 const formatWorkers = (workers: Worker[]): FormattedWorker[] =>
@@ -23,7 +29,8 @@ const formatWorkers = (workers: Worker[]): FormattedWorker[] =>
     status: w.status,
     lastSeen: formatRelativeTime(w.lastSeen),
     activeJobs: w.activeJobs,
-    maxConcurrentJobs: w.maxConcurrentJobs
+    maxConcurrentJobs: w.maxConcurrentJobs,
+    consecutiveErrors: w.consecutiveErrors
   }));
 
 export const useCodeCountdown = (expiresAt: string | null) => {
@@ -69,6 +76,13 @@ export const useWorkers = () => {
     onSuccess: () => invalidate('workers')
   });
 
+  const updateStatusMutation = useApiMutation(
+    ({ id, data }: { id: string; data: UpdateWorkerStatusRequest }) => updateWorkerStatus(id, data),
+    {
+      onSuccess: () => invalidate('workers')
+    }
+  );
+
   const formattedWorkers = workers ? formatWorkers(workers) : [];
 
   const {
@@ -83,6 +97,13 @@ export const useWorkers = () => {
     generateCodeMutation.mutate(undefined);
   }, [generateCodeMutation]);
 
+  const handleUpdateStatus = useCallback(
+    (id: string, status: UpdateWorkerStatusRequest['status']) => {
+      updateStatusMutation.mutate({ id, data: { status } });
+    },
+    [updateStatusMutation]
+  );
+
   const codeCountdown = useCodeCountdown(generateCodeMutation.data?.expiresAt ?? null);
 
   return {
@@ -92,11 +113,13 @@ export const useWorkers = () => {
     generateLoading: generateCodeMutation.isPending,
     deletingId,
     deleteError,
+    updateStatusError: updateStatusMutation.error,
     loading,
     error,
     handleGenerateCode,
     handleConfirmDelete,
     handleCancelDelete,
-    handleDeleteWorker
+    handleDeleteWorker,
+    handleUpdateStatus
   };
 };

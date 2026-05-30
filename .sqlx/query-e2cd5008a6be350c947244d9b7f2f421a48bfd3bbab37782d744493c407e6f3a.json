@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2\n             WHERE id = $3\n             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs",
+  "query": "UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2\n             WHERE id = $3\n             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs, consecutive_errors",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,8 @@
               "Enum": [
                 "idle",
                 "busy",
-                "disconnected"
+                "disconnected",
+                "unhealthy"
               ]
             }
           }
@@ -63,6 +64,11 @@
         "ordinal": 9,
         "name": "max_concurrent_jobs",
         "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "consecutive_errors",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -82,8 +88,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "de00ac2b44cc9db5a67ad2d56d49f68db7a088778735db02d1c6fd08781e6a20"
+  "hash": "e2cd5008a6be350c947244d9b7f2f421a48bfd3bbab37782d744493c407e6f3a"
 }

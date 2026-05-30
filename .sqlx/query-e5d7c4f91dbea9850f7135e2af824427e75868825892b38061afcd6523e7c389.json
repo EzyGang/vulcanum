@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs\n             FROM workers WHERE id = $1",
+  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: chrono::DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs, consecutive_errors\n             FROM workers WHERE active_jobs < max_concurrent_jobs AND status IN ('idle'::worker_status, 'busy'::worker_status)\n             ORDER BY last_seen DESC NULLS LAST",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,8 @@
               "Enum": [
                 "idle",
                 "busy",
-                "disconnected"
+                "disconnected",
+                "unhealthy"
               ]
             }
           }
@@ -51,7 +52,7 @@
       },
       {
         "ordinal": 7,
-        "name": "created_at!: DateTime<Utc>",
+        "name": "created_at!: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
@@ -63,12 +64,15 @@
         "ordinal": 9,
         "name": "max_concurrent_jobs",
         "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "consecutive_errors",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -80,8 +84,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "057d407353c822f48dfb529e8ad745305bf8c01e0f608cc9b2c2db12764b0e7a"
+  "hash": "e5d7c4f91dbea9850f7135e2af824427e75868825892b38061afcd6523e7c389"
 }

@@ -48,6 +48,8 @@ pub enum AppError {
     ColumnNotFound,
     #[error("no provider configured")]
     NoProvider,
+    #[error("invalid worker status transition")]
+    InvalidWorkerStatusTransition,
     #[error("internal server error")]
     Internal,
 }
@@ -111,6 +113,9 @@ impl ResponseError for AppError {
             }),
             Self::NoProvider => HttpResponse::BadRequest().json(ErrorBody {
                 error: "No provider configured for this project".to_owned(),
+            }),
+            Self::InvalidWorkerStatusTransition => HttpResponse::Conflict().json(ErrorBody {
+                error: "Invalid worker status transition".to_owned(),
             }),
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
@@ -188,6 +193,7 @@ impl From<WorkersError> for AppError {
             WorkersError::InvalidRefreshToken => Self::InvalidRefreshToken,
             WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
+            WorkersError::InvalidStatusTransition => Self::InvalidWorkerStatusTransition,
             WorkersError::Database(e) => {
                 tracing::error!(error = %e, operation = "workers", "database error");
                 Self::Internal

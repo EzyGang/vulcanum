@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs)\n             VALUES ($1, $2, $3, $4, $5::worker_status, $6, 0, $7)\n             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs",
+  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs, consecutive_errors\n             FROM workers ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,8 @@
               "Enum": [
                 "idle",
                 "busy",
-                "disconnected"
+                "disconnected",
+                "unhealthy"
               ]
             }
           }
@@ -63,29 +64,15 @@
         "ordinal": 9,
         "name": "max_concurrent_jobs",
         "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "consecutive_errors",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Timestamptz",
-        {
-          "Custom": {
-            "name": "worker_status",
-            "kind": {
-              "Enum": [
-                "idle",
-                "busy",
-                "disconnected"
-              ]
-            }
-          }
-        },
-        "Jsonb",
-        "Int4"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -97,8 +84,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "cd62b3d513957cf0796f499ee33865b4f9c89ec35f13876a3a437e9d38bb4dc5"
+  "hash": "3f5a0d2970f8f429f39ab1bc3341deb7e393ea696ce56f9cafa31944b92d4c03"
 }

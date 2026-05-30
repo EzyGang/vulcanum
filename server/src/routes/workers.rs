@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::instance_auth::InstanceAuth;
-use crate::services::workers::model::{ConnectRequest, RefreshRequest};
+use crate::services::workers::model::{ConnectRequest, RefreshRequest, UpdateWorkerStatusRequest};
 
 pub async fn generate_code(
     state: web::Data<AppState>,
@@ -36,6 +36,19 @@ pub async fn list(
 ) -> Result<HttpResponse, AppError> {
     let workers = state.workers.list_all().await?;
     Ok(HttpResponse::Ok().json(workers))
+}
+
+pub async fn update_status(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    body: web::Json<UpdateWorkerStatusRequest>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let worker = state
+        .workers
+        .set_worker_status(path.into_inner(), body.into_inner())
+        .await?;
+    Ok(HttpResponse::Ok().json(worker))
 }
 
 pub async fn delete(

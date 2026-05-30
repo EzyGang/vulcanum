@@ -14,6 +14,7 @@ fn cfg() -> AppConfig {
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
+        unhealthy_threshold: 3,
         instance_password: "test-password".to_owned(),
         redis_url: String::new(),
     }
@@ -23,6 +24,7 @@ fn svc(pool: sqlx::PgPool) -> WorkersService {
     let c = cfg();
     WorkersService::new(
         WorkersRepository::new(),
+        crate::services::work_runs::repository::WorkRunsRepository::new(),
         pool,
         &c,
         Arc::new(InMemoryCodeStore::new()),

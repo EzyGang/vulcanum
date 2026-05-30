@@ -1,5 +1,6 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
+import type { UpdateWorkerStatusRequest } from '../../../types/workers';
 import type { ApiError } from '../../../utils/api/client';
 import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
@@ -23,19 +24,21 @@ interface WorkersViewProps {
     generateLoading: boolean;
     deletingId: Signal<string | null>;
     deleteError: Signal<string | null>;
+    updateStatusError: ApiError | null;
   };
   actions: {
     onGenerateCode: () => void;
     onConfirmDelete: (id: string) => void;
     onCancelDelete: () => void;
     onDeleteWorker: (id: string) => void;
+    onUpdateStatus: (id: string, status: UpdateWorkerStatusRequest['status']) => void;
   };
 }
 
 export const WorkersView = ({
   data: { workers, code, countdown },
-  status: { loading, error, generateLoading, deletingId, deleteError },
-  actions: { onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }
+  status: { loading, error, generateLoading, deletingId, deleteError, updateStatusError },
+  actions: { onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker, onUpdateStatus }
 }: WorkersViewProps): JSX.Element => (
   <div class='flex flex-col gap-8'>
     <section class='flex flex-col gap-4'>
@@ -65,6 +68,8 @@ export const WorkersView = ({
       {error && <ErrorBanner message={error.message} />}
 
       {deleteError.value && <ErrorBanner message={deleteError.value} />}
+
+      {updateStatusError && <ErrorBanner message={updateStatusError.message} />}
 
       {loading && <div class='text-text-muted text-sm'>Loading workers...</div>}
 
@@ -104,13 +109,28 @@ export const WorkersView = ({
                   />
                 </Table.Cell>
                 <Table.Cell>
-                  <ConfirmDelete
-                    itemId={worker.id}
-                    deletingId={deletingId}
-                    onConfirm={onConfirmDelete}
-                    onDelete={onDeleteWorker}
-                    onCancel={onCancelDelete}
-                  />
+                  <div class='flex items-center gap-2'>
+                    {worker.status === 'unhealthy' && (
+                      <Button variant='ghost' onClick={() => onUpdateStatus(worker.id, 'idle')}>
+                        Re-enable
+                      </Button>
+                    )}
+                    {(worker.status === 'idle' || worker.status === 'busy') && (
+                      <Button
+                        variant='ghost'
+                        onClick={() => onUpdateStatus(worker.id, 'unhealthy')}
+                      >
+                        Disable
+                      </Button>
+                    )}
+                    <ConfirmDelete
+                      itemId={worker.id}
+                      deletingId={deletingId}
+                      onConfirm={onConfirmDelete}
+                      onDelete={onDeleteWorker}
+                      onCancel={onCancelDelete}
+                    />
+                  </div>
                 </Table.Cell>
               </Table.Row>
             ))}

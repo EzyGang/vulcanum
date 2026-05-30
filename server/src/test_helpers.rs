@@ -101,12 +101,14 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
+        unhealthy_threshold: 3,
         instance_password: "test-password".to_owned(),
         redis_url: String::new(),
     };
 
     let workers_repo = WorkersRepository::new();
     let work_runs_repo = WorkRunsRepository::new();
+    let work_runs_repo_for_workers = WorkRunsRepository::new();
     let project_configs_repo = ProjectConfigsRepository::new();
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
 
@@ -126,6 +128,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         providers: providers.clone(),
         workers: WorkersService::new(
             workers_repo.clone(),
+            work_runs_repo_for_workers,
             pool.clone(),
             &cfg,
             Arc::new(InMemoryCodeStore::new()),
@@ -137,6 +140,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
             pool.clone(),
             dispatch_store.clone(),
             providers_repo,
+            cfg.unhealthy_threshold,
         ),
         db_pool: pool,
         work_runs: work_runs_repo,

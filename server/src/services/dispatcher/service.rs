@@ -9,6 +9,7 @@ use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::repository::WorkersRepository;
 
 const ORPHAN_THRESHOLD_SECS: i64 = 120;
+const DEFAULT_STALLED_RUNNING_THRESHOLD_SECS: i64 = 1800;
 
 #[derive(Clone)]
 pub struct DispatcherService {
@@ -18,6 +19,7 @@ pub struct DispatcherService {
     db: PgPool,
     dispatch_store: Arc<dyn DispatchStore>,
     stale_threshold: chrono::Duration,
+    stalled_running_threshold_secs: i64,
 }
 
 impl DispatcherService {
@@ -36,6 +38,7 @@ impl DispatcherService {
             db,
             dispatch_store,
             stale_threshold: chrono::Duration::seconds(stale_threshold_secs as i64),
+            stalled_running_threshold_secs: DEFAULT_STALLED_RUNNING_THRESHOLD_SECS,
         }
     }
 
@@ -57,6 +60,12 @@ impl DispatcherService {
             .await
             .unwrap_or(0);
 
+        let stalled_running = self
+            .work_runs_repo
+            .reset_stalled_running(&self.db, self.stalled_running_threshold_secs)
+            .await
+            .unwrap_or(0);
+
         let workers = self.dispatch_repo.find_available_workers(&self.db).await?;
         let pending = self.dispatch_repo.find_pending_unassigned(&self.db).await?;
 
@@ -66,7 +75,7 @@ impl DispatcherService {
                 pending_jobs: pending.len(),
                 dispatched: 0,
                 disconnected,
-                orphaned: orphaned_global + orphaned_no_worker,
+                orphaned: orphaned_global + orphaned_no_worker + stalled_running,
             });
         }
 
@@ -142,7 +151,7 @@ impl DispatcherService {
             workers_available = workers.len(),
             pending_jobs = pending.len(),
             disconnected,
-            orphaned = orphaned_global + orphaned_no_worker,
+            orphaned = orphaned_global + orphaned_no_worker + stalled_running,
             "dispatch cycle complete"
         );
 
@@ -151,7 +160,7 @@ impl DispatcherService {
             pending_jobs: pending.len(),
             dispatched,
             disconnected,
-            orphaned: orphaned_global + orphaned_no_worker,
+            orphaned: orphaned_global + orphaned_no_worker + stalled_running,
         })
     }
 }

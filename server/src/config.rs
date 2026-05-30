@@ -6,6 +6,7 @@ pub struct AppConfig {
     pub poll_period_secs: u64,
     pub jwt_secret: String,
     pub stale_worker_threshold_secs: u64,
+    pub unhealthy_threshold: i32,
     pub instance_password: String,
     pub redis_url: String,
 }
@@ -23,6 +24,9 @@ impl AppConfig {
         let stale_worker_threshold_secs = std::env::var("STALE_WORKER_THRESHOLD_SECS")
             .unwrap_or_else(|_| "120".to_owned())
             .parse::<u64>()?;
+        let unhealthy_threshold = std::env::var("UNHEALTHY_THRESHOLD")
+            .unwrap_or_else(|_| "3".to_owned())
+            .parse::<i32>()?;
         let instance_password = std::env::var("INSTANCE_PASSWORD")?;
         let redis_url =
             std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
@@ -33,6 +37,7 @@ impl AppConfig {
             poll_period_secs,
             jwt_secret,
             stale_worker_threshold_secs,
+            unhealthy_threshold,
             instance_password,
             redis_url,
         })

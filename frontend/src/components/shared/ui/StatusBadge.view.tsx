@@ -9,7 +9,8 @@ const STATUS_COLORS: Record<string, string> = {
   stalled: 'text-warning bg-warning-bg border-warning-border',
   idle: 'text-success bg-success-bg border-success-border',
   busy: 'text-warning bg-warning-bg border-warning-border',
-  disconnected: 'text-error bg-error-bg border-error-border'
+  disconnected: 'text-error bg-error-bg border-error-border',
+  unhealthy: 'text-error bg-error-bg border-warning-border'
 };
 
 export const StatusBadge = ({ status }: { status: string }): JSX.Element => (

@@ -50,8 +50,10 @@ impl AppState {
         );
         let workers_repo = WorkersRepository::new();
         let code_store = RedisCodeStore::new(&cfg.redis_url)?;
+        let work_runs_repo_for_workers = WorkRunsRepository::new();
         let workers = WorkersService::new(
             workers_repo.clone(),
+            work_runs_repo_for_workers,
             db_pool.clone(),
             cfg,
             Arc::new(code_store),
@@ -67,6 +69,7 @@ impl AppState {
             db_pool.clone(),
             dispatch_store.clone(),
             providers_repo.clone(),
+            cfg.unhealthy_threshold,
         );
 
         let jwt_secret = cfg.jwt_secret.clone();

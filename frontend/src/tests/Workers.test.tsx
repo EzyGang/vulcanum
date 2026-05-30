@@ -1,8 +1,8 @@
 import { signal } from '@preact/signals';
 import { fireEvent, render } from '@testing-library/preact';
 import { describe, expect, it, vi } from 'vitest';
-
 import { WorkersView } from '../components/workers/ui/Workers.view';
+import type { ApiError } from '../utils/api/client';
 
 const makeWorker = (overrides = {}) => ({
   id: '1',
@@ -11,6 +11,7 @@ const makeWorker = (overrides = {}) => ({
   lastSeen: '2 minutes ago',
   activeJobs: 0,
   maxConcurrentJobs: 3,
+  consecutiveErrors: 0,
   ...overrides
 });
 
@@ -22,13 +23,30 @@ describe('Workers.view', () => {
   const onConfirmDelete = vi.fn();
   const onCancelDelete = vi.fn();
   const onDeleteWorker = vi.fn();
+  const onUpdateStatus = vi.fn();
+
+  const baseStatus = {
+    loading: false,
+    error: null as ApiError | null,
+    generateLoading: false,
+    deletingId,
+    deleteError,
+    updateStatusError: null as ApiError | null
+  };
+  const baseActions = {
+    onGenerateCode,
+    onConfirmDelete,
+    onCancelDelete,
+    onDeleteWorker,
+    onUpdateStatus
+  };
 
   it('renders the generate code button', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers: [], code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -41,8 +59,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers: [], code: 'a1b2c3d4e5f6g7h8', countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -59,8 +77,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -72,8 +90,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers: [], code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -84,8 +102,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers: [], code: null, countdown }}
-        status={{ loading: true, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={{ ...baseStatus, loading: true }}
+        actions={baseActions}
       />
     );
 
@@ -103,8 +121,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers: [], code: null, countdown }}
-        status={{ loading: false, error, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={{ ...baseStatus, error }}
+        actions={baseActions}
       />
     );
 
@@ -119,8 +137,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -135,8 +153,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -152,8 +170,8 @@ describe('Workers.view', () => {
     const { getByText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
@@ -168,12 +186,40 @@ describe('Workers.view', () => {
     const { container } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
-        status={{ loading: false, error: null, generateLoading: false, deletingId, deleteError }}
-        actions={{ onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker }}
+        status={baseStatus}
+        actions={baseActions}
       />
     );
 
     const fill = container.querySelector('.bg-error');
     expect(fill).toBeDefined();
+  });
+
+  it('shows Disable button for idle workers', () => {
+    const workers = [makeWorker({ id: '1', name: 'worker-1', status: 'idle' as const })];
+
+    const { getByText } = render(
+      <WorkersView
+        data={{ workers, code: null, countdown }}
+        status={baseStatus}
+        actions={baseActions}
+      />
+    );
+
+    expect(getByText('Disable')).toBeDefined();
+  });
+
+  it('shows Re-enable button for unhealthy workers', () => {
+    const workers = [makeWorker({ id: '1', name: 'worker-1', status: 'unhealthy' as const })];
+
+    const { getByText } = render(
+      <WorkersView
+        data={{ workers, code: null, countdown }}
+        status={baseStatus}
+        actions={baseActions}
+      />
+    );
+
+    expect(getByText('Re-enable')).toBeDefined();
   });
 });
