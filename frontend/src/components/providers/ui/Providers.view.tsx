@@ -65,9 +65,11 @@ export const ProvidersView = ({
     <section class='flex flex-col gap-4'>
       <div class='flex items-center justify-between'>
         <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Providers</h2>
-        <Button variant='primary' onClick={onShowCreate}>
-          Add Provider
-        </Button>
+        {!showForm.value && (
+          <Button variant='primary' onClick={onShowCreate}>
+            Add Provider
+          </Button>
+        )}
       </div>
 
       {error && <ErrorBanner message={error.message} />}
