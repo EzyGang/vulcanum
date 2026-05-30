@@ -29,6 +29,14 @@ DialogRoot.Trigger = ({ children, class: classProp }: DialogTriggerProps) => (
   </BaseDialog.Trigger>
 );
 
+interface DialogPortalProps {
+  children: ComponentChildren;
+}
+
+DialogRoot.Portal = ({ children }: DialogPortalProps) => (
+  <BaseDialog.Portal>{children}</BaseDialog.Portal>
+);
+
 interface DialogBackdropProps {
   class?: string;
 }
