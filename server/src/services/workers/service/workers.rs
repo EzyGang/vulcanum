@@ -115,7 +115,7 @@ impl WorkersService {
         req: UpdateWorkerStatusRequest,
     ) -> Result<WorkerResponse, WorkersError> {
         match req.status {
-            WorkerStatus::Unhealthy => {
+            model::WorkerStatusOverride::Unhealthy => {
                 let mut tx = self.db.begin().await.map_err(WorkersError::Database)?;
 
                 self.repo
@@ -143,12 +143,11 @@ impl WorkersService {
                     "worker marked unhealthy, active jobs reset"
                 );
             }
-            WorkerStatus::Idle => {
+            model::WorkerStatusOverride::Idle => {
                 self.repo
                     .set_status_and_reset(&self.db, worker_id, WorkerStatus::Idle)
                     .await?;
             }
-            _ => return Err(WorkersError::InvalidStatusTransition),
         }
 
         let worker = self.repo.find_by_id(&self.db, worker_id).await?;

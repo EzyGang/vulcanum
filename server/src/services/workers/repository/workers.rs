@@ -221,22 +221,6 @@ impl WorkersRepository {
         Ok(())
     }
 
-    pub async fn increment_active_jobs<'c, Q: Queryer<'c>>(
-        &self,
-        db: Q,
-        id: Uuid,
-    ) -> Result<(), WorkersError> {
-        sqlx::query!(
-            "UPDATE workers SET active_jobs = active_jobs + 1, status = 'busy'::worker_status
-             WHERE id = $1 AND active_jobs < max_concurrent_jobs",
-            id,
-        )
-        .execute(db)
-        .await
-        .map_err(map_sqlx_error)?;
-        Ok(())
-    }
-
     pub async fn decrement_active_jobs<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

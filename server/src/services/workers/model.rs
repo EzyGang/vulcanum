@@ -70,8 +70,15 @@ impl From<Worker> for WorkerResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkerStatusOverride {
+    Idle,
+    Unhealthy,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateWorkerStatusRequest {
-    pub status: WorkerStatus,
+    pub status: WorkerStatusOverride,
 }
 
 #[derive(Debug, Serialize)]

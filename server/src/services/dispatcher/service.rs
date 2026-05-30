@@ -9,7 +9,6 @@ use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::repository::WorkersRepository;
 
 const ORPHAN_THRESHOLD_SECS: i64 = 120;
-const DEFAULT_STALLED_RUNNING_THRESHOLD_SECS: i64 = 1800;
 
 #[derive(Clone)]
 pub struct DispatcherService {
@@ -30,6 +29,7 @@ impl DispatcherService {
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
         stale_threshold_secs: u64,
+        stalled_running_threshold_secs: u64,
     ) -> Self {
         Self {
             dispatch_repo,
@@ -38,7 +38,7 @@ impl DispatcherService {
             db,
             dispatch_store,
             stale_threshold: chrono::Duration::seconds(stale_threshold_secs as i64),
-            stalled_running_threshold_secs: DEFAULT_STALLED_RUNNING_THRESHOLD_SECS,
+            stalled_running_threshold_secs: stalled_running_threshold_secs as i64,
         }
     }
 

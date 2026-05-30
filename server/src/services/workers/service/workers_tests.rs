@@ -15,6 +15,7 @@ fn cfg() -> AppConfig {
         jwt_secret: "test-secret".to_owned(),
         stale_worker_threshold_secs: 120,
         unhealthy_threshold: 3,
+        stalled_running_threshold_secs: 1800,
         instance_password: "test-password".to_owned(),
         redis_url: String::new(),
     }

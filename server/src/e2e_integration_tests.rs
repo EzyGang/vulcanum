@@ -307,6 +307,7 @@ async fn stale_worker_marked_disconnected(pool: sqlx::PgPool) {
         pool.clone(),
         state.dispatch_store.clone(),
         60,
+        1800,
     );
 
     let summary = dispatcher

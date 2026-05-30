@@ -14,6 +14,7 @@ struct DispatcherConfig {
     redis_url: String,
     dispatch_interval_secs: u64,
     stale_worker_threshold_secs: u64,
+    stalled_running_threshold_secs: u64,
 }
 
 impl DispatcherConfig {
@@ -27,12 +28,16 @@ impl DispatcherConfig {
         let stale_worker_threshold_secs = std::env::var("STALE_WORKER_THRESHOLD_SECS")
             .unwrap_or_else(|_| "120".to_owned())
             .parse::<u64>()?;
+        let stalled_running_threshold_secs = std::env::var("STALLED_RUNNING_THRESHOLD_SECS")
+            .unwrap_or_else(|_| "1800".to_owned())
+            .parse::<u64>()?;
 
         Ok(Self {
             db_url,
             redis_url,
             dispatch_interval_secs,
             stale_worker_threshold_secs,
+            stalled_running_threshold_secs,
         })
     }
 }
@@ -67,6 +72,7 @@ async fn main() -> eyre::Result<()> {
         db_pool,
         std::sync::Arc::new(dispatch_store),
         cfg.stale_worker_threshold_secs,
+        cfg.stalled_running_threshold_secs,
     );
 
     tracing::info!(

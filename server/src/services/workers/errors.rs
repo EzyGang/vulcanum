@@ -12,8 +12,6 @@ pub enum WorkersError {
     RefreshTokenExpired,
     #[error("worker not found")]
     WorkerNotFound,
-    #[error("invalid status transition")]
-    InvalidStatusTransition,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("jwt error: {0}")]
