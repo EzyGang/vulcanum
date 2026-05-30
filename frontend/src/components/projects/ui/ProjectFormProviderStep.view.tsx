@@ -2,10 +2,8 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { IntegrationProvider } from '../../../types/projects';
 import { ProviderFormFields } from '../../providers/ui/ProviderFormFields.view';
-
-const labelStyles = 'text-text-muted text-xs uppercase tracking-wider';
-const selectStyles =
-  'bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full';
+import { Button } from '../../shared/ui/Button.view';
+import { Label } from '../../shared/ui/Label.view';
 
 interface ProjectFormProviderStepProps {
   providers: IntegrationProvider[];
@@ -40,9 +38,7 @@ export const ProjectFormProviderStep = ({
   actions
 }: ProjectFormProviderStepProps): JSX.Element => (
   <div class='flex flex-col gap-2'>
-    <label for='field-provider' class={labelStyles}>
-      Provider
-    </label>
+    <Label for='field-provider'>Provider</Label>
     {providers.length > 0 && !showProviderForm.value ? (
       <div class='flex items-center gap-2'>
         <select
@@ -52,7 +48,7 @@ export const ProjectFormProviderStep = ({
             actions.onProviderChange((e.target as HTMLSelectElement).value);
           }}
           disabled={isEdit || submitting.value}
-          class={selectStyles}
+          class='bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full'
         >
           <option value=''>Select a provider</option>
           {providers.map((p) => (
@@ -62,13 +58,9 @@ export const ProjectFormProviderStep = ({
           ))}
         </select>
         {!isEdit && (
-          <button
-            type='button'
-            onClick={actions.onShowProviderForm}
-            class='text-text-muted text-xs uppercase tracking-wider hover:text-text-primary transition-colors whitespace-nowrap'
-          >
+          <Button variant='ghost' onClick={actions.onShowProviderForm}>
             + New
-          </button>
+          </Button>
         )}
       </div>
     ) : (

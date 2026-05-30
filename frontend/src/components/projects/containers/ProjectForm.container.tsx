@@ -50,7 +50,11 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         onShowProviderForm: form.onShowProviderForm,
         onCancelProviderForm: form.onCancelProviderForm,
         onProviderChange: form.onProviderChange,
-        onProjectIdChange: form.onProjectIdChange
+        onProjectIdChange: form.onProjectIdChange,
+        onEnabledChange: form.onEnabledChange,
+        onPromptTemplateChange: form.onPromptTemplateChange,
+        onRepoUrlChange: form.onRepoUrlChange,
+        onAgentsMdChange: form.onAgentsMdChange
       }}
     />
   );

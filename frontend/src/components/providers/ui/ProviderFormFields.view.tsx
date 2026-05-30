@@ -1,8 +1,7 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
-
-const inputClasses =
-  'bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full';
+import { Button } from '../../shared/ui/Button.view';
+import { Input } from '../../shared/ui/Input.view';
 
 interface ProviderFormFieldsProps {
   name: Signal<string>;
@@ -39,7 +38,7 @@ export const ProviderFormFields = ({
       <span class='text-text-primary text-sm font-medium'>
         {mode === 'create' ? 'New Provider' : 'Edit Provider'}
       </span>
-      <input
+      <Input
         type='text'
         value={name.value}
         onInput={(e) => {
@@ -47,9 +46,8 @@ export const ProviderFormFields = ({
         }}
         placeholder='Provider name'
         disabled={submitting.value}
-        class={inputClasses}
       />
-      <input
+      <Input
         type='text'
         value={url.value}
         onInput={(e) => {
@@ -57,9 +55,8 @@ export const ProviderFormFields = ({
         }}
         placeholder='Instance URL (e.g. cloud.kaneo.app)'
         disabled={submitting.value}
-        class={inputClasses}
       />
-      <input
+      <Input
         type='password'
         value={apiKey.value}
         onInput={(e) => {
@@ -67,26 +64,15 @@ export const ProviderFormFields = ({
         }}
         placeholder='API key'
         disabled={submitting.value}
-        class={inputClasses}
       />
       {error.value && <div class='text-error text-sm'>{error.value}</div>}
       <div class='flex items-center gap-2'>
-        <button
-          type='button'
-          onClick={onSave}
-          disabled={submitting.value}
-          class='bg-text-primary text-bg-page text-sm font-medium uppercase tracking-wider px-4 py-2 hover:opacity-90 transition-opacity disabled:opacity-50'
-        >
+        <Button variant='primary' onClick={onSave} disabled={submitting.value}>
           {saveLabel}
-        </button>
-        <button
-          type='button'
-          onClick={onCancel}
-          disabled={submitting.value}
-          class='border border-border-base text-text-primary text-sm uppercase tracking-wider px-4 py-2 hover:bg-bg-hover transition-colors disabled:opacity-50'
-        >
+        </Button>
+        <Button variant='secondary' onClick={onCancel} disabled={submitting.value}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

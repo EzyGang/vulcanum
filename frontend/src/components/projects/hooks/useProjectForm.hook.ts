@@ -1,23 +1,17 @@
 import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
-import { useLocation } from 'wouter-preact';
 import {
   createProject,
   getProject,
   updateProject
 } from '../../../services/projects/projects.service';
-import {
-  createProvider,
-  listProviders,
-  lookupProject
-} from '../../../services/providers/providers.service';
-import type { ColumnInfo } from '../../../types/projects';
+import { listProviders, lookupProject } from '../../../services/providers/providers.service';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { useProjectFormLookup } from './useProjectFormLookup.hook';
+import { useProjectFormProvider } from './useProjectFormProvider.hook';
 
 export const useProjectForm = (projectId: string | null) => {
-  const [_, setLocation] = useLocation();
-
   const { data: existingProject, isLoading: projectLoading } = useApiQuery(
     ['project', projectId ?? ''],
     () => getProject(projectId ?? '')
@@ -36,77 +30,31 @@ export const useProjectForm = (projectId: string | null) => {
   const agentsMd = useSignal('');
   const submitting = useSignal(false);
   const formError = useSignal<string | null>(null);
-  const columns = useSignal<ColumnInfo[]>([]);
-  const columnsLoading = useSignal(false);
-  const lookupProjectName = useSignal('');
-  const lookupError = useSignal<string | null>(null);
-  const lookedUp = useSignal(false);
 
-  const showProviderForm = useSignal(false);
-  const newProviderName = useSignal('');
-  const newProviderUrl = useSignal('');
-  const newProviderKey = useSignal('');
-  const providerFormError = useSignal<string | null>(null);
-  const providerSubmitting = useSignal(false);
+  const lookup = useProjectFormLookup(providerId, kaneoProjectId);
+  const providerForm = useProjectFormProvider((newId: string) => {
+    providerId.value = newId;
+    lookup.resetLookup();
+  });
 
-  const refetchProviders = () => invalidate('providers');
-
-  const handleCreateProvider = useCallback(async (e: Event) => {
-    e.preventDefault();
-    providerFormError.value = null;
-
-    if (!newProviderName.value || !newProviderUrl.value || !newProviderKey.value) {
-      providerFormError.value = 'All fields are required';
-      return;
+  const createMutation = useApiMutation(
+    (input: Parameters<typeof createProject>[0]) => createProject(input),
+    {
+      onSuccess: () => {
+        invalidate('projects');
+      }
     }
+  );
 
-    providerSubmitting.value = true;
-    try {
-      const created = await createProvider({
-        name: newProviderName.value,
-        instanceUrl: newProviderUrl.value,
-        apiKey: newProviderKey.value
-      });
-      refetchProviders();
-      providerId.value = created.id;
-      showProviderForm.value = false;
-      newProviderName.value = '';
-      newProviderUrl.value = '';
-      newProviderKey.value = '';
-      lookedUp.value = false;
-      columns.value = [];
-      lookupProjectName.value = '';
-      lookupError.value = null;
-      pickupColumn.value = '';
-      progressColumn.value = '';
-      targetColumn.value = '';
-    } catch (err) {
-      providerFormError.value = err instanceof Error ? err.message : 'Failed to create provider';
-    } finally {
-      providerSubmitting.value = false;
+  const updateMutation = useApiMutation(
+    ({ id, input }: { id: string; input: Parameters<typeof updateProject>[1] }) =>
+      updateProject(id, input),
+    {
+      onSuccess: () => {
+        invalidate('projects');
+      }
     }
-  }, []);
-
-  const handleLookup = useCallback(async () => {
-    if (!providerId.value || !kaneoProjectId.value) return;
-
-    lookupError.value = null;
-    columnsLoading.value = true;
-    lookedUp.value = false;
-
-    try {
-      const result = await lookupProject(providerId.value, kaneoProjectId.value);
-      lookupProjectName.value = result.name;
-      columns.value = result.columns;
-      lookedUp.value = true;
-    } catch (err) {
-      lookupError.value = err instanceof Error ? err.message : 'Lookup failed';
-      columns.value = [];
-      lookupProjectName.value = '';
-    } finally {
-      columnsLoading.value = false;
-    }
-  }, []);
+  );
 
   useEffect(() => {
     if (projectId && existingProject) {
@@ -125,44 +73,21 @@ export const useProjectForm = (projectId: string | null) => {
 
   useEffect(() => {
     if (projectId && existingProject && providerId.value) {
-      lookupError.value = null;
-      columnsLoading.value = true;
-      lookedUp.value = false;
+      lookup.resetLookup();
       lookupProject(providerId.value, existingProject.kaneoProjectId)
         .then((result) => {
-          lookupProjectName.value = result.name;
-          columns.value = result.columns;
-          lookedUp.value = true;
+          lookup.lookupProjectName.value = result.name;
+          lookup.columns.value = result.columns;
+          lookup.lookedUp.value = true;
         })
         .catch((err) => {
-          lookupError.value = err instanceof Error ? err.message : 'Lookup failed';
+          lookup.lookupError.value = err instanceof Error ? err.message : 'Lookup failed';
         })
         .finally(() => {
-          columnsLoading.value = false;
+          lookup.columnsLoading.value = false;
         });
     }
   }, [projectId, existingProject, providerId.value]);
-
-  const createMutation = useApiMutation(
-    (input: Parameters<typeof createProject>[0]) => createProject(input),
-    {
-      onSuccess: () => {
-        invalidate('projects');
-        setLocation('/projects');
-      }
-    }
-  );
-
-  const updateMutation = useApiMutation(
-    ({ id, input }: { id: string; input: Parameters<typeof updateProject>[1] }) =>
-      updateProject(id, input),
-    {
-      onSuccess: () => {
-        invalidate('projects');
-        setLocation('/projects');
-      }
-    }
-  );
 
   const handleSubmit = useCallback(
     async (e: Event) => {
@@ -218,6 +143,8 @@ export const useProjectForm = (projectId: string | null) => {
     [projectId, createMutation, updateMutation]
   );
 
+  const resetLookup = () => lookup.resetLookup();
+
   return {
     isEdit: !!projectId,
     projectLoading: projectId ? projectLoading : false,
@@ -233,46 +160,41 @@ export const useProjectForm = (projectId: string | null) => {
     agentsMd,
     submitting,
     formError,
-    columns,
-    columnsLoading,
-    lookupProjectName,
-    lookupError,
-    lookedUp,
-    showProviderForm,
-    newProviderName,
-    newProviderUrl,
-    newProviderKey,
-    providerFormError,
-    providerSubmitting,
-    handleLookup,
+    columns: lookup.columns,
+    columnsLoading: lookup.columnsLoading,
+    lookupProjectName: lookup.lookupProjectName,
+    lookupError: lookup.lookupError,
+    lookedUp: lookup.lookedUp,
+    showProviderForm: providerForm.showProviderForm,
+    newProviderName: providerForm.newProviderName,
+    newProviderUrl: providerForm.newProviderUrl,
+    newProviderKey: providerForm.newProviderKey,
+    providerFormError: providerForm.providerFormError,
+    providerSubmitting: providerForm.providerSubmitting,
+    handleLookup: lookup.handleLookup,
     handleSubmit,
-    handleCreateProvider,
-    onShowProviderForm: () => {
-      showProviderForm.value = true;
-    },
-    onCancelProviderForm: () => {
-      showProviderForm.value = false;
-      providerFormError.value = null;
-    },
+    handleCreateProvider: providerForm.handleCreateProvider,
+    onShowProviderForm: providerForm.onShowProviderForm,
+    onCancelProviderForm: providerForm.onCancelProviderForm,
     onProviderChange: (id: string) => {
       providerId.value = id;
-      lookedUp.value = false;
-      columns.value = [];
-      lookupProjectName.value = '';
-      lookupError.value = null;
-      pickupColumn.value = '';
-      progressColumn.value = '';
-      targetColumn.value = '';
+      resetLookup();
     },
     onProjectIdChange: (id: string) => {
       kaneoProjectId.value = id;
-      lookedUp.value = false;
-      columns.value = [];
-      lookupProjectName.value = '';
-      lookupError.value = null;
-      pickupColumn.value = '';
-      progressColumn.value = '';
-      targetColumn.value = '';
+      resetLookup();
+    },
+    onEnabledChange: (checked: boolean) => {
+      enabled.value = checked;
+    },
+    onPromptTemplateChange: (value: string) => {
+      promptTemplate.value = value;
+    },
+    onRepoUrlChange: (value: string) => {
+      repoUrl.value = value;
+    },
+    onAgentsMdChange: (value: string) => {
+      agentsMd.value = value;
     }
   };
 };

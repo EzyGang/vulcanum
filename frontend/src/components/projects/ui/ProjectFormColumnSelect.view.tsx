@@ -1,10 +1,7 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { ColumnInfo } from '../../../types/projects';
-
-const selectStyles =
-  'bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full';
-const labelStyles = 'text-text-muted text-xs uppercase tracking-wider';
+import { Label } from '../../shared/ui/Label.view';
 
 interface ProjectFormColumnSelectProps {
   id: string;
@@ -26,9 +23,7 @@ export const ProjectFormColumnSelect = ({
   placeholderText
 }: ProjectFormColumnSelectProps): JSX.Element => (
   <div class='flex flex-col gap-2'>
-    <label for={id} class={labelStyles}>
-      {label}
-    </label>
+    <Label for={id}>{label}</Label>
     {columnsLoading.value ? (
       <span class='text-text-muted text-sm'>Loading columns...</span>
     ) : (
@@ -39,7 +34,7 @@ export const ProjectFormColumnSelect = ({
           value.value = (e.target as HTMLSelectElement).value;
         }}
         disabled={disabled || !columns.value.length}
-        class={selectStyles}
+        class='bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full'
       >
         <option value=''>{placeholderText}</option>
         {columns.value.map((col) => (

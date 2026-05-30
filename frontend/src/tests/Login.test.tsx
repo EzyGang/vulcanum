@@ -20,16 +20,17 @@ describe('Login.view', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the password input and submit button', () => {
-    const { getByPlaceholderText, getByText } = render(
+  const renderView = () =>
+    render(
       <LoginView
-        password={password}
-        error={error}
-        loading={loading}
-        onPasswordChange={onPasswordChange}
-        onSubmit={onSubmit}
+        data={{ password }}
+        status={{ error, loading }}
+        actions={{ onPasswordChange, onSubmit }}
       />
     );
+
+  it('renders the password input and submit button', () => {
+    const { getByPlaceholderText, getByText } = renderView();
 
     expect(getByPlaceholderText('Instance password')).toBeDefined();
     expect(getByText('Sign in')).toBeDefined();
@@ -37,15 +38,7 @@ describe('Login.view', () => {
   });
 
   it('calls onSubmit when the form is submitted', () => {
-    const { getByText } = render(
-      <LoginView
-        password={password}
-        error={error}
-        loading={loading}
-        onPasswordChange={onPasswordChange}
-        onSubmit={onSubmit}
-      />
-    );
+    const { getByText } = renderView();
 
     fireEvent.click(getByText('Sign in'));
 
@@ -55,15 +48,7 @@ describe('Login.view', () => {
   it('shows error message when error signal is set', () => {
     error.value = 'Invalid password';
 
-    const { getByText } = render(
-      <LoginView
-        password={password}
-        error={error}
-        loading={loading}
-        onPasswordChange={onPasswordChange}
-        onSubmit={onSubmit}
-      />
-    );
+    const { getByText } = renderView();
 
     expect(getByText('Invalid password')).toBeDefined();
   });
@@ -71,15 +56,7 @@ describe('Login.view', () => {
   it('disables submit button when loading', () => {
     loading.value = true;
 
-    const { getByText } = render(
-      <LoginView
-        password={password}
-        error={error}
-        loading={loading}
-        onPasswordChange={onPasswordChange}
-        onSubmit={onSubmit}
-      />
-    );
+    const { getByText } = renderView();
 
     const button = getByText('Signing in...') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
@@ -88,15 +65,7 @@ describe('Login.view', () => {
   it('disables input when loading', () => {
     loading.value = true;
 
-    const { getByPlaceholderText } = render(
-      <LoginView
-        password={password}
-        error={error}
-        loading={loading}
-        onPasswordChange={onPasswordChange}
-        onSubmit={onSubmit}
-      />
-    );
+    const { getByPlaceholderText } = renderView();
 
     const input = getByPlaceholderText('Instance password') as HTMLInputElement;
     expect(input.disabled).toBe(true);

@@ -1,5 +1,4 @@
-import { useSignal } from '@preact/signals';
-import { useCallback } from 'preact/hooks';
+import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
 import { deleteProject, listProjects } from '../../../services/projects/projects.service';
 import { listProviders } from '../../../services/providers/providers.service';
 import { invalidate } from '../../../utils/api/query/client';
@@ -18,30 +17,13 @@ export const useProjects = () => {
     onSuccess: () => invalidate('projects')
   });
 
-  const deleteError = useSignal<string | null>(null);
-  const deleteConfirmId = useSignal<string | null>(null);
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      deleteError.value = null;
-      try {
-        await deleteMutation.mutateAsync(id);
-      } catch (_err) {
-        deleteError.value = 'Failed to delete project config';
-      } finally {
-        deleteConfirmId.value = null;
-      }
-    },
-    [deleteMutation]
-  );
-
-  const handleConfirmDelete = useCallback((id: string) => {
-    deleteConfirmId.value = id;
-  }, []);
-
-  const handleCancelDelete = useCallback(() => {
-    deleteConfirmId.value = null;
-  }, []);
+  const {
+    deletingId: deleteConfirmId,
+    deleteError,
+    handleConfirmDelete,
+    handleCancelDelete,
+    handleDelete
+  } = useDeleteConfirm('project config', deleteMutation);
 
   return {
     projects: projects ?? [],

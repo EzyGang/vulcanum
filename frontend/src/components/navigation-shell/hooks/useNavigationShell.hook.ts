@@ -1,9 +1,5 @@
 import { useLocation } from 'wouter-preact';
-
-interface NavLink {
-  href: string;
-  label: string;
-}
+import type { NavLink } from '../types';
 
 const NAV_LINKS: NavLink[] = [
   { href: '/', label: 'Dashboard' },

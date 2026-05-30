@@ -3,17 +3,13 @@ import type { JSX } from 'preact';
 import type { WorkRunListItem, WorkRunStatus } from '../../../types/runs';
 import type { ApiError } from '../../../utils/api/client';
 import { formatDuration, formatRelativeTime } from '../../../utils/format';
+import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
+import { EmptyState } from '../../shared/ui/EmptyState.view';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { StatusBadge } from '../../shared/ui/StatusBadge.view';
-
-const STATUS_OPTIONS: { value: WorkRunStatus | ''; label: string }[] = [
-  { value: '', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'dispatched', label: 'Dispatched' },
-  { value: 'running', label: 'Running' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'failed', label: 'Failed' },
-  { value: 'stalled', label: 'Stalled' }
-];
+import { Table } from '../../shared/ui/Table.view';
+import { RunFilterBar } from './RunFilterBar.view';
+import { RunPagination } from './RunPagination.view';
 
 interface RunsViewProps {
   data: {
@@ -30,7 +26,7 @@ interface RunsViewProps {
     hasPrevPage: boolean;
   };
   actions: {
-    setStatusFilter: (status: WorkRunStatus | undefined) => void;
+    setStatusFilter: (value: string) => void;
     nextPage: () => void;
     prevPage: () => void;
     handleDeleteRun: (id: string) => void;
@@ -54,89 +50,44 @@ export const RunsView = ({
   <div class='flex flex-col gap-6'>
     <div class='flex items-center justify-between'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Work Runs</h2>
-
-      <select
-        value={statusFilter.value ?? ''}
-        onChange={(e) => {
-          const val = (e.target as HTMLSelectElement).value;
-          setStatusFilter(val ? (val as WorkRunStatus) : undefined);
-        }}
-        class='bg-bg-input border border-border-base text-text-primary text-sm px-3 py-2 focus:outline-none focus:border-border-focus'
-      >
-        {STATUS_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <RunFilterBar statusFilter={statusFilter} onStatusFilter={setStatusFilter} />
     </div>
 
-    {error && (
-      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-        {error.message}
-      </div>
-    )}
-
-    {deleteError.value && (
-      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-        {deleteError.value}
-      </div>
-    )}
-
+    {error && <ErrorBanner message={error.message} />}
+    {deleteError.value && <ErrorBanner message={deleteError.value} />}
     {loading && <div class='text-text-muted text-sm'>Loading runs...</div>}
-
-    {!loading && !error && runs.length === 0 && (
-      <div class='flex flex-col items-center gap-2 bg-bg-card border border-border-base p-12'>
-        <p class='text-text-muted text-sm'>No work runs found.</p>
-      </div>
-    )}
+    {!loading && !error && runs.length === 0 && <EmptyState title='No work runs found.' />}
 
     {runs.length > 0 && (
       <div class='overflow-x-auto'>
         <table class='w-full border-collapse'>
-          <thead>
-            <tr class='border-b border-border-base'>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                Task
-              </th>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                Status
-              </th>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                Worker
-              </th>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                Duration
-              </th>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                PR
-              </th>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                Created
-              </th>
-              <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+          <Table.Head>
+            <Table.HeadCell>Task</Table.HeadCell>
+            <Table.HeadCell>Status</Table.HeadCell>
+            <Table.HeadCell>Worker</Table.HeadCell>
+            <Table.HeadCell>Duration</Table.HeadCell>
+            <Table.HeadCell>PR</Table.HeadCell>
+            <Table.HeadCell>Created</Table.HeadCell>
+            <Table.HeadCell>Actions</Table.HeadCell>
+          </Table.Head>
+          <Table.Body>
             {runs.map((run) => (
-              <tr key={run.id} class='border-b border-border-base'>
-                <td class='px-5 py-3'>
+              <Table.Row key={run.id}>
+                <Table.Cell>
                   <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
-                </td>
-                <td class='px-5 py-3'>
+                </Table.Cell>
+                <Table.Cell>
                   <StatusBadge status={run.status} />
-                </td>
-                <td class='px-5 py-3'>
+                </Table.Cell>
+                <Table.Cell>
                   <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
-                </td>
-                <td class='px-5 py-3'>
+                </Table.Cell>
+                <Table.Cell>
                   <span class='text-text-secondary text-sm font-mono'>
                     {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
                   </span>
-                </td>
-                <td class='px-5 py-3'>
+                </Table.Cell>
+                <Table.Cell>
                   {run.resultPrUrl ? (
                     <a
                       href={run.resultPrUrl}
@@ -149,65 +100,34 @@ export const RunsView = ({
                   ) : (
                     <span class='text-text-muted text-sm'>—</span>
                   )}
-                </td>
-                <td class='px-5 py-3'>
+                </Table.Cell>
+                <Table.Cell>
                   <span class='text-text-secondary text-sm'>
                     {formatRelativeTime(run.createdAt)}
                   </span>
-                </td>
-                <td class='px-5 py-3'>
-                  {deletingId.value === run.id ? (
-                    <div class='flex items-center gap-2'>
-                      <span class='text-text-muted text-xs'>Confirm?</span>
-                      <button
-                        type='button'
-                        onClick={() => handleDeleteRun(run.id)}
-                        class='text-error text-xs uppercase tracking-wider hover:opacity-80 transition-opacity'
-                      >
-                        Delete
-                      </button>
-                      <button
-                        type='button'
-                        onClick={handleCancelDelete}
-                        class='text-text-muted text-xs uppercase tracking-wider hover:text-text-primary transition-colors'
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type='button'
-                      onClick={() => handleConfirmDelete(run.id)}
-                      class='text-text-muted text-xs uppercase tracking-wider hover:text-error transition-colors'
-                    >
-                      Delete
-                    </button>
-                  )}
-                </td>
-              </tr>
+                </Table.Cell>
+                <Table.Cell>
+                  <ConfirmDelete
+                    itemId={run.id}
+                    deletingId={deletingId}
+                    onConfirm={handleConfirmDelete}
+                    onDelete={handleDeleteRun}
+                    onCancel={handleCancelDelete}
+                  />
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </tbody>
+          </Table.Body>
         </table>
 
-        <div class='flex items-center justify-between pt-4'>
-          <button
-            type='button'
-            onClick={prevPage}
-            disabled={!hasPrevPage || loading}
-            class='text-text-secondary text-sm uppercase tracking-wider hover:text-text-primary transition-colors disabled:opacity-30'
-          >
-            Previous
-          </button>
-          <span class='text-text-muted text-sm'>Page {page.value + 1}</span>
-          <button
-            type='button'
-            onClick={nextPage}
-            disabled={!hasNextPage || loading}
-            class='text-text-secondary text-sm uppercase tracking-wider hover:text-text-primary transition-colors disabled:opacity-30'
-          >
-            Next
-          </button>
-        </div>
+        <RunPagination
+          page={page}
+          hasPrevPage={hasPrevPage}
+          hasNextPage={hasNextPage}
+          loading={loading}
+          onPrev={prevPage}
+          onNext={nextPage}
+        />
       </div>
     )}
   </div>

@@ -15,9 +15,9 @@ const SystemIcon = (): JSX.Element => (
     viewBox='0 0 24 24'
     fill='none'
     stroke='currentColor'
-    strokeWidth='2'
-    strokeLinecap='round'
-    strokeLinejoin='round'
+    stroke-width='2'
+    stroke-linecap='round'
+    stroke-linejoin='round'
     aria-hidden='true'
   >
     <title>System theme</title>
@@ -35,9 +35,9 @@ const SunIcon = (): JSX.Element => (
     viewBox='0 0 24 24'
     fill='none'
     stroke='currentColor'
-    strokeWidth='2'
-    strokeLinecap='round'
-    strokeLinejoin='round'
+    stroke-width='2'
+    stroke-linecap='round'
+    stroke-linejoin='round'
     aria-hidden='true'
   >
     <title>Light theme</title>
@@ -61,9 +61,9 @@ const MoonIcon = (): JSX.Element => (
     viewBox='0 0 24 24'
     fill='none'
     stroke='currentColor'
-    strokeWidth='2'
-    strokeLinecap='round'
-    strokeLinejoin='round'
+    stroke-width='2'
+    stroke-linecap='round'
+    stroke-linejoin='round'
     aria-hidden='true'
   >
     <title>Dark theme</title>
@@ -101,7 +101,7 @@ export const ThemeToggleView = (props: ThemeToggleViewProps): JSX.Element => {
     <button
       type='button'
       onClick={props.onToggle}
-      className='p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors duration-150'
+      class='p-2 text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors duration-150'
       aria-label={`Theme: ${label}. Click to cycle.`}
       title={`Theme: ${label}`}
     >

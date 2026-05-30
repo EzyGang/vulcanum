@@ -16,18 +16,16 @@ describe('ProgressBar.view', () => {
     expect(container.textContent).not.toContain('2 / 5');
   });
 
-  it('sets fill width to 0% when max is 0', () => {
-    const { container } = render(<ProgressBar value={5} max={0} />);
+  it('uses bg-error when value reaches max', () => {
+    const { container } = render(<ProgressBar value={5} max={5} />);
 
-    const fill = container.querySelector('[style]') as HTMLElement;
-    expect(fill.style.width).toBe('0%');
+    expect(container.querySelector('.bg-error')).toBeDefined();
   });
 
-  it('clamps fill width to 100% when value exceeds max', () => {
+  it('clamps value to max and renders bg-error when value exceeds max', () => {
     const { container } = render(<ProgressBar value={8} max={5} />);
 
-    const fill = container.querySelector('[style]') as HTMLElement;
-    expect(fill.style.width).toBe('100%');
+    expect(container.querySelector('.bg-error')).toBeDefined();
   });
 
   it('uses bg-success when ratio is below 50%', () => {

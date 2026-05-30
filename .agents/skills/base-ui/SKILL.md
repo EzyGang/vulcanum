@@ -1,6 +1,6 @@
 ---
 name: base-ui
-description: Reference for using @base-ui/react unstyled components within the Vulcanum frontend. Covers import conventions, Preact compat, Tailwind v4 + OKLCH design token styling, compound component wrappers, and state management rules.
+description: Reference for using @base-ui/react unstyled components within the Vulcanum frontend. Covers import conventions, Preact compat, Tailwind v4 + OKLCH design token styling, compound component wrappers, and state management rules. Use it when in need of designing or creating a new component for the app or refactoring existing ones
 ---
 
 # Base UI (Vulcanum Component Library Skill)
@@ -13,10 +13,10 @@ This skill is the single reference for creating or modifying shared UI component
 
 The codebase is split into **two distinct zones**:
 
-| Zone | Path | Responsibility | Import rule |
-|------|------|----------------|-------------|
-| **Shared UI primitives** | `src/components/shared/ui/` | The **only** place that imports from `@base-ui/react`. Wraps every unstyled primitive with Vulcanum design tokens, focus rings, sizing, and accessibility defaults. | ✅ `@base-ui/react/*` allowed here ONLY. |
-| **Feature / app components** | `src/components/<feature>/` | Composes **shared UI primitives** into domain-specific views. | ❌ Never import `@base-ui/react/*` directly. Always consume from `components/shared/ui/`. |
+| Zone                         | Path                        | Responsibility                                                                                                                                                      | Import rule                                                                               |
+| ---------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Shared UI primitives**     | `src/components/shared/ui/` | The **only** place that imports from `@base-ui/react`. Wraps every unstyled primitive with Vulcanum design tokens, focus rings, sizing, and accessibility defaults. | ✅ `@base-ui/react/*` allowed here ONLY.                                                  |
+| **Feature / app components** | `src/components/<feature>/` | Composes **shared UI primitives** into domain-specific views.                                                                                                       | ❌ Never import `@base-ui/react/*` directly. Always consume from `components/shared/ui/`. |
 
 ### Enforcement
 
@@ -71,6 +71,7 @@ import { Input } from "@base-ui/react/input";
 ```
 
 **Preact-specific rules**:
+
 - Do **not** import from `"react"` directly; if you need hooks, import from `"preact/compat"` or `"preact/hooks"`.
 - In JSX, write `class="..."`.
 - Base UI compound components (`Dialog.Root`, `Dialog.Trigger`, etc.) work normally through the compat layer.
@@ -79,27 +80,27 @@ import { Input } from "@base-ui/react/input";
 
 Tokens are defined in `src/style.css` as `@theme` mappings to CSS custom properties. Use the Tailwind utility names below; never hard-code raw OKLCH values in components.
 
-| Semantic usage | Tailwind utility | Maps to token (dark) |
-|---------------|------------------|----------------------|
-| Page background | `bg-bg-page` | `oklch(0% 0 0)` |
-| Card / panel background | `bg-bg-card` | `oklch(14% 0 0)` |
-| Input background | `bg-bg-input` | `oklch(20% 0 0)` |
-| Hover background | `bg-bg-hover` | `oklch(22% 0 0)` |
-| Active / pressed background | `bg-bg-active` | `oklch(23% 0 0)` |
-| Primary text | `text-text-primary` | `oklch(100% 0 0)` |
-| Secondary text | `text-text-secondary` | `oklch(100% 0 0 / 0.8)` |
-| Muted text | `text-text-muted` | `oklch(65% 0 0)` |
-| Default border | `border-border-base` | `oklch(26% 0 0)` |
-| Focus border | `border-border-focus` | `oklch(65% 0.2 30)` |
-| Accent (CTA) | `text-accent`, `bg-accent` | `oklch(65% 0.22 30)` |
-| Accent light | `text-accent-light`, `bg-accent-light` | `oklch(75% 0.15 40)` |
-| Error text | `text-error` | `oklch(55% 0.2 25)` |
-| Error background | `bg-error-bg` | `oklch(55% 0.2 25 / 0.15)` |
-| Error border | `border-error-border` | `oklch(55% 0.2 25 / 0.3)` |
-| Success text | `text-success` | `oklch(65% 0.16 155)` |
-| Success background | `bg-success-bg` | `oklch(65% 0.16 155 / 0.15)` |
-| Warning text | `text-warning` | `oklch(75% 0.15 85)` |
-| Warning background | `bg-warning-bg` | `oklch(75% 0.15 85 / 0.15)` |
+| Semantic usage              | Tailwind utility                       | Maps to token (dark)         |
+| --------------------------- | -------------------------------------- | ---------------------------- |
+| Page background             | `bg-bg-page`                           | `oklch(0% 0 0)`              |
+| Card / panel background     | `bg-bg-card`                           | `oklch(14% 0 0)`             |
+| Input background            | `bg-bg-input`                          | `oklch(20% 0 0)`             |
+| Hover background            | `bg-bg-hover`                          | `oklch(22% 0 0)`             |
+| Active / pressed background | `bg-bg-active`                         | `oklch(23% 0 0)`             |
+| Primary text                | `text-text-primary`                    | `oklch(100% 0 0)`            |
+| Secondary text              | `text-text-secondary`                  | `oklch(100% 0 0 / 0.8)`      |
+| Muted text                  | `text-text-muted`                      | `oklch(65% 0 0)`             |
+| Default border              | `border-border-base`                   | `oklch(26% 0 0)`             |
+| Focus border                | `border-border-focus`                  | `oklch(65% 0.2 30)`          |
+| Accent (CTA)                | `text-accent`, `bg-accent`             | `oklch(65% 0.22 30)`         |
+| Accent light                | `text-accent-light`, `bg-accent-light` | `oklch(75% 0.15 40)`         |
+| Error text                  | `text-error`                           | `oklch(55% 0.2 25)`          |
+| Error background            | `bg-error-bg`                          | `oklch(55% 0.2 25 / 0.15)`   |
+| Error border                | `border-error-border`                  | `oklch(55% 0.2 25 / 0.3)`    |
+| Success text                | `text-success`                         | `oklch(65% 0.16 155)`        |
+| Success background          | `bg-success-bg`                        | `oklch(65% 0.16 155 / 0.15)` |
+| Warning text                | `text-warning`                         | `oklch(75% 0.15 85)`         |
+| Warning background          | `bg-warning-bg`                        | `oklch(75% 0.15 85 / 0.15)`  |
 
 Light theme tokens are available automatically when `html[data-theme="light"]` is active; Tailwind dark-mode is handled via the `data-theme` attribute.
 
@@ -144,15 +145,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       class={clsx(
         "inline-flex items-center justify-center cursor-pointer transition-colors duration-fast",
         VARIANT_MAP[variant],
-        classProp
+        classProp,
       )}
       {...rest}
     />
-  )
+  ),
 );
 ```
 
 **Rules for simple wrappers**:
+
 - Always pass through the `class` prop using `clsx` so callers can override / extend.
 - Combine the design token classes (the static look) with the caller-supplied class.
 - Keep wrappers thin: only styling, layout, and prop mapping. No logic.
@@ -175,10 +177,7 @@ interface DialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export const Dialog = ({
-  children,
-  ...props
-}: DialogProps): JSX.Element => (
+export const Dialog = ({ children, ...props }: DialogProps): JSX.Element => (
   <BaseDialog.Root {...props}>{children}</BaseDialog.Root>
 );
 
@@ -196,7 +195,7 @@ Dialog.Trigger = ({
   <BaseDialog.Trigger
     class={clsx(
       "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
-      classProp
+      classProp,
     )}
   >
     {children}
@@ -209,13 +208,11 @@ interface DialogBackdropProps {
   class?: string;
 }
 
-Dialog.Backdrop = ({
-  class: classProp,
-}: DialogBackdropProps): JSX.Element => (
+Dialog.Backdrop = ({ class: classProp }: DialogBackdropProps): JSX.Element => (
   <BaseDialog.Backdrop
     class={clsx(
       "fixed inset-0 bg-bg-page/80 backdrop-blur-sm transition-opacity",
-      classProp
+      classProp,
     )}
   />
 );
@@ -236,7 +233,7 @@ Dialog.Popup = ({
       "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
       "bg-bg-card border border-border-base p-5 shadow-modal max-w-lg w-full",
       "focus:outline-none",
-      classProp
+      classProp,
     )}
   >
     {children}
@@ -255,10 +252,7 @@ Dialog.Title = ({
   class: classProp,
 }: DialogTitleProps): JSX.Element => (
   <BaseDialog.Title
-    class={clsx(
-      "text-text-primary text-lg font-medium mb-3",
-      classProp
-    )}
+    class={clsx("text-text-primary text-lg font-medium mb-3", classProp)}
   >
     {children}
   </BaseDialog.Title>
@@ -296,7 +290,7 @@ Dialog.Close = ({
   <BaseDialog.Close
     class={clsx(
       "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
-      classProp
+      classProp,
     )}
   >
     {children}
@@ -334,37 +328,38 @@ export const DeleteConfirm = (): JSX.Element => (
 
 All Base UI components below may be wrapped in `components/shared/ui/` when a feature needs them. Do not import Base UI directly in feature code. Always consume through a wrapper.
 
-| Base UI Component | Vulcanum Wrapper Path | Notes |
-|-------------------|----------------------|-------|
-| `Button` | `components/shared/ui/Button.view.tsx` | Primary CTA, secondary, Ghost |
-| `Input` | `components/shared/ui/Input.view.tsx` | Text inputs with project focus/error states |
-| `Dialog` | `components/shared/ui/Dialog.view.tsx` | Compound wrapper (Trigger, Backdrop, Popup, Title, Description, Close) |
-| `Toast` | `components/shared/ui/Toast.view.tsx` | Compound wrapper (Provider, Toast) |
-| `Select` | `components/shared/ui/Select.view.tsx` | Compound wrapper (Trigger, Value, Popup, Option) |
-| `Switch` | `components/shared/ui/Switch.view.tsx` | Toggle with project track/thumb tokens |
-| `Checkbox` | `components/shared/ui/Checkbox.view.tsx` | Check indicator with project tokens |
-| `Tooltip` | `components/shared/ui/Tooltip.view.tsx` | Compound wrapper (Provider, Trigger, Positioner) |
-| `Popover` | `components/shared/ui/Popover.view.tsx` | Compound wrapper (Trigger, Positioner, Popup, Arrow) |
-| `Menu` | `components/shared/ui/Menu.view.tsx` | Compound wrapper (Trigger, Positioner, Popup, Item) |
-| `Collapsible` | `components/shared/ui/Collapsible.view.tsx` | Expand/collapse sections |
-| `Tabs` | `components/shared/ui/Tabs.view.tsx` | Compound wrapper (List, Tab, Panel) |
-| `Field` | `components/shared/ui/Field.view.tsx` | Wrapper for label + error text pairing |
-| `Form` | `components/shared/ui/Form.view.tsx` | Validation integration wrapper |
-| `Separator` | `components/shared/ui/Separator.view.tsx` | Minimal divider line |
+| Base UI Component | Vulcanum Wrapper Path                       | Notes                                                                  |
+| ----------------- | ------------------------------------------- | ---------------------------------------------------------------------- |
+| `Button`          | `components/shared/ui/Button.view.tsx`      | Primary CTA, secondary, Ghost                                          |
+| `Input`           | `components/shared/ui/Input.view.tsx`       | Text inputs with project focus/error states                            |
+| `Dialog`          | `components/shared/ui/Dialog.view.tsx`      | Compound wrapper (Trigger, Backdrop, Popup, Title, Description, Close) |
+| `Toast`           | `components/shared/ui/Toast.view.tsx`       | Compound wrapper (Provider, Toast)                                     |
+| `Select`          | `components/shared/ui/Select.view.tsx`      | Compound wrapper (Trigger, Value, Popup, Option)                       |
+| `Switch`          | `components/shared/ui/Switch.view.tsx`      | Toggle with project track/thumb tokens                                 |
+| `Checkbox`        | `components/shared/ui/Checkbox.view.tsx`    | Check indicator with project tokens                                    |
+| `Tooltip`         | `components/shared/ui/Tooltip.view.tsx`     | Compound wrapper (Provider, Trigger, Positioner)                       |
+| `Popover`         | `components/shared/ui/Popover.view.tsx`     | Compound wrapper (Trigger, Positioner, Popup, Arrow)                   |
+| `Menu`            | `components/shared/ui/Menu.view.tsx`        | Compound wrapper (Trigger, Positioner, Popup, Item)                    |
+| `Collapsible`     | `components/shared/ui/Collapsible.view.tsx` | Expand/collapse sections                                               |
+| `Tabs`            | `components/shared/ui/Tabs.view.tsx`        | Compound wrapper (List, Tab, Panel)                                    |
+| `Field`           | `components/shared/ui/Field.view.tsx`       | Wrapper for label + error text pairing                                 |
+| `Form`            | `components/shared/ui/Form.view.tsx`        | Validation integration wrapper                                         |
+| `Separator`       | `components/shared/ui/Separator.view.tsx`   | Minimal divider line                                                   |
 
 If a needed component is not yet wrapped, create it in `components/shared/ui/` following the patterns above. Keep wrapper files under 150 lines; split sub-parts into separate files if the compound API is large.
 
 ## 8. State Management Rules
 
-| State type | Tool | When to use |
-|-----------|------|-------------|
-| **Open / closed** (Dialog, Popover Toast, Menu) | Base UI `open` / `defaultOpen` + `onOpenChange` | Local ephemeral UI state |
-| **Form field values** | Base UI `Field` / `Form` or `useSignal` | Local, unless shared across components |
-| **Shared selection / filter** | `@preact/signals` store | Cross-component or persisted |
-| **Server data** | `@tanstack/react-query` | Never duplicate into signals |
-| **Theme / auth token** | `@preact/signals` global store | Singletons |
+| State type                                      | Tool                                            | When to use                            |
+| ----------------------------------------------- | ----------------------------------------------- | -------------------------------------- |
+| **Open / closed** (Dialog, Popover Toast, Menu) | Base UI `open` / `defaultOpen` + `onOpenChange` | Local ephemeral UI state               |
+| **Form field values**                           | Base UI `Field` / `Form` or `useSignal`         | Local, unless shared across components |
+| **Shared selection / filter**                   | `@preact/signals` store                         | Cross-component or persisted           |
+| **Server data**                                 | `@tanstack/react-query`                         | Never duplicate into signals           |
+| **Theme / auth token**                          | `@preact/signals` global store                  | Singletons                             |
 
 Guidelines:
+
 - Use Base UI’s built-in state APIs (`Dialog.Root open={...} onOpenChange={...}`) for open/closed, focus, and selection state that lives inside the component tree.
 - Use `@preact/signals` only when state is shared between distant components or must survive unmounting.
 - Never store server-fetched data in signals if React Query already caches it.
@@ -405,11 +400,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         "w-full bg-bg-input border px-3 py-2 text-sm text-text-primary outline-none transition-colors duration-fast",
         "placeholder:text-text-muted focus:border-border-focus",
         invalid ? "border-error" : "border-border-base",
-        classProp
+        classProp,
       )}
       {...rest}
     />
-  )
+  ),
 );
 ```
 

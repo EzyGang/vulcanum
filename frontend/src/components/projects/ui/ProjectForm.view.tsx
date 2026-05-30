@@ -1,9 +1,11 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { ColumnInfo, IntegrationProvider } from '../../../types/projects';
-import { ProjectFormColumnSelect } from './ProjectFormColumnSelect.view';
+import { Button } from '../../shared/ui/Button.view';
+import { ProjectFormColumns } from './ProjectFormColumns.view';
 import { ProjectFormProjectLookup } from './ProjectFormProjectLookup.view';
 import { ProjectFormProviderStep } from './ProjectFormProviderStep.view';
+import { ProjectFormTextFields } from './ProjectFormTextFields.view';
 
 interface ProjectFormViewProps {
   data: {
@@ -44,13 +46,12 @@ interface ProjectFormViewProps {
     onCancelProviderForm: () => void;
     onProviderChange: (id: string) => void;
     onProjectIdChange: (id: string) => void;
+    onEnabledChange: (checked: boolean) => void;
+    onPromptTemplateChange: (value: string) => void;
+    onRepoUrlChange: (value: string) => void;
+    onAgentsMdChange: (value: string) => void;
   };
 }
-
-const labelStyles = 'text-text-muted text-xs uppercase tracking-wider';
-const inputStyles =
-  'bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full';
-const textareaStyles = `${inputStyles} font-mono`;
 
 export const ProjectFormView = ({
   data: d,
@@ -106,126 +107,41 @@ export const ProjectFormView = ({
 
           {canShowFields && (
             <>
-              <label for='field-enabled' class='flex items-center gap-2 cursor-pointer'>
-                <input
-                  id='field-enabled'
-                  type='checkbox'
-                  checked={d.enabled.value}
-                  onChange={(e) => {
-                    d.enabled.value = (e.target as HTMLInputElement).checked;
-                  }}
-                  disabled={submitting.value}
-                />
-                <span class={labelStyles}>Enabled</span>
-              </label>
-
-              <ProjectFormColumnSelect
-                id='field-pickup-column'
-                label='Pickup Column'
-                value={d.pickupColumn}
+              <ProjectFormColumns
+                enabled={d.enabled}
+                pickupColumn={d.pickupColumn}
+                progressColumn={d.progressColumn}
+                targetColumn={d.targetColumn}
                 columns={d.columns}
                 columnsLoading={d.columnsLoading}
-                disabled={submitting.value}
-                placeholderText='Select pickup column'
-              />
-              <ProjectFormColumnSelect
-                id='field-progress-column'
-                label='Progress Column'
-                value={d.progressColumn}
-                columns={d.columns}
-                columnsLoading={d.columnsLoading}
-                disabled={submitting.value}
-                placeholderText='Select progress column'
-              />
-              <ProjectFormColumnSelect
-                id='field-target-column'
-                label='Target Column'
-                value={d.targetColumn}
-                columns={d.columns}
-                columnsLoading={d.columnsLoading}
-                disabled={submitting.value}
-                placeholderText='Select target column'
+                submitting={submitting}
+                onEnabledChange={a.onEnabledChange}
               />
 
-              <div class='flex flex-col gap-2'>
-                <div class='flex flex-col gap-1'>
-                  <label for='field-prompt-template' class={labelStyles}>
-                    Prompt Template
-                  </label>
-                  <span class='text-text-muted text-xs'>
-                    Supports {'{{task_title}}'}, {'{{task_body}}'}, and {'{{repo_url}}'} variables.
-                  </span>
-                </div>
-                <textarea
-                  id='field-prompt-template'
-                  value={d.promptTemplate.value}
-                  onInput={(e) => {
-                    d.promptTemplate.value = (e.target as HTMLTextAreaElement).value;
-                  }}
-                  disabled={submitting.value}
-                  rows={4}
-                  class={textareaStyles}
-                />
-              </div>
-
-              <div class='flex flex-col gap-2'>
-                <label for='field-repo-url' class={labelStyles}>
-                  Repo URL
-                </label>
-                <span class='text-text-muted text-xs'>
-                  Git repository URL. Use https://&lt;token&gt;@github.com/org/repo for private
-                  repos.
-                </span>
-                <input
-                  id='field-repo-url'
-                  type='text'
-                  value={d.repoUrl.value}
-                  onInput={(e) => {
-                    d.repoUrl.value = (e.target as HTMLInputElement).value;
-                  }}
-                  placeholder='https://github.com/org/repo'
-                  disabled={submitting.value}
-                  class={inputStyles}
-                />
-              </div>
-
-              <div class='flex flex-col gap-2'>
-                <label for='field-agents-md' class={labelStyles}>
-                  Agents.md
-                </label>
-                <span class='text-text-muted text-xs'>
-                  Project instructions written to AGENTS.md in the work directory.
-                </span>
-                <textarea
-                  id='field-agents-md'
-                  value={d.agentsMd.value}
-                  onInput={(e) => {
-                    d.agentsMd.value = (e.target as HTMLTextAreaElement).value;
-                  }}
-                  disabled={submitting.value}
-                  rows={6}
-                  class={textareaStyles}
-                />
-              </div>
+              <ProjectFormTextFields
+                promptTemplate={d.promptTemplate}
+                repoUrl={d.repoUrl}
+                agentsMd={d.agentsMd}
+                submitting={submitting}
+                onPromptTemplateChange={a.onPromptTemplateChange}
+                onRepoUrlChange={a.onRepoUrlChange}
+                onAgentsMdChange={a.onAgentsMdChange}
+              />
 
               {formError.value && <div class='text-error text-sm'>{formError.value}</div>}
 
               <div class='flex items-center gap-3'>
-                <button
-                  type='submit'
-                  disabled={submitting.value}
-                  class='bg-text-primary text-bg-page text-sm font-medium uppercase tracking-wider px-4 py-3 hover:opacity-90 transition-opacity disabled:opacity-50'
-                >
+                <Button type='submit' variant='primary' disabled={submitting.value}>
                   {submitting.value ? 'Saving...' : d.isEdit ? 'Update Project' : 'Create Project'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type='button'
+                  variant='secondary'
                   onClick={a.onCancel}
                   disabled={submitting.value}
-                  class='border border-border-base text-text-primary text-sm font-medium uppercase tracking-wider px-4 py-3 hover:bg-bg-hover transition-colors disabled:opacity-50'
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </>
           )}

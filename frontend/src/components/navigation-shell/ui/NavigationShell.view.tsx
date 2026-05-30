@@ -1,19 +1,18 @@
 import type { ComponentChildren, JSX } from 'preact';
-import { logout } from '../../../stores/auth.store';
+import { Button } from '../../shared/ui/Button.view';
 import { ThemeToggleContainer } from '../../theme/containers/ThemeToggle.container';
+import type { NavLink } from '../types';
 
 const LOGO_SRC = '/logo.svg';
-
-interface NavLink {
-  href: string;
-  label: string;
-}
 
 interface NavigationShellProps {
   children: ComponentChildren;
   data: {
     navLinks: NavLink[];
     isActive: (href: string) => boolean;
+  };
+  actions: {
+    onLogout: () => void;
   };
 }
 
@@ -32,7 +31,8 @@ const NavButton = ({ link, active }: { link: NavLink; active: boolean }) => (
 
 export const NavigationShellView = ({
   children,
-  data: { navLinks, isActive }
+  data: { navLinks, isActive },
+  actions: { onLogout }
 }: NavigationShellProps): JSX.Element => (
   <div class='flex flex-col min-h-screen bg-bg-page'>
     <header class='flex items-center justify-between px-6 py-4 border-b border-border-base'>
@@ -49,13 +49,9 @@ export const NavigationShellView = ({
       </div>
       <div class='flex items-center gap-4'>
         <ThemeToggleContainer />
-        <button
-          type='button'
-          onClick={logout}
-          class='text-text-secondary text-sm uppercase tracking-wider hover:text-text-primary transition-colors'
-        >
+        <Button variant='ghost' onClick={onLogout}>
           Logout
-        </button>
+        </Button>
       </div>
     </header>
     <main class='flex flex-col flex-1'>{children}</main>

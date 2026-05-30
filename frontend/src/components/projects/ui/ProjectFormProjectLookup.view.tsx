@@ -1,9 +1,8 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
-
-const labelStyles = 'text-text-muted text-xs uppercase tracking-wider';
-const inputStyles =
-  'bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full';
+import { Button } from '../../shared/ui/Button.view';
+import { Input } from '../../shared/ui/Input.view';
+import { Label } from '../../shared/ui/Label.view';
 
 interface ProjectFormProjectLookupProps {
   kaneoProjectId: Signal<string>;
@@ -28,11 +27,9 @@ export const ProjectFormProjectLookup = ({
   actions
 }: ProjectFormProjectLookupProps): JSX.Element => (
   <div class='flex flex-col gap-2'>
-    <label for='field-kaneo-project-id' class={labelStyles}>
-      Kaneo Project ID
-    </label>
+    <Label for='field-kaneo-project-id'>Kaneo Project ID</Label>
     <div class='flex items-center gap-2'>
-      <input
+      <Input
         id='field-kaneo-project-id'
         type='text'
         value={kaneoProjectId.value}
@@ -41,17 +38,16 @@ export const ProjectFormProjectLookup = ({
         }}
         placeholder='e.g. k5s7dwb5f89anmaui2d814h9'
         disabled={isEdit || submitting.value}
-        class={`flex-1 ${inputStyles}`}
+        class='flex-1'
       />
       {!isEdit && (
-        <button
-          type='button'
+        <Button
+          variant='secondary'
           onClick={actions.onLookup}
           disabled={!kaneoProjectId.value || columnsLoading.value}
-          class='border border-border-base text-text-primary text-sm uppercase tracking-wider px-4 py-3 hover:bg-bg-hover transition-colors disabled:opacity-50 whitespace-nowrap'
         >
           Look Up
-        </button>
+        </Button>
       )}
     </div>
     {lookupError.value && <div class='text-error text-sm'>{lookupError.value}</div>}

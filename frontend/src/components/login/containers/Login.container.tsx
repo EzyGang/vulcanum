@@ -1,5 +1,4 @@
 import type { JSX } from 'preact';
-
 import { useLogin } from '../hooks/useLogin.hook';
 import { LoginView } from '../ui/Login.view';
 
@@ -8,11 +7,9 @@ export const LoginContainer = (): JSX.Element => {
 
   return (
     <LoginView
-      password={password}
-      error={error}
-      loading={loading}
-      onPasswordChange={handlePasswordChange}
-      onSubmit={handleSubmit}
+      data={{ password }}
+      status={{ error, loading }}
+      actions={{ onPasswordChange: handlePasswordChange, onSubmit: handleSubmit }}
     />
   );
 };

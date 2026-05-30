@@ -2,6 +2,11 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { ProjectConfig } from '../../../types/projects';
 import type { ApiError } from '../../../utils/api/client';
+import { Button } from '../../shared/ui/Button.view';
+import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
+import { EmptyState } from '../../shared/ui/EmptyState.view';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
+import { Table } from '../../shared/ui/Table.view';
 
 interface ProjectsViewProps {
   data: {
@@ -40,136 +45,81 @@ export const ProjectsView = ({
         <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>
           Project Configs
         </h2>
-        <button
-          type='button'
-          onClick={onConnectProject}
-          disabled={!hasProviders}
-          class='bg-text-primary text-bg-page text-sm font-medium uppercase tracking-wider px-4 py-3 hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed'
-        >
+        <Button variant='primary' onClick={onConnectProject} disabled={!hasProviders}>
           Connect Project
-        </button>
+        </Button>
       </div>
       {!hasProviders && (
         <p class='text-text-muted text-xs'>Create a provider in the Providers tab first.</p>
       )}
 
-      {error && (
-        <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorBanner message={error.message} />}
 
-      {deleteError.value && (
-        <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-          {deleteError.value}
-        </div>
-      )}
+      {deleteError.value && <ErrorBanner message={deleteError.value} />}
 
       {loading && <div class='text-text-muted text-sm'>Loading projects...</div>}
 
       {!loading && !error && projects.length === 0 && (
-        <div class='flex flex-col items-center gap-4 bg-bg-card border border-border-base p-12'>
-          <p class='text-text-muted text-sm'>No project configs configured yet.</p>
-          <p class='text-text-muted text-xs'>
-            Add a project config to start monitoring Kaneo projects and creating work runs.
-          </p>
-        </div>
+        <EmptyState
+          title='No project configs configured yet.'
+          description='Add a project config to start monitoring Kaneo projects and creating work runs.'
+        />
       )}
 
       {!loading && projects.length > 0 && (
-        <div class='overflow-x-auto'>
-          <table class='w-full border-collapse'>
-            <thead>
-              <tr class='border-b border-border-base'>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Kaneo Project ID
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Enabled
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Columns
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Repo URL
-                </th>
-                <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => (
-                <tr key={project.id} class='border-b border-border-base'>
-                  <td class='px-5 py-3'>
-                    <span class='text-text-primary text-sm font-mono'>
-                      {project.kaneoProjectId}
-                    </span>
-                  </td>
-                  <td class='px-5 py-3'>
-                    {project.enabled ? (
-                      <span class='text-success text-xs uppercase tracking-wider'>Yes</span>
-                    ) : (
-                      <span class='text-text-muted text-xs uppercase tracking-wider'>No</span>
+        <Table>
+          <Table.Head>
+            <Table.HeadCell>Kaneo Project ID</Table.HeadCell>
+            <Table.HeadCell>Enabled</Table.HeadCell>
+            <Table.HeadCell>Columns</Table.HeadCell>
+            <Table.HeadCell>Repo URL</Table.HeadCell>
+            <Table.HeadCell>Actions</Table.HeadCell>
+          </Table.Head>
+          <Table.Body>
+            {projects.map((project) => (
+              <Table.Row key={project.id}>
+                <Table.Cell>
+                  <span class='text-text-primary text-sm font-mono'>{project.kaneoProjectId}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  {project.enabled ? (
+                    <span class='text-success text-xs uppercase tracking-wider'>Yes</span>
+                  ) : (
+                    <span class='text-text-muted text-xs uppercase tracking-wider'>No</span>
+                  )}
+                </Table.Cell>
+                <Table.Cell>
+                  <span class='text-text-secondary text-sm font-mono'>
+                    {columnsTriad(
+                      project.pickupColumn,
+                      project.progressColumn,
+                      project.targetColumn
                     )}
-                  </td>
-                  <td class='px-5 py-3'>
-                    <span class='text-text-secondary text-sm font-mono'>
-                      {columnsTriad(
-                        project.pickupColumn,
-                        project.progressColumn,
-                        project.targetColumn
-                      )}
-                    </span>
-                  </td>
-                  <td class='px-5 py-3'>
-                    <span class='text-text-secondary text-sm font-mono truncate max-w-xs block'>
-                      {project.repoUrl || '—'}
-                    </span>
-                  </td>
-                  <td class='px-5 py-3'>
-                    {deleteConfirmId.value === project.id ? (
-                      <div class='flex items-center gap-2'>
-                        <span class='text-text-muted text-xs'>Confirm?</span>
-                        <button
-                          type='button'
-                          onClick={() => onDelete(project.id)}
-                          class='text-error text-xs uppercase tracking-wider hover:opacity-80 transition-opacity'
-                        >
-                          Delete
-                        </button>
-                        <button
-                          type='button'
-                          onClick={onCancelDelete}
-                          class='text-text-muted text-xs uppercase tracking-wider hover:text-text-primary transition-colors'
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div class='flex items-center gap-3'>
-                        <button
-                          type='button'
-                          onClick={() => onEditClick(project.id)}
-                          class='text-text-muted text-xs uppercase tracking-wider hover:text-text-primary transition-colors'
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type='button'
-                          onClick={() => onConfirmDelete(project.id)}
-                          class='text-text-muted text-xs uppercase tracking-wider hover:text-error transition-colors'
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </span>
+                </Table.Cell>
+                <Table.Cell>
+                  <span class='text-text-secondary text-sm font-mono truncate max-w-xs block'>
+                    {project.repoUrl || '—'}
+                  </span>
+                </Table.Cell>
+                <Table.Cell>
+                  <ConfirmDelete
+                    itemId={project.id}
+                    deletingId={deleteConfirmId}
+                    onConfirm={onConfirmDelete}
+                    onDelete={onDelete}
+                    onCancel={onCancelDelete}
+                    editActions={
+                      <Button variant='ghost' onClick={() => onEditClick(project.id)}>
+                        Edit
+                      </Button>
+                    }
+                  />
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
       )}
     </section>
   </div>

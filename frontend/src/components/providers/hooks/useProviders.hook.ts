@@ -1,5 +1,6 @@
 import { useSignal } from '@preact/signals';
 import { useCallback } from 'preact/hooks';
+import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
 import {
   createProvider,
   deleteProvider,
@@ -36,8 +37,14 @@ export const useProviders = () => {
     onSuccess: () => invalidate('providers')
   });
 
-  const deleteConfirmId = useSignal<string | null>(null);
-  const deleteError = useSignal<string | null>(null);
+  const {
+    deletingId: deleteConfirmId,
+    deleteError,
+    handleConfirmDelete,
+    handleCancelDelete,
+    handleDelete
+  } = useDeleteConfirm('provider', deleteMutation);
+
   const formError = useSignal<string | null>(null);
   const formSubmitting = useSignal(false);
 
@@ -112,28 +119,6 @@ export const useProviders = () => {
       }
     },
     [editId, createMutation, updateMutation, resetForm]
-  );
-
-  const handleConfirmDelete = useCallback((id: string) => {
-    deleteConfirmId.value = id;
-  }, []);
-
-  const handleCancelDelete = useCallback(() => {
-    deleteConfirmId.value = null;
-  }, []);
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      deleteError.value = null;
-      try {
-        await deleteMutation.mutateAsync(id);
-      } catch (err) {
-        deleteError.value = err instanceof Error ? err.message : 'Failed to delete provider';
-      } finally {
-        deleteConfirmId.value = null;
-      }
-    },
-    [deleteMutation]
   );
 
   return {
