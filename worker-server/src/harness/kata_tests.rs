@@ -29,6 +29,7 @@ fn resource_limits_default_memory() {
 }
 
 #[tokio::test]
+#[ignore = "requires kata-runtime"]
 async fn kata_harness_missing_docker_returns_install_error() {
     let harness = KataHarness::with_image("nonexistent-image:latest".to_owned());
     let limits = ResourceLimits {
@@ -59,6 +60,7 @@ async fn kata_harness_missing_docker_returns_install_error() {
 }
 
 #[tokio::test]
+#[ignore = "requires kata-runtime"]
 async fn kata_harness_writes_agents_md() {
     let harness = KataHarness::with_image("nonexistent-image:latest".to_owned());
     let limits = ResourceLimits {
@@ -99,6 +101,7 @@ async fn kata_harness_writes_agents_md() {
 }
 
 #[tokio::test]
+#[ignore = "requires kata-runtime"]
 async fn kata_harness_skips_agents_md_when_empty() {
     let harness = KataHarness::with_image("nonexistent-image:latest".to_owned());
     let limits = ResourceLimits {
