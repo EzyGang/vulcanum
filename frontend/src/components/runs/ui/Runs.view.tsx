@@ -188,24 +188,26 @@ export const RunsView = ({
         }}
       >
         <Dialog.Backdrop />
-        <Dialog.Popup>
-          <div class='flex flex-col gap-4'>
-            <Dialog.Title>
-              Delete {selectionCount} run{selectionCount !== 1 ? 's' : ''}?
-            </Dialog.Title>
-            <Dialog.Description>
-              This action cannot be undone. Running runs will be skipped.
-            </Dialog.Description>
-            <div class='flex justify-end gap-3'>
-              <Dialog.Close>
-                <Button variant='secondary'>Cancel</Button>
-              </Dialog.Close>
-              <Button variant='danger' onClick={handleConfirmBulkDelete}>
-                Delete
-              </Button>
+        <Dialog.Portal>
+          <Dialog.Popup>
+            <div class='flex flex-col gap-4'>
+              <Dialog.Title>
+                Delete {selectionCount} run{selectionCount !== 1 ? 's' : ''}?
+              </Dialog.Title>
+              <Dialog.Description>
+                This action cannot be undone. Running runs will be skipped.
+              </Dialog.Description>
+              <div class='flex justify-end gap-3'>
+                <Dialog.Close>
+                  <Button variant='secondary'>Cancel</Button>
+                </Dialog.Close>
+                <Button variant='danger' onClick={handleConfirmBulkDelete}>
+                  Delete
+                </Button>
+              </div>
             </div>
-          </div>
-        </Dialog.Popup>
+          </Dialog.Popup>
+        </Dialog.Portal>
       </Dialog>
     )}
   </div>

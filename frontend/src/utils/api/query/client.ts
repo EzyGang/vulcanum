@@ -11,4 +11,4 @@ export const queryClient = new QueryClient({
 });
 
 export const invalidate = (...keyParts: unknown[]) =>
-  queryClient.invalidateQueries({ queryKey: keyParts });
+  queryClient.invalidateQueries({ queryKey: keyParts, refetchType: 'all' });
