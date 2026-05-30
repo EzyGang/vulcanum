@@ -1,5 +1,6 @@
 import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
+import { useLocation } from 'wouter-preact';
 import {
   createProject,
   getProject,
@@ -12,6 +13,7 @@ import { useProjectFormLookup } from './useProjectFormLookup.hook';
 import { useProjectFormProvider } from './useProjectFormProvider.hook';
 
 export const useProjectForm = (projectId: string | null) => {
+  const [, setLocation] = useLocation();
   const { data: existingProject, isLoading: projectLoading } = useApiQuery(
     ['project', projectId ?? ''],
     () => getProject(projectId ?? '')
@@ -42,6 +44,7 @@ export const useProjectForm = (projectId: string | null) => {
     {
       onSuccess: () => {
         invalidate('projects');
+        setLocation('/projects');
       }
     }
   );
@@ -52,6 +55,7 @@ export const useProjectForm = (projectId: string | null) => {
     {
       onSuccess: () => {
         invalidate('projects');
+        setLocation('/projects');
       }
     }
   );
@@ -145,6 +149,8 @@ export const useProjectForm = (projectId: string | null) => {
 
   const resetLookup = () => lookup.resetLookup();
 
+  const cancel = () => setLocation('/projects');
+
   return {
     isEdit: !!projectId,
     projectLoading: projectId ? projectLoading : false,
@@ -174,6 +180,7 @@ export const useProjectForm = (projectId: string | null) => {
     providerSubmitting: providerForm.providerSubmitting,
     handleLookup: lookup.handleLookup,
     handleSubmit,
+    cancel,
     handleCreateProvider: providerForm.handleCreateProvider,
     onShowProviderForm: providerForm.onShowProviderForm,
     onCancelProviderForm: providerForm.onCancelProviderForm,

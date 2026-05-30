@@ -1,5 +1,4 @@
 import type { JSX } from 'preact';
-import { useLocation } from 'wouter-preact';
 import { useProjectForm } from '../hooks/useProjectForm.hook';
 import { ProjectFormView } from '../ui/ProjectForm.view';
 
@@ -8,7 +7,6 @@ interface ProjectFormContainerProps {
 }
 
 export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): JSX.Element => {
-  const [_, setLocation] = useLocation();
   const form = useProjectForm(projectId);
 
   return (
@@ -46,7 +44,7 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
       actions={{
         onLookup: form.handleLookup,
         onSubmit: form.handleSubmit,
-        onCancel: () => setLocation('/projects'),
+        onCancel: form.cancel,
         onCreateProvider: form.handleCreateProvider,
         onShowProviderForm: form.onShowProviderForm,
         onCancelProviderForm: form.onCancelProviderForm,
