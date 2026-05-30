@@ -2,7 +2,9 @@ use std::process::{Command, Stdio};
 
 use serde_json::{Map, Value};
 
-use super::utils::{read_daemon_json, run_systemctl, which, write_daemon_json};
+use super::utils::{
+    docker_runtime_registered, read_daemon_json, run_systemctl, which, write_daemon_json,
+};
 
 pub(super) const KATA_MANAGER_URL: &str =
     "https://raw.githubusercontent.com/kata-containers/kata-containers/main/utils/kata-manager.sh";
@@ -35,6 +37,11 @@ pub fn configure_docker_for_kata() -> anyhow::Result<()> {
     let kata_path =
         kata_runtime_path().ok_or_else(|| anyhow::anyhow!("kata-runtime not found in PATH"))?;
 
+    if docker_runtime_registered("kata-runtime") {
+        tracing::info!("Kata runtime already active in Docker — skipping configuration");
+        return Ok(());
+    }
+
     let existing = read_daemon_json();
     let mut config = existing.unwrap_or_else(|_| Value::Object(Map::new()));
 
@@ -47,7 +54,9 @@ pub fn configure_docker_for_kata() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("docker daemon.json runtimes is not an object"))?;
 
     if runtimes.contains_key("kata-runtime") {
-        tracing::debug!("kata-runtime already registered in docker daemon.json");
+        tracing::debug!(
+            "kata-runtime in daemon.json but not picked up by Docker, restarting daemon"
+        );
         run_systemctl("restart docker")?;
         return Ok(());
     }

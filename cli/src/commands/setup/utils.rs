@@ -23,6 +23,17 @@ pub fn run_systemctl(args: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub fn docker_runtime_registered(runtime: &str) -> bool {
+    Command::new("docker")
+        .args(["info", "--format", "{{json .Runtimes}}"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|output| output.contains(runtime))
+        .unwrap_or(false)
+}
+
 pub fn read_daemon_json() -> anyhow::Result<Value> {
     let raw = std::fs::read_to_string("/etc/docker/daemon.json").or_else(|_| {
         Command::new("sudo")

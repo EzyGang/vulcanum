@@ -1,6 +1,6 @@
 use std::process::{Command, Stdio};
 
-use super::utils::{read_daemon_json, run_systemctl, which};
+use super::utils::{docker_runtime_registered, read_daemon_json, run_systemctl, which};
 
 pub(super) const GVISOR_RELEASE_BASE: &str =
     "https://storage.googleapis.com/gvisor/releases/release/latest";
@@ -44,15 +44,22 @@ pub fn configure_docker_for_gvisor() -> anyhow::Result<()> {
         anyhow::bail!("runsc not found in PATH — install gvisor first");
     }
 
+    if docker_runtime_registered("runsc") {
+        tracing::info!("gVisor runtime already active in Docker — skipping configuration");
+        return Ok(());
+    }
+
     match read_daemon_json() {
         Ok(config) => {
-            let already_configured = config
+            let in_config = config
                 .get("runtimes")
                 .and_then(|r| r.get("runsc"))
                 .is_some();
 
-            if already_configured {
-                tracing::debug!("runsc already registered in docker daemon.json");
+            if in_config {
+                tracing::debug!(
+                    "runsc in daemon.json but not picked up by Docker, restarting daemon"
+                );
                 run_systemctl("restart docker")?;
                 return Ok(());
             }
