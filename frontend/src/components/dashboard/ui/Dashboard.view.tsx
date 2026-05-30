@@ -2,7 +2,11 @@ import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../types/runs';
 import type { ApiError } from '../../../utils/api/client';
 import { formatDuration, formatRelativeTime } from '../../../utils/format';
+import { Card } from '../../shared/ui/Card.view';
+import { EmptyState } from '../../shared/ui/EmptyState.view';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { StatusBadge } from '../../shared/ui/StatusBadge.view';
+import { Table } from '../../shared/ui/Table.view';
 
 interface StatsData {
   enabledProjects: number;
@@ -27,27 +31,17 @@ interface DashboardViewProps {
 }
 
 const SkeletonStatCard = ({ label }: { label: string }): JSX.Element => (
-  <div class='flex flex-col gap-2 bg-bg-card border border-border-base p-5'>
+  <Card class='flex flex-col gap-2'>
     <span class='text-text-muted text-xs uppercase tracking-wider'>{label}</span>
     <div class='h-8 w-12 bg-bg-hover animate-pulse' />
-  </div>
-);
-
-const TimeCell = ({ dateStr }: { dateStr: string }): JSX.Element => (
-  <span class='text-text-secondary text-sm'>{formatRelativeTime(dateStr)}</span>
-);
-
-const DurationCell = ({ ms }: { ms: number | null }): JSX.Element => (
-  <span class='text-text-secondary text-sm font-mono'>
-    {ms !== null ? formatDuration(ms) : '—'}
-  </span>
+  </Card>
 );
 
 const StatCard = ({ label, value }: { label: string; value: number }): JSX.Element => (
-  <div class='flex flex-col gap-1 bg-bg-card border border-border-base p-5'>
+  <Card class='flex flex-col gap-1'>
     <span class='text-text-muted text-xs uppercase tracking-wider'>{label}</span>
     <span class='text-text-primary text-2xl font-semibold font-mono'>{value}</span>
-  </div>
+  </Card>
 );
 
 const StatsGrid = ({
@@ -80,17 +74,8 @@ const StatsGrid = ({
       )}
     </div>
 
-    {statsError && (
-      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-        {statsError.message}
-      </div>
-    )}
-
-    {workersError && (
-      <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-        {workersError.message}
-      </div>
-    )}
+    {statsError && <ErrorBanner message={statsError.message} />}
+    {workersError && <ErrorBanner message={workersError.message} />}
   </section>
 );
 
@@ -119,63 +104,45 @@ export const DashboardView = ({
           Recent Work Runs
         </h3>
 
-        {runsError && (
-          <div class='text-error text-sm bg-error-bg border border-error-border p-4'>
-            {runsError.message}
-          </div>
-        )}
+        {runsError && <ErrorBanner message={runsError.message} />}
 
-        {runs.length === 0 && !runsLoading && (
-          <div class='flex flex-col items-center gap-2 bg-bg-card border border-border-base p-8'>
-            <p class='text-text-muted text-sm'>No work runs yet.</p>
-          </div>
-        )}
+        {runs.length === 0 && !runsLoading && <EmptyState title='No work runs yet.' />}
 
         {runs.length > 0 && (
-          <div class='overflow-x-auto'>
-            <table class='w-full border-collapse'>
-              <thead>
-                <tr class='border-b border-border-base'>
-                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                    Task
-                  </th>
-                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                    Status
-                  </th>
-                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                    Worker
-                  </th>
-                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                    Duration
-                  </th>
-                  <th class='text-text-muted text-xs uppercase tracking-wider text-left px-5 py-3'>
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {runs.map((run) => (
-                  <tr key={run.id} class='border-b border-border-base'>
-                    <td class='px-5 py-3'>
-                      <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
-                    </td>
-                    <td class='px-5 py-3'>
-                      <StatusBadge status={run.status} />
-                    </td>
-                    <td class='px-5 py-3'>
-                      <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
-                    </td>
-                    <td class='px-5 py-3'>
-                      <DurationCell ms={run.durationMs} />
-                    </td>
-                    <td class='px-5 py-3'>
-                      <TimeCell dateStr={run.createdAt} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <Table.Head>
+              <Table.HeadCell>Task</Table.HeadCell>
+              <Table.HeadCell>Status</Table.HeadCell>
+              <Table.HeadCell>Worker</Table.HeadCell>
+              <Table.HeadCell>Duration</Table.HeadCell>
+              <Table.HeadCell>Created</Table.HeadCell>
+            </Table.Head>
+            <Table.Body>
+              {runs.map((run) => (
+                <Table.Row key={run.id}>
+                  <Table.Cell>
+                    <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <StatusBadge status={run.status} />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span class='text-text-secondary text-sm font-mono'>
+                      {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
+                    </span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span class='text-text-secondary text-sm'>
+                      {formatRelativeTime(run.createdAt)}
+                    </span>
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
         )}
       </section>
     </div>

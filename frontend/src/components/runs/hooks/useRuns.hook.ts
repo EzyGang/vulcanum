@@ -1,5 +1,6 @@
 import { useSignal } from '@preact/signals';
 import { useCallback } from 'preact/hooks';
+import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
 import { deleteRun, listRuns } from '../../../services/runs/runs.service';
 import type { WorkRunStatus } from '../../../types/runs';
 import { invalidate } from '../../../utils/api/query/client';
@@ -31,11 +32,16 @@ export const useRuns = () => {
     onSuccess: () => invalidate('runs')
   });
 
-  const deleteError = useSignal<string | null>(null);
-  const deletingId = useSignal<string | null>(null);
+  const {
+    deletingId,
+    deleteError,
+    handleConfirmDelete,
+    handleCancelDelete,
+    handleDelete: handleDeleteRun
+  } = useDeleteConfirm('run', deleteRunMutation);
 
-  const setStatusFilter = useCallback((status: WorkRunStatus | undefined) => {
-    statusFilter.value = status;
+  const setStatusFilter = useCallback((value: string) => {
+    statusFilter.value = value ? (value as WorkRunStatus) : undefined;
     page.value = 0;
   }, []);
 
@@ -50,28 +56,6 @@ export const useRuns = () => {
       page.value -= 1;
     }
   }, [hasPrevPage]);
-
-  const handleDeleteRun = useCallback(
-    async (id: string) => {
-      deleteError.value = null;
-      try {
-        await deleteRunMutation.mutateAsync(id);
-      } catch (_err) {
-        deleteError.value = 'Failed to delete run';
-      } finally {
-        deletingId.value = null;
-      }
-    },
-    [deleteRunMutation]
-  );
-
-  const handleConfirmDelete = useCallback((id: string) => {
-    deletingId.value = id;
-  }, []);
-
-  const handleCancelDelete = useCallback(() => {
-    deletingId.value = null;
-  }, []);
 
   return {
     data: {

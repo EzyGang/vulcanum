@@ -1,31 +1,11 @@
 import { useSignal, useSignalEffect } from '@preact/signals';
 import { useCallback } from 'preact/hooks';
+import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
 import { deleteWorker, generateCode, listWorkers } from '../../../services/workers/workers.service';
 import type { Worker } from '../../../types/workers';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
-
-const formatRelativeTime = (dateStr: string | null): string => {
-  if (!dateStr) return '—';
-
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const seconds = Math.floor(diff / 1000);
-
-  if (seconds < 60) return 'Just now';
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) {
-    return new Intl.RelativeTimeFormat('en', { style: 'long' }).format(-minutes, 'minute');
-  }
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return new Intl.RelativeTimeFormat('en', { style: 'long' }).format(-hours, 'hour');
-  }
-
-  const days = Math.floor(hours / 24);
-  return new Intl.RelativeTimeFormat('en', { style: 'long' }).format(-days, 'day');
-};
+import { formatRelativeTime } from '../../../utils/format';
 
 export interface FormattedWorker {
   id: string;
@@ -91,34 +71,17 @@ export const useWorkers = () => {
 
   const formattedWorkers = workers ? formatWorkers(workers) : [];
 
-  const deleteError = useSignal<string | null>(null);
-  const deletingId = useSignal<string | null>(null);
+  const {
+    deletingId,
+    deleteError,
+    handleConfirmDelete,
+    handleCancelDelete,
+    handleDelete: handleDeleteWorker
+  } = useDeleteConfirm('worker', deleteWorkerMutation);
 
   const handleGenerateCode = useCallback(() => {
     generateCodeMutation.mutate(undefined);
   }, [generateCodeMutation]);
-
-  const handleDeleteWorker = useCallback(
-    async (id: string) => {
-      deleteError.value = null;
-      try {
-        await deleteWorkerMutation.mutateAsync(id);
-      } catch (_err) {
-        deleteError.value = 'Failed to delete worker';
-      } finally {
-        deletingId.value = null;
-      }
-    },
-    [deleteWorkerMutation]
-  );
-
-  const handleConfirmDelete = useCallback((id: string) => {
-    deletingId.value = id;
-  }, []);
-
-  const handleCancelDelete = useCallback(() => {
-    deletingId.value = null;
-  }, []);
 
   const codeCountdown = useCodeCountdown(generateCodeMutation.data?.expiresAt ?? null);
 

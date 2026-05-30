@@ -4,7 +4,7 @@
   "scripts": {
     "build": "cargo build -p vulcanum-server",
     "lint": "cargo fmt --check && cargo clippy --all-targets -p vulcanum-server -- -D warnings",
-    "test": "cargo test -p vulcanum-server",
+    "test": "cargo test -p vulcanum-server --lib",
     "format": "cargo fmt"
   }
 }

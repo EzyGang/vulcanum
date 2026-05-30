@@ -1,13 +1,10 @@
 import { useLocation } from 'wouter-preact';
-
-interface NavLink {
-  href: string;
-  label: string;
-}
+import type { NavLink } from '../types';
 
 const NAV_LINKS: NavLink[] = [
   { href: '/', label: 'Dashboard' },
   { href: '/workers', label: 'Workers' },
+  { href: '/providers', label: 'Providers' },
   { href: '/projects', label: 'Projects' },
   { href: '/runs', label: 'Runs' }
 ];

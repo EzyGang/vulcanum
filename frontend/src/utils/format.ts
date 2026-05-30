@@ -1,4 +1,5 @@
-export const formatRelativeTime = (dateStr: string): string => {
+export const formatRelativeTime = (dateStr: string | null): string => {
+  if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
   const seconds = Math.floor(diff / 1000);
 

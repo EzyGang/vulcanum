@@ -32,6 +32,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -44,6 +45,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -56,6 +58,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: true, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -75,6 +78,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -92,6 +96,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -107,6 +112,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -122,6 +128,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -137,6 +144,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
+        extra={{ hasProviders: true }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );

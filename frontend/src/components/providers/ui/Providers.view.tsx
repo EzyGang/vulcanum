@@ -1,0 +1,140 @@
+import type { Signal } from '@preact/signals';
+import type { JSX } from 'preact';
+import type { IntegrationProvider } from '../../../types/projects';
+import type { ApiError } from '../../../utils/api/client';
+import { Button } from '../../shared/ui/Button.view';
+import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
+import { EmptyState } from '../../shared/ui/EmptyState.view';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
+import { Table } from '../../shared/ui/Table.view';
+import { ProviderFormFields } from './ProviderFormFields.view';
+
+interface ProvidersViewProps {
+  data: {
+    providers: IntegrationProvider[];
+    deleteConfirmId: Signal<string | null>;
+    deleteError: Signal<string | null>;
+    showForm: Signal<boolean>;
+    editId: Signal<string | null>;
+    name: Signal<string>;
+    url: Signal<string>;
+    apiKey: Signal<string>;
+    formError: Signal<string | null>;
+    formSubmitting: Signal<boolean>;
+  };
+  status: {
+    loading: boolean;
+    error: ApiError | null;
+  };
+  actions: {
+    onShowCreate: () => void;
+    onShowEdit: (provider: IntegrationProvider) => void;
+    onCancelForm: () => void;
+    onSave: (e: Event) => void;
+    onConfirmDelete: (id: string) => void;
+    onCancelDelete: () => void;
+    onDelete: (id: string) => void;
+  };
+}
+
+export const ProvidersView = ({
+  data: {
+    providers,
+    deleteConfirmId,
+    deleteError,
+    showForm,
+    editId,
+    name,
+    url,
+    apiKey,
+    formError,
+    formSubmitting
+  },
+  status: { loading, error },
+  actions: {
+    onShowCreate,
+    onShowEdit,
+    onCancelForm,
+    onSave,
+    onConfirmDelete,
+    onCancelDelete,
+    onDelete
+  }
+}: ProvidersViewProps): JSX.Element => (
+  <div class='flex flex-col gap-8'>
+    <section class='flex flex-col gap-4'>
+      <div class='flex items-center justify-between'>
+        <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Providers</h2>
+        <Button variant='primary' onClick={onShowCreate}>
+          Add Provider
+        </Button>
+      </div>
+
+      {error && <ErrorBanner message={error.message} />}
+
+      {deleteError.value && <ErrorBanner message={deleteError.value} />}
+
+      {loading && <div class='text-text-muted text-sm'>Loading providers...</div>}
+
+      {!loading && !error && providers.length === 0 && !showForm.value && (
+        <EmptyState
+          title='No providers configured yet.'
+          description='Add a provider to connect Kaneo projects.'
+        />
+      )}
+
+      {showForm.value && (
+        <ProviderFormFields
+          name={name}
+          url={url}
+          apiKey={apiKey}
+          error={formError}
+          submitting={formSubmitting}
+          mode={editId.value ? 'edit' : 'create'}
+          onSave={onSave}
+          onCancel={onCancelForm}
+        />
+      )}
+
+      {!loading && providers.length > 0 && (
+        <Table>
+          <Table.Head>
+            <Table.HeadCell>Name</Table.HeadCell>
+            <Table.HeadCell>Instance URL</Table.HeadCell>
+            <Table.HeadCell>Created</Table.HeadCell>
+            <Table.HeadCell>Actions</Table.HeadCell>
+          </Table.Head>
+          <Table.Body>
+            {providers.map((provider) => (
+              <Table.Row key={provider.id}>
+                <Table.Cell>
+                  <span class='text-text-primary text-sm'>{provider.name}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <span class='text-text-secondary text-sm font-mono'>{provider.instanceUrl}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <span class='text-text-secondary text-sm'>{provider.createdAt}</span>
+                </Table.Cell>
+                <Table.Cell>
+                  <ConfirmDelete
+                    itemId={provider.id}
+                    deletingId={deleteConfirmId}
+                    onConfirm={onConfirmDelete}
+                    onDelete={onDelete}
+                    onCancel={onCancelDelete}
+                    editActions={
+                      <Button variant='ghost' onClick={() => onShowEdit(provider)}>
+                        Edit
+                      </Button>
+                    }
+                  />
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
+      )}
+    </section>
+  </div>
+);

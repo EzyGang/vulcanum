@@ -35,6 +35,7 @@ fn gvisor_image_custom() {
 }
 
 #[tokio::test]
+#[ignore = "requires runsc runtime"]
 async fn container_harness_missing_docker_returns_install_error() {
     let harness = ContainerHarness::with_image("nonexistent-image:latest".to_owned(), "runsc");
     let limits = ResourceLimits {

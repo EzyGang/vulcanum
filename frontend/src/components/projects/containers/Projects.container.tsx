@@ -7,6 +7,7 @@ export const ProjectsContainer = (): JSX.Element => {
   const [_, setLocation] = useLocation();
   const {
     projects,
+    providers,
     loading,
     error,
     deleteConfirmId,
@@ -20,6 +21,7 @@ export const ProjectsContainer = (): JSX.Element => {
     <ProjectsView
       data={{ projects, deleteConfirmId, deleteError }}
       status={{ loading, error }}
+      extra={{ hasProviders: !!providers.length }}
       actions={{
         onEditClick: (id: string) => setLocation(`/projects/${id}/edit`),
         onConnectProject: () => setLocation('/projects/connect'),

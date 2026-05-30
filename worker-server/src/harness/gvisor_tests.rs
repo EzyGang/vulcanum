@@ -3,6 +3,7 @@ use crate::harness::{AgentHarness, ResourceLimits};
 use std::collections::HashMap;
 
 #[tokio::test]
+#[ignore = "requires runsc runtime"]
 async fn gvisor_harness_missing_docker_returns_install_error() {
     let harness = GvisorHarness::with_image("nonexistent-image:latest".to_owned());
     let limits = ResourceLimits {
