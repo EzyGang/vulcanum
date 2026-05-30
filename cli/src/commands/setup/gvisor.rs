@@ -1,6 +1,6 @@
 use std::process::{Command, Stdio};
 
-use super::utils::{run_systemctl, which};
+use super::utils::{read_daemon_json, run_systemctl, which};
 
 pub(super) const GVISOR_RELEASE_BASE: &str =
     "https://storage.googleapis.com/gvisor/releases/release/latest";
@@ -39,10 +39,27 @@ pub fn install_gvisor() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Configure Docker to recognise the runsc runtime via `runsc install`.
 pub fn configure_docker_for_gvisor() -> anyhow::Result<()> {
     if !which("runsc") {
         anyhow::bail!("runsc not found in PATH — install gvisor first");
+    }
+
+    match read_daemon_json() {
+        Ok(config) => {
+            let already_configured = config
+                .get("runtimes")
+                .and_then(|r| r.get("runsc"))
+                .is_some();
+
+            if already_configured {
+                tracing::debug!("runsc already registered in docker daemon.json");
+                run_systemctl("restart docker")?;
+                return Ok(());
+            }
+        }
+        Err(_) => {
+            tracing::debug!("no existing daemon.json found, will create one");
+        }
     }
 
     let status = Command::new("sudo")

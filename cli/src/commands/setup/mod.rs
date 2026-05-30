@@ -115,7 +115,7 @@ pub async fn run(
 
     eprintln!();
     console::info("Enabling and starting worker service...");
-    systemd::enable_and_start_service()?;
+    systemd::enable_and_restart_service()?;
 
     eprintln!();
     eprintln!(
@@ -273,7 +273,7 @@ async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyho
 
     if systemd::is_unit_installed() {
         tracing::info!("restarting systemd service after connect");
-        systemd::enable_and_start_service()?;
+        systemd::enable_and_restart_service()?;
     }
 
     Ok(())
