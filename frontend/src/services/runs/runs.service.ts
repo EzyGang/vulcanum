@@ -1,5 +1,5 @@
 import type { WorkRunListItem, WorkRunStatus } from '../../types/runs';
-import { del, get } from '../../utils/api/request';
+import { del, get, post } from '../../utils/api/request';
 
 interface ListRunsParams {
   status?: WorkRunStatus;
@@ -22,3 +22,9 @@ export const listRuns = (params?: ListRunsParams): Promise<WorkRunListItem[]> =>
 };
 
 export const deleteRun = (id: string): Promise<void> => del(`/runs/${id}`);
+
+export const bulkDeleteRuns = (ids: string[]): Promise<{ deleted: number }> =>
+  post<{ deleted: number }>('/runs/bulk-delete', { ids });
+
+export const failRun = (id: string): Promise<WorkRunListItem> =>
+  post<WorkRunListItem>(`/runs/${id}/fail`);

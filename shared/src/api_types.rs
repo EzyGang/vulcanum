@@ -63,3 +63,13 @@ pub struct SubmitResultRequest {
     pub tokens_used: i64,
     pub duration_ms: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkDeleteRunsRequest {
+    pub ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkDeleteRunsResponse {
+    pub deleted: u64,
+}

@@ -23,7 +23,7 @@ const Head = ({ children }: TableSectionProps): JSX.Element => (
 );
 
 interface HeadCellProps {
-  children: string;
+  children: ComponentChildren;
   class?: string;
 }
 
