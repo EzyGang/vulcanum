@@ -113,7 +113,7 @@ impl AgentHarness for ContainerHarness {
                 }
 
                 cmd.arg(&image)
-                    .arg("/root/.local/bin/opencode")
+                    .arg("/root/.opencode/bin/opencode")
                     .arg("--prompt")
                     .arg("/workdir/prompt.md");
 
