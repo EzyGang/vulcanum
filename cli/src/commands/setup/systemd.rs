@@ -41,8 +41,9 @@ pub fn is_unit_installed() -> bool {
         .unwrap_or(false)
 }
 
-pub fn enable_and_start_service() -> anyhow::Result<()> {
-    run_systemctl(&format!("enable --now {UNIT_NAME}"))?;
+pub fn enable_and_restart_service() -> anyhow::Result<()> {
+    run_systemctl(&format!("enable {UNIT_NAME}"))?;
+    run_systemctl(&format!("restart {UNIT_NAME}"))?;
     Ok(())
 }
 
