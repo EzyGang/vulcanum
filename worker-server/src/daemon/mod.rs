@@ -72,7 +72,7 @@ pub async fn run() -> anyhow::Result<()> {
                     }
                     TickOutcome::Fatal(msg) => {
                         tracing::error!("{msg}");
-                        return Ok(());
+                        return Err(anyhow::anyhow!("{msg}"));
                     }
                     TickOutcome::Transient(msg) => {
                         tracing::warn!(

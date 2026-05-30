@@ -10,7 +10,7 @@ const NAV_LINKS: NavLink[] = [
 ];
 
 export const useNavigationShell = () => {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const isActive = (href: string): boolean => {
     if (href === '/') {
@@ -19,5 +19,9 @@ export const useNavigationShell = () => {
     return location.startsWith(href);
   };
 
-  return { navLinks: NAV_LINKS, isActive };
+  const navigate = (href: string) => {
+    setLocation(href);
+  };
+
+  return { navLinks: NAV_LINKS, isActive, navigate };
 };

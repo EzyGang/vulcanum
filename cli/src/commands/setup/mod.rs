@@ -92,7 +92,18 @@ pub async fn run(
     let harness_name = backend.harness_name();
 
     if already_connected && !force {
-        console::info("Already connected to an instance — skipping registration.");
+        match verify_connection().await {
+            Ok(()) => {
+                console::info("Already connected to an instance — connection verified.");
+            }
+            Err(e) => {
+                tracing::warn!("connection verification failed: {e:#}");
+                console::warn(&format!(
+                    "Connection to instance lost ({e:#}). Re-authenticating..."
+                ));
+                connect_worker(code, instance).await?;
+            }
+        }
     } else {
         if force {
             console::info("Forcing re-registration...");
@@ -201,14 +212,31 @@ fn prompt_backend() -> anyhow::Result<Backend> {
     }
 }
 
-async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
+async fn verify_connection() -> anyhow::Result<()> {
     use vulcanum_shared::client::ApiClient;
+    use vulcanum_shared::worker_state;
+
+    let state =
+        worker_state::load_state()?.ok_or_else(|| anyhow::anyhow!("no worker state found"))?;
+    let client = ApiClient::new(&state.instance_url);
+    client.status().await?;
+    Ok(())
+}
+
+async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
+    use vulcanum_shared::client::{probe_url_with_scheme_fallback, ApiClient};
     use vulcanum_shared::worker_state::{save_state, WorkerState};
 
-    let instance = match instance {
+    let raw_instance = match instance {
         Some(url) => url,
         None => prompt_instance_url()?,
     };
+
+    console::info("Probing instance URL...");
+    let (resolved_url, _) = probe_url_with_scheme_fallback(&raw_instance).await?;
+    if resolved_url != raw_instance.trim_end_matches('/') {
+        console::info(&format!("Using {} (scheme fallback)", resolved_url));
+    }
 
     let code = match code {
         Some(c) => c,
@@ -220,13 +248,13 @@ async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyho
         .and_then(|h| h.to_str().map(|s| s.to_owned()))
         .unwrap_or_else(|| "unnamed-worker".to_owned());
 
-    let client = ApiClient::new(instance.clone());
+    let client = ApiClient::new(&resolved_url);
 
     let resp = client.connect(&code, &worker_name).await?;
 
     let state = WorkerState {
         worker_id: resp.worker_id,
-        instance_url: instance,
+        instance_url: resolved_url,
         access_token: resp.access_token,
         refresh_token: resp.refresh_token,
         expires_at: resp.expires_at,
@@ -258,18 +286,28 @@ fn nonempty(field: &str, input: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn normalize_instance_url(input: &str) -> String {
+    let trimmed = input.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        trimmed.to_owned()
+    } else {
+        format!("https://{trimmed}")
+    }
+}
+
 fn prompt_instance_url() -> anyhow::Result<String> {
     let url = dialoguer::Input::<String>::new()
         .with_prompt("Instance URL")
         .validate_with(|input: &String| {
+            let normalized = normalize_instance_url(input);
             nonempty("Instance URL", input)?;
-            match url::Url::parse(input.trim()) {
+            match url::Url::parse(&normalized) {
                 Ok(_) => Ok(()),
                 Err(_) => Err("Please enter a valid URL".to_owned()),
             }
         })
         .interact_text()?;
-    Ok(url.trim().to_owned())
+    Ok(normalize_instance_url(&url))
 }
 
 fn prompt_code() -> anyhow::Result<String> {

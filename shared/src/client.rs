@@ -22,6 +22,10 @@ impl ApiClient {
         }
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     pub async fn connect(&self, code: &str, worker_name: &str) -> anyhow::Result<ConnectResponse> {
         let url = format!("{}/api/v1/workers/connect", self.base_url);
         let body = ConnectRequest {
@@ -137,6 +141,31 @@ impl ApiClient {
         }
 
         Err(build_error(resp).await.into())
+    }
+}
+
+pub async fn probe_url(url: &str) -> anyhow::Result<StatusResponse> {
+    let client = ApiClient::new(url);
+    client.status().await
+}
+
+pub async fn probe_url_with_scheme_fallback(
+    user_url: &str,
+) -> anyhow::Result<(String, StatusResponse)> {
+    let normalized = if user_url.starts_with("http://") || user_url.starts_with("https://") {
+        user_url.trim_end_matches('/').to_owned()
+    } else {
+        format!("https://{}", user_url.trim_end_matches('/'))
+    };
+
+    match probe_url(&normalized).await {
+        Ok(resp) => Ok((normalized, resp)),
+        Err(_) if normalized.starts_with("https://") => {
+            let http_url = normalized.replacen("https://", "http://", 1);
+            let resp = probe_url(&http_url).await?;
+            Ok((http_url, resp))
+        }
+        Err(e) => Err(e),
     }
 }
 

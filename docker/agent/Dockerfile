@@ -12,12 +12,11 @@ ENV PATH="/root/.local/bin:$PATH"
 
 RUN curl -fsSL https://opencode.ai/install | bash \
     && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
-    && export PATH="/root/.local/bin:$PATH" \
-    && kaneo install-skill --scope global --agent opencode
+    && kaneo install-skill --scope global --agent opencode \
+    && test -x /root/.local/bin/opencode || (echo "ERROR: opencode binary not found at /root/.local/bin/opencode" && exit 1)
 
 COPY docker/agent/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
-
 WORKDIR /workdir

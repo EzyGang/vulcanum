@@ -16,7 +16,7 @@ pub fn configure_systemd(harness: &str) -> anyhow::Result<()> {
          [Service]\n\
          Type=simple\n\
          ExecStart={binary_path}\n\
-         Restart=always\n\
+         Restart=on-failure\n\
          RestartSec=10\n\
          Environment=VULCANUM_HARNESS={harness}\n\
          \n\
