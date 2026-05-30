@@ -17,10 +17,12 @@ fn build_service(pool: PgPool) -> DispatcherService {
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         DEFAULT_STALE_THRESHOLD,
+        DEFAULT_STALLED_THRESHOLD,
     )
 }
 
 const DEFAULT_STALE_THRESHOLD: u64 = 120;
+const DEFAULT_STALLED_THRESHOLD: u64 = 1800;
 
 #[sqlx::test]
 async fn dispatch_assigns_pending_job_to_idle_worker(pool: PgPool) {
@@ -82,6 +84,7 @@ async fn dispatch_sets_redis_flag(pool: PgPool) {
         pool,
         store.clone(),
         DEFAULT_STALE_THRESHOLD,
+        DEFAULT_STALLED_THRESHOLD,
     );
 
     svc.dispatch_once().await.expect("Should succeed");

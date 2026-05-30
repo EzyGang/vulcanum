@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: chrono::DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs\n             FROM workers WHERE active_jobs < max_concurrent_jobs AND status != 'disconnected'::worker_status\n             ORDER BY last_seen DESC NULLS LAST",
+  "query": "INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs, consecutive_errors)\n             VALUES ($1, $2, $3, $4, $5::worker_status, $6, 0, $7, 0)\n             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: DateTime<Utc>\",\n             active_jobs, max_concurrent_jobs, consecutive_errors",
   "describe": {
     "columns": [
       {
@@ -38,7 +38,8 @@
               "Enum": [
                 "idle",
                 "busy",
-                "disconnected"
+                "disconnected",
+                "unhealthy"
               ]
             }
           }
@@ -51,7 +52,7 @@
       },
       {
         "ordinal": 7,
-        "name": "created_at!: chrono::DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
@@ -63,10 +64,35 @@
         "ordinal": 9,
         "name": "max_concurrent_jobs",
         "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "consecutive_errors",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "worker_status",
+            "kind": {
+              "Enum": [
+                "idle",
+                "busy",
+                "disconnected",
+                "unhealthy"
+              ]
+            }
+          }
+        },
+        "Jsonb",
+        "Int4"
+      ]
     },
     "nullable": [
       false,
@@ -78,8 +104,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "c4e191c746ec4ed2d610358d990f35db209b5bf693ddadd567d61d3aaec3e758"
+  "hash": "403f375e3164527a74f01ee7d7b6308f8906340216d2ba79cc2ad2e28811abf2"
 }

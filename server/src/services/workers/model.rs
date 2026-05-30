@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
@@ -13,14 +13,16 @@ pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
 pub const TOKEN_LENGTH: usize = 64;
 pub const CODE_LENGTH: usize = 16;
 pub const DEFAULT_MAX_CONCURRENT_JOBS: i32 = 3;
+pub const DEFAULT_UNHEALTHY_THRESHOLD: i32 = 3;
 
-#[derive(Debug, Clone, sqlx::Type, Serialize)]
+#[derive(Debug, Clone, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(type_name = "worker_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum WorkerStatus {
     Idle,
     Busy,
     Disconnected,
+    Unhealthy,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]
@@ -35,6 +37,7 @@ pub struct Worker {
     pub created_at: DateTime<Utc>,
     pub active_jobs: i32,
     pub max_concurrent_jobs: i32,
+    pub consecutive_errors: i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -47,6 +50,7 @@ pub struct WorkerResponse {
     pub created_at: DateTime<Utc>,
     pub active_jobs: i32,
     pub max_concurrent_jobs: i32,
+    pub consecutive_errors: i32,
 }
 
 impl From<Worker> for WorkerResponse {
@@ -60,8 +64,21 @@ impl From<Worker> for WorkerResponse {
             created_at: w.created_at,
             active_jobs: w.active_jobs,
             max_concurrent_jobs: w.max_concurrent_jobs,
+            consecutive_errors: w.consecutive_errors,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkerStatusOverride {
+    Idle,
+    Unhealthy,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateWorkerStatusRequest {
+    pub status: WorkerStatusOverride,
 }
 
 #[derive(Debug, Serialize)]

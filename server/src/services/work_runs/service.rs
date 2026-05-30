@@ -20,6 +20,7 @@ pub struct WorkRunsService {
     pub db: PgPool,
     pub dispatch_store: Arc<dyn DispatchStore>,
     pub providers_repo: IntegrationProvidersRepository,
+    pub unhealthy_threshold: i32,
 }
 
 impl Clone for WorkRunsService {
@@ -31,6 +32,7 @@ impl Clone for WorkRunsService {
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
             providers_repo: self.providers_repo.clone(),
+            unhealthy_threshold: self.unhealthy_threshold,
         }
     }
 }
@@ -43,6 +45,7 @@ impl WorkRunsService {
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
         providers_repo: IntegrationProvidersRepository,
+        unhealthy_threshold: i32,
     ) -> Self {
         Self {
             work_runs_repo,
@@ -51,6 +54,7 @@ impl WorkRunsService {
             db,
             dispatch_store,
             providers_repo,
+            unhealthy_threshold,
         }
     }
 }

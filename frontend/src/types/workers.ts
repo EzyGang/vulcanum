@@ -1,4 +1,4 @@
-export type WorkerStatus = 'idle' | 'busy' | 'disconnected';
+export type WorkerStatus = 'idle' | 'busy' | 'disconnected' | 'unhealthy';
 
 export interface Worker {
   id: string;
@@ -9,9 +9,14 @@ export interface Worker {
   createdAt: string;
   activeJobs: number;
   maxConcurrentJobs: number;
+  consecutiveErrors: number;
 }
 
 export interface GenerateCodeResponse {
   code: string;
   expiresAt: string;
+}
+
+export interface UpdateWorkerStatusRequest {
+  status: 'idle' | 'unhealthy';
 }

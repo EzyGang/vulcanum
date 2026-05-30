@@ -20,6 +20,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
+        3,
     )
 }
 

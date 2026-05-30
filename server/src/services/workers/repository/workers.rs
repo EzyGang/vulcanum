@@ -18,11 +18,11 @@ impl WorkersRepository {
 
         sqlx::query_as!(
             Worker,
-            r#"INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs)
-             VALUES ($1, $2, $3, $4, $5::worker_status, $6, 0, $7)
+            r#"INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs, consecutive_errors)
+             VALUES ($1, $2, $3, $4, $5::worker_status, $6, 0, $7, 0)
              RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
-             active_jobs, max_concurrent_jobs"#,
+             active_jobs, max_concurrent_jobs, consecutive_errors"#,
             id,
             name,
             refresh_token_hash,
@@ -36,7 +36,6 @@ impl WorkersRepository {
         .map_err(map_sqlx_error)
     }
 
-    #[allow(dead_code)]
     pub async fn find_by_id<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -46,7 +45,7 @@ impl WorkersRepository {
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
-             active_jobs, max_concurrent_jobs
+             active_jobs, max_concurrent_jobs, consecutive_errors
              FROM workers WHERE id = $1"#,
             id,
         )
@@ -64,7 +63,7 @@ impl WorkersRepository {
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
-             active_jobs, max_concurrent_jobs
+             active_jobs, max_concurrent_jobs, consecutive_errors
              FROM workers WHERE refresh_token_hash = $1"#,
             hash,
         )
@@ -86,7 +85,7 @@ impl WorkersRepository {
              WHERE id = $3
              RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
-             active_jobs, max_concurrent_jobs"#,
+             active_jobs, max_concurrent_jobs, consecutive_errors"#,
             new_hash,
             new_expires_at,
             worker_id,
@@ -114,7 +113,7 @@ impl WorkersRepository {
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
-             active_jobs, max_concurrent_jobs
+             active_jobs, max_concurrent_jobs, consecutive_errors
              FROM workers ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -136,8 +135,7 @@ impl WorkersRepository {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub async fn update_status<'c, Q: Queryer<'c>>(
+    pub async fn set_status<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
         id: Uuid,
@@ -160,13 +158,61 @@ impl WorkersRepository {
         Ok(())
     }
 
-    pub async fn increment_active_jobs<'c, Q: Queryer<'c>>(
+    pub async fn set_status_and_reset<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+        status: WorkerStatus,
+    ) -> Result<(), WorkersError> {
+        let rows = sqlx::query!(
+            r#"UPDATE workers SET status = $1::worker_status, active_jobs = 0, consecutive_errors = 0
+             WHERE id = $2"#,
+            status as WorkerStatus,
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(map_sqlx_error)?
+        .rows_affected();
+
+        if rows == 0 {
+            return Err(WorkersError::WorkerNotFound);
+        }
+
+        Ok(())
+    }
+
+    pub async fn increment_consecutive_errors<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+        threshold: i32,
+    ) -> Result<i32, WorkersError> {
+        let row = sqlx::query!(
+            r#"UPDATE workers SET consecutive_errors = consecutive_errors + 1,
+             status = CASE WHEN consecutive_errors + 1 >= $2 THEN 'unhealthy'::worker_status ELSE status END
+             WHERE id = $1
+             RETURNING consecutive_errors"#,
+            id,
+            threshold,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(map_sqlx_error)?;
+
+        match row {
+            Some(r) => Ok(r.consecutive_errors),
+            None => Err(WorkersError::WorkerNotFound),
+        }
+    }
+
+    pub async fn reset_consecutive_errors<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
         id: Uuid,
     ) -> Result<(), WorkersError> {
         sqlx::query!(
-            "UPDATE workers SET active_jobs = active_jobs + 1 WHERE id = $1 AND active_jobs < max_concurrent_jobs",
+            "UPDATE workers SET consecutive_errors = 0 WHERE id = $1",
             id,
         )
         .execute(db)

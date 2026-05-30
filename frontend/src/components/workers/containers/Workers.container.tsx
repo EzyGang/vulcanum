@@ -10,23 +10,26 @@ export const WorkersContainer = (): JSX.Element => {
     generateLoading,
     deletingId,
     deleteError,
+    updateStatusError,
     loading,
     error,
     handleGenerateCode,
     handleConfirmDelete,
     handleCancelDelete,
-    handleDeleteWorker
+    handleDeleteWorker,
+    handleUpdateStatus
   } = useWorkers();
 
   return (
     <WorkersView
       data={{ workers: formattedWorkers, code, countdown }}
-      status={{ loading, error, generateLoading, deletingId, deleteError }}
+      status={{ loading, error, generateLoading, deletingId, deleteError, updateStatusError }}
       actions={{
         onGenerateCode: handleGenerateCode,
         onConfirmDelete: handleConfirmDelete,
         onCancelDelete: handleCancelDelete,
-        onDeleteWorker: handleDeleteWorker
+        onDeleteWorker: handleDeleteWorker,
+        onUpdateStatus: handleUpdateStatus
       }}
     />
   );

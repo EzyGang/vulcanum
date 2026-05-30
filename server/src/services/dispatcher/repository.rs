@@ -27,8 +27,8 @@ impl DispatchRepository {
             Worker,
             r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: chrono::DateTime<Utc>",
-             active_jobs, max_concurrent_jobs
-             FROM workers WHERE active_jobs < max_concurrent_jobs AND status != 'disconnected'::worker_status
+             active_jobs, max_concurrent_jobs, consecutive_errors
+             FROM workers WHERE active_jobs < max_concurrent_jobs AND status IN ('idle'::worker_status, 'busy'::worker_status)
              ORDER BY last_seen DESC NULLS LAST"#,
         )
         .fetch_all(db)
