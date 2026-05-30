@@ -277,6 +277,7 @@ For module-specific details, refer to the local `AGENTS.md` in each module direc
 ## Feature implementation checklist
 
 [ ] - tests for relevant logic blocks worth covering are added
+[ ] - `pnpm prep-queries` is run if any backend work has been done
 [ ] - `pnpm format` in root is successful
 [ ] - `pnpm validate` passes
 [ ] - `pnpm test` passes

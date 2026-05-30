@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE integration_providers SET\n             name = COALESCE($2, name),\n             instance_url = COALESCE($3, instance_url),\n             api_key = COALESCE($4, api_key)\n             WHERE id = $1\n             RETURNING id, name, provider_type as \"provider_type!: _\", instance_url, api_key, created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO integration_providers (id, name, provider_type, instance_url, api_key)\n             VALUES ($1, $2, $3, $4, $5)\n             RETURNING id, name, provider_type as \"provider_type!: _\", instance_url, api_key, created_at as \"created_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -47,6 +47,16 @@
       "Left": [
         "Uuid",
         "Text",
+        {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        },
         "Text",
         "Text"
       ]
@@ -60,5 +70,5 @@
       false
     ]
   },
-  "hash": "8c4833ff803433c3949ad1600053e7db196cedaf104ca92b19eaec6134eab399"
+  "hash": "ebb0de373ab0301bde012bad57312b613e35a1718ebc612daf83f66f0594d5ff"
 }
