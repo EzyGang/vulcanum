@@ -108,7 +108,7 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
     const errorMessage =
       data && typeof data === 'object' && 'error' in data
         ? String(data.error)
-        : response.statusText;
+        : response.statusText || 'Request failed';
 
     logError(method, url, response.status, errorMessage);
     throw new ApiError(response.status, errorMessage);

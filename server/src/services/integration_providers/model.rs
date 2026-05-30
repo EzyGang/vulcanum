@@ -9,7 +9,6 @@ use crate::services::integrations::model::IntegrationType;
 pub struct IntegrationProvider {
     pub id: Uuid,
     pub name: String,
-    #[serde(rename = "providerType")]
     pub provider_type: IntegrationType,
     pub instance_url: String,
     pub api_key: String,
@@ -19,17 +18,13 @@ pub struct IntegrationProvider {
 #[derive(Debug, Deserialize)]
 pub struct CreateProviderRequest {
     pub name: String,
-    #[serde(rename = "instanceUrl")]
     pub instance_url: String,
-    #[serde(rename = "apiKey")]
     pub api_key: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateProviderRequest {
     pub name: Option<String>,
-    #[serde(rename = "instanceUrl")]
     pub instance_url: Option<String>,
-    #[serde(rename = "apiKey")]
     pub api_key: Option<String>,
 }

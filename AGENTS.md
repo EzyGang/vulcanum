@@ -76,6 +76,16 @@ cargo run --bin vulcanum-web
 - Once done implementing run `pnpm run format && pnpm run validate`, both should succeed with no warnings.
 - If you have changed/added new queries, run `pnpm run prep-queries` before committing.
 
+## Frontend / Backend API Contract
+
+- The frontend's `fetchApi` wrapper (`frontend/src/utils/api/client.ts`) converts request body keys to `snake_case` and response keys to `camelCase` automatically.
+- **Do NOT add `#[serde(rename = "...")]` or `#[serde(rename_all = "camelCase")]` attributes in Rust backend models** to translate between cases. Keep Rust struct field names plain (snake_case) and let the frontend handle bidirectional conversion.
+- Enum variants that map to wire values should use `#[serde(rename_all = "snake_case")]` (e.g. `WorkerStatus`) so they serialize as lowercase strings matching the frontend's TypeScript string-union types.
+
+### Signal Reactivity in Hooks
+
+- When using `useEffect` or `useCallback` with Preact signals, always include `<signal>.value` in the dependency array, not the signal object itself. Reactivity depends on reading the `.value` property inside the hook body.
+
 ## Rust Code Guidelines
 
 ### Important Rules
