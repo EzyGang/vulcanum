@@ -40,7 +40,10 @@ pub async fn recover_running_jobs(
         };
     }
 
-    tracing::info!(count = running.len(), "recovering running jobs from journal");
+    tracing::info!(
+        count = running.len(),
+        "recovering running jobs from journal"
+    );
 
     let mut monitors = Vec::new();
     let mut recovered_count = 0usize;
@@ -139,12 +142,7 @@ async fn check_container(name: &Option<String>) -> ContainerStatus {
 
 async fn get_container_exit_code(container_name: &str) -> Option<i32> {
     let output = Command::new("docker")
-        .args([
-            "inspect",
-            "--format",
-            "{{.State.ExitCode}}",
-            container_name,
-        ])
+        .args(["inspect", "--format", "{{.State.ExitCode}}", container_name])
         .output()
         .await
         .ok()?;
