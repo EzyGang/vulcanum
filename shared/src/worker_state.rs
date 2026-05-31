@@ -13,6 +13,7 @@ pub struct WorkerState {
     pub access_token: String,
     pub refresh_token: String,
     pub expires_at: DateTime<Utc>,
+    pub max_concurrent_jobs: i32,
 }
 
 pub fn state_path() -> anyhow::Result<PathBuf> {

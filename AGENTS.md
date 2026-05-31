@@ -13,7 +13,7 @@ Vulcanum is a symphony-like agentic work orchestrator. It provides:
 | Module                   | Path                | Technology        | Status |
 | ------------------------ | ------------------- | ----------------- | ------ |
 | CLI                      | `cli/`              | Rust              | Active |
-| Host Machine Server      | `worker-server/`    | Rust              | Active |
+| Worker Daemon            | `worker-server/`    | Rust, SQLite      | Active |
 | Server                   | `server/`           | Rust              | Active |
 | Shared Types & Utilities | `shared/`           | Rust              | Active |
 | Frontend UI              | `frontend/`         | TypeScript/Preact | Active |
@@ -273,6 +273,13 @@ For module-specific details, refer to the local `AGENTS.md` in each module direc
 - `frontend/AGENTS.md` — TypeScript/Preact UI (component patterns, API layer, design system)
 
 **Always read the module's local `AGENTS.md` before working on code in that directory.**
+
+### Worker Daemon Architecture
+
+The `worker-server` crate uses an embedded SQLite journal for crash-robust job execution.
+Jobs run concurrently governed by a `Semaphore` sized to `max_concurrent_jobs` (received from the server at registration).
+On restart, the journal is reconciled against Docker/subprocess reality to recover or retire in-flight jobs.
+See `worker-server/AGENTS.md` for the full architecture (daemon loop, recovery, harnesses, state journal).
 
 ## Feature implementation checklist
 

@@ -7,6 +7,7 @@ use crate::api_types::{
     RefreshResponse, StatusResponse, SubmitResultRequest,
 };
 
+#[derive(Clone)]
 pub struct ApiClient {
     http: reqwest::Client,
     base_url: String,

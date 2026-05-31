@@ -47,17 +47,21 @@ impl AgentHarness for HostHarness {
             || {
                 let mut cmd = Command::new("opencode");
                 let repo_dir = workdir.join("repo");
+                let target_dir = if repo_dir.exists() {
+                    &repo_dir
+                } else {
+                    &workdir
+                };
 
-                cmd.arg("--prompt")
-                    .arg(workdir.join("prompt.md"))
+                cmd.arg("run")
+                    .arg("--dir")
+                    .arg(target_dir)
+                    .arg("--dangerously-skip-permissions")
                     .env("HOME", workdir.join("home"))
                     .current_dir(&workdir)
                     .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::piped());
-
-                if repo_dir.exists() {
-                    cmd.arg(&repo_dir);
-                }
+                    .stderr(std::process::Stdio::piped())
+                    .stdin(std::process::Stdio::piped());
 
                 for (key, value) in secrets {
                     cmd.env(key, value);
