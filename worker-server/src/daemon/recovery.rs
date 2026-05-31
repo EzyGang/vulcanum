@@ -207,7 +207,7 @@ async fn recover_exited_container(
     let duration_ms = Utc::now()
         .signed_duration_since(entry.started_at)
         .num_milliseconds()
-        .max(0) as i64;
+        .max(0);
 
     let result = SubmitResultRequest {
         pr_url: parsed_pr_url.clone().unwrap_or_default(),
@@ -283,7 +283,7 @@ fn spawn_container_monitor(
         let duration_ms = Utc::now()
             .signed_duration_since(entry.started_at)
             .num_milliseconds()
-            .max(0) as i64;
+            .max(0);
 
         let journal_status = if exit_code == 0 {
             JournalStatus::Completed
@@ -379,7 +379,7 @@ async fn submit_lost_result(
         duration_ms: Utc::now()
             .signed_duration_since(entry.started_at)
             .num_milliseconds()
-            .max(0) as i64,
+            .max(0),
     };
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client
