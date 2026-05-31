@@ -15,6 +15,7 @@ pub struct ConnectResponse {
     pub expires_at: DateTime<Utc>,
     pub worker_id: Uuid,
     pub name: String,
+    pub max_concurrent_jobs: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

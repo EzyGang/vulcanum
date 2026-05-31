@@ -24,3 +24,8 @@ impl ApiError {
         matches!(self.status, 401 | 403)
     }
 }
+
+#[must_use]
+pub fn is_fatal_api_error(e: &anyhow::Error) -> bool {
+    e.downcast_ref::<ApiError>().is_some_and(|a| a.is_fatal())
+}

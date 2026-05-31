@@ -8,10 +8,6 @@ use crate::harness::runner::{self, RunnerEnv};
 use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
 use tokio::process::Command;
 
-/// A generic container harness that spawns agent jobs inside Docker with a configurable runtime.
-///
-/// Used by both Kata Containers (--runtime=kata-runtime) and gVisor (--runtime=runsc)
-/// to avoid duplicating the exact same spawn logic.
 pub struct ContainerHarness {
     pub(crate) image: String,
     pub(crate) runtime: &'static str,
@@ -92,11 +88,10 @@ impl AgentHarness for ContainerHarness {
             env,
             move || {
                 let mut cmd = Command::new("docker");
-                let repo_path = workdir_for_cmd.join("repo");
 
                 cmd.arg("run")
+                    .arg("-i")
                     .arg(format!("--runtime={runtime}"))
-                    .arg("--rm")
                     .arg("--name")
                     .arg(&container_name)
                     .arg("-v")
@@ -106,7 +101,8 @@ impl AgentHarness for ContainerHarness {
                     .arg(format!("--cpus={}", limits_val.vcpu_count))
                     .arg(format!("--memory={}m", limits_val.memory_mib))
                     .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::inherit());
+                    .stderr(std::process::Stdio::inherit())
+                    .stdin(std::process::Stdio::piped());
 
                 for (key, value) in secrets {
                     cmd.arg("-e").arg(format!("{key}={value}"));
@@ -114,12 +110,10 @@ impl AgentHarness for ContainerHarness {
 
                 cmd.arg(&image)
                     .arg("/root/.opencode/bin/opencode")
-                    .arg("--prompt")
-                    .arg("/workdir/prompt.md");
-
-                if repo_path.exists() {
-                    cmd.arg("/workdir/repo");
-                }
+                    .arg("run")
+                    .arg("--dir")
+                    .arg("/workdir/repo")
+                    .arg("--dangerously-skip-permissions");
 
                 Ok(cmd)
             },

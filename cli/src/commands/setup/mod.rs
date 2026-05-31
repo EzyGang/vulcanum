@@ -258,6 +258,7 @@ async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyho
         access_token: resp.access_token,
         refresh_token: resp.refresh_token,
         expires_at: resp.expires_at,
+        max_concurrent_jobs: resp.max_concurrent_jobs,
     };
 
     save_state(&state)?;

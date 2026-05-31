@@ -1,5 +1,6 @@
 mod daemon;
 mod harness;
+mod state;
 
 use anyhow::Context;
 

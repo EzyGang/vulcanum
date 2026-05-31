@@ -55,6 +55,10 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
     assert_eq!(resp.name, "test-runner");
     assert_eq!(resp.refresh_token.len(), 64);
     assert!(!resp.access_token.is_empty());
+    assert_eq!(
+        resp.max_concurrent_jobs,
+        crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS
+    );
 }
 
 #[sqlx::test]

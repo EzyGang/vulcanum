@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::time::{sleep, timeout};
 
@@ -54,6 +55,17 @@ pub(super) async fn run_opencode_in_env(
     let mut child = cmd.spawn().map_err(|e| {
         HarnessError::Install(format!("failed to spawn {}: {e}", env.spawn_error_msg))
     })?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        let prompt_bytes = env.prompt.as_bytes();
+        if let Err(e) = stdin.write_all(prompt_bytes).await {
+            tracing::warn!(
+                error = %e,
+                "failed to write prompt to opencode stdin"
+            );
+        }
+        drop(stdin);
+    }
 
     let start = Instant::now();
     let max_duration = Duration::from_secs(env.limits.max_duration_secs);

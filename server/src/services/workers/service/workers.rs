@@ -68,6 +68,7 @@ impl WorkersService {
             expires_at,
             worker_id: worker.id,
             name: worker.name,
+            max_concurrent_jobs: worker.max_concurrent_jobs,
         })
     }
 
