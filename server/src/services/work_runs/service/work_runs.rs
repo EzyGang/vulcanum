@@ -304,7 +304,7 @@ impl WorkRunsService {
 
                             if let Err(e) = self
                                 .workers_repo
-                                .reset_active_jobs(&mut *tx, worker_id)
+                                .reset_active_jobs_only(&mut *tx, worker_id)
                                 .await
                             {
                                 tracing::warn!(

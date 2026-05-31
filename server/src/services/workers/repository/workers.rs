@@ -206,6 +206,18 @@ impl WorkersRepository {
         }
     }
 
+    pub async fn reset_active_jobs_only<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+    ) -> Result<(), WorkersError> {
+        sqlx::query!("UPDATE workers SET active_jobs = 0 WHERE id = $1", id,)
+            .execute(db)
+            .await
+            .map_err(map_sqlx_error)?;
+        Ok(())
+    }
+
     pub async fn reset_consecutive_errors<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
