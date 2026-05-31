@@ -39,7 +39,7 @@ impl JournalStatus {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub struct JournalEntry {
     pub job_id: Uuid,
     pub workdir: String,

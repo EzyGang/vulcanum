@@ -10,7 +10,7 @@ use tokio::signal;
 use tokio::sync::{Mutex, RwLock, Semaphore};
 use tokio::time::sleep;
 
-use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::api_error::is_fatal_api_error;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::token::ensure_valid_token;
 use vulcanum_shared::validate::is_environment_ready_for_backend;
@@ -217,10 +217,6 @@ async fn try_drain_queue(state: &DaemonState) {
             }
         });
     }
-}
-
-fn is_fatal_api_error(e: &anyhow::Error) -> bool {
-    e.downcast_ref::<ApiError>().is_some_and(|a| a.is_fatal())
 }
 
 fn journal_db_path() -> anyhow::Result<PathBuf> {

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::Utc;
 use tokio::process::Command;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -39,10 +40,7 @@ pub async fn recover_running_jobs(
         };
     }
 
-    tracing::info!(
-        count = running.len(),
-        "recovering running jobs from journal"
-    );
+    tracing::info!(count = running.len(), "recovering running jobs from journal");
 
     let mut monitors = Vec::new();
     let mut recovered_count = 0usize;
@@ -139,6 +137,41 @@ async fn check_container(name: &Option<String>) -> ContainerStatus {
     }
 }
 
+async fn get_container_exit_code(container_name: &str) -> Option<i32> {
+    let output = Command::new("docker")
+        .args([
+            "inspect",
+            "--format",
+            "{{.State.ExitCode}}",
+            container_name,
+        ])
+        .output()
+        .await
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let code_str = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    code_str.parse::<i32>().ok()
+}
+
+async fn wait_container(container_name: &str) -> Option<i32> {
+    let output = Command::new("docker")
+        .args(["wait", container_name])
+        .output()
+        .await
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let code_str = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    code_str.parse::<i32>().ok()
+}
+
 async fn recover_exited_container(
     client: Arc<ApiClient>,
     worker_state: &Arc<RwLock<WorkerState>>,
@@ -153,6 +186,8 @@ async fn recover_exited_container(
             return;
         }
     };
+
+    let exit_code = get_container_exit_code(container_name).await.unwrap_or(1);
 
     let logs = match collect_container_logs(container_name).await {
         Some(l) => l,
@@ -169,15 +204,24 @@ async fn recover_exited_container(
         }
     };
 
-    let exit_code = 0i32;
     let parsed_pr_url = parse_pr_url(&logs);
     let tokens_used = parse_token_usage(&logs);
+    let duration_ms = Utc::now()
+        .signed_duration_since(entry.started_at)
+        .num_milliseconds()
+        .max(0) as i64;
 
     let result = SubmitResultRequest {
         pr_url: parsed_pr_url.clone().unwrap_or_default(),
         exit_code,
         tokens_used: tokens_used as i64,
-        duration_ms: 0,
+        duration_ms,
+    };
+
+    let journal_status = if exit_code == 0 {
+        JournalStatus::Completed
+    } else {
+        JournalStatus::Failed
     };
 
     let _ = journal.update_result(
@@ -185,8 +229,8 @@ async fn recover_exited_container(
         exit_code,
         tokens_used as i64,
         parsed_pr_url.as_deref(),
-        0,
-        JournalStatus::Completed,
+        duration_ms,
+        journal_status,
     );
 
     let access_token = worker_state.read().await.access_token.clone();
@@ -220,10 +264,7 @@ fn spawn_container_monitor(
             "monitoring recovered container"
         );
 
-        let _ = Command::new("docker")
-            .args(["wait", &container_name])
-            .output()
-            .await;
+        let exit_code = wait_container(&container_name).await.unwrap_or(1);
 
         let logs = match collect_container_logs(&container_name).await {
             Some(l) => l,
@@ -233,7 +274,7 @@ fn spawn_container_monitor(
                     entry.job_id,
                     "failed to collect logs from recovered container",
                 );
-                submit_lost_result_monitor(client, &worker_state, &entry).await;
+                submit_lost_result(client, &worker_state, &entry).await;
                 clean_up_container(&container_name).await;
                 return;
             }
@@ -241,21 +282,31 @@ fn spawn_container_monitor(
 
         let parsed_pr_url = parse_pr_url(&logs);
         let tokens_used = parse_token_usage(&logs);
+        let duration_ms = Utc::now()
+            .signed_duration_since(entry.started_at)
+            .num_milliseconds()
+            .max(0) as i64;
+
+        let journal_status = if exit_code == 0 {
+            JournalStatus::Completed
+        } else {
+            JournalStatus::Failed
+        };
 
         let result = SubmitResultRequest {
             pr_url: parsed_pr_url.clone().unwrap_or_default(),
-            exit_code: 0,
+            exit_code,
             tokens_used: tokens_used as i64,
-            duration_ms: 0,
+            duration_ms,
         };
 
         let _ = journal.update_result(
             entry.job_id,
-            0,
+            exit_code,
             tokens_used as i64,
             parsed_pr_url.as_deref(),
-            0,
-            JournalStatus::Completed,
+            duration_ms,
+            journal_status,
         );
 
         let access_token = worker_state.read().await.access_token.clone();
@@ -283,15 +334,39 @@ async fn collect_container_logs(container_name: &str) -> Option<String> {
         return None;
     }
 
-    Some(String::from_utf8_lossy(&output.stdout).to_string())
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    let combined = if stderr.is_empty() {
+        stdout.to_string()
+    } else if stdout.is_empty() {
+        stderr.to_string()
+    } else {
+        format!("{stdout}\n{stderr}")
+    };
+
+    Some(combined)
 }
 
 async fn clean_up_container(container_name: &str) {
-    let _ = Command::new("docker")
+    let mut child = match Command::new("docker")
         .args(["rm", "-f", container_name])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .spawn();
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!(
+                container = %container_name,
+                error = %e,
+                "failed to spawn docker rm"
+            );
+            return;
+        }
+    };
+
+    let _ = child.wait().await;
 }
 
 async fn submit_lost_result(
@@ -303,7 +378,10 @@ async fn submit_lost_result(
         pr_url: String::new(),
         exit_code: 1,
         tokens_used: 0,
-        duration_ms: 0,
+        duration_ms: Utc::now()
+            .signed_duration_since(entry.started_at)
+            .num_milliseconds()
+            .max(0) as i64,
     };
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client
@@ -312,12 +390,4 @@ async fn submit_lost_result(
     {
         tracing::warn!(job_id = %entry.job_id, error = %e, "failed to submit lost result");
     }
-}
-
-async fn submit_lost_result_monitor(
-    client: Arc<ApiClient>,
-    worker_state: &Arc<RwLock<WorkerState>>,
-    entry: &JournalEntry,
-) {
-    submit_lost_result(client, worker_state, entry).await;
 }

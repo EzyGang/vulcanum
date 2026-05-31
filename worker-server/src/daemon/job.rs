@@ -5,7 +5,7 @@ use chrono::Utc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
@@ -208,10 +208,6 @@ pub(crate) async fn handle_job(
     let _ = std::fs::remove_dir_all(&workdir);
 
     Ok(())
-}
-
-fn is_fatal_api_error(e: &anyhow::Error) -> bool {
-    e.downcast_ref::<ApiError>().is_some_and(|a| a.is_fatal())
 }
 
 pub(crate) fn create_harness(harness_type: &str) -> HarnessKind {
