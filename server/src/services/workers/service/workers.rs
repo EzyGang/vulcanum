@@ -133,7 +133,9 @@ impl WorkersService {
                         _ => WorkersError::WorkerNotFound,
                     })?;
 
-                self.repo.reset_active_jobs(&mut *tx, worker_id).await?;
+                self.repo
+                    .reset_active_jobs_only(&mut *tx, worker_id)
+                    .await?;
 
                 tx.commit().await.map_err(WorkersError::Database)?;
 

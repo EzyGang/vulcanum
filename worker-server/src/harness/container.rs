@@ -118,7 +118,7 @@ impl AgentHarness for ContainerHarness {
                     .arg("/workdir/prompt.md");
 
                 if repo_path.exists() {
-                    cmd.arg("--dir").arg("/workdir/repo");
+                    cmd.arg("/workdir/repo");
                 }
 
                 Ok(cmd)

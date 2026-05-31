@@ -56,7 +56,7 @@ impl AgentHarness for HostHarness {
                     .stderr(std::process::Stdio::piped());
 
                 if repo_dir.exists() {
-                    cmd.arg("--dir").arg(&repo_dir);
+                    cmd.arg(&repo_dir);
                 }
 
                 for (key, value) in secrets {
