@@ -17,6 +17,5 @@ pub trait IsolationProvider {
         repo_url: &str,
     ) -> impl std::future::Future<Output = Result<IsolatedEnvironment, HarnessError>> + Send;
 
-    #[allow(clippy::too_many_arguments)]
     fn cleanup(&self, env: &IsolatedEnvironment) -> impl std::future::Future<Output = ()> + Send;
 }

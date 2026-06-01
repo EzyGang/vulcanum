@@ -1,9 +1,12 @@
 pub(crate) mod container;
 pub mod dispatch;
-pub mod gvisor;
 pub mod host;
-pub mod kata;
 pub(crate) mod prepare;
+
+mod docker_delegate;
+
+pub mod gvisor;
+pub mod kata;
 
 #[cfg(test)]
 mod container_tests;
