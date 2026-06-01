@@ -1,5 +1,5 @@
+use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
-use vulcanum_shared::runtime::IsolationProvider;
 
 use crate::harness::host::HostIsolation;
 

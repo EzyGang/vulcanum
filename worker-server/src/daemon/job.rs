@@ -8,8 +8,9 @@ use uuid::Uuid;
 use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
+use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
-use vulcanum_shared::runtime::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::harness::dispatch::create_isolation_provider;
@@ -103,7 +104,7 @@ pub(crate) async fn handle_job(
     secrets.insert("KANEO_TASK_ID".to_owned(), job.external_task_ref.clone());
     let env_vars = HashMap::new();
 
-    let _isolated_env = match provider
+    let isolated_env = match provider
         .prepare(
             &workdir,
             &secrets,
@@ -124,31 +125,175 @@ pub(crate) async fn handle_job(
                 error = %e,
                 "isolation prepare failed",
             );
-            let _ = journal.update_result(job_id, 1, 0, None, 0, JournalStatus::Failed);
-            let result = SubmitResultRequest {
-                pr_url: String::new(),
-                exit_code: 1,
-                tokens_used: 0,
-                duration_ms: 0,
-                input_tokens: 0,
-                output_tokens: 0,
-                cache_read_tokens: 0,
-                cache_write_tokens: 0,
-                model_used: None,
-            };
-            let access_token = worker_state.read().await.access_token.clone();
-            if let Err(e) = client.submit_result(job_id, &result, &access_token).await {
-                tracing::error!(
-                    worker_id = %worker_id,
-                    work_run_id = %job_id,
-                    error = %e,
-                    "submit_result failed for job",
-                );
-            }
-            let _ = journal.mark_submitted(job_id);
+            submit_failed_result(
+                client,
+                worker_state,
+                journal,
+                job_id,
+                &FailedResult::empty(),
+            )
+            .await;
             return Ok(());
         }
     };
 
-    todo!("AgentRuntime not yet implemented — see VLC-40");
+    let runtime = crate::runtime::serve::OpenCodeServeRuntime::new();
+    let mut running_session: Box<dyn RunningSession> = match runtime
+        .execute(
+            &job.prompt_text,
+            &isolated_env,
+            &job.repo_url,
+            &job.agents_md,
+            &job.opencode_config,
+        )
+        .await
+    {
+        Ok(session) => session,
+        Err(e) => {
+            tracing::error!(
+                worker_id = %worker_id,
+                work_run_id = %job_id,
+                error = %e,
+                "runtime execute failed",
+            );
+            provider.cleanup(&isolated_env).await;
+            submit_failed_result(
+                client,
+                worker_state,
+                journal,
+                job_id,
+                &FailedResult::empty(),
+            )
+            .await;
+            return Ok(());
+        }
+    };
+
+    tracing::info!(
+        worker_id = %worker_id,
+        work_run_id = %job_id,
+        "session started, waiting for completion",
+    );
+
+    let session_export = match running_session.wait().await {
+        Ok(export) => export,
+        Err(e) => {
+            tracing::error!(
+                worker_id = %worker_id,
+                work_run_id = %job_id,
+                error = %e,
+                "session wait failed",
+            );
+            let _ = running_session.cancel().await;
+            provider.cleanup(&isolated_env).await;
+            submit_failed_result(
+                client,
+                worker_state,
+                journal,
+                job_id,
+                &FailedResult::empty(),
+            )
+            .await;
+            return Ok(());
+        }
+    };
+
+    tracing::info!(
+        worker_id = %worker_id,
+        work_run_id = %job_id,
+        exit_code = session_export.exit_code,
+        tokens_used = session_export.tokens_used,
+        "session completed",
+    );
+
+    let journal_status = match session_export.exit_code {
+        0 => JournalStatus::Completed,
+        _ => JournalStatus::Failed,
+    };
+
+    let _ = journal.update_result(
+        job_id,
+        session_export.exit_code,
+        session_export.tokens_used as i64,
+        session_export.pr_url.as_deref(),
+        session_export.duration_ms as i64,
+        journal_status,
+    );
+
+    let result = SubmitResultRequest {
+        pr_url: session_export.pr_url.unwrap_or_default(),
+        exit_code: session_export.exit_code,
+        tokens_used: session_export.tokens_used as i64,
+        duration_ms: session_export.duration_ms as i64,
+        input_tokens: session_export.input_tokens as i64,
+        output_tokens: session_export.output_tokens as i64,
+        cache_read_tokens: session_export.cache_read_tokens as i64,
+        cache_write_tokens: session_export.cache_write_tokens as i64,
+        model_used: session_export.model_used,
+    };
+
+    let access_token = worker_state.read().await.access_token.clone();
+    if let Err(e) = client.submit_result(job_id, &result, &access_token).await {
+        tracing::error!(
+            worker_id = %worker_id,
+            work_run_id = %job_id,
+            error = %e,
+            "submit_result failed for job",
+        );
+    }
+    let _ = journal.mark_submitted(job_id);
+    provider.cleanup(&isolated_env).await;
+
+    Ok(())
+}
+
+async fn submit_failed_result(
+    client: Arc<ApiClient>,
+    worker_state: Arc<RwLock<WorkerState>>,
+    journal: Arc<Journal>,
+    job_id: Uuid,
+    result: &FailedResult,
+) {
+    let _ = journal.update_result(
+        job_id,
+        result.exit_code,
+        result.tokens_used,
+        result.pr_url.as_deref(),
+        result.duration_ms,
+        JournalStatus::Failed,
+    );
+    let submit = SubmitResultRequest {
+        pr_url: result.pr_url.clone().unwrap_or_default(),
+        exit_code: result.exit_code,
+        tokens_used: result.tokens_used,
+        duration_ms: result.duration_ms,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        model_used: None,
+    };
+    let access_token = worker_state.read().await.access_token.clone();
+    if let Err(e) = client.submit_result(job_id, &submit, &access_token).await {
+        tracing::error!(work_run_id = %job_id, error = %e, "submit_result failed for job");
+    }
+    let _ = journal.mark_submitted(job_id);
+}
+
+struct FailedResult {
+    exit_code: i32,
+    tokens_used: i64,
+    pr_url: Option<String>,
+    duration_ms: i64,
+}
+
+impl FailedResult {
+    fn empty() -> Self {
+        Self {
+            exit_code: 1,
+            tokens_used: 0,
+            pr_url: None,
+            duration_ms: 0,
+        }
+    }
 }

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
-use vulcanum_shared::runtime::IsolationProvider;
 
 use crate::harness::gvisor::GvisorIsolation;
 use crate::harness::host::HostIsolation;

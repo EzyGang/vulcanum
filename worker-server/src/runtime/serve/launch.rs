@@ -1,0 +1,123 @@
+use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::types::IsolatedEnvironment;
+
+const OPENCODE_DEFAULT_PORT: u16 = 4096;
+
+pub(super) async fn launch_host_server(
+    workdir: &std::path::Path,
+    env_vars: &std::collections::HashMap<String, String>,
+    password: &str,
+    port: u16,
+) -> Result<tokio::process::Child, HarnessError> {
+    let mut cmd = tokio::process::Command::new("opencode");
+    cmd.args(["serve", "--port", &port.to_string()])
+        .env("OPENCODE_SERVER_PASSWORD", password)
+        .env("HOME", workdir.join("home").to_string_lossy().to_string())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    for (k, v) in env_vars {
+        cmd.env(k, v);
+    }
+
+    cmd.spawn()
+        .map_err(|e| HarnessError::ServerLaunch(format!("failed to spawn opencode serve: {e}")))
+}
+
+pub(super) async fn launch_container_server(
+    env: &IsolatedEnvironment,
+    password: &str,
+) -> Result<(u16, String), HarnessError> {
+    let container_name = env
+        .container_name
+        .as_deref()
+        .ok_or_else(|| HarnessError::ServerLaunch("container_name missing".to_owned()))?;
+    let image = env
+        .image
+        .as_deref()
+        .ok_or_else(|| HarnessError::ServerLaunch("image missing".to_owned()))?;
+
+    let password_env = format!("OPENCODE_SERVER_PASSWORD={password}");
+    let config_env = "OPENCODE_CONFIG=/workdir/home/.config/opencode/opencode.json".to_owned();
+    let home_env = "HOME=/workdir/home".to_owned();
+    let workdir_str = env.workdir.to_string_lossy().to_string();
+    let volume_mount = format!("{workdir_str}:/workdir");
+    let port_str = OPENCODE_DEFAULT_PORT.to_string();
+
+    let mut docker_args: Vec<String> = vec![
+        "run".to_owned(),
+        "-d".to_owned(),
+        "--name".to_owned(),
+        container_name.to_owned(),
+        "-p".to_owned(),
+        format!("127.0.0.1::{OPENCODE_DEFAULT_PORT}"),
+        "-e".to_owned(),
+        password_env,
+        "-e".to_owned(),
+        config_env,
+        "-e".to_owned(),
+        home_env,
+    ];
+
+    if let Some(runtime) = env.runtime {
+        docker_args.push("--runtime".to_owned());
+        docker_args.push(runtime.to_owned());
+    }
+
+    for (k, v) in &env.env_vars {
+        docker_args.push("-e".to_owned());
+        docker_args.push(format!("{k}={v}"));
+    }
+
+    docker_args.extend([
+        "-v".to_owned(),
+        volume_mount,
+        image.to_owned(),
+        "opencode".to_owned(),
+        "serve".to_owned(),
+        "--port".to_owned(),
+        port_str,
+    ]);
+
+    let output = tokio::process::Command::new("docker")
+        .args(&docker_args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| HarnessError::ServerLaunch(format!("docker run failed: {e}")))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(HarnessError::ServerLaunch(format!(
+            "docker run failed: {stderr}"
+        )));
+    }
+
+    let container_id = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    let host_port = read_container_port(container_name).await?;
+
+    Ok((host_port, container_id))
+}
+
+async fn read_container_port(name: &str) -> Result<u16, HarnessError> {
+    let output = tokio::process::Command::new("docker")
+        .args(["port", name, &OPENCODE_DEFAULT_PORT.to_string()])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .await
+        .map_err(|e| HarnessError::ServerLaunch(format!("failed to read container port: {e}")))?;
+
+    let port_line = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    let port = port_line
+        .rsplit(':')
+        .next()
+        .ok_or_else(|| {
+            HarnessError::ServerLaunch(format!("unexpected docker port output: {port_line}"))
+        })?
+        .parse::<u16>()
+        .map_err(|e| HarnessError::ServerLaunch(format!("invalid port in docker output: {e}")))?;
+
+    Ok(port)
+}

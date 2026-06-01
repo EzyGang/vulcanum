@@ -26,7 +26,7 @@ macro_rules! docker_isolation_delegate {
             }
         }
 
-        impl vulcanum_shared::runtime::IsolationProvider for $name {
+        impl vulcanum_shared::runtime::isolation::IsolationProvider for $name {
             async fn prepare(
                 &self,
                 workdir: &std::path::Path,

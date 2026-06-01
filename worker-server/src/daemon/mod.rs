@@ -17,6 +17,7 @@ use vulcanum_shared::worker_state::{load_state, WorkerState};
 
 use crate::state::journal::Journal;
 
+use crate::runtime::recovery;
 use job::handle_job;
 
 const POLL_INTERVAL_SECS: u64 = 15;
@@ -86,6 +87,9 @@ pub async fn run() -> anyhow::Result<()> {
         pending_queue,
         harness_type,
     };
+
+    let recovery_token = worker_state.read().await.access_token.clone();
+    recovery::reconcile_running_jobs(&journal, &client, &recovery_token).await;
 
     tracing::info!("daemon started, starting poll loop");
 

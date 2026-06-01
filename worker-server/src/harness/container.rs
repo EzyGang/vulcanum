@@ -3,8 +3,8 @@ use std::path::Path;
 
 use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
-use vulcanum_shared::runtime::IsolationProvider;
 
 use crate::harness::prepare;
 
@@ -50,7 +50,7 @@ impl IsolationProvider for DockerIsolation {
         workdir: &Path,
         secrets: &HashMap<String, String>,
         _env_vars: &HashMap<String, String>,
-        _limits: &ResourceLimits,
+        limits: &ResourceLimits,
         agents_md: &str,
         opencode_config: &str,
         repo_url: &str,
@@ -79,6 +79,8 @@ impl IsolationProvider for DockerIsolation {
             env_vars: combined_env,
             runtime: Some(self.runtime),
             image: Some(self.image.clone()),
+            server_host_port: None,
+            limits: limits.clone(),
         })
     }
 
