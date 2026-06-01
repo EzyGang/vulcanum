@@ -97,6 +97,25 @@ impl From<&IntegrationColumn> for ColumnInfo {
     }
 }
 
+impl ProjectConfig {
+    pub fn job_fields(&self) -> JobConfigFields {
+        JobConfigFields {
+            kaneo_project_id: self.kaneo_project_id.clone(),
+            kaneo_workspace_id: self.kaneo_workspace_id.clone(),
+            opencode_config: self.opencode_config.clone(),
+            provider_id: self.provider_id,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct JobConfigFields {
+    pub kaneo_project_id: String,
+    pub kaneo_workspace_id: String,
+    pub opencode_config: String,
+    pub provider_id: Option<Uuid>,
+}
+
 fn default_enabled() -> bool {
     true
 }

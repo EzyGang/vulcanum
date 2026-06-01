@@ -2,6 +2,7 @@ use uuid::Uuid;
 
 use crate::services::integrations::client::IntegrationClient;
 use crate::services::integrations::model::IntegrationType;
+use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
@@ -31,53 +32,36 @@ impl WorkRunsService {
             .find_by_id(&self.db, run.project_config_id)
             .await;
 
-        let (kaneo_project_id, kaneo_workspace_id, provider_id, opencode_config) = match config {
-            Ok(ref c) => (
-                c.kaneo_project_id.clone(),
-                c.kaneo_workspace_id.clone(),
-                c.provider_id,
-                c.opencode_config.clone(),
-            ),
+        let cfg = match config {
+            Ok(ref c) => c.job_fields(),
             Err(_) => {
                 tracing::warn!(
                     project_config_id = %run.project_config_id,
                     work_run_id = %id,
                     "project config not found for work run"
                 );
-                (String::new(), String::new(), None, String::new())
+                JobConfigFields::default()
             }
         };
 
-        let kaneo_instance;
-        let kaneo_api_key;
-
-        match provider_id {
+        let (kaneo_instance, kaneo_api_key) = match cfg.provider_id {
             Some(pid) => match self.providers_repo.find_by_id(&self.db, pid).await {
-                Ok(provider) => {
-                    kaneo_instance = provider.instance_url;
-                    kaneo_api_key = provider.api_key;
-                }
-                Err(_) => {
-                    kaneo_instance = String::new();
-                    kaneo_api_key = String::new();
-                }
+                Ok(provider) => (provider.instance_url, provider.api_key),
+                Err(_) => (String::new(), String::new()),
             },
-            None => {
-                kaneo_instance = String::new();
-                kaneo_api_key = String::new();
-            }
-        }
+            None => (String::new(), String::new()),
+        };
 
         Ok(JobResponse {
             prompt_text: run.prompt_text,
             repo_url: run.repo_url,
             agents_md: run.agents_md,
-            opencode_config,
+            opencode_config: cfg.opencode_config,
             external_task_ref: run.external_task_ref,
             kaneo_instance,
             kaneo_api_key,
-            kaneo_project_id,
-            kaneo_workspace_id,
+            kaneo_project_id: cfg.kaneo_project_id,
+            kaneo_workspace_id: cfg.kaneo_workspace_id,
         })
     }
 
