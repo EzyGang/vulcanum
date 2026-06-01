@@ -9,6 +9,7 @@ on:
 
 env:
   SQLX_OFFLINE: true
+  CARGO_INCREMENTAL: 0
 
 jobs:
   ci-pass:
@@ -47,9 +48,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "lint"
-          key: "lint"
       - run: pnpm install
       - name: Run format, lint, and type-check
         run: pnpm run validate
@@ -87,9 +85,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "test"
-          key: "test"
       - name: Install SQLx CLI
         run: cargo install sqlx-cli
       - name: Run migrations
