@@ -29,6 +29,12 @@ pub enum SessionStatus {
     Cancelled,
 }
 
+impl SessionStatus {
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Completed | Self::Failed | Self::Cancelled)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionExport {
     pub exit_code: i32,
@@ -63,4 +69,6 @@ pub struct IsolatedEnvironment {
     pub env_vars: HashMap<String, String>,
     pub runtime: Option<&'static str>,
     pub image: Option<String>,
+    pub server_host_port: Option<u16>,
+    pub limits: ResourceLimits,
 }

@@ -11,4 +11,19 @@ pub enum HarnessError {
 
     #[error("output parse error: {0}")]
     OutputParse(String),
+
+    #[error("server launch failed: {0}")]
+    ServerLaunch(String),
+
+    #[error("server unhealthy: {0}")]
+    ServerUnhealthy(String),
+
+    #[error("stall detected: no event for {0}s")]
+    StallDetected(u64),
+
+    #[error("cancel failed: {0}")]
+    CancelFailed(String),
+
+    #[error("http error: {0}")]
+    Http(String),
 }

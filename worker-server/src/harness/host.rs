@@ -3,8 +3,8 @@ use std::path::Path;
 
 use tokio::fs;
 use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
-use vulcanum_shared::runtime::IsolationProvider;
 
 use crate::harness::prepare;
 
@@ -28,7 +28,7 @@ impl IsolationProvider for HostIsolation {
         workdir: &Path,
         secrets: &HashMap<String, String>,
         env_vars: &HashMap<String, String>,
-        _limits: &ResourceLimits,
+        limits: &ResourceLimits,
         agents_md: &str,
         opencode_config: &str,
         repo_url: &str,
@@ -59,6 +59,8 @@ impl IsolationProvider for HostIsolation {
             env_vars: combined_env,
             runtime: None,
             image: None,
+            server_host_port: None,
+            limits: limits.clone(),
         })
     }
 
