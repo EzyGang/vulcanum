@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::worker_auth::WorkerAuth;
+use crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth;
 use vulcanum_shared::api_types::{
     AckRequest, AppendEventsRequest, AppendEventsResponse, ListEventsResponse, PollResponse,
     SubmitResultRequest,
@@ -80,20 +81,20 @@ pub async fn list_events(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
     query: web::Query<vulcanum_shared::api_types::ListEventsQuery>,
-    auth: crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth,
+    auth: WorkerOrInstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let work_run_id = path.into_inner();
     let after = query.after_sequence.unwrap_or(0) as i64;
     let limit = query.limit.unwrap_or(100);
 
     let result = match auth {
-        crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth::Worker { worker_id } => {
+        WorkerOrInstanceAuth::Worker { worker_id } => {
             state
                 .events
                 .list_events(work_run_id, worker_id, after, limit)
                 .await?
         }
-        crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth::Instance => {
+        WorkerOrInstanceAuth::Instance => {
             state
                 .events
                 .list_events_admin(work_run_id, after, limit)

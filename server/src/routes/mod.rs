@@ -66,7 +66,11 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/bulk-delete", web::post().to(work_runs::bulk_delete))
                     .route("/{id}", web::delete().to(work_runs::delete))
                     .route("/{id}/fail", web::post().to(work_runs::fail_run))
-                    .route("/{id}/cancel", web::post().to(work_runs::cancel_run)),
+                    .route("/{id}/cancel", web::post().to(work_runs::cancel_run))
+                    .route(
+                        "/{id}/events/recent",
+                        web::get().to(work_runs::list_events_recent),
+                    ),
             ),
     );
 }

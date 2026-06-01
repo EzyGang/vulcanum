@@ -6,7 +6,7 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::instance_auth::InstanceAuth;
 use crate::services::work_runs::model::WorkRunStatus;
-use vulcanum_shared::api_types::{BulkDeleteRunsRequest, BulkDeleteRunsResponse};
+use vulcanum_shared::api_types::{BulkDeleteRunsRequest, BulkDeleteRunsResponse, WireEvent};
 
 #[derive(Deserialize)]
 pub struct ListRunsQuery {
@@ -61,4 +61,24 @@ pub async fn cancel_run(
 ) -> Result<HttpResponse, AppError> {
     state.jobs.cancel_run(path.into_inner()).await?;
     Ok(HttpResponse::NoContent().finish())
+}
+
+pub async fn list_events_recent(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let work_run_id = path.into_inner();
+    let events = state.events.list_recent(work_run_id).await?;
+
+    let wire_events: Vec<WireEvent> = events
+        .into_iter()
+        .map(|e| WireEvent {
+            sequence: e.sequence as u64,
+            event_type: e.event_type,
+            payload: e.payload,
+        })
+        .collect();
+
+    Ok(HttpResponse::Ok().json(wire_events))
 }

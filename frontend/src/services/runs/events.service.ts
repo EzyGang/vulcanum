@@ -1,4 +1,4 @@
-import type { RunEventsResponse } from '../../types/events';
+import type { RunEvent, RunEventsResponse } from '../../types/events';
 import { get, post } from '../../utils/api/request';
 
 interface ListRunEventsParams {
@@ -21,3 +21,6 @@ export const listRunEvents = (
 };
 
 export const cancelRun = (runId: string): Promise<void> => post<void>(`/runs/${runId}/cancel`);
+
+export const listRecentRunEvents = (runId: string): Promise<RunEvent[]> =>
+  get<RunEvent[]>(`/runs/${runId}/events/recent`);

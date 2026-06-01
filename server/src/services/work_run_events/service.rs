@@ -10,7 +10,9 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::services::dispatcher::cancel_store::CancelStore;
+use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
+use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 #[derive(Clone)]
@@ -35,5 +37,17 @@ impl WorkRunEventsService {
             cancel_store,
             db,
         }
+    }
+}
+
+pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
+    match e {
+        WorkRunsError::NotFound => WorkRunEventsError::NotFound,
+        WorkRunsError::Database(e) => WorkRunEventsError::Database(e),
+        WorkRunsError::AlreadyClaimed
+        | WorkRunsError::InvalidStatusTransition
+        | WorkRunsError::NotOwned
+        | WorkRunsError::DeleteRunning
+        | WorkRunsError::Dispatch(_) => WorkRunEventsError::Internal(e.to_string()),
     }
 }

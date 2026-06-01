@@ -239,6 +239,10 @@ impl From<WorkRunEventsError> for AppError {
                 tracing::error!(error = %e, operation = "work_run_events", "database error");
                 Self::Internal
             }
+            WorkRunEventsError::Internal(msg) => {
+                tracing::error!(operation = "work_run_events", "internal error: {msg}");
+                Self::Internal
+            }
         }
     }
 }

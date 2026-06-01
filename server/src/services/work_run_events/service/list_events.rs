@@ -2,8 +2,7 @@ use uuid::Uuid;
 
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::model::WorkRunEvent;
-use crate::services::work_run_events::service::WorkRunEventsService;
-use crate::services::work_runs::errors::WorkRunsError;
+use crate::services::work_run_events::service::{map_work_runs_error, WorkRunEventsService};
 
 const MAX_LIMIT: i64 = 500;
 const DEFAULT_LIMIT: i64 = 100;
@@ -79,20 +78,6 @@ impl WorkRunEventsService {
         };
 
         Ok(ListResult { events, has_more })
-    }
-}
-
-fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
-    match e {
-        WorkRunsError::NotFound => WorkRunEventsError::NotFound,
-        WorkRunsError::Database(e) => WorkRunEventsError::Database(e),
-        WorkRunsError::AlreadyClaimed
-        | WorkRunsError::InvalidStatusTransition
-        | WorkRunsError::NotOwned
-        | WorkRunsError::DeleteRunning
-        | WorkRunsError::Dispatch(_) => {
-            WorkRunEventsError::Database(sqlx::Error::Protocol(e.to_string()))
-        }
     }
 }
 

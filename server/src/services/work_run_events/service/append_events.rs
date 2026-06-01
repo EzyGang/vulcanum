@@ -2,8 +2,7 @@ use uuid::Uuid;
 
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::repository::work_run_events::InsertEventParams;
-use crate::services::work_run_events::service::WorkRunEventsService;
-use crate::services::work_runs::errors::WorkRunsError;
+use crate::services::work_run_events::service::{map_work_runs_error, WorkRunEventsService};
 use crate::services::work_runs::model::WorkRunStatus;
 
 #[derive(Debug)]
@@ -62,19 +61,5 @@ impl WorkRunEventsService {
             next_expected_sequence: result.next_expected_sequence,
             should_cancel,
         })
-    }
-}
-
-fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
-    match e {
-        WorkRunsError::NotFound => WorkRunEventsError::NotFound,
-        WorkRunsError::Database(e) => WorkRunEventsError::Database(e),
-        WorkRunsError::AlreadyClaimed
-        | WorkRunsError::InvalidStatusTransition
-        | WorkRunsError::NotOwned
-        | WorkRunsError::DeleteRunning
-        | WorkRunsError::Dispatch(_) => {
-            WorkRunEventsError::Database(sqlx::Error::Protocol(e.to_string()))
-        }
     }
 }

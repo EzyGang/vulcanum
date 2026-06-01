@@ -8,4 +8,6 @@ pub enum WorkRunEventsError {
     OutOfOrderSequence { next_expected_sequence: i64 },
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("internal error: {0}")]
+    Internal(String),
 }
