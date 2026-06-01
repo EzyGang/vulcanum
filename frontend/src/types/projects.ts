@@ -9,6 +9,7 @@ export interface ProjectConfig {
   promptTemplate: string;
   repoUrl: string;
   agentsMd: string;
+  opencodeConfig: string;
   createdAt: string;
   providerId?: string;
 }
@@ -23,6 +24,7 @@ export interface CreateProjectRequest {
   promptTemplate: string;
   repoUrl?: string;
   agentsMd?: string;
+  opencodeConfig?: string;
 }
 
 export interface UpdateProjectRequest {
@@ -33,6 +35,7 @@ export interface UpdateProjectRequest {
   promptTemplate?: string;
   repoUrl?: string;
   agentsMd?: string;
+  opencodeConfig?: string;
   providerId?: string;
 }
 

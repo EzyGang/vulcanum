@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             prompt_template = COALESCE($5, prompt_template),\n             repo_url = COALESCE($6, repo_url),\n             agents_md = COALESCE($7, agents_md),\n             enabled = COALESCE($8, enabled),\n             kaneo_workspace_id = COALESCE($9, kaneo_workspace_id),\n             integration_type = COALESCE($10, integration_type),\n             provider_id = COALESCE($11, provider_id)\n             WHERE id = $1\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\", provider_id",
+  "query": "INSERT INTO project_configs (id, kaneo_project_id, kaneo_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, opencode_config, provider_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
   "describe": {
     "columns": [
       {
@@ -69,11 +69,16 @@
       },
       {
         "ordinal": 11,
+        "name": "opencode_config",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "provider_id",
         "type_info": "Uuid"
       }
@@ -82,12 +87,6 @@
       "Left": [
         "Uuid",
         "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Bool",
         "Text",
         {
           "Custom": {
@@ -99,6 +98,14 @@
             }
           }
         },
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
         "Uuid"
       ]
     },
@@ -114,9 +121,10 @@
       false,
       false,
       false,
+      false,
       true,
       true
     ]
   },
-  "hash": "9995f32dd50ff6a8b1437c249ed4a510a64d1699815e11e2cb0ac8652b419bf4"
+  "hash": "c25cb9413627dfd119c323f56e67555f4222e22a4e5a7e82ff8ad2ca73574d3a"
 }

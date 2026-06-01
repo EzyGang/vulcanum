@@ -132,6 +132,7 @@ impl ProjectConfigsService {
                     prompt_template: params.prompt_template.as_deref(),
                     repo_url: params.repo_url.as_deref(),
                     agents_md: params.agents_md.as_deref(),
+                    opencode_config: params.opencode_config.as_deref(),
                     kaneo_workspace_id: params.kaneo_workspace_id.as_deref(),
                     enabled: params.enabled,
                     integration_type: params.integration_type,

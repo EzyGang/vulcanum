@@ -3,6 +3,9 @@ name = "vulcanum-server"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+debug = 0
+
 [lib]
 name = "vulcanum_server"
 path = "src/lib.rs"

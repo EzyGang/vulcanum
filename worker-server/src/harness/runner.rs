@@ -16,6 +16,7 @@ pub(super) struct RunnerEnv<'a> {
     pub workdir: &'a Path,
     pub limits: &'a ResourceLimits,
     pub agents_md: &'a str,
+    pub opencode_config: &'a str,
     pub repo_url: &'a str,
     pub spawn_error_msg: &'a str,
 }
@@ -31,16 +32,25 @@ pub(super) async fn run_opencode_in_env(
         .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to write prompt: {e}")))?;
 
     let home_dir = env.workdir.join("home");
-    let opencode_config = home_dir.join(".config").join("opencode");
-    tokio::fs::create_dir_all(&opencode_config)
+    let config_dir = home_dir.join(".config").join("opencode");
+    tokio::fs::create_dir_all(&config_dir)
         .await
         .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to create config dir: {e}")))?;
 
     if !env.agents_md.is_empty() {
-        let agents_path = opencode_config.join("AGENTS.md");
+        let agents_path = config_dir.join("AGENTS.md");
         tokio::fs::write(&agents_path, env.agents_md)
             .await
             .map_err(|e| HarnessError::OpenCodeCrash(format!("failed to write AGENTS.md: {e}")))?;
+    }
+
+    if !env.opencode_config.is_empty() {
+        let config_path = config_dir.join("opencode.json");
+        tokio::fs::write(&config_path, env.opencode_config)
+            .await
+            .map_err(|e| {
+                HarnessError::OpenCodeCrash(format!("failed to write opencode.json: {e}"))
+            })?;
     }
 
     if !env.repo_url.is_empty() {

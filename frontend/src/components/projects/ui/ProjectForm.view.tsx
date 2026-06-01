@@ -20,6 +20,7 @@ interface ProjectFormViewProps {
     promptTemplate: Signal<string>;
     repoUrl: Signal<string>;
     agentsMd: Signal<string>;
+    opencodeConfig: Signal<string>;
     columns: Signal<ColumnInfo[]>;
     columnsLoading: Signal<boolean>;
     lookupProjectName: Signal<string>;
@@ -51,6 +52,7 @@ interface ProjectFormViewProps {
     onPromptTemplateChange: (value: string) => void;
     onRepoUrlChange: (value: string) => void;
     onAgentsMdChange: (value: string) => void;
+    onOpencodeConfigChange: (value: string) => void;
   };
 }
 
@@ -124,10 +126,12 @@ export const ProjectFormView = ({
                 promptTemplate={d.promptTemplate}
                 repoUrl={d.repoUrl}
                 agentsMd={d.agentsMd}
+                opencodeConfig={d.opencodeConfig}
                 submitting={submitting}
                 onPromptTemplateChange={a.onPromptTemplateChange}
                 onRepoUrlChange={a.onRepoUrlChange}
                 onAgentsMdChange={a.onAgentsMdChange}
+                onOpencodeConfigChange={a.onOpencodeConfigChange}
               />
 
               {formError.value && <div class='text-error text-sm'>{formError.value}</div>}

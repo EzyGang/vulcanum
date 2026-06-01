@@ -57,6 +57,7 @@ impl AgentHarness for ContainerHarness {
         limits: &ResourceLimits,
         repo_url: &str,
         agents_md: &str,
+        opencode_config: &str,
     ) -> Result<HarnessResult, HarnessError> {
         self.ensure_image().await;
 
@@ -80,6 +81,7 @@ impl AgentHarness for ContainerHarness {
             workdir: &workdir_ref,
             limits,
             agents_md,
+            opencode_config,
             repo_url,
             spawn_error_msg: "docker",
         };

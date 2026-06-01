@@ -52,11 +52,13 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: pnpm
+          node-version: 24
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          cache: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "e2e"

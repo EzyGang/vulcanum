@@ -18,6 +18,7 @@ pub struct ProjectConfig {
     pub prompt_template: String,
     pub repo_url: String,
     pub agents_md: String,
+    pub opencode_config: String,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
 }
@@ -41,6 +42,8 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub agents_md: String,
     #[serde(default)]
+    pub opencode_config: String,
+    #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
 }
@@ -59,6 +62,8 @@ pub struct UpdateProjectConfigRequest {
     pub repo_url: Option<String>,
     #[serde(default)]
     pub agents_md: Option<String>,
+    #[serde(default)]
+    pub opencode_config: Option<String>,
     #[serde(default)]
     pub kaneo_workspace_id: Option<String>,
     #[serde(default)]
@@ -90,6 +95,25 @@ impl From<&IntegrationColumn> for ColumnInfo {
             slug: col.slug.clone(),
         }
     }
+}
+
+impl ProjectConfig {
+    pub fn job_fields(&self) -> JobConfigFields {
+        JobConfigFields {
+            kaneo_project_id: self.kaneo_project_id.clone(),
+            kaneo_workspace_id: self.kaneo_workspace_id.clone(),
+            opencode_config: self.opencode_config.clone(),
+            provider_id: self.provider_id,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct JobConfigFields {
+    pub kaneo_project_id: String,
+    pub kaneo_workspace_id: String,
+    pub opencode_config: String,
+    pub provider_id: Option<Uuid>,
 }
 
 fn default_enabled() -> bool {

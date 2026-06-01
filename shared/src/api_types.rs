@@ -50,6 +50,7 @@ pub struct JobResponse {
     pub prompt_text: String,
     pub repo_url: String,
     pub agents_md: String,
+    pub opencode_config: String,
     pub external_task_ref: String,
     pub kaneo_instance: String,
     pub kaneo_api_key: String,
