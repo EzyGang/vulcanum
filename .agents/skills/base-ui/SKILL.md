@@ -422,4 +422,4 @@ See the compound wrapper example in section 5.
 
 - Base UI docs: <https://base-ui.com/react>
 - Preact signals: <https://preactjs.com/guide/v10/signals/>
-- Tailwind CSS v4: <https://tailwindcss.com/docs/v4-beta>
+- Tailwind CSS v4: <https://tailwindcss.com/docs/styling-with-utility-classes>
