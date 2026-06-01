@@ -42,7 +42,7 @@ async fn kata_harness_missing_docker_returns_install_error() {
     let _ = std::fs::create_dir_all(&workdir);
 
     let result: Result<_, HarnessError> = harness
-        .spawn("test", &workdir, &secrets, &limits, "", "")
+        .spawn("test", &workdir, &secrets, &limits, "", "", "")
         .await;
 
     let _ = std::fs::remove_dir_all(&workdir);
@@ -73,7 +73,7 @@ async fn kata_harness_writes_agents_md() {
 
     let agents_content = "# Vulcanum AGENTS.md\nconvention: strict";
     let result = harness
-        .spawn("test", &workdir, &secrets, &limits, "", agents_content)
+        .spawn("test", &workdir, &secrets, &limits, "", agents_content, "")
         .await;
 
     let agents_path = workdir
@@ -113,7 +113,7 @@ async fn kata_harness_skips_agents_md_when_empty() {
     let _ = std::fs::create_dir_all(&workdir);
 
     let result = harness
-        .spawn("test", &workdir, &secrets, &limits, "", "")
+        .spawn("test", &workdir, &secrets, &limits, "", "", "")
         .await;
 
     let agents_path = workdir

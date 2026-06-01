@@ -31,11 +31,12 @@ impl WorkRunsService {
             .find_by_id(&self.db, run.project_config_id)
             .await;
 
-        let (kaneo_project_id, kaneo_workspace_id, provider_id) = match config {
+        let (kaneo_project_id, kaneo_workspace_id, provider_id, opencode_config) = match config {
             Ok(ref c) => (
                 c.kaneo_project_id.clone(),
                 c.kaneo_workspace_id.clone(),
                 c.provider_id,
+                c.opencode_config.clone(),
             ),
             Err(_) => {
                 tracing::warn!(
@@ -43,7 +44,7 @@ impl WorkRunsService {
                     work_run_id = %id,
                     "project config not found for work run"
                 );
-                (String::new(), String::new(), None)
+                (String::new(), String::new(), None, String::new())
             }
         };
 
@@ -71,6 +72,7 @@ impl WorkRunsService {
             prompt_text: run.prompt_text,
             repo_url: run.repo_url,
             agents_md: run.agents_md,
+            opencode_config,
             external_task_ref: run.external_task_ref,
             kaneo_instance,
             kaneo_api_key,

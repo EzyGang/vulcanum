@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE id = $1",
+  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE kaneo_project_id = $1",
   "describe": {
     "columns": [
       {
@@ -69,21 +69,27 @@
       },
       {
         "ordinal": 11,
+        "name": "opencode_config",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "provider_id",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -99,5 +105,5 @@
       true
     ]
   },
-  "hash": "f0318ff814e0a1e8152d33d90f68da4b4b1d1e37e963bf45171a63378e1464f9"
+  "hash": "114bff1dfeb2cbaf5aa70a902e2ebbef85e989449cbd2c3ea43666e0b653d466"
 }

@@ -78,19 +78,44 @@ impl AgentHarness for HarnessKind {
         limits: &ResourceLimits,
         repo_url: &str,
         agents_md: &str,
+        opencode_config: &str,
     ) -> Result<HarnessResult, HarnessError> {
         match self {
             Self::Host(h) => {
-                h.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
-                    .await
+                h.spawn(
+                    prompt,
+                    workdir,
+                    secrets,
+                    limits,
+                    repo_url,
+                    agents_md,
+                    opencode_config,
+                )
+                .await
             }
             Self::Kata(k) => {
-                k.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
-                    .await
+                k.spawn(
+                    prompt,
+                    workdir,
+                    secrets,
+                    limits,
+                    repo_url,
+                    agents_md,
+                    opencode_config,
+                )
+                .await
             }
             Self::Gvisor(g) => {
-                g.spawn(prompt, workdir, secrets, limits, repo_url, agents_md)
-                    .await
+                g.spawn(
+                    prompt,
+                    workdir,
+                    secrets,
+                    limits,
+                    repo_url,
+                    agents_md,
+                    opencode_config,
+                )
+                .await
             }
         }
     }
@@ -103,6 +128,7 @@ impl AgentHarness for HarnessKind {
 /// or inside a gVisor sandbox (GvisorHarness) via Docker with --runtime=runsc.
 pub trait AgentHarness {
     /// Spawn the job, returning the result once the agent exits.
+    #[allow(clippy::too_many_arguments)]
     fn spawn(
         &self,
         prompt: &str,
@@ -111,5 +137,6 @@ pub trait AgentHarness {
         limits: &ResourceLimits,
         repo_url: &str,
         agents_md: &str,
+        opencode_config: &str,
     ) -> impl std::future::Future<Output = Result<HarnessResult, HarnessError>> + Send;
 }

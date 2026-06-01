@@ -30,6 +30,7 @@ export const useProjectForm = (projectId: string | null) => {
   const promptTemplate = useSignal('');
   const repoUrl = useSignal('');
   const agentsMd = useSignal('');
+  const opencodeConfig = useSignal('');
   const submitting = useSignal(false);
   const formError = useSignal<string | null>(null);
 
@@ -72,6 +73,7 @@ export const useProjectForm = (projectId: string | null) => {
       promptTemplate.value = p.promptTemplate;
       repoUrl.value = p.repoUrl;
       agentsMd.value = p.agentsMd;
+      opencodeConfig.value = p.opencodeConfig;
     }
   }, [projectId, existingProject]);
 
@@ -117,6 +119,7 @@ export const useProjectForm = (projectId: string | null) => {
               promptTemplate: promptTemplate.value || undefined,
               repoUrl: repoUrl.value || undefined,
               agentsMd: agentsMd.value || undefined,
+              opencodeConfig: opencodeConfig.value || undefined,
               providerId: providerId.value || undefined
             }
           });
@@ -135,7 +138,8 @@ export const useProjectForm = (projectId: string | null) => {
             targetColumn: targetColumn.value || undefined,
             promptTemplate: promptTemplate.value,
             repoUrl: repoUrl.value || undefined,
-            agentsMd: agentsMd.value || undefined
+            agentsMd: agentsMd.value || undefined,
+            opencodeConfig: opencodeConfig.value || undefined
           });
         }
       } catch (err) {
@@ -164,6 +168,7 @@ export const useProjectForm = (projectId: string | null) => {
     promptTemplate,
     repoUrl,
     agentsMd,
+    opencodeConfig,
     submitting,
     formError,
     columns: lookup.columns,
@@ -203,6 +208,9 @@ export const useProjectForm = (projectId: string | null) => {
     },
     onAgentsMdChange: (value: string) => {
       agentsMd.value = value;
+    },
+    onOpencodeConfigChange: (value: string) => {
+      opencodeConfig.value = value;
     }
   };
 };

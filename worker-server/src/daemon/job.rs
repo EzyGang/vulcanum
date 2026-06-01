@@ -117,6 +117,7 @@ pub(crate) async fn handle_job(
             &limits,
             &job.repo_url,
             &job.agents_md,
+            &job.opencode_config,
         )
         .await
     {

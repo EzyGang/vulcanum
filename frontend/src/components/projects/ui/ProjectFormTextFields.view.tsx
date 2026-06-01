@@ -7,10 +7,12 @@ interface ProjectFormTextFieldsProps {
   promptTemplate: Signal<string>;
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
+  opencodeConfig: Signal<string>;
   submitting: Signal<boolean>;
   onPromptTemplateChange: (value: string) => void;
   onRepoUrlChange: (value: string) => void;
   onAgentsMdChange: (value: string) => void;
+  onOpencodeConfigChange: (value: string) => void;
 }
 
 const inputStyles =
@@ -21,10 +23,12 @@ export const ProjectFormTextFields = ({
   promptTemplate,
   repoUrl,
   agentsMd,
+  opencodeConfig,
   submitting,
   onPromptTemplateChange,
   onRepoUrlChange,
-  onAgentsMdChange
+  onAgentsMdChange,
+  onOpencodeConfigChange
 }: ProjectFormTextFieldsProps): JSX.Element => (
   <>
     <div class='flex flex-col gap-2'>
@@ -68,6 +72,22 @@ export const ProjectFormTextFields = ({
         id='field-agents-md'
         value={agentsMd.value}
         onInput={(e) => onAgentsMdChange((e.target as HTMLTextAreaElement).value)}
+        disabled={submitting.value}
+        rows={6}
+        class={textareaStyles}
+      />
+    </div>
+
+    <div class='flex flex-col gap-2'>
+      <Label for='field-opencode-config'>OpenCode Config</Label>
+      <span class='text-text-muted text-xs'>
+        JSON configuration for opencode. Written to opencode.json. Supports {'{env:VAR}'} syntax for
+        environment variable references.
+      </span>
+      <textarea
+        id='field-opencode-config'
+        value={opencodeConfig.value}
+        onInput={(e) => onOpencodeConfigChange((e.target as HTMLTextAreaElement).value)}
         disabled={submitting.value}
         rows={6}
         class={textareaStyles}

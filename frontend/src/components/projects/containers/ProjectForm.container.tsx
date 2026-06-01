@@ -23,6 +23,7 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         promptTemplate: form.promptTemplate,
         repoUrl: form.repoUrl,
         agentsMd: form.agentsMd,
+        opencodeConfig: form.opencodeConfig,
         columns: form.columns,
         columnsLoading: form.columnsLoading,
         lookupProjectName: form.lookupProjectName,
@@ -53,7 +54,8 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         onEnabledChange: form.onEnabledChange,
         onPromptTemplateChange: form.onPromptTemplateChange,
         onRepoUrlChange: form.onRepoUrlChange,
-        onAgentsMdChange: form.onAgentsMdChange
+        onAgentsMdChange: form.onAgentsMdChange,
+        onOpencodeConfigChange: form.onOpencodeConfigChange
       }}
     />
   );

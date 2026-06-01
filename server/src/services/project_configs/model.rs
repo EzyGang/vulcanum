@@ -18,6 +18,7 @@ pub struct ProjectConfig {
     pub prompt_template: String,
     pub repo_url: String,
     pub agents_md: String,
+    pub opencode_config: String,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
 }
@@ -41,6 +42,8 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub agents_md: String,
     #[serde(default)]
+    pub opencode_config: String,
+    #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
 }
@@ -59,6 +62,8 @@ pub struct UpdateProjectConfigRequest {
     pub repo_url: Option<String>,
     #[serde(default)]
     pub agents_md: Option<String>,
+    #[serde(default)]
+    pub opencode_config: Option<String>,
     #[serde(default)]
     pub kaneo_workspace_id: Option<String>,
     #[serde(default)]

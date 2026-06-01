@@ -30,6 +30,7 @@ impl AgentHarness for HostHarness {
         limits: &ResourceLimits,
         repo_url: &str,
         agents_md: &str,
+        opencode_config: &str,
     ) -> Result<HarnessResult, HarnessError> {
         let workdir = workdir.to_path_buf();
 
@@ -38,6 +39,7 @@ impl AgentHarness for HostHarness {
             workdir: &workdir,
             limits,
             agents_md,
+            opencode_config,
             repo_url,
             spawn_error_msg: "opencode",
         };
