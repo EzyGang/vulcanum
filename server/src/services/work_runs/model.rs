@@ -29,6 +29,11 @@ pub struct WorkRun {
     pub result_exit_code: Option<i32>,
     pub tokens_used: Option<i64>,
     pub duration_ms: Option<i64>,
+    pub input_tokens: Option<i64>,
+    pub output_tokens: Option<i64>,
+    pub cache_read_tokens: Option<i64>,
+    pub cache_write_tokens: Option<i64>,
+    pub model_used: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -47,5 +52,10 @@ pub struct WorkRunListItem {
     pub result_exit_code: Option<i32>,
     pub tokens_used: Option<i64>,
     pub duration_ms: Option<i64>,
+    pub input_tokens: Option<i64>,
+    pub output_tokens: Option<i64>,
+    pub cache_read_tokens: Option<i64>,
+    pub cache_write_tokens: Option<i64>,
+    pub model_used: Option<String>,
     pub created_at: DateTime<Utc>,
 }

@@ -11,23 +11,27 @@ Host machine worker daemon that polls the Vulcanum server for jobs and executes 
 
 ### Layers
 
-| Layer      | Path                   | Responsibility                                    |
-| ---------- | ---------------------- | ------------------------------------------------- |
-| Daemon     | `src/daemon/`          | Main loop, polling, job dispatch, recovery        |
-| Harness    | `src/harness/`         | Spawning opencode (host, Kata, gVisor)            |
-| State      | `src/state/`           | Local SQLite journal for job state and recovery   |
+| Layer       | Path                   | Responsibility                                         |
+| ----------- | ---------------------- | ------------------------------------------------------ |
+| Daemon      | `src/daemon/`          | Main loop, polling, job dispatch                       |
+| Isolation   | `src/harness/`         | Environment preparation (host, Kata, gVisor)           |
+| State       | `src/state/`           | Local SQLite journal for job state                     |
+
+### Isolation Layer
+
+The harness module provides environment isolation via the `IsolationProvider` trait (defined in `vulcanum-shared`).
+
+- `HostIsolation` — runs on the host directly, creating workdir and cloning the repo.
+- `DockerIsolation` — runs inside a Docker container with a configurable runtime.
+- `KataIsolation` — delegates to `DockerIsolation` with `kata-runtime`.
+- `GvisorIsolation` — delegates to `DockerIsolation` with `runsc`.
+- `IsolationKind` — enum dispatch selecting the provider at runtime via `create_isolation_provider()`.
+
+The isolation layer only prepares the environment. The runtime execution (`AgentRuntime`) is stubbed with `todo!()` until VLC-40 implements it.
 
 ### Daemon Flow
 
 **Startup**: Load worker identity and tokens from `~/.config/vulcanum/worker.json`.
-
-**Recovery**: Query the SQLite journal for jobs left in `running` status.
-- Host harness jobs → mark `lost`, submit error to server.
-- Container harness jobs → `docker inspect` to check if still alive.
-  - Alive → spawn a background monitor that awaits the container, collects logs, parses results, and submits.
-  - Exited → collect logs, parse result, submit to server, mark `submitted`.
-  - Not found → mark `lost`, submit error result.
-- Recovered jobs consume `Semaphore` permits, reducing available capacity for new work.
 
 **Poll loop**: Acquire a `tokio::sync::Semaphore` permit (size = `max_concurrent_jobs` received from the server at registration).
 - `GET /api/v1/poll` → `job_id` or 204.
@@ -35,7 +39,7 @@ Host machine worker daemon that polls the Vulcanum server for jobs and executes 
 - The loop never blocks on individual jobs — it returns to polling immediately.
 - Fatal API errors (401/403) from spawned tasks are propagated to the main loop via a `watch` channel.
 
-**Job execution**: Fetch job details, ack, insert journal entry, spawn opencode, update journal, submit result, cleanup.
+**Job execution**: Fetch job details, ack, insert journal entry, prepare isolation, `todo!()` for runtime execution.
 
 ### Concurrent Job Model
 
@@ -45,7 +49,7 @@ Host machine worker daemon that polls the Vulcanum server for jobs and executes 
 
 ### State Journal (SQLite)
 
-Located at `~/.config/vulcanum/worker.db`. Enables crash recovery: on restart, the worker reconciles journal state with Docker/subprocess reality.
+Located at `~/.config/vulcanum/worker.db`.
 
 Schema:
 
@@ -68,6 +72,15 @@ CREATE TABLE job_journal (
 
 Statuses: `running` → `completed` | `failed` | `lost` → `submitted`.
 
+### Composition Pattern
+
+```
+create_isolation_provider(harness_type) → IsolationKind
+IsolationProvider::prepare() → IsolatedEnvironment
+todo!("AgentRuntime not yet implemented — see VLC-40")
+IsolationProvider::cleanup()
+```
+
 ## Build & Run
 
 ```bash
@@ -83,5 +96,5 @@ cargo run --bin vulcanum-server
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `VULCANUM_HARNESS` | `host` | Which harness to use: `host`, `kata`, or `gvisor` |
-| `VULCANUM_IMAGE` | `ghcr.io/ezygang/vulcanum/agent:latest` | Docker image for container harnesses |
+| `VULCANUM_HARNESS` | `host` | Which isolation to use: `host`, `kata`, or `gvisor` |
+| `VULCANUM_IMAGE` | `ghcr.io/ezygang/vulcanum/agent:latest` | Docker image for container isolation providers |

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n             FROM work_runs WHERE id = $1",
+  "query": "SELECT id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n             cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n             model_used,\n             created_at as \"created_at!: chrono::DateTime<Utc>\", updated_at as \"updated_at!: chrono::DateTime<Utc>\"\n             FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL\n             ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -79,19 +79,42 @@
       },
       {
         "ordinal": 12,
-        "name": "created_at!: DateTime<Utc>",
-        "type_info": "Timestamptz"
+        "name": "input_tokens?: i64",
+        "type_info": "Int8"
       },
       {
         "ordinal": 13,
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "output_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 14,
+        "name": "cache_read_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 15,
+        "name": "cache_write_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 16,
+        "name": "model_used",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "created_at!: chrono::DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 18,
+        "name": "updated_at!: chrono::DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -107,8 +130,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "5191a5b04a17733f4cfd9d78908f2059bf519ee1372c6d5459b4f7b491f54d88"
+  "hash": "40d1e295902e2ed2eebe521a16f3d377d9c2e804fb82c3511669176eb816e400"
 }

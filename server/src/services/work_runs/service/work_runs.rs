@@ -231,6 +231,11 @@ impl WorkRunsService {
                     tokens_used: params.tokens_used,
                     duration_ms: params.duration_ms,
                     status,
+                    input_tokens: params.input_tokens,
+                    output_tokens: params.output_tokens,
+                    cache_read_tokens: params.cache_read_tokens,
+                    cache_write_tokens: params.cache_write_tokens,
+                    model_used: params.model_used.as_deref(),
                 },
             )
             .await?;

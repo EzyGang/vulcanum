@@ -1,40 +1,62 @@
-use crate::harness::container::ContainerHarness;
+use std::collections::HashMap;
+use std::path::Path;
 
-pub struct GvisorHarness {
-    pub(crate) inner: ContainerHarness,
+use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
+use vulcanum_shared::runtime::IsolationProvider;
+
+use crate::harness::container::DockerIsolation;
+
+pub struct GvisorIsolation {
+    pub(crate) inner: DockerIsolation,
 }
 
-impl GvisorHarness {
+impl GvisorIsolation {
     pub fn new() -> Self {
         Self {
-            inner: ContainerHarness::new("runsc"),
+            inner: DockerIsolation::new("runsc"),
         }
     }
 
     #[allow(dead_code)]
     pub fn with_image(image: String) -> Self {
         Self {
-            inner: ContainerHarness::with_image(image, "runsc"),
+            inner: DockerIsolation::with_image(image, "runsc"),
         }
     }
 }
 
-impl Default for GvisorHarness {
+impl Default for GvisorIsolation {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl std::ops::Deref for GvisorHarness {
-    type Target = ContainerHarness;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
+impl IsolationProvider for GvisorIsolation {
+    async fn prepare(
+        &self,
+        workdir: &Path,
+        secrets: &HashMap<String, String>,
+        env_vars: &HashMap<String, String>,
+        limits: &ResourceLimits,
+        agents_md: &str,
+        opencode_config: &str,
+        repo_url: &str,
+    ) -> Result<IsolatedEnvironment, HarnessError> {
+        self.inner
+            .prepare(
+                workdir,
+                secrets,
+                env_vars,
+                limits,
+                agents_md,
+                opencode_config,
+                repo_url,
+            )
+            .await
     }
-}
 
-impl std::ops::DerefMut for GvisorHarness {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
+    async fn cleanup(&self, env: &IsolatedEnvironment) {
+        self.inner.cleanup(env).await;
     }
 }

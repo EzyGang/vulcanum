@@ -64,6 +64,11 @@ pub struct SubmitResultRequest {
     pub exit_code: i32,
     pub tokens_used: i64,
     pub duration_ms: i64,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub model_used: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

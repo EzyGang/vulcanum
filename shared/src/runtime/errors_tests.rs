@@ -1,4 +1,4 @@
-use crate::harness::errors::HarnessError;
+use crate::runtime::errors::HarnessError;
 
 #[test]
 fn display_install() {
@@ -13,9 +13,9 @@ fn display_timeout() {
 }
 
 #[test]
-fn display_opencode_crash() {
-    let e = HarnessError::OpenCodeCrash("segfault".to_owned());
-    assert_eq!(e.to_string(), "opencode crashed: segfault");
+fn display_crash() {
+    let e = HarnessError::Crash("segfault".to_owned());
+    assert_eq!(e.to_string(), "agent crashed: segfault");
 }
 
 #[test]

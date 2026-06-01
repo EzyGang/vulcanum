@@ -8,12 +8,11 @@ use uuid::Uuid;
 use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::runtime::types::ResourceLimits;
+use vulcanum_shared::runtime::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::harness::gvisor::GvisorHarness;
-use crate::harness::host::HostHarness;
-use crate::harness::kata::KataHarness;
-use crate::harness::{AgentHarness, HarnessKind};
+use crate::harness::dispatch::create_isolation_provider;
 use crate::state::journal::{Journal, JournalStatus};
 
 pub(crate) async fn handle_job(
@@ -82,11 +81,8 @@ pub(crate) async fn handle_job(
 
     let container_name = match harness_type {
         "kata" | "gvisor" => {
-            let file_name = workdir
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("job");
-            Some(format!("vulcanum-{file_name}"))
+            let file_name = workdir.file_name().and_then(|n| n.to_str());
+            Some(format!("vulcanum-{}", file_name.unwrap_or("job")))
         }
         _ => None,
     };
@@ -100,35 +96,36 @@ pub(crate) async fn handle_job(
         started_at,
     );
 
-    let harness = create_harness(harness_type);
-    let limits = crate::harness::ResourceLimits::default();
+    let provider = create_isolation_provider(harness_type);
+    let limits = ResourceLimits::default();
     let mut secrets = HashMap::new();
     secrets.insert("KANEO_INSTANCE".to_owned(), job.kaneo_instance);
     secrets.insert("KANEO_API_KEY".to_owned(), job.kaneo_api_key);
     secrets.insert("KANEO_PROJECT_ID".to_owned(), job.kaneo_project_id);
     secrets.insert("KANEO_WORKSPACE_ID".to_owned(), job.kaneo_workspace_id);
     secrets.insert("KANEO_TASK_ID".to_owned(), job.external_task_ref.clone());
+    let env_vars = HashMap::new();
 
-    let harness_result = match harness
-        .spawn(
-            &job.prompt_text,
+    let _isolated_env = match provider
+        .prepare(
             &workdir,
             &secrets,
+            &env_vars,
             &limits,
-            &job.repo_url,
             &job.agents_md,
             &job.opencode_config,
+            &job.repo_url,
         )
         .await
     {
-        Ok(r) => r,
+        Ok(env) => env,
         Err(e) => {
             tracing::error!(
                 worker_id = %worker_id,
                 work_run_id = %job_id,
                 external_task_ref = %job.external_task_ref,
                 error = %e,
-                "job execution failed",
+                "isolation prepare failed",
             );
             let _ = journal.update_result(job_id, 1, 0, None, 0, JournalStatus::Failed);
             let result = SubmitResultRequest {
@@ -136,6 +133,11 @@ pub(crate) async fn handle_job(
                 exit_code: 1,
                 tokens_used: 0,
                 duration_ms: 0,
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_read_tokens: 0,
+                cache_write_tokens: 0,
+                model_used: None,
             };
             let access_token = worker_state.read().await.access_token.clone();
             if let Err(e) = client.submit_result(job_id, &result, &access_token).await {
@@ -151,79 +153,5 @@ pub(crate) async fn handle_job(
         }
     };
 
-    let pr_url = harness_result.pr_url.clone();
-    let result = SubmitResultRequest {
-        pr_url: pr_url.unwrap_or_default(),
-        exit_code: harness_result.exit_code,
-        tokens_used: harness_result.tokens_used as i64,
-        duration_ms: harness_result.duration_ms as i64,
-    };
-
-    let journal_status = if harness_result.exit_code == 0 {
-        JournalStatus::Completed
-    } else {
-        JournalStatus::Failed
-    };
-
-    let _ = journal.update_result(
-        job_id,
-        harness_result.exit_code,
-        harness_result.tokens_used as i64,
-        harness_result.pr_url.as_deref(),
-        harness_result.duration_ms as i64,
-        journal_status,
-    );
-
-    let access_token = worker_state.read().await.access_token.clone();
-    if let Err(e) = client.submit_result(job_id, &result, &access_token).await {
-        if is_fatal_api_error(&e) {
-            tracing::error!(
-                worker_id = %worker_id,
-                work_run_id = %job_id,
-                error = %e,
-                "submit_result failed permanently"
-            );
-            return Err(format!("submit_result failed permanently: {e:#}"));
-        }
-        tracing::warn!(
-            worker_id = %worker_id,
-            work_run_id = %job_id,
-            error = %e,
-            "submit_result failed transiently, result not persisted"
-        );
-        return Ok(());
-    }
-
-    let _ = journal.mark_submitted(job_id);
-
-    tracing::info!(
-        worker_id = %worker_id,
-        work_run_id = %job_id,
-        external_task_ref = %job.external_task_ref,
-        tokens_used = harness_result.tokens_used,
-        duration_ms = harness_result.duration_ms,
-        exit_code = harness_result.exit_code,
-        "job completed",
-    );
-
-    let _ = std::fs::remove_dir_all(&workdir);
-
-    Ok(())
-}
-
-pub(crate) fn create_harness(harness_type: &str) -> HarnessKind {
-    match harness_type {
-        "kata" => {
-            tracing::debug!("using Kata Containers harness");
-            HarnessKind::Kata(KataHarness::new())
-        }
-        "gvisor" => {
-            tracing::debug!("using gVisor harness");
-            HarnessKind::Gvisor(GvisorHarness::new())
-        }
-        _ => {
-            tracing::debug!("using host harness");
-            HarnessKind::Host(HostHarness::new())
-        }
-    }
+    todo!("AgentRuntime not yet implemented — see VLC-40");
 }

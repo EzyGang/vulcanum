@@ -1,0 +1,66 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResourceLimits {
+    pub max_duration_secs: u64,
+    pub vcpu_count: u64,
+    pub memory_mib: u64,
+}
+
+impl Default for ResourceLimits {
+    fn default() -> Self {
+        Self {
+            max_duration_secs: 1_800,
+            vcpu_count: 2,
+            memory_mib: 1_024,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SessionStatus {
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone)]
+pub struct SessionExport {
+    pub exit_code: i32,
+    pub tokens_used: u64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_read_tokens: u64,
+    pub cache_write_tokens: u64,
+    pub pr_url: Option<String>,
+    pub duration_ms: u64,
+    pub model_used: Option<String>,
+    pub raw_output: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentEvent {
+    pub event_type: String,
+    pub payload: serde_json::Value,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentKind {
+    OpenCodeServe,
+}
+
+#[derive(Debug, Clone)]
+pub struct IsolatedEnvironment {
+    pub workdir: PathBuf,
+    pub container_name: Option<String>,
+    pub secrets: HashMap<String, String>,
+    pub env_vars: HashMap<String, String>,
+    pub runtime: Option<&'static str>,
+    pub image: Option<String>,
+}

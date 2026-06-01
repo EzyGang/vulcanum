@@ -1,78 +1,66 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use tokio::process::Command;
+use tokio::fs;
+use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
+use vulcanum_shared::runtime::IsolationProvider;
 
-use crate::harness::errors::HarnessError;
-use crate::harness::runner::{self, RunnerEnv};
-use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
+use crate::harness::prepare;
 
-pub struct HostHarness;
+pub struct HostIsolation;
 
-impl HostHarness {
+impl HostIsolation {
     pub fn new() -> Self {
         Self
     }
 }
 
-impl Default for HostHarness {
+impl Default for HostIsolation {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl AgentHarness for HostHarness {
-    async fn spawn(
+impl IsolationProvider for HostIsolation {
+    async fn prepare(
         &self,
-        prompt: &str,
         workdir: &Path,
         secrets: &HashMap<String, String>,
-        limits: &ResourceLimits,
-        repo_url: &str,
+        env_vars: &HashMap<String, String>,
+        _limits: &ResourceLimits,
         agents_md: &str,
         opencode_config: &str,
-    ) -> Result<HarnessResult, HarnessError> {
-        let workdir = workdir.to_path_buf();
+        repo_url: &str,
+    ) -> Result<IsolatedEnvironment, HarnessError> {
+        fs::create_dir_all(workdir)
+            .await
+            .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        let env = RunnerEnv {
-            prompt,
-            workdir: &workdir,
-            limits,
-            agents_md,
-            opencode_config,
-            repo_url,
-            spawn_error_msg: "opencode",
-        };
+        prepare::write_env_files(workdir, agents_md, opencode_config).await?;
 
-        runner::run_opencode_in_env(
-            env,
-            || {
-                let mut cmd = Command::new("opencode");
-                let repo_dir = workdir.join("repo");
-                let target_dir = if repo_dir.exists() {
-                    &repo_dir
-                } else {
-                    &workdir
-                };
+        if !repo_url.is_empty() {
+            prepare::clone_repo(repo_url, &workdir.join("repo")).await?;
+        }
 
-                cmd.arg("run")
-                    .arg("--dir")
-                    .arg(target_dir)
-                    .arg("--dangerously-skip-permissions")
-                    .env("HOME", workdir.join("home"))
-                    .current_dir(&workdir)
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::piped())
-                    .stdin(std::process::Stdio::piped());
+        let mut combined_env: HashMap<String, String> = env_vars.clone();
+        for (k, v) in secrets {
+            combined_env.insert(k.clone(), v.clone());
+        }
+        combined_env.insert(
+            "HOME".to_owned(),
+            workdir.join("home").to_string_lossy().to_string(),
+        );
 
-                for (key, value) in secrets {
-                    cmd.env(key, value);
-                }
-
-                Ok(cmd)
-            },
-            None,
-        )
-        .await
+        Ok(IsolatedEnvironment {
+            workdir: workdir.to_path_buf(),
+            container_name: None,
+            secrets: secrets.clone(),
+            env_vars: combined_env,
+            runtime: None,
+            image: None,
+        })
     }
+
+    async fn cleanup(&self, _env: &IsolatedEnvironment) {}
 }

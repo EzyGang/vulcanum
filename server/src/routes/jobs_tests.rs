@@ -224,6 +224,11 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
             "exit_code": 0,
             "tokens_used": 1000,
             "duration_ms": 60000,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "model_used": null,
         }))
         .to_request();
     let resp = test::call_service(&app, req).await;
@@ -260,6 +265,11 @@ async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
             "exit_code": 0,
             "tokens_used": 0,
             "duration_ms": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "model_used": null,
         }))
         .to_request();
     let resp = test::call_service(&app, req).await;
