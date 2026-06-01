@@ -3,6 +3,7 @@ pub mod api_types;
 pub mod client;
 pub mod constants;
 pub mod crypto;
+pub mod runtime;
 pub mod telemetry;
 pub mod token;
 pub mod validate;

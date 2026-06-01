@@ -26,6 +26,7 @@ impl JournalStatus {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "running" => Some(Self::Running),
@@ -136,6 +137,7 @@ impl Journal {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn mark_lost(&self, job_id: Uuid, error_message: &str) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
         let conn = self.conn.lock().unwrap();
@@ -161,6 +163,7 @@ impl Journal {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn list_running(&self) -> anyhow::Result<Vec<JournalEntry>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(

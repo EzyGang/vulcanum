@@ -1,5 +1,4 @@
 pub(crate) mod job;
-pub(crate) mod recovery;
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -19,7 +18,6 @@ use vulcanum_shared::worker_state::{load_state, WorkerState};
 use crate::state::journal::Journal;
 
 use job::handle_job;
-use recovery::recover_running_jobs;
 
 const POLL_INTERVAL_SECS: u64 = 15;
 const INITIAL_BACKOFF_MS: u64 = 1_000;
@@ -89,20 +87,7 @@ pub async fn run() -> anyhow::Result<()> {
         harness_type,
     };
 
-    tracing::info!("daemon started, running recovery");
-
-    let recovery_result =
-        recover_running_jobs(journal.clone(), client.clone(), worker_state.clone()).await;
-
-    let available_permits = (daemon_state.worker_state.read().await.max_concurrent_jobs as usize)
-        .saturating_sub(recovery_result.recovered_count);
-    tracing::info!(
-        recovered = recovery_result.recovered_count,
-        available = available_permits,
-        "recovery complete, starting poll loop"
-    );
-
-    let _monitors = recovery_result.monitors;
+    tracing::info!("daemon started, starting poll loop");
 
     let mut backoff_ms = INITIAL_BACKOFF_MS;
 

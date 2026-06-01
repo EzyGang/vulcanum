@@ -2,18 +2,18 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use vulcanum_shared::constants::DEFAULT_IMAGE;
+use vulcanum_shared::runtime::errors::HarnessError;
+use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
+use vulcanum_shared::runtime::IsolationProvider;
 
-use crate::harness::errors::HarnessError;
-use crate::harness::runner::{self, RunnerEnv};
-use crate::harness::{AgentHarness, HarnessResult, ResourceLimits};
-use tokio::process::Command;
+use crate::harness::prepare;
 
-pub struct ContainerHarness {
+pub struct DockerIsolation {
     pub(crate) image: String,
     pub(crate) runtime: &'static str,
 }
 
-impl ContainerHarness {
+impl DockerIsolation {
     pub fn new(runtime: &'static str) -> Self {
         let image = std::env::var("VULCANUM_IMAGE").unwrap_or_else(|_| DEFAULT_IMAGE.to_owned());
         Self { image, runtime }
@@ -24,103 +24,77 @@ impl ContainerHarness {
         Self { image, runtime }
     }
 
-    pub(crate) async fn ensure_image(&self) {
-        let status = match Command::new("docker")
+    pub(crate) async fn ensure_image(&self) -> Result<(), HarnessError> {
+        let status = tokio::process::Command::new("docker")
             .args(["pull", &self.image])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
             .await
-        {
-            Ok(s) => s,
-            Err(e) => {
-                tracing::warn!("failed to pull agent image: {e}");
-                return;
-            }
-        };
+            .map_err(|e| HarnessError::Install(format!("failed to pull agent image: {e}")))?;
 
         if !status.success() {
-            tracing::warn!(
-                "docker pull '{}' failed — will retry on next job",
+            return Err(HarnessError::Install(format!(
+                "docker pull '{}' failed",
                 &self.image
-            );
+            )));
         }
+
+        Ok(())
     }
 }
 
-impl AgentHarness for ContainerHarness {
-    async fn spawn(
+impl IsolationProvider for DockerIsolation {
+    async fn prepare(
         &self,
-        prompt: &str,
         workdir: &Path,
         secrets: &HashMap<String, String>,
-        limits: &ResourceLimits,
-        repo_url: &str,
+        _env_vars: &HashMap<String, String>,
+        _limits: &ResourceLimits,
         agents_md: &str,
         opencode_config: &str,
-    ) -> Result<HarnessResult, HarnessError> {
-        self.ensure_image().await;
+        repo_url: &str,
+    ) -> Result<IsolatedEnvironment, HarnessError> {
+        self.ensure_image().await?;
 
-        let container_name = format!(
-            "vulcanum-{}",
-            workdir
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("job")
-        );
-        let workdir_for_cmd = workdir.to_path_buf();
-        let image = self.image.clone();
-        let runtime = self.runtime;
-        let limits_val = *limits;
+        tokio::fs::create_dir_all(workdir)
+            .await
+            .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        let cleanup_name = container_name.clone();
-        let workdir_ref = workdir_for_cmd.clone();
+        prepare::write_env_files(workdir, agents_md, opencode_config).await?;
 
-        let env = RunnerEnv {
-            prompt,
-            workdir: &workdir_ref,
-            limits,
-            agents_md,
-            opencode_config,
-            repo_url,
-            spawn_error_msg: "docker",
+        if !repo_url.is_empty() {
+            prepare::clone_repo(repo_url, &workdir.join("repo")).await?;
+        }
+
+        let container_name = prepare::container_name(workdir);
+
+        let mut combined_env: HashMap<String, String> = secrets.clone();
+        combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
+
+        Ok(IsolatedEnvironment {
+            workdir: workdir.to_path_buf(),
+            container_name: Some(container_name),
+            secrets: secrets.clone(),
+            env_vars: combined_env,
+            runtime: Some(self.runtime),
+            image: Some(self.image.clone()),
+        })
+    }
+
+    async fn cleanup(&self, env: &IsolatedEnvironment) {
+        let Some(name) = &env.container_name else {
+            return;
         };
 
-        runner::run_opencode_in_env(
-            env,
-            move || {
-                let mut cmd = Command::new("docker");
+        let result = tokio::process::Command::new("docker")
+            .args(["rm", "-f", name])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
 
-                cmd.arg("run")
-                    .arg("-i")
-                    .arg(format!("--runtime={runtime}"))
-                    .arg("--name")
-                    .arg(&container_name)
-                    .arg("-v")
-                    .arg(format!("{}:/workdir", workdir_for_cmd.display()))
-                    .arg("-e")
-                    .arg("HOME=/workdir/home")
-                    .arg(format!("--cpus={}", limits_val.vcpu_count))
-                    .arg(format!("--memory={}m", limits_val.memory_mib))
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::inherit())
-                    .stdin(std::process::Stdio::piped());
-
-                for (key, value) in secrets {
-                    cmd.arg("-e").arg(format!("{key}={value}"));
-                }
-
-                cmd.arg(&image)
-                    .arg("/root/.opencode/bin/opencode")
-                    .arg("run")
-                    .arg("--dir")
-                    .arg("/workdir/repo")
-                    .arg("--dangerously-skip-permissions");
-
-                Ok(cmd)
-            },
-            Some(&cleanup_name),
-        )
-        .await
+        if let Ok(mut child) = result {
+            let _ = child.wait().await;
+        }
     }
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE work_runs SET result_pr_url = $2, result_exit_code = $3, tokens_used = $4,\n             duration_ms = $5, status = $6\n             WHERE id = $1 AND status = 'running'::work_run_status\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,\n             created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             RETURNING id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\", prompt_text,\n                        repo_url, agents_md,\n                        result_pr_url, result_exit_code, tokens_used, duration_ms,\n                        input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n                        cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n                        model_used,\n                        created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -79,11 +79,36 @@
       },
       {
         "ordinal": 12,
+        "name": "input_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 13,
+        "name": "output_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 14,
+        "name": "cache_read_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 15,
+        "name": "cache_write_tokens?: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 16,
+        "name": "model_used",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 18,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -92,9 +117,7 @@
       "Left": [
         "Uuid",
         "Text",
-        "Int4",
-        "Int8",
-        "Int8",
+        "Uuid",
         {
           "Custom": {
             "name": "work_run_status",
@@ -109,7 +132,10 @@
               ]
             }
           }
-        }
+        },
+        "Text",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -126,8 +152,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "26b7c503581a5d278d0c6e0cfae8bd0f67f19e5e5d8f6fda9b5e3aa1bb060140"
+  "hash": "4cbfcba5dc67e1aef6cf2ccfb038a5da3063f182ebfa5e942d83566ca1fc8382"
 }

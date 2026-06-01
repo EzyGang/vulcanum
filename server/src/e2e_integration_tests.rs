@@ -153,6 +153,11 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
             "exit_code": 0,
             "tokens_used": 1234,
             "duration_ms": 30000,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "model_used": null,
         }))
         .to_request();
     let result_resp = test::call_service(&app, result_req).await;

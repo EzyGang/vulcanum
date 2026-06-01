@@ -31,6 +31,9 @@ impl WorkRunsRepository {
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
                         repo_url, agents_md,
                         result_pr_url, result_exit_code, tokens_used, duration_ms,
+                        input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+                        cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+                        model_used,
                         created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             &params.external_task_ref,
@@ -79,6 +82,9 @@ impl WorkRunsRepository {
             WorkRun,
             r#"SELECT id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
              FROM work_runs WHERE id = $1"#,
             id,
@@ -116,6 +122,9 @@ impl WorkRunsRepository {
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
+             wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
+             wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
+             wr.model_used,
              wr.created_at as "created_at!: DateTime<Utc>"
              FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
              WHERE ($1::work_run_status IS NULL OR wr.status = $1)
@@ -254,6 +263,9 @@ impl WorkRunsRepository {
              WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             worker_id,
@@ -271,10 +283,14 @@ impl WorkRunsRepository {
     ) -> Result<Option<WorkRun>, WorkRunsError> {
         sqlx::query_as!(
             WorkRun,
-            r#"UPDATE work_runs SET status = 'failed'::work_run_status, result_exit_code = 1, tokens_used = 0, duration_ms = 0
+            r#"UPDATE work_runs SET status = 'failed'::work_run_status, result_exit_code = 1, tokens_used = 0, duration_ms = 0,
+             input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0
              WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
         )
@@ -292,10 +308,14 @@ impl WorkRunsRepository {
         sqlx::query_as!(
             WorkRun,
             r#"UPDATE work_runs SET result_pr_url = $2, result_exit_code = $3, tokens_used = $4,
-             duration_ms = $5, status = $6
+             duration_ms = $5, status = $6, input_tokens = $7, output_tokens = $8,
+             cache_read_tokens = $9, cache_write_tokens = $10, model_used = $11
              WHERE id = $1 AND status = 'running'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             params.pr_url,
@@ -303,6 +323,11 @@ impl WorkRunsRepository {
             params.tokens_used,
             params.duration_ms,
             &params.status as &WorkRunStatus,
+            params.input_tokens,
+            params.output_tokens,
+            params.cache_read_tokens,
+            params.cache_write_tokens,
+            params.model_used,
         )
         .fetch_optional(db)
         .await
@@ -317,4 +342,9 @@ pub struct SetResultParams<'a> {
     pub tokens_used: i64,
     pub duration_ms: i64,
     pub status: WorkRunStatus,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub model_used: Option<&'a str>,
 }

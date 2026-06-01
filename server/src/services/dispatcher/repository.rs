@@ -44,6 +44,9 @@ impl DispatchRepository {
             WorkRun,
             r#"SELECT id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
              created_at as "created_at!: chrono::DateTime<Utc>", updated_at as "updated_at!: chrono::DateTime<Utc>"
              FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL
              ORDER BY created_at ASC"#,
@@ -65,6 +68,9 @@ impl DispatchRepository {
              WHERE id = $1 AND status = 'pending'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
              created_at as "created_at!: chrono::DateTime<Utc>", updated_at as "updated_at!: chrono::DateTime<Utc>""#,
             work_run_id,
             worker_id,
