@@ -24,27 +24,23 @@ impl DockerIsolation {
         Self { image, runtime }
     }
 
-    pub(crate) async fn ensure_image(&self) {
-        let status = match tokio::process::Command::new("docker")
+    pub(crate) async fn ensure_image(&self) -> Result<(), HarnessError> {
+        let status = tokio::process::Command::new("docker")
             .args(["pull", &self.image])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
             .await
-        {
-            Ok(s) => s,
-            Err(e) => {
-                tracing::warn!("failed to pull agent image: {e}");
-                return;
-            }
-        };
+            .map_err(|e| HarnessError::Install(format!("failed to pull agent image: {e}")))?;
 
         if !status.success() {
-            tracing::warn!(
-                "docker pull '{}' failed — will retry on next job",
+            return Err(HarnessError::Install(format!(
+                "docker pull '{}' failed",
                 &self.image
-            );
+            )));
         }
+
+        Ok(())
     }
 }
 
@@ -59,7 +55,7 @@ impl IsolationProvider for DockerIsolation {
         opencode_config: &str,
         repo_url: &str,
     ) -> Result<IsolatedEnvironment, HarnessError> {
-        self.ensure_image().await;
+        self.ensure_image().await?;
 
         tokio::fs::create_dir_all(workdir)
             .await
@@ -71,13 +67,7 @@ impl IsolationProvider for DockerIsolation {
             prepare::clone_repo(repo_url, &workdir.join("repo")).await?;
         }
 
-        let container_name = format!(
-            "vulcanum-{}",
-            workdir
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("job")
-        );
+        let container_name = prepare::container_name(workdir);
 
         let mut combined_env: HashMap<String, String> = secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());

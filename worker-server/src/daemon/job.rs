@@ -80,10 +80,7 @@ pub(crate) async fn handle_job(
     let workdir_str = workdir.to_string_lossy().to_string();
 
     let container_name = match harness_type {
-        "kata" | "gvisor" => {
-            let file_name = workdir.file_name().and_then(|n| n.to_str());
-            Some(format!("vulcanum-{}", file_name.unwrap_or("job")))
-        }
+        "kata" | "gvisor" => Some(crate::harness::prepare::container_name(&workdir)),
         _ => None,
     };
 

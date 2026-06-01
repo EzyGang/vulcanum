@@ -3,6 +3,16 @@ use std::path::Path;
 use tokio::fs;
 use vulcanum_shared::runtime::errors::HarnessError;
 
+pub fn container_name(workdir: &Path) -> String {
+    format!(
+        "vulcanum-{}",
+        workdir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("job")
+    )
+}
+
 pub async fn write_env_files(
     workdir: &Path,
     agents_md: &str,
