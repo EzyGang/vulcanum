@@ -4,6 +4,9 @@ use sqlx::PgPool;
 
 use crate::config::AppConfig;
 use crate::services::auth::service::AuthService;
+use crate::services::dispatcher::cancel_store::{
+    CancelStore, InMemoryCancelStore, RedisCancelStore,
+};
 use crate::services::dispatcher::flag_store::DispatchStore;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::integration_providers::service::IntegrationProvidersService;
@@ -11,6 +14,8 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
+use crate::services::work_run_events::repository::WorkRunEventsRepository;
+use crate::services::work_run_events::service::WorkRunEventsService;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::services::workers::code_store::RedisCodeStore;
@@ -24,9 +29,11 @@ pub struct AppState {
     pub providers: IntegrationProvidersService,
     pub workers: WorkersService,
     pub jobs: WorkRunsService,
+    pub events: WorkRunEventsService,
     pub db_pool: PgPool,
     pub work_runs: WorkRunsRepository,
     pub dispatch_store: Arc<dyn DispatchStore>,
+    pub cancel_store: Arc<dyn CancelStore>,
     pub jwt_secret: String,
 }
 
@@ -62,6 +69,7 @@ impl AppState {
         let dispatch_store: Arc<dyn DispatchStore> = Arc::new(
             crate::services::dispatcher::flag_store::RedisDispatchStore::new(&cfg.redis_url)?,
         );
+        let cancel_store: Arc<dyn CancelStore> = Arc::new(RedisCancelStore::new(&cfg.redis_url)?);
         let jobs = WorkRunsService::new(
             work_runs.clone(),
             workers_repo,
@@ -69,7 +77,14 @@ impl AppState {
             db_pool.clone(),
             dispatch_store.clone(),
             providers_repo.clone(),
+            cancel_store.clone(),
             cfg.unhealthy_threshold,
+        );
+        let events = WorkRunEventsService::new(
+            WorkRunEventsRepository::new(),
+            work_runs.clone(),
+            cancel_store.clone(),
+            db_pool.clone(),
         );
 
         let jwt_secret = cfg.jwt_secret.clone();
@@ -80,9 +95,11 @@ impl AppState {
             providers,
             workers,
             jobs,
+            events,
             db_pool,
             work_runs,
             dispatch_store,
+            cancel_store,
             jwt_secret,
         })
     }
@@ -100,4 +117,11 @@ impl AppState {
             poll_period_secs,
         )
     }
+}
+
+/// Build an `AppState` with an in-memory cancel store. Used in tests
+/// and any path that does not have a real Redis instance available.
+#[allow(dead_code)]
+pub fn build_in_memory_cancel_store() -> Arc<dyn CancelStore> {
+    Arc::new(InMemoryCancelStore::new())
 }

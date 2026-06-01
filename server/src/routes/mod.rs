@@ -7,6 +7,7 @@ pub mod providers;
 pub mod status;
 pub mod work_runs;
 pub mod worker_auth;
+pub mod worker_or_instance_auth;
 pub mod workers;
 
 use actix_web::web;
@@ -25,7 +26,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 web::scope("/jobs")
                     .route("/{id}", web::get().to(jobs::get_job))
                     .route("/{id}/ack", web::post().to(jobs::ack_job))
-                    .route("/{id}/result", web::post().to(jobs::submit_result)),
+                    .route("/{id}/result", web::post().to(jobs::submit_result))
+                    .route("/{id}/events", web::post().to(jobs::append_events))
+                    .route("/{id}/events", web::get().to(jobs::list_events)),
             )
             .service(
                 web::scope("/projects")
@@ -62,7 +65,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("", web::get().to(work_runs::list))
                     .route("/bulk-delete", web::post().to(work_runs::bulk_delete))
                     .route("/{id}", web::delete().to(work_runs::delete))
-                    .route("/{id}/fail", web::post().to(work_runs::fail_run)),
+                    .route("/{id}/fail", web::post().to(work_runs::fail_run))
+                    .route("/{id}/cancel", web::post().to(work_runs::cancel_run))
+                    .route(
+                        "/{id}/events/recent",
+                        web::get().to(work_runs::list_events_recent),
+                    ),
             ),
     );
 }

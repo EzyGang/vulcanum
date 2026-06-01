@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::services::dispatcher::cancel_store::CancelStore;
 use crate::services::dispatcher::flag_store::DispatchStore;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
@@ -19,6 +20,7 @@ pub struct WorkRunsService {
     pub project_configs_repo: ProjectConfigsRepository,
     pub db: PgPool,
     pub dispatch_store: Arc<dyn DispatchStore>,
+    pub cancel_store: Arc<dyn CancelStore>,
     pub providers_repo: IntegrationProvidersRepository,
     pub unhealthy_threshold: i32,
 }
@@ -31,6 +33,7 @@ impl Clone for WorkRunsService {
             project_configs_repo: self.project_configs_repo.clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
+            cancel_store: self.cancel_store.clone(),
             providers_repo: self.providers_repo.clone(),
             unhealthy_threshold: self.unhealthy_threshold,
         }
@@ -38,6 +41,7 @@ impl Clone for WorkRunsService {
 }
 
 impl WorkRunsService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         work_runs_repo: WorkRunsRepository,
         workers_repo: WorkersRepository,
@@ -45,6 +49,7 @@ impl WorkRunsService {
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
         providers_repo: IntegrationProvidersRepository,
+        cancel_store: Arc<dyn CancelStore>,
         unhealthy_threshold: i32,
     ) -> Self {
         Self {
@@ -53,6 +58,7 @@ impl WorkRunsService {
             project_configs_repo,
             db,
             dispatch_store,
+            cancel_store,
             providers_repo,
             unhealthy_threshold,
         }

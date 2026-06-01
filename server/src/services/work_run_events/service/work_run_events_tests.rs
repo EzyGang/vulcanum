@@ -1,0 +1,171 @@
+use std::sync::Arc;
+
+use crate::services::dispatcher::cancel_store::{CancelStore, InMemoryCancelStore};
+use crate::services::work_run_events::errors::WorkRunEventsError;
+use crate::services::work_run_events::repository::WorkRunEventsRepository;
+use crate::services::work_run_events::service::WorkRunEventsService;
+use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::test_helpers;
+use vulcanum_shared::api_types::WireEvent;
+
+fn make_wire_event(seq: u64, event_type: &str) -> WireEvent {
+    WireEvent {
+        sequence: seq,
+        event_type: event_type.to_owned(),
+        payload: serde_json::json!({"i": seq}),
+    }
+}
+
+fn build_service(pool: sqlx::PgPool) -> (WorkRunEventsService, Arc<InMemoryCancelStore>) {
+    let cancel = Arc::new(InMemoryCancelStore::new());
+    let svc = WorkRunEventsService::new(
+        WorkRunEventsRepository::new(),
+        WorkRunsRepository::new(),
+        cancel.clone(),
+        pool,
+    );
+    (svc, cancel)
+}
+
+#[sqlx::test]
+async fn append_events_happy_path_returns_should_cancel_false(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-1").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-1").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-1", worker_id).await;
+
+    let result = svc
+        .append_events(
+            wr_id,
+            worker_id,
+            vec![make_wire_event(1, "session.started")],
+        )
+        .await
+        .expect("append");
+
+    assert_eq!(result.accepted, 1);
+    assert_eq!(result.next_expected_sequence, 2);
+    assert!(!result.should_cancel);
+}
+
+#[sqlx::test]
+async fn append_events_rejects_wrong_owner(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-2").await;
+    let owner = test_helpers::insert_worker(&pool, "evt-svc-worker-2a").await;
+    let attacker = test_helpers::insert_worker(&pool, "evt-svc-worker-2b").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-2", owner).await;
+
+    let err = svc
+        .append_events(wr_id, attacker, vec![make_wire_event(1, "x")])
+        .await
+        .expect_err("must reject cross-worker append");
+    assert!(matches!(err, WorkRunEventsError::NotFound));
+}
+
+#[sqlx::test]
+async fn append_events_returns_should_cancel_when_flag_set(pool: sqlx::PgPool) {
+    let (svc, cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-3").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-3").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-3", worker_id).await;
+
+    cancel.request_cancel(wr_id).await.expect("set cancel");
+
+    let result = svc
+        .append_events(wr_id, worker_id, vec![make_wire_event(1, "x")])
+        .await
+        .expect("append");
+    assert!(result.should_cancel);
+}
+
+#[sqlx::test]
+async fn append_events_rejects_out_of_order(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-4").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-4").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-4", worker_id).await;
+
+    svc.append_events(wr_id, worker_id, vec![make_wire_event(1, "a")])
+        .await
+        .expect("first");
+
+    let err = svc
+        .append_events(wr_id, worker_id, vec![make_wire_event(1, "b")])
+        .await
+        .expect_err("duplicate must be rejected");
+    match err {
+        WorkRunEventsError::OutOfOrderSequence {
+            next_expected_sequence,
+        } => {
+            assert_eq!(next_expected_sequence, 2);
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[sqlx::test]
+async fn list_events_admin_returns_events_for_any_run(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-5").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-5").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-5", worker_id).await;
+
+    svc.append_events(
+        wr_id,
+        worker_id,
+        vec![
+            make_wire_event(1, "session.started"),
+            make_wire_event(2, "turn.completed"),
+        ],
+    )
+    .await
+    .expect("append");
+
+    let result = svc.list_events_admin(wr_id, 0, 100).await.expect("list");
+    assert_eq!(result.events.len(), 2);
+    assert!(!result.has_more);
+}
+
+#[sqlx::test]
+async fn list_events_worker_rejects_cross_worker(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-6").await;
+    let owner = test_helpers::insert_worker(&pool, "evt-svc-worker-6a").await;
+    let attacker = test_helpers::insert_worker(&pool, "evt-svc-worker-6b").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-6", owner).await;
+
+    let err = svc
+        .list_events(wr_id, attacker, 0, 10)
+        .await
+        .expect_err("must reject cross-worker list");
+    assert!(matches!(err, WorkRunEventsError::NotFound));
+}
+
+#[sqlx::test]
+async fn list_recent_returns_last_n_ascending(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-7").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-7").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-7", worker_id).await;
+
+    let events: Vec<WireEvent> = (1..=25)
+        .map(|i| make_wire_event(i, &format!("e{i}")))
+        .collect();
+    svc.append_events(wr_id, worker_id, events)
+        .await
+        .expect("append");
+
+    let recent = svc.list_recent(wr_id).await.expect("list");
+    let sequences: Vec<i64> = recent.iter().map(|e| e.sequence).collect();
+    assert_eq!(sequences.len(), 20);
+    assert_eq!(sequences[0], 6);
+    assert_eq!(sequences[19], 25);
+}

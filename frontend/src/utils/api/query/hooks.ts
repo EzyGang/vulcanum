@@ -1,17 +1,21 @@
 import {
   type MutationOptions,
   type QueryKey,
-  type QueryOptions,
   type UseQueryResult,
   useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type { ApiError } from '../client';
 
+type ApiQueryOptions<TData> = Omit<
+  Parameters<typeof useQuery<TData, ApiError>>[0],
+  'queryKey' | 'queryFn'
+>;
+
 export const useApiQuery = <TData>(
   key: QueryKey,
   fn: () => Promise<TData>,
-  opts?: Omit<QueryOptions<TData, ApiError, TData, QueryKey>, 'queryKey' | 'queryFn'>
+  opts?: ApiQueryOptions<TData>
 ): UseQueryResult<TData, ApiError> => {
   return useQuery<TData, ApiError>({
     queryKey: key,

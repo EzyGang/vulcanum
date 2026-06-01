@@ -8,6 +8,8 @@ pub enum DispatchError {
     Database(#[from] sqlx::Error),
     #[error("redis error: {0}")]
     Redis(String),
+    #[error("cancel store error: {0}")]
+    Cancel(String),
     #[error("internal error: {0}")]
     Internal(String),
     #[error("worker error: {0}")]

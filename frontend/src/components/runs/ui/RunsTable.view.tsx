@@ -1,0 +1,155 @@
+import type { Signal } from '@preact/signals';
+import type { JSX } from 'preact';
+import type { WorkRunListItem } from '../../../types/runs';
+import { formatDuration, formatRelativeTime } from '../../../utils/format';
+import { Button } from '../../shared/ui/Button.view';
+import { Checkbox } from '../../shared/ui/Checkbox.view';
+import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
+import { StatusBadge } from '../../shared/ui/StatusBadge.view';
+import { Table } from '../../shared/ui/Table.view';
+import { RunEventTimelineContainer } from '../containers/RunEventTimeline.container';
+
+interface RunsTableProps {
+  runs: WorkRunListItem[];
+  selectedIds: Signal<Set<string>>;
+  allSelected: boolean;
+  someSelected: boolean;
+  expandedIds: Signal<Set<string>>;
+  deletingId: Signal<string | null>;
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: () => void;
+  onToggleExpanded: (id: string) => void;
+  onFailRun: (id: string) => void;
+  onCancelRun: (id: string) => void;
+  onConfirmDelete: (id: string) => void;
+  onDelete: (id: string) => void;
+  onCancelDelete: () => void;
+}
+
+const isCancellable = (status: WorkRunListItem['status']): boolean =>
+  status === 'running' || status === 'dispatched';
+
+export const RunsTable = ({
+  runs,
+  selectedIds,
+  allSelected,
+  someSelected,
+  expandedIds,
+  deletingId,
+  onToggleSelect,
+  onToggleSelectAll,
+  onToggleExpanded,
+  onFailRun,
+  onCancelRun,
+  onConfirmDelete,
+  onDelete,
+  onCancelDelete
+}: RunsTableProps): JSX.Element => (
+  <table class='w-full border-collapse'>
+    <Table.Head>
+      <Table.HeadCell class='w-8'>{''}</Table.HeadCell>
+      <Table.HeadCell class='w-10'>
+        <Checkbox
+          checked={allSelected}
+          indeterminate={someSelected}
+          onCheckedChange={onToggleSelectAll}
+        />
+      </Table.HeadCell>
+      <Table.HeadCell>Task</Table.HeadCell>
+      <Table.HeadCell>Status</Table.HeadCell>
+      <Table.HeadCell>Worker</Table.HeadCell>
+      <Table.HeadCell>Duration</Table.HeadCell>
+      <Table.HeadCell>PR</Table.HeadCell>
+      <Table.HeadCell>Created</Table.HeadCell>
+      <Table.HeadCell>Actions</Table.HeadCell>
+    </Table.Head>
+    <Table.Body>
+      {runs.map((run) => {
+        const expanded = expandedIds.value.has(run.id);
+        return (
+          <>
+            <Table.Row key={run.id}>
+              <Table.Cell>
+                <button
+                  type='button'
+                  aria-label={expanded ? 'Collapse' : 'Expand'}
+                  onClick={() => onToggleExpanded(run.id)}
+                  class='text-text-muted hover:text-text-primary text-xs px-1'
+                >
+                  {expanded ? '▾' : '▸'}
+                </button>
+              </Table.Cell>
+              <Table.Cell>
+                <Checkbox
+                  checked={selectedIds.value.has(run.id)}
+                  onCheckedChange={() => onToggleSelect(run.id)}
+                />
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <StatusBadge status={run.status} />
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm font-mono'>
+                  {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
+                </span>
+              </Table.Cell>
+              <Table.Cell>
+                {run.resultPrUrl ? (
+                  <a
+                    href={run.resultPrUrl}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    class='text-accent text-sm hover:underline'
+                  >
+                    PR
+                  </a>
+                ) : (
+                  <span class='text-text-muted text-sm'>—</span>
+                )}
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>{formatRelativeTime(run.createdAt)}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <div class='flex items-center gap-2'>
+                  {isCancellable(run.status) && (
+                    <Button variant='secondary' onClick={() => onCancelRun(run.id)}>
+                      Cancel
+                    </Button>
+                  )}
+                  {isCancellable(run.status) && (
+                    <Button variant='ghost-danger' onClick={() => onFailRun(run.id)}>
+                      Fail
+                    </Button>
+                  )}
+                  <ConfirmDelete
+                    itemId={run.id}
+                    deletingId={deletingId}
+                    onConfirm={onConfirmDelete}
+                    onDelete={onDelete}
+                    onCancel={onCancelDelete}
+                  />
+                </div>
+              </Table.Cell>
+            </Table.Row>
+            {expanded && (
+              <Table.Row key={`${run.id}-events`}>
+                <td colSpan={9} class='p-0'>
+                  <div class='p-2'>
+                    <RunEventTimelineContainer runId={run.id} status={run.status} />
+                  </div>
+                </td>
+              </Table.Row>
+            )}
+          </>
+        );
+      })}
+    </Table.Body>
+  </table>
+);

@@ -2,17 +2,13 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { WorkRunListItem, WorkRunStatus } from '../../../types/runs';
 import type { ApiError } from '../../../utils/api/client';
-import { formatDuration, formatRelativeTime } from '../../../utils/format';
 import { Button } from '../../shared/ui/Button.view';
-import { Checkbox } from '../../shared/ui/Checkbox.view';
-import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import { StatusBadge } from '../../shared/ui/StatusBadge.view';
-import { Table } from '../../shared/ui/Table.view';
 import { RunFilterBar } from './RunFilterBar.view';
 import { RunPagination } from './RunPagination.view';
+import { RunsTable } from './RunsTable.view';
 
 interface RunsViewProps {
   data: {
@@ -22,6 +18,7 @@ interface RunsViewProps {
     someSelected: boolean;
     selectionCount: number;
     showBulkDeleteDialog: Signal<boolean>;
+    expandedIds: Signal<Set<string>>;
   };
   status: {
     loading: boolean;
@@ -46,11 +43,21 @@ interface RunsViewProps {
     handleConfirmBulkDelete: () => void;
     handleCancelBulkDelete: () => void;
     handleFailRun: (id: string) => void;
+    handleToggleExpanded: (id: string) => void;
+    handleCancelRun: (id: string) => void;
   };
 }
 
 export const RunsView = ({
-  data: { runs, selectedIds, allSelected, someSelected, selectionCount, showBulkDeleteDialog },
+  data: {
+    runs,
+    selectedIds,
+    allSelected,
+    someSelected,
+    selectionCount,
+    showBulkDeleteDialog,
+    expandedIds
+  },
   status: { loading, error, deleteError, deletingId, statusFilter, page, hasNextPage, hasPrevPage },
   actions: {
     setStatusFilter,
@@ -64,7 +71,9 @@ export const RunsView = ({
     handleOpenBulkDelete,
     handleConfirmBulkDelete,
     handleCancelBulkDelete,
-    handleFailRun
+    handleFailRun,
+    handleToggleExpanded,
+    handleCancelRun
   }
 }: RunsViewProps): JSX.Element => (
   <div class='flex flex-col gap-6'>
@@ -89,85 +98,22 @@ export const RunsView = ({
 
     {runs.length > 0 && (
       <div class='overflow-x-auto'>
-        <table class='w-full border-collapse'>
-          <Table.Head>
-            <Table.HeadCell class='w-10'>
-              <Checkbox
-                checked={allSelected}
-                indeterminate={someSelected}
-                onCheckedChange={handleToggleSelectAll}
-              />
-            </Table.HeadCell>
-            <Table.HeadCell>Task</Table.HeadCell>
-            <Table.HeadCell>Status</Table.HeadCell>
-            <Table.HeadCell>Worker</Table.HeadCell>
-            <Table.HeadCell>Duration</Table.HeadCell>
-            <Table.HeadCell>PR</Table.HeadCell>
-            <Table.HeadCell>Created</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {runs.map((run) => (
-              <Table.Row key={run.id}>
-                <Table.Cell>
-                  <Checkbox
-                    checked={selectedIds.value.has(run.id)}
-                    onCheckedChange={() => handleToggleSelect(run.id)}
-                  />
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
-                </Table.Cell>
-                <Table.Cell>
-                  <StatusBadge status={run.status} />
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm font-mono'>
-                    {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  {run.resultPrUrl ? (
-                    <a
-                      href={run.resultPrUrl}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      class='text-accent text-sm hover:underline'
-                    >
-                      PR
-                    </a>
-                  ) : (
-                    <span class='text-text-muted text-sm'>—</span>
-                  )}
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm'>
-                    {formatRelativeTime(run.createdAt)}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  <div class='flex items-center gap-2'>
-                    {(run.status === 'running' || run.status === 'dispatched') && (
-                      <Button variant='ghost-danger' onClick={() => handleFailRun(run.id)}>
-                        Fail
-                      </Button>
-                    )}
-                    <ConfirmDelete
-                      itemId={run.id}
-                      deletingId={deletingId}
-                      onConfirm={handleConfirmDelete}
-                      onDelete={handleDeleteRun}
-                      onCancel={handleCancelDelete}
-                    />
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </table>
+        <RunsTable
+          runs={runs}
+          selectedIds={selectedIds}
+          allSelected={allSelected}
+          someSelected={someSelected}
+          expandedIds={expandedIds}
+          deletingId={deletingId}
+          onToggleSelect={handleToggleSelect}
+          onToggleSelectAll={handleToggleSelectAll}
+          onToggleExpanded={handleToggleExpanded}
+          onFailRun={handleFailRun}
+          onCancelRun={handleCancelRun}
+          onConfirmDelete={handleConfirmDelete}
+          onDelete={handleDeleteRun}
+          onCancelDelete={handleCancelDelete}
+        />
 
         <RunPagination
           page={page}
