@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
@@ -20,6 +21,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
+        Arc::new(InMemoryCancelStore::new()),
         3,
     )
 }

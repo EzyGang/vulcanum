@@ -5,6 +5,7 @@ use crate::services::auth::errors::AuthError;
 use crate::services::integration_providers::errors::IntegrationProvidersError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::users::errors::UsersError;
+use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::workers::errors::WorkersError;
 
@@ -48,6 +49,8 @@ pub enum AppError {
     ColumnNotFound,
     #[error("no provider configured")]
     NoProvider,
+    #[error("event sequence is out of order or duplicated")]
+    OutOfOrderSequence { next_expected_sequence: i64 },
     #[error("internal server error")]
     Internal,
 }
@@ -111,6 +114,12 @@ impl ResponseError for AppError {
             }),
             Self::NoProvider => HttpResponse::BadRequest().json(ErrorBody {
                 error: "No provider configured for this project".to_owned(),
+            }),
+            Self::OutOfOrderSequence {
+                next_expected_sequence,
+            } => HttpResponse::Conflict().json(OutOfOrderBody {
+                error: "Event sequence is out of order or duplicated".to_owned(),
+                next_expected_sequence: *next_expected_sequence,
             }),
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
@@ -217,7 +226,30 @@ impl From<IntegrationProvidersError> for AppError {
     }
 }
 
+impl From<WorkRunEventsError> for AppError {
+    fn from(err: WorkRunEventsError) -> Self {
+        match err {
+            WorkRunEventsError::NotFound => Self::WorkRunNotFound,
+            WorkRunEventsError::OutOfOrderSequence {
+                next_expected_sequence,
+            } => Self::OutOfOrderSequence {
+                next_expected_sequence,
+            },
+            WorkRunEventsError::Database(e) => {
+                tracing::error!(error = %e, operation = "work_run_events", "database error");
+                Self::Internal
+            }
+        }
+    }
+}
+
 #[derive(serde::Serialize)]
 struct ErrorBody {
     error: String,
+}
+
+#[derive(serde::Serialize)]
+struct OutOfOrderBody {
+    error: String,
+    next_expected_sequence: i64,
 }

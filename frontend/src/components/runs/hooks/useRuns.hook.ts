@@ -1,6 +1,7 @@
 import { useComputed, useSignal } from '@preact/signals';
 import { useCallback } from 'preact/hooks';
 import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
+import { cancelRun } from '../../../services/runs/events.service';
 import { bulkDeleteRuns, deleteRun, failRun, listRuns } from '../../../services/runs/runs.service';
 import type { WorkRunStatus } from '../../../types/runs';
 import { invalidate } from '../../../utils/api/query/client';
@@ -13,6 +14,7 @@ export const useRuns = () => {
   const page = useSignal(0);
   const selectedIds = useSignal<Set<string>>(new Set());
   const showBulkDeleteDialog = useSignal(false);
+  const expandedIds = useSignal<Set<string>>(new Set());
 
   const {
     data: runs,
@@ -61,6 +63,20 @@ export const useRuns = () => {
   const failRunMutation = useApiMutation((id: string) => failRun(id), {
     onSuccess: () => invalidate('runs')
   });
+
+  const cancelRunMutation = useApiMutation((id: string) => cancelRun(id).then(() => id), {
+    onSuccess: () => {
+      invalidate('runs');
+      invalidate('run-events');
+    }
+  });
+
+  const handleCancelRun = useCallback(
+    (id: string) => {
+      cancelRunMutation.mutate(id);
+    },
+    [cancelRunMutation]
+  );
 
   const {
     deletingId,
@@ -127,6 +143,16 @@ export const useRuns = () => {
     [failRunMutation]
   );
 
+  const handleToggleExpanded = useCallback((id: string) => {
+    const next = new Set(expandedIds.value);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    expandedIds.value = next;
+  }, []);
+
   return {
     data: {
       runs: displayRuns,
@@ -134,7 +160,8 @@ export const useRuns = () => {
       allSelected: allSelected.value,
       someSelected: someSelected.value,
       selectionCount: selectionCount.value,
-      showBulkDeleteDialog
+      showBulkDeleteDialog,
+      expandedIds
     },
     status: {
       loading,
@@ -158,7 +185,9 @@ export const useRuns = () => {
       handleOpenBulkDelete,
       handleConfirmBulkDelete,
       handleCancelBulkDelete,
-      handleFailRun
+      handleFailRun,
+      handleToggleExpanded,
+      handleCancelRun
     }
   };
 };

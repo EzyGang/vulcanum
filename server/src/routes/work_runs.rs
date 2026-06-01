@@ -53,3 +53,12 @@ pub async fn fail_run(
     let run = state.jobs.fail_run(path.into_inner()).await?;
     Ok(HttpResponse::Ok().json(run))
 }
+
+pub async fn cancel_run(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    state.jobs.cancel_run(path.into_inner()).await?;
+    Ok(HttpResponse::NoContent().finish())
+}

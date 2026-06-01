@@ -149,7 +149,25 @@ impl WorkRunsService {
 
         tx.commit().await.map_err(WorkRunsError::Database)?;
 
+        self.clear_cancel_flag(id).await;
+
         Ok(updated)
+    }
+
+    pub async fn cancel_run(&self, id: Uuid) -> Result<(), WorkRunsError> {
+        let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+
+        match run.status {
+            WorkRunStatus::Running | WorkRunStatus::Dispatched => (),
+            _ => return Err(WorkRunsError::InvalidStatusTransition),
+        }
+
+        self.cancel_store
+            .request_cancel(id)
+            .await
+            .map_err(WorkRunsError::Dispatch)?;
+
+        Ok(())
     }
 
     pub async fn bulk_delete_runs(&self, ids: &[Uuid]) -> Result<u64, WorkRunsError> {
@@ -320,6 +338,8 @@ impl WorkRunsService {
 
         tx.commit().await.map_err(WorkRunsError::Database)?;
 
+        self.clear_cancel_flag(id).await;
+
         tracing::info!(
             worker_id = %worker_id,
             work_run_id = %id,
@@ -333,6 +353,16 @@ impl WorkRunsService {
         self.sync_kaneo_on_result(&run, &params, status).await;
 
         Ok(updated)
+    }
+
+    async fn clear_cancel_flag(&self, work_run_id: Uuid) {
+        if let Err(e) = self.cancel_store.take_cancel(work_run_id).await {
+            tracing::warn!(
+                error = %e,
+                work_run_id = %work_run_id,
+                "failed to clear cancel flag on terminal status"
+            );
+        }
     }
 
     async fn sync_kaneo_on_result(

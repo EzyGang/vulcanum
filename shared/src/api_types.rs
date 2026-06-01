@@ -80,3 +80,34 @@ pub struct BulkDeleteRunsRequest {
 pub struct BulkDeleteRunsResponse {
     pub deleted: u64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WireEvent {
+    pub sequence: u64,
+    pub event_type: String,
+    pub payload: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AppendEventsRequest {
+    pub events: Vec<WireEvent>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AppendEventsResponse {
+    pub accepted: u64,
+    pub next_expected_sequence: u64,
+    pub should_cancel: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListEventsResponse {
+    pub events: Vec<WireEvent>,
+    pub has_more: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListEventsQuery {
+    pub after_sequence: Option<u64>,
+    pub limit: Option<i64>,
+}
