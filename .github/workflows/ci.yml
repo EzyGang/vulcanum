@@ -42,11 +42,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
-      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
+      - uses: pnpm/action-setup@v6
       - uses: Swatinem/rust-cache@v2
       - run: pnpm install
       - name: Run format, lint, and type-check
@@ -78,11 +78,11 @@ jobs:
           sudo apt update && sudo apt install pkg-config libssl-dev clang -y
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
+      - uses: pnpm/action-setup@v6
       - uses: Swatinem/rust-cache@v2
       - name: Install SQLx CLI
         run: cargo install sqlx-cli
