@@ -13,6 +13,7 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
 
+use super::report::{submit_failed_result, FailedResult};
 use crate::harness::dispatch::create_isolation_provider;
 use crate::state::journal::{Journal, JournalStatus};
 
@@ -86,13 +87,15 @@ pub(crate) async fn handle_job(
     };
 
     let started_at = Utc::now();
-    let _ = journal.insert_job(
+    if let Err(e) = journal.insert_job(
         job_id,
         &workdir_str,
         container_name.as_deref(),
         harness_type,
         started_at,
-    );
+    ) {
+        tracing::warn!(work_run_id = %job_id, error = %e, "journal insert failed, continuing without tracking");
+    }
 
     let provider = create_isolation_provider(harness_type);
     let limits = ResourceLimits::default();
@@ -245,55 +248,4 @@ pub(crate) async fn handle_job(
     provider.cleanup(&isolated_env).await;
 
     Ok(())
-}
-
-async fn submit_failed_result(
-    client: Arc<ApiClient>,
-    worker_state: Arc<RwLock<WorkerState>>,
-    journal: Arc<Journal>,
-    job_id: Uuid,
-    result: &FailedResult,
-) {
-    let _ = journal.update_result(
-        job_id,
-        result.exit_code,
-        result.tokens_used,
-        result.pr_url.as_deref(),
-        result.duration_ms,
-        JournalStatus::Failed,
-    );
-    let submit = SubmitResultRequest {
-        pr_url: result.pr_url.clone().unwrap_or_default(),
-        exit_code: result.exit_code,
-        tokens_used: result.tokens_used,
-        duration_ms: result.duration_ms,
-        input_tokens: 0,
-        output_tokens: 0,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        model_used: None,
-    };
-    let access_token = worker_state.read().await.access_token.clone();
-    if let Err(e) = client.submit_result(job_id, &submit, &access_token).await {
-        tracing::error!(work_run_id = %job_id, error = %e, "submit_result failed for job");
-    }
-    let _ = journal.mark_submitted(job_id);
-}
-
-struct FailedResult {
-    exit_code: i32,
-    tokens_used: i64,
-    pr_url: Option<String>,
-    duration_ms: i64,
-}
-
-impl FailedResult {
-    fn empty() -> Self {
-        Self {
-            exit_code: 1,
-            tokens_used: 0,
-            pr_url: None,
-            duration_ms: 0,
-        }
-    }
 }

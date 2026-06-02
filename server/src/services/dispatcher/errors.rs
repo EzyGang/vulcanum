@@ -7,7 +7,7 @@ pub enum DispatchError {
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("redis error: {0}")]
-    Redis(String),
+    Redis(#[from] redis::RedisError),
     #[error("cancel store error: {0}")]
     Cancel(String),
     #[error("internal error: {0}")]

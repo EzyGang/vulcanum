@@ -66,6 +66,19 @@ export const useProviders = () => {
     showForm.value = false;
   }, []);
 
+  const onNameChange = useCallback((value: string) => {
+    name.value = value;
+  }, []);
+  const onUrlChange = useCallback((value: string) => {
+    url.value = value;
+  }, []);
+  const onApiKeyChange = useCallback((value: string) => {
+    apiKey.value = value;
+  }, []);
+  const onProviderTypeChange = useCallback((value: string) => {
+    providerType.value = value;
+  }, []);
+
   const handleShowCreate = useCallback(() => {
     resetForm();
     showForm.value = true;
@@ -146,6 +159,10 @@ export const useProviders = () => {
     handleSave,
     handleConfirmDelete,
     handleCancelDelete,
-    handleDelete
+    handleDelete,
+    onNameChange,
+    onUrlChange,
+    onApiKeyChange,
+    onProviderTypeChange
   };
 };

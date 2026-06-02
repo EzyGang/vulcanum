@@ -1,7 +1,5 @@
-import { accessToken } from '../../stores/auth.store';
+import { accessToken, STORAGE_KEY } from '../../stores/auth.store';
 import { camelKeys, snakeKeys } from './snake-camel';
-
-const STORAGE_KEY = 'vulcanum-auth-token';
 
 const isDevelopment = import.meta.env.DEV;
 const baseURL = isDevelopment ? import.meta.env.VITE_API_URL || '/api/v1' : '/api/v1';
@@ -28,8 +26,9 @@ const buildUrl = (path: string, params?: Record<string, string | number | boolea
   if (!params) return url;
 
   const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    search.append(key, String(value));
+  const snakeParams = snakeKeys(params) as Record<string, string>;
+  for (const [key, value] of Object.entries(snakeParams)) {
+    search.append(key, value);
   }
   return `${url}?${search.toString()}`;
 };

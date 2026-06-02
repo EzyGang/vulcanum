@@ -1,5 +1,6 @@
 use std::process::Command;
 
+use anyhow::Context;
 use serde_json::Value;
 
 pub fn which(binary: &str) -> bool {
@@ -85,6 +86,25 @@ pub fn has_sudo_access() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+pub fn worker_server_path() -> anyhow::Result<String> {
+    let exe = std::env::current_exe().context("failed to get current exe")?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("failed to get exe directory"))?;
+    let name = if cfg!(windows) {
+        "vulcanum-server.exe"
+    } else {
+        "vulcanum-server"
+    };
+    let path = dir.join(name);
+    if !path.exists() {
+        anyhow::bail!("worker-server binary not found at {}", path.display());
+    }
+    path.to_str()
+        .map(|s: &str| s.to_owned())
+        .ok_or_else(|| anyhow::anyhow!("worker-server path is not valid UTF-8"))
 }
 
 /// Checks whether KVM is available and accessible on this machine.

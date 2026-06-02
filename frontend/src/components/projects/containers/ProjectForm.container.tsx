@@ -55,7 +55,10 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         onPromptTemplateChange: form.onPromptTemplateChange,
         onRepoUrlChange: form.onRepoUrlChange,
         onAgentsMdChange: form.onAgentsMdChange,
-        onOpencodeConfigChange: form.onOpencodeConfigChange
+        onOpencodeConfigChange: form.onOpencodeConfigChange,
+        onPickupColumnChange: form.onPickupColumnChange,
+        onProgressColumnChange: form.onProgressColumnChange,
+        onTargetColumnChange: form.onTargetColumnChange
       }}
     />
   );

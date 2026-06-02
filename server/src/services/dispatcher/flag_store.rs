@@ -1,5 +1,6 @@
-use async_trait::async_trait;
 use std::sync::Arc;
+
+use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::services::dispatcher::errors::DispatchError;
@@ -20,8 +21,7 @@ pub struct RedisDispatchStore {
 
 impl RedisDispatchStore {
     pub fn new(redis_url: &str) -> Result<Self, DispatchError> {
-        let client =
-            redis::Client::open(redis_url).map_err(|e| DispatchError::Redis(e.to_string()))?;
+        let client = redis::Client::open(redis_url)?;
         Ok(Self { client })
     }
 }
@@ -33,11 +33,7 @@ impl DispatchStore for RedisDispatchStore {
         worker_id: Uuid,
         work_run_id: Uuid,
     ) -> Result<(), DispatchError> {
-        let mut conn = self
-            .client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| DispatchError::Redis(e.to_string()))?;
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
 
         let key = dispatch_key(worker_id);
 
@@ -47,32 +43,25 @@ impl DispatchStore for RedisDispatchStore {
             .arg("EX")
             .arg(DISPATCH_KEY_TTL_SECS)
             .query_async::<()>(&mut conn)
-            .await
-            .map_err(|e| DispatchError::Redis(e.to_string()))
+            .await?;
+
+        Ok(())
     }
 
     async fn take_dispatched(&self, worker_id: Uuid) -> Result<Option<Uuid>, DispatchError> {
-        let mut conn = self
-            .client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| DispatchError::Redis(e.to_string()))?;
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
 
         let key = dispatch_key(worker_id);
 
         let script = redis::Script::new(
             r#"local v = redis.call("GET", KEYS[1])
-              if v then
-                  redis.call("DEL", KEYS[1])
-              end
-              return v"#,
+               if v then
+                   redis.call("DEL", KEYS[1])
+               end
+               return v"#,
         );
 
-        let value: Option<String> = script
-            .key(&key)
-            .invoke_async(&mut conn)
-            .await
-            .map_err(|e| DispatchError::Redis(e.to_string()))?;
+        let value: Option<String> = script.key(&key).invoke_async(&mut conn).await?;
 
         match value {
             None => Ok(None),

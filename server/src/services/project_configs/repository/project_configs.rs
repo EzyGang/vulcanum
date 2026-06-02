@@ -42,24 +42,6 @@ impl ProjectConfigsRepository {
         .ok_or(ProjectConfigsError::NotFound)
     }
 
-    #[allow(dead_code)]
-    pub async fn find_by_kaneo_project_id<'c, Q: Queryer<'c>>(
-        &self,
-        db: Q,
-        kaneo_project_id: &str,
-    ) -> Result<Option<ProjectConfig>, ProjectConfigsError> {
-        sqlx::query_as!(
-            ProjectConfig,
-            r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
-             FROM project_configs WHERE kaneo_project_id = $1"#,
-            kaneo_project_id,
-        )
-        .fetch_optional(db)
-        .await
-        .map_err(ProjectConfigsError::from)
-    }
-
     pub async fn list_enabled<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

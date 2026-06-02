@@ -1,51 +1,12 @@
-use std::sync::OnceLock;
-
 use sqlx::postgres::PgPoolOptions;
 use tokio::signal;
 
+use vulcanum_server::config::config;
 use vulcanum_server::services::dispatcher::flag_store::RedisDispatchStore;
 use vulcanum_server::services::dispatcher::repository::DispatchRepository;
 use vulcanum_server::services::dispatcher::service::DispatcherService;
 use vulcanum_server::services::work_runs::repository::WorkRunsRepository;
 use vulcanum_server::services::workers::repository::WorkersRepository;
-
-struct DispatcherConfig {
-    db_url: String,
-    redis_url: String,
-    dispatch_interval_secs: u64,
-    stale_worker_threshold_secs: u64,
-    stalled_running_threshold_secs: u64,
-}
-
-impl DispatcherConfig {
-    fn from_env() -> Result<Self, eyre::Error> {
-        let db_url = std::env::var("DATABASE_URL")?;
-        let redis_url =
-            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
-        let dispatch_interval_secs = std::env::var("DISPATCH_INTERVAL_SECS")
-            .unwrap_or_else(|_| "15".to_owned())
-            .parse::<u64>()?;
-        let stale_worker_threshold_secs = std::env::var("STALE_WORKER_THRESHOLD_SECS")
-            .unwrap_or_else(|_| "120".to_owned())
-            .parse::<u64>()?;
-        let stalled_running_threshold_secs = std::env::var("STALLED_RUNNING_THRESHOLD_SECS")
-            .unwrap_or_else(|_| "1800".to_owned())
-            .parse::<u64>()?;
-
-        Ok(Self {
-            db_url,
-            redis_url,
-            dispatch_interval_secs,
-            stale_worker_threshold_secs,
-            stalled_running_threshold_secs,
-        })
-    }
-}
-
-fn config() -> &'static DispatcherConfig {
-    static CONFIG: OnceLock<DispatcherConfig> = OnceLock::new();
-    CONFIG.get_or_init(|| DispatcherConfig::from_env().expect("Failed to load config from env"))
-}
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -53,6 +14,10 @@ async fn main() -> eyre::Result<()> {
     vulcanum_shared::telemetry::init();
 
     let cfg = config();
+
+    let dispatch_interval_secs = std::env::var("DISPATCH_INTERVAL_SECS")
+        .unwrap_or_else(|_| "15".to_owned())
+        .parse::<u64>()?;
 
     let db_pool = PgPoolOptions::new()
         .max_connections(5)
@@ -75,13 +40,10 @@ async fn main() -> eyre::Result<()> {
         cfg.stalled_running_threshold_secs,
     );
 
-    tracing::info!(
-        interval_secs = cfg.dispatch_interval_secs,
-        "dispatcher started",
-    );
+    tracing::info!(interval_secs = dispatch_interval_secs, "dispatcher started",);
 
     let mut interval =
-        tokio::time::interval(std::time::Duration::from_secs(cfg.dispatch_interval_secs));
+        tokio::time::interval(std::time::Duration::from_secs(dispatch_interval_secs));
 
     loop {
         tokio::select! {

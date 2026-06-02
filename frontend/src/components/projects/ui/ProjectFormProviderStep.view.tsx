@@ -22,6 +22,10 @@ interface ProjectFormProviderStepProps {
     onShowProviderForm: () => void;
     onCancelProviderForm: () => void;
     onCreateProvider: (e: Event) => void;
+    onNewProviderNameChange: (value: string) => void;
+    onNewProviderUrlChange: (value: string) => void;
+    onNewProviderKeyChange: (value: string) => void;
+    onNewProviderTypeChange: (value: string) => void;
   };
 }
 
@@ -67,15 +71,19 @@ export const ProjectFormProviderStep = ({
       </div>
     ) : (
       <ProviderFormFields
-        name={newProviderName}
-        url={newProviderUrl}
-        apiKey={newProviderKey}
-        providerType={newProviderType}
-        error={providerFormError}
-        submitting={providerSubmitting}
+        name={newProviderName.value}
+        url={newProviderUrl.value}
+        apiKey={newProviderKey.value}
+        providerType={newProviderType.value}
+        error={providerFormError.value}
+        submitting={providerSubmitting.value}
         mode='create'
         onSave={actions.onCreateProvider}
         onCancel={actions.onCancelProviderForm}
+        onNameChange={actions.onNewProviderNameChange}
+        onUrlChange={actions.onNewProviderUrlChange}
+        onApiKeyChange={actions.onNewProviderKeyChange}
+        onProviderTypeChange={actions.onNewProviderTypeChange}
       />
     )}
   </div>

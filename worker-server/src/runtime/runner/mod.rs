@@ -8,6 +8,16 @@ use vulcanum_shared::runtime::types::SessionStatus;
 use crate::runtime::client::events::SseEventStream;
 use crate::runtime::client::OpenCodeClient;
 
+pub struct SessionConfig {
+    pub client: OpenCodeClient,
+    pub session_id: String,
+    pub event_stream: SseEventStream,
+    pub max_duration_secs: u64,
+    pub is_container: bool,
+    pub container_name: Option<String>,
+    pub server_process: Option<Child>,
+}
+
 pub struct OpenCodeRunningSession {
     pub(crate) client: OpenCodeClient,
     pub(crate) session_id: String,
@@ -21,26 +31,17 @@ pub struct OpenCodeRunningSession {
 }
 
 impl OpenCodeRunningSession {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        client: OpenCodeClient,
-        session_id: String,
-        event_stream: SseEventStream,
-        max_duration_secs: u64,
-        is_container: bool,
-        container_name: Option<String>,
-        server_process: Option<Child>,
-    ) -> Self {
+    pub fn new(config: SessionConfig) -> Self {
         Self {
-            client,
-            session_id,
-            event_stream: Some(event_stream),
+            client: config.client,
+            session_id: config.session_id,
+            event_stream: Some(config.event_stream),
             status: SessionStatus::Running,
             started_at: chrono::Utc::now(),
-            max_duration_secs,
-            is_container,
-            container_name,
-            server_process,
+            max_duration_secs: config.max_duration_secs,
+            is_container: config.is_container,
+            container_name: config.container_name,
+            server_process: config.server_process,
         }
     }
 

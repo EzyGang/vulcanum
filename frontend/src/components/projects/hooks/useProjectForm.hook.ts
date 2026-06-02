@@ -1,16 +1,12 @@
 import { useSignal } from '@preact/signals';
-import { useCallback, useEffect } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
-import {
-  createProject,
-  getProject,
-  updateProject
-} from '../../../services/projects/projects.service';
+import { getProject } from '../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../services/providers/providers.service';
-import { invalidate } from '../../../utils/api/query/client';
-import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { useApiQuery } from '../../../utils/api/query/hooks';
 import { useProjectFormLookup } from './useProjectFormLookup.hook';
 import { useProjectFormProvider } from './useProjectFormProvider.hook';
+import { useProjectFormSubmit } from './useProjectFormSubmit.hook';
 
 export const useProjectForm = (projectId: string | null) => {
   const [, setLocation] = useLocation();
@@ -31,8 +27,6 @@ export const useProjectForm = (projectId: string | null) => {
   const repoUrl = useSignal('');
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
-  const submitting = useSignal(false);
-  const formError = useSignal<string | null>(null);
 
   const lookup = useProjectFormLookup(providerId, kaneoProjectId);
   const providerForm = useProjectFormProvider((newId: string) => {
@@ -40,26 +34,19 @@ export const useProjectForm = (projectId: string | null) => {
     lookup.resetLookup();
   });
 
-  const createMutation = useApiMutation(
-    (input: Parameters<typeof createProject>[0]) => createProject(input),
-    {
-      onSuccess: () => {
-        invalidate('projects');
-        setLocation('/projects');
-      }
-    }
-  );
-
-  const updateMutation = useApiMutation(
-    ({ id, input }: { id: string; input: Parameters<typeof updateProject>[1] }) =>
-      updateProject(id, input),
-    {
-      onSuccess: () => {
-        invalidate('projects');
-        setLocation('/projects');
-      }
-    }
-  );
+  const { formError, submitting, handleSubmit } = useProjectFormSubmit({
+    projectId,
+    enabled,
+    pickupColumn,
+    progressColumn,
+    targetColumn,
+    promptTemplate,
+    repoUrl,
+    agentsMd,
+    opencodeConfig,
+    providerId,
+    kaneoProjectId
+  });
 
   useEffect(() => {
     if (projectId && existingProject) {
@@ -94,62 +81,6 @@ export const useProjectForm = (projectId: string | null) => {
         });
     }
   }, [projectId, existingProject, providerId.value]);
-
-  const handleSubmit = useCallback(
-    async (e: Event) => {
-      e.preventDefault();
-      formError.value = null;
-
-      if (!promptTemplate.value) {
-        formError.value = 'Prompt template is required';
-        return;
-      }
-
-      submitting.value = true;
-
-      try {
-        if (projectId) {
-          await updateMutation.mutateAsync({
-            id: projectId,
-            input: {
-              enabled: enabled.value,
-              pickupColumn: pickupColumn.value || undefined,
-              progressColumn: progressColumn.value || undefined,
-              targetColumn: targetColumn.value || undefined,
-              promptTemplate: promptTemplate.value || undefined,
-              repoUrl: repoUrl.value || undefined,
-              agentsMd: agentsMd.value || undefined,
-              opencodeConfig: opencodeConfig.value || undefined,
-              providerId: providerId.value || undefined
-            }
-          });
-        } else {
-          if (!providerId.value) {
-            formError.value = 'Provider is required';
-            submitting.value = false;
-            return;
-          }
-          await createMutation.mutateAsync({
-            kaneoProjectId: kaneoProjectId.value,
-            providerId: providerId.value,
-            enabled: enabled.value,
-            pickupColumn: pickupColumn.value || undefined,
-            progressColumn: progressColumn.value || undefined,
-            targetColumn: targetColumn.value || undefined,
-            promptTemplate: promptTemplate.value,
-            repoUrl: repoUrl.value || undefined,
-            agentsMd: agentsMd.value || undefined,
-            opencodeConfig: opencodeConfig.value || undefined
-          });
-        }
-      } catch (err) {
-        formError.value = err instanceof Error ? err.message : 'Failed to save project config';
-      } finally {
-        submitting.value = false;
-      }
-    },
-    [projectId, createMutation, updateMutation]
-  );
 
   const resetLookup = () => lookup.resetLookup();
 
@@ -211,6 +142,15 @@ export const useProjectForm = (projectId: string | null) => {
     },
     onOpencodeConfigChange: (value: string) => {
       opencodeConfig.value = value;
+    },
+    onPickupColumnChange: (value: string) => {
+      pickupColumn.value = value;
+    },
+    onProgressColumnChange: (value: string) => {
+      progressColumn.value = value;
+    },
+    onTargetColumnChange: (value: string) => {
+      targetColumn.value = value;
     }
   };
 };
