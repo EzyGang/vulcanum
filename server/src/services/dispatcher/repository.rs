@@ -47,8 +47,9 @@ impl DispatchRepository {
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
+             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<Utc>", updated_at as "updated_at!: chrono::DateTime<Utc>"
-             FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL
+             FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL AND finish_blocked_reason IS NULL
              ORDER BY created_at ASC"#,
         )
         .fetch_all(db)
@@ -71,6 +72,7 @@ impl DispatchRepository {
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
+             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<Utc>", updated_at as "updated_at!: chrono::DateTime<Utc>""#,
             work_run_id,
             worker_id,

@@ -54,6 +54,7 @@ impl ProjectConfigsService {
             &mut params.pickup_column,
             &mut params.progress_column,
             &mut params.target_column,
+            &mut params.blocked_column,
         );
 
         let client = self.resolve_client(&params.provider_id).await?;
@@ -124,6 +125,8 @@ impl ProjectConfigsService {
                     pickup_column: params.pickup_column.as_deref(),
                     target_column: params.target_column.as_deref(),
                     progress_column: params.progress_column.as_deref(),
+                    blocked_column: params.blocked_column.as_deref(),
+                    max_turns: params.max_turns,
                     prompt_template: params.prompt_template.as_deref(),
                     repo_url: params.repo_url.as_deref(),
                     agents_md: params.agents_md.as_deref(),
@@ -184,15 +187,24 @@ impl ProjectConfigsService {
 }
 
 fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
+    // max_turns is intentionally excluded — column validation is only
+    // required for Kanéo column names, not for turn-limit configuration.
     params.pickup_column.is_some()
         || params.progress_column.is_some()
         || params.target_column.is_some()
+        || params.blocked_column.is_some()
 }
 
-fn normalize_columns(pickup: &mut String, progress: &mut String, target: &mut String) {
+fn normalize_columns(
+    pickup: &mut String,
+    progress: &mut String,
+    target: &mut String,
+    blocked: &mut String,
+) {
     *pickup = slugify(pickup);
     *progress = slugify(progress);
     *target = slugify(target);
+    *blocked = slugify(blocked);
 }
 
 fn validate_and_normalize_optional_columns(params: &mut UpdateProjectConfigRequest) {
@@ -203,6 +215,9 @@ fn validate_and_normalize_optional_columns(params: &mut UpdateProjectConfigReque
         *col = slugify(col);
     }
     if let Some(ref mut col) = params.target_column {
+        *col = slugify(col);
+    }
+    if let Some(ref mut col) = params.blocked_column {
         *col = slugify(col);
     }
 }

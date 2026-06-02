@@ -53,6 +53,7 @@ pub struct JournalEntry {
     pub pr_url: Option<String>,
     pub duration_ms: Option<i64>,
     pub error_message: Option<String>,
+    pub turn_count: Option<i32>,
 }
 
 pub struct Journal {
@@ -77,9 +78,15 @@ impl Journal {
                 tokens_used INTEGER,
                 pr_url TEXT,
                 duration_ms INTEGER,
-                error_message TEXT
+                error_message TEXT,
+                turn_count INTEGER NOT NULL DEFAULT 0
             )",
         )?;
+
+        let _ = conn.execute_batch(
+            "ALTER TABLE job_journal ADD COLUMN turn_count INTEGER NOT NULL DEFAULT 0",
+        );
+
         Ok(Self {
             conn: Mutex::new(conn),
         })
@@ -136,6 +143,15 @@ impl Journal {
         Ok(())
     }
 
+    pub fn update_turn(&self, job_id: Uuid, turn_count: i32) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE job_journal SET turn_count = ?1 WHERE job_id = ?2",
+            rusqlite::params![turn_count, job_id.to_string()],
+        )?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     pub fn mark_lost(&self, job_id: Uuid, error_message: &str) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
@@ -166,7 +182,7 @@ impl Journal {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare(
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
-                    finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message
+                    finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message, turn_count
              FROM job_journal WHERE status = 'running'",
         )?;
 
@@ -191,6 +207,7 @@ impl Journal {
                     pr_url: row.get(9)?,
                     duration_ms: row.get(10)?,
                     error_message: row.get(11)?,
+                    turn_count: row.get(12)?,
                 })
             })?
             .filter_map(|r| r.ok())

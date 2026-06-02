@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE work_runs SET status = 'pending'::work_run_status, finish_blocked_reason = NULL, worker_id = NULL\n             WHERE id = $1 AND status = 'failed'::work_run_status AND finish_blocked_reason IS NOT NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d2bf5b985d9f789a2176ce9485ce4ca551309d6e24d25726da5f304ad9ea6113"
+}

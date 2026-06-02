@@ -13,6 +13,14 @@ pub(super) async fn launch_host_server(
     cmd.args(["serve", "--port", &port.to_string()])
         .env("OPENCODE_SERVER_PASSWORD", password)
         .env("HOME", workdir.join("home").to_string_lossy().to_string())
+        .env(
+            "FINISH_ARTIFACT_PATH",
+            workdir
+                .join("home")
+                .join("finish_artifact.json")
+                .to_string_lossy()
+                .to_string(),
+        )
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
 
@@ -40,6 +48,7 @@ pub(super) async fn launch_container_server(
     let password_env = format!("OPENCODE_SERVER_PASSWORD={password}");
     let config_env = "OPENCODE_CONFIG=/workdir/home/.config/opencode/opencode.json".to_owned();
     let home_env = "HOME=/workdir/home".to_owned();
+    let artifact_env = "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json".to_owned();
     let workdir_str = env.workdir.to_string_lossy().to_string();
     let volume_mount = format!("{workdir_str}:/workdir");
     let port_str = OPENCODE_DEFAULT_PORT.to_string();
@@ -57,6 +66,8 @@ pub(super) async fn launch_container_server(
         config_env,
         "-e".to_owned(),
         home_env,
+        "-e".to_owned(),
+        artifact_env,
     ];
 
     if let Some(runtime) = env.runtime {

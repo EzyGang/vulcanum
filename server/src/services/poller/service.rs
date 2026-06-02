@@ -113,6 +113,16 @@ impl PollerService {
             }
         }
 
+        for config in &configs {
+            if let Err(e) = self.reconcile_blocked_runs(config).await {
+                tracing::warn!(
+                    project_id = %config.kaneo_project_id,
+                    error = %e,
+                    "blocked run reconciliation failed",
+                );
+            }
+        }
+
         tracing::debug!(
             project_count = project_count,
             "Poll cycle complete, checked {} projects",
@@ -196,5 +206,50 @@ impl PollerService {
         }
 
         Ok((tasks_found, inserted))
+    }
+
+    async fn reconcile_blocked_runs(&self, config: &ProjectConfig) -> Result<(), PollError> {
+        let provider_id = match config.provider_id {
+            Some(pid) => pid,
+            None => return Ok(()),
+        };
+
+        let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
+            Ok(p) => p,
+            Err(_) => return Ok(()),
+        };
+
+        let client: Arc<dyn TaskFetcher> = Arc::new(match provider.provider_type {
+            IntegrationType::Kaneo => {
+                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
+            }
+        });
+
+        let blocked_runs = self
+            .work_runs_repo
+            .find_blocked_by_project(&self.db, config.id)
+            .await
+            .unwrap_or_default();
+
+        for run in &blocked_runs {
+            let tasks = client
+                .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
+                .await?;
+
+            if tasks.iter().any(|t| t.id == run.external_task_ref) {
+                self.work_runs_repo
+                    .reset_blocked_to_pending(&self.db, run.id)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(
+                            work_run_id = %run.id,
+                            error = %e,
+                            "failed to unblock work run",
+                        );
+                    });
+            }
+        }
+
+        Ok(())
     }
 }

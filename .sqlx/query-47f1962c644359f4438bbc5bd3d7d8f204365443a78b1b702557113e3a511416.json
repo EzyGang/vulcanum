@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, kaneo_project_id, kaneo_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, opencode_config, provider_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
+  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -54,58 +54,47 @@
       },
       {
         "ordinal": 8,
-        "name": "prompt_template",
+        "name": "blocked_column",
         "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "repo_url",
-        "type_info": "Text"
+        "name": "max_turns",
+        "type_info": "Int4"
       },
       {
         "ordinal": 10,
-        "name": "agents_md",
+        "name": "prompt_template",
         "type_info": "Text"
       },
       {
         "ordinal": 11,
-        "name": "opencode_config",
+        "name": "repo_url",
         "type_info": "Text"
       },
       {
         "ordinal": 12,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "opencode_config",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "provider_id",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "integration_type",
-            "kind": {
-              "Enum": [
-                "kaneo"
-              ]
-            }
-          }
-        },
-        "Bool",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
         "Uuid"
       ]
     },
@@ -122,9 +111,11 @@
       false,
       false,
       false,
+      false,
+      false,
       true,
       true
     ]
   },
-  "hash": "c25cb9413627dfd119c323f56e67555f4222e22a4e5a7e82ff8ad2ca73574d3a"
+  "hash": "47f1962c644359f4438bbc5bd3d7d8f204365443a78b1b702557113e3a511416"
 }

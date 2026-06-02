@@ -34,6 +34,10 @@ pub struct WorkRun {
     pub cache_read_tokens: Option<i64>,
     pub cache_write_tokens: Option<i64>,
     pub model_used: Option<String>,
+    pub finish_status: Option<String>,
+    pub finish_summary: Option<String>,
+    pub finish_blocked_reason: Option<String>,
+    pub finish_next_column: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -57,5 +61,9 @@ pub struct WorkRunListItem {
     pub cache_read_tokens: Option<i64>,
     pub cache_write_tokens: Option<i64>,
     pub model_used: Option<String>,
+    pub finish_status: Option<String>,
+    pub finish_summary: Option<String>,
+    pub finish_blocked_reason: Option<String>,
+    pub finish_next_column: Option<String>,
     pub created_at: DateTime<Utc>,
 }

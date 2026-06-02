@@ -23,6 +23,8 @@ pub struct UpdateProjectConfigParams<'a> {
     pub pickup_column: Option<&'a str>,
     pub target_column: Option<&'a str>,
     pub progress_column: Option<&'a str>,
+    pub blocked_column: Option<&'a str>,
+    pub max_turns: Option<i32>,
     pub prompt_template: Option<&'a str>,
     pub repo_url: Option<&'a str>,
     pub agents_md: Option<&'a str>,

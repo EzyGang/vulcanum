@@ -46,6 +46,10 @@ pub async fn reconcile_running_jobs(journal: &Journal, client: &ApiClient, acces
             cache_read_tokens: 0,
             cache_write_tokens: 0,
             model_used: None,
+            finish_status: None,
+            finish_summary: None,
+            finish_blocked_reason: None,
+            finish_next_column: None,
         };
 
         if let Err(e) = client

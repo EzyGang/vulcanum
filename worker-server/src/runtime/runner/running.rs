@@ -12,6 +12,8 @@ use crate::runtime::export;
 use crate::runtime::mapping;
 
 use super::OpenCodeRunningSession;
+use crate::runtime::client::events;
+use crate::runtime::client::session;
 
 const STALL_TIMEOUT_SECS: u64 = 300;
 
@@ -134,6 +136,26 @@ impl RunningSession for OpenCodeRunningSession {
                 exit_code,
                 ..session_export
             })
+        })
+    }
+
+    fn continue_with(
+        &mut self,
+        prompt: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>> {
+        let client = self.client.clone();
+        let session_id = self.session_id.clone();
+        let prompt = prompt.to_owned();
+
+        Box::pin(async move {
+            session::send_message_async(&client, &session_id, &prompt).await?;
+
+            self.event_stream = None;
+            let stream = events::connect_events(&client).await?;
+            self.event_stream = Some(stream);
+            self.status = SessionStatus::Running;
+
+            Ok(())
         })
     }
 

@@ -59,6 +59,7 @@ impl WorkRunsService {
             kaneo_api_key,
             kaneo_project_id: cfg.kaneo_project_id,
             kaneo_workspace_id: cfg.kaneo_workspace_id,
+            max_turns: cfg.max_turns,
         })
     }
 

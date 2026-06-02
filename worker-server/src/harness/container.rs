@@ -62,6 +62,7 @@ impl IsolationProvider for DockerIsolation {
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
         prepare::write_env_files(workdir, agents_md, opencode_config).await?;
+        prepare::write_finish_run_tool(workdir).await?;
 
         if !repo_url.is_empty() {
             prepare::clone_repo(repo_url, &workdir.join("repo")).await?;
