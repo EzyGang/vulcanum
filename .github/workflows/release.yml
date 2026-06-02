@@ -1,20 +1,50 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch or ref to release from"
+        default: "main"
+        type: string
+      release_type:
+        description: "Release type"
+        type: choice
+        options:
+          - full
+          - alpha
 
 permissions:
   contents: write
 
 jobs:
-  build-cli:
-    name: Build CLI
+  release:
+    name: Build & Release
     runs-on: self-hosted
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Parse version
+        id: version
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute tag
+        id: tag
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          if [ "${{ inputs.release_type }}" = "alpha" ]; then
+            echo "tag=v${version}-alpha" >> "$GITHUB_OUTPUT"
+            echo "name=v${version}-alpha" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+            echo "name=v${version}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install Build Dependencies
         run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
@@ -31,9 +61,14 @@ jobs:
       - name: Build Worker Server (release)
         run: cargo build --release --bin vulcanum-server
 
-      - name: Upload Release Assets
+      - name: Create Release & Upload Assets
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          target_commitish: ${{ inputs.branch }}
+          name: ${{ steps.tag.outputs.name }}
+          prerelease: ${{ steps.tag.outputs.prerelease == 'true' }}
+          generate_release_notes: true
           files: |
             target/release/vulcanum
             target/release/vulcanum-server

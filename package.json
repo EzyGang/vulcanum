@@ -1,5 +1,6 @@
 {
   "private": true,
+  "version": "0.0.1",
   "scripts": {
     "build": "turbo build",
     "lint": "turbo lint",
@@ -10,7 +11,10 @@
     "prep-queries": "cargo sqlx prepare --workspace -- --all-targets",
     "migrate-server-up": "cargo sqlx migrate run --source server/migrations",
     "migrate-server-down": "cargo sqlx migrate revert --source server/migrations",
-    "dev": "turbo dev"
+    "dev": "turbo dev",
+    "ver:patch": "pnpm version patch --no-git-tag-version",
+		"ver:minor": "pnpm version minor --no-git-tag-version",
+		"ver:major": "pnpm version major --no-git-tag-version"
   },
   "devDependencies": {
     "turbo": "^2.9.14"
