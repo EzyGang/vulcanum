@@ -12,7 +12,7 @@ use crate::runtime::client::session;
 use crate::runtime::runner::{OpenCodeRunningSession, SessionConfig};
 
 const HEALTH_CHECK_TIMEOUT_SECS: u64 = 180;
-const HEALTH_CHECK_INTERVAL_MS: u64 = 500;
+const HEALTH_CHECK_INTERVAL_MS: u64 = 3000;
 
 pub struct OpenCodeServeRuntime;
 
@@ -111,18 +111,21 @@ impl AgentRuntime for OpenCodeServeRuntime {
         &self,
         prompt: &str,
         env: &IsolatedEnvironment,
-        _repo_url: &str,
-        _agents_md: &str,
-        _opencode_config: &str,
+        repo_url: &str,
     ) -> Result<Box<dyn RunningSession>, HarnessError> {
         let is_container = env.container_name.is_some();
+        let has_repo = !repo_url.is_empty();
 
         let (host_port, mut child_process) = if is_container {
-            let (port, _cid) = launch::launch_container_server(env).await?;
+            let repo_dir = if has_repo { "/workdir/repo" } else { "" };
+            let (port, _cid) = launch::launch_container_server(env, repo_dir).await?;
             (port, None)
         } else {
             let port = Self::discover_host_port()?;
-            let child = launch::launch_host_server(&env.workdir, &env.env_vars, port).await?;
+            let repo_dir = has_repo.then(|| env.workdir.join("repo"));
+            let child =
+                launch::launch_host_server(&env.workdir, &env.env_vars, port, repo_dir.as_deref())
+                    .await?;
             (port, Some(child))
         };
 
