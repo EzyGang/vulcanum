@@ -29,7 +29,7 @@ export const Button = ({
 }: ButtonProps): JSX.Element => (
   <BaseButton
     className={clsx(
-      'inline-flex items-center justify-center cursor-pointer transition-colors',
+      'inline-flex items-center justify-center cursor-pointer transition-colors p-0 border-0 bg-transparent appearance-none',
       VARIANT_MAP[variant],
       classProp
     )}
