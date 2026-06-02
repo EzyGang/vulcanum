@@ -3714,7 +3714,6 @@ dependencies = [
  "dirs 5.0.1",
  "eventsource-stream",
  "futures",
- "rand 0.8.6",
  "reqwest",
  "rusqlite",
  "serde",
