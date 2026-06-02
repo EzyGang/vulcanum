@@ -6,12 +6,10 @@ const OPENCODE_DEFAULT_PORT: u16 = 4096;
 pub(super) async fn launch_host_server(
     workdir: &std::path::Path,
     env_vars: &std::collections::HashMap<String, String>,
-    password: &str,
     port: u16,
 ) -> Result<tokio::process::Child, HarnessError> {
     let mut cmd = tokio::process::Command::new("opencode");
     cmd.args(["serve", "--port", &port.to_string()])
-        .env("OPENCODE_SERVER_PASSWORD", password)
         .env("HOME", workdir.join("home").to_string_lossy().to_string())
         .env(
             "FINISH_ARTIFACT_PATH",
@@ -47,7 +45,6 @@ pub(super) async fn launch_host_server(
 
 pub(super) async fn launch_container_server(
     env: &IsolatedEnvironment,
-    password: &str,
 ) -> Result<(u16, String), HarnessError> {
     let container_name = env
         .container_name
@@ -58,7 +55,6 @@ pub(super) async fn launch_container_server(
         .as_deref()
         .ok_or_else(|| HarnessError::ServerLaunch("image missing".to_owned()))?;
 
-    let password_env = format!("OPENCODE_SERVER_PASSWORD={password}");
     let config_env = "OPENCODE_CONFIG=/workdir/home/.config/opencode/opencode.json".to_owned();
     let home_env = "HOME=/workdir/home".to_owned();
     let artifact_env = "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json".to_owned();
@@ -73,8 +69,6 @@ pub(super) async fn launch_container_server(
         container_name.to_owned(),
         "-p".to_owned(),
         format!("127.0.0.1::{OPENCODE_DEFAULT_PORT}"),
-        "-e".to_owned(),
-        password_env,
         "-e".to_owned(),
         config_env,
         "-e".to_owned(),
@@ -121,7 +115,39 @@ pub(super) async fn launch_container_server(
     let container_id = String::from_utf8_lossy(&output.stdout).trim().to_owned();
     let host_port = read_container_port(container_name).await?;
 
+    let log_container_name = container_name.to_owned();
+    tokio::spawn(async move {
+        let mut cmd = tokio::process::Command::new("docker");
+        cmd.args(["logs", "-f", &log_container_name])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        let Ok(mut child) = cmd.spawn() else {
+            return;
+        };
+
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+
+        if let Some(pipe) = stdout {
+            tokio::spawn(pipe_lines_to_tracing(pipe));
+        }
+        if let Some(pipe) = stderr {
+            tokio::spawn(pipe_lines_to_tracing(pipe));
+        }
+    });
+
     Ok((host_port, container_id))
+}
+
+async fn pipe_lines_to_tracing<R>(pipe: R)
+where
+    R: tokio::io::AsyncRead + Unpin + Send + 'static,
+{
+    use tokio::io::{AsyncBufReadExt, BufReader};
+    let mut lines = BufReader::new(pipe).lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        tracing::debug!(target: "opencode::container", "{}", line);
+    }
 }
 
 async fn read_container_port(name: &str) -> Result<u16, HarnessError> {

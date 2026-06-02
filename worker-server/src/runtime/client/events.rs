@@ -18,7 +18,6 @@ pub async fn connect_events(client: &OpenCodeClient) -> Result<SseEventStream, H
     let resp = client
         .http_client()
         .get(&url)
-        .basic_auth(client.username(), Some(client.password()))
         .send()
         .await
         .map_err(|e| HarnessError::Http(format!("events connect failed: {e}")))?;

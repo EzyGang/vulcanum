@@ -36,7 +36,6 @@ pub async fn create_session(client: &OpenCodeClient, title: &str) -> Result<Sess
     let resp = client
         .http_client()
         .post(&url)
-        .basic_auth(client.username(), Some(client.password()))
         .json(&body)
         .send()
         .await
@@ -67,7 +66,6 @@ pub async fn send_message_async(
     let resp = client
         .http_client()
         .post(&url)
-        .basic_auth(client.username(), Some(client.password()))
         .json(&body)
         .send()
         .await
@@ -86,7 +84,6 @@ pub async fn abort_session(client: &OpenCodeClient, session_id: &str) -> Result<
     let resp = client
         .http_client()
         .post(&url)
-        .basic_auth(client.username(), Some(client.password()))
         .send()
         .await
         .map_err(|e| HarnessError::CancelFailed(format!("abort request failed: {e}")))?;
