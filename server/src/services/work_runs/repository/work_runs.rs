@@ -33,6 +33,7 @@ impl WorkRunsRepository {
                         input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
                         cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
                         model_used,
+                        finish_status, finish_summary, finish_blocked_reason, finish_next_column,
                         created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             &params.external_task_ref,
@@ -84,6 +85,7 @@ impl WorkRunsRepository {
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
+             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
              FROM work_runs WHERE id = $1"#,
             id,
@@ -124,6 +126,7 @@ impl WorkRunsRepository {
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
              wr.model_used,
+             wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,
              wr.created_at as "created_at!: DateTime<Utc>"
              FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
              WHERE ($1::work_run_status IS NULL OR wr.status = $1)
@@ -159,7 +162,8 @@ impl WorkRunsRepository {
         let rows = sqlx::query!(
             r#"UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
              WHERE status = 'dispatched'::work_run_status
-             AND updated_at < NOW() - INTERVAL '1 second' * $1"#,
+             AND updated_at < NOW() - INTERVAL '1 second' * $1
+             AND finish_blocked_reason IS NULL"#,
             threshold_secs as f64,
         )
         .execute(db)
@@ -177,7 +181,8 @@ impl WorkRunsRepository {
         let rows = sqlx::query!(
             r#"UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
              WHERE status IN ('dispatched'::work_run_status, 'running'::work_run_status)
-             AND worker_id IS NULL"#,
+             AND worker_id IS NULL
+             AND finish_blocked_reason IS NULL"#,
         )
         .execute(db)
         .await
@@ -197,6 +202,7 @@ impl WorkRunsRepository {
                 UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
                 WHERE status = 'running'::work_run_status
                 AND updated_at < NOW() - INTERVAL '1 second' * $1
+                AND finish_blocked_reason IS NULL
                 RETURNING worker_id
             )
             SELECT COUNT(DISTINCT worker_id) AS affected_workers
@@ -265,6 +271,7 @@ impl WorkRunsRepository {
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
+             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             worker_id,
@@ -290,6 +297,7 @@ impl WorkRunsRepository {
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
+             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
         )
@@ -308,13 +316,16 @@ impl WorkRunsRepository {
             WorkRun,
             r#"UPDATE work_runs SET result_pr_url = $2, result_exit_code = $3, tokens_used = $4,
              duration_ms = $5, status = $6, input_tokens = $7, output_tokens = $8,
-             cache_read_tokens = $9, cache_write_tokens = $10, model_used = $11
+             cache_read_tokens = $9, cache_write_tokens = $10, model_used = $11,
+             finish_status = $12, finish_summary = $13, finish_blocked_reason = $14,
+             finish_next_column = $15
              WHERE id = $1 AND status = 'running'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
+             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             params.pr_url,
@@ -327,11 +338,58 @@ impl WorkRunsRepository {
             params.cache_read_tokens,
             params.cache_write_tokens,
             params.model_used,
+            params.finish_status,
+            params.finish_summary,
+            params.finish_blocked_reason,
+            params.finish_next_column,
         )
         .fetch_optional(db)
         .await
         .map_err(WorkRunsError::from)?
         .ok_or(WorkRunsError::InvalidStatusTransition)
+    }
+
+    pub async fn find_blocked_by_project<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        project_config_id: Uuid,
+    ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
+        sqlx::query_as!(
+            WorkRunListItem,
+            r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
+             w.name as "worker_name: Option<String>",
+             wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
+             wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
+             wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
+             wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
+             wr.model_used,
+             wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,
+             wr.created_at as "created_at!: DateTime<Utc>"
+             FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
+             WHERE wr.project_config_id = $1 AND wr.status = 'failed'::work_run_status AND wr.finish_blocked_reason IS NOT NULL
+             ORDER BY wr.created_at DESC"#,
+            project_config_id,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(WorkRunsError::from)
+    }
+
+    pub async fn reset_blocked_to_pending<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        id: Uuid,
+    ) -> Result<(), WorkRunsError> {
+        sqlx::query!(
+            r#"UPDATE work_runs SET status = 'pending'::work_run_status, finish_blocked_reason = NULL, worker_id = NULL
+             WHERE id = $1 AND status = 'failed'::work_run_status AND finish_blocked_reason IS NOT NULL"#,
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(WorkRunsError::from)?;
+
+        Ok(())
     }
 }
 
@@ -346,4 +404,8 @@ pub struct SetResultParams<'a> {
     pub cache_read_tokens: i64,
     pub cache_write_tokens: i64,
     pub model_used: Option<&'a str>,
+    pub finish_status: Option<&'a str>,
+    pub finish_summary: Option<&'a str>,
+    pub finish_blocked_reason: Option<&'a str>,
+    pub finish_next_column: Option<&'a str>,
 }

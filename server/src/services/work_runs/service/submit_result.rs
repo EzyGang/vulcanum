@@ -15,10 +15,16 @@ impl WorkRunsService {
         worker_id: Uuid,
         params: SubmitResultRequest,
     ) -> Result<WorkRun, WorkRunsError> {
-        let status = if params.exit_code == 0 {
-            WorkRunStatus::Completed
-        } else {
-            WorkRunStatus::Failed
+        let status = match params.finish_status.as_deref() {
+            Some("completed") => WorkRunStatus::Completed,
+            Some("failed") | Some("blocked") => WorkRunStatus::Failed,
+            _ => {
+                if params.exit_code == 0 {
+                    WorkRunStatus::Completed
+                } else {
+                    WorkRunStatus::Failed
+                }
+            }
         };
 
         let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
@@ -49,6 +55,10 @@ impl WorkRunsService {
                     cache_read_tokens: params.cache_read_tokens,
                     cache_write_tokens: params.cache_write_tokens,
                     model_used: params.model_used.as_deref(),
+                    finish_status: params.finish_status.as_deref(),
+                    finish_summary: params.finish_summary.as_deref(),
+                    finish_blocked_reason: params.finish_blocked_reason.as_deref(),
+                    finish_next_column: params.finish_next_column.as_deref(),
                 },
             )
             .await?;
@@ -204,9 +214,14 @@ impl WorkRunsService {
             }
         };
 
-        let new_column = match status {
-            WorkRunStatus::Completed => &project_config.target_column,
-            _ => &project_config.pickup_column,
+        let new_column = match params.finish_status.as_deref() {
+            Some("completed") => &project_config.target_column,
+            Some("blocked") => &project_config.blocked_column,
+            Some("failed") => &project_config.pickup_column,
+            _ => match status {
+                WorkRunStatus::Completed => &project_config.target_column,
+                _ => &project_config.pickup_column,
+            },
         };
 
         if let Err(e) = client
@@ -221,10 +236,16 @@ impl WorkRunsService {
             );
         }
 
-        if let Err(e) = client
-            .add_comment(&run.external_task_ref, &format!("PR: {}", params.pr_url))
-            .await
-        {
+        let comment = match (
+            params.finish_summary.as_deref(),
+            params.finish_blocked_reason.as_deref(),
+        ) {
+            (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
+            (Some(s), None) => format!("**Summary:** {s}"),
+            _ => format!("PR: {}", params.pr_url),
+        };
+
+        if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {
             tracing::warn!(
                 task_ref = %run.external_task_ref,
                 error = %e,

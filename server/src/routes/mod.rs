@@ -28,7 +28,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/ack", web::post().to(jobs::ack_job))
                     .route("/{id}/result", web::post().to(jobs::submit_result))
                     .route("/{id}/events", web::post().to(jobs::append_events))
-                    .route("/{id}/events", web::get().to(jobs::list_events)),
+                    .route("/{id}/events", web::get().to(jobs::list_events))
+                    .route("/{id}/task-status", web::get().to(jobs::task_status)),
             )
             .service(
                 web::scope("/projects")

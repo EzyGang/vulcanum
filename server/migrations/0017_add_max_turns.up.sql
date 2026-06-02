@@ -1,0 +1,2 @@
+ALTER TABLE project_configs
+    ADD COLUMN max_turns INTEGER NOT NULL DEFAULT 3;

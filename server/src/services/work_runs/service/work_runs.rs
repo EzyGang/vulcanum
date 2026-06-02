@@ -59,6 +59,7 @@ impl WorkRunsService {
             kaneo_api_key,
             kaneo_project_id: cfg.kaneo_project_id,
             kaneo_workspace_id: cfg.kaneo_workspace_id,
+            max_turns: cfg.max_turns,
         })
     }
 
@@ -219,5 +220,47 @@ impl WorkRunsService {
                 "failed to clear cancel flag on terminal status"
             );
         }
+    }
+
+    pub async fn task_status(&self, id: Uuid) -> Result<String, WorkRunsError> {
+        let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+
+        let config = self
+            .project_configs_repo
+            .find_by_id(&self.db, run.project_config_id)
+            .await
+            .map_err(|_| WorkRunsError::NotFound)?;
+
+        let provider_id = config.provider_id.ok_or(WorkRunsError::NotFound)?;
+
+        let provider = self
+            .providers_repo
+            .find_by_id(&self.db, provider_id)
+            .await
+            .map_err(|_| WorkRunsError::NotFound)?;
+
+        use crate::services::integrations::client::{IntegrationClient, TaskFetcher};
+        use crate::services::integrations::model::IntegrationType;
+
+        let client = match provider.provider_type {
+            IntegrationType::Kaneo => {
+                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
+            }
+        };
+
+        let active_columns = [&config.pickup_column, &config.progress_column];
+
+        for col in &active_columns {
+            let tasks = client
+                .fetch_tasks_in_column(&config.kaneo_project_id, col)
+                .await
+                .map_err(|_| WorkRunsError::NotFound)?;
+
+            if tasks.iter().any(|t| t.id == run.external_task_ref) {
+                return Ok(col.to_string());
+            }
+        }
+
+        Ok("unknown".to_owned())
     }
 }

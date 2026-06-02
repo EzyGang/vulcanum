@@ -56,6 +56,7 @@ pub struct JobResponse {
     pub kaneo_api_key: String,
     pub kaneo_project_id: String,
     pub kaneo_workspace_id: String,
+    pub max_turns: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -69,6 +70,10 @@ pub struct SubmitResultRequest {
     pub cache_read_tokens: i64,
     pub cache_write_tokens: i64,
     pub model_used: Option<String>,
+    pub finish_status: Option<String>,
+    pub finish_summary: Option<String>,
+    pub finish_blocked_reason: Option<String>,
+    pub finish_next_column: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

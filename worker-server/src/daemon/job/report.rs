@@ -14,6 +14,10 @@ pub(crate) struct FailedResult {
     pub(crate) tokens_used: i64,
     pub(crate) pr_url: Option<String>,
     pub(crate) duration_ms: i64,
+    pub(crate) finish_status: Option<String>,
+    pub(crate) finish_summary: Option<String>,
+    pub(crate) finish_blocked_reason: Option<String>,
+    pub(crate) finish_next_column: Option<String>,
 }
 
 impl FailedResult {
@@ -23,6 +27,10 @@ impl FailedResult {
             tokens_used: 0,
             pr_url: None,
             duration_ms: 0,
+            finish_status: None,
+            finish_summary: None,
+            finish_blocked_reason: None,
+            finish_next_column: None,
         }
     }
 }
@@ -52,6 +60,10 @@ pub(crate) async fn submit_failed_result(
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
+        finish_status: result.finish_status.clone(),
+        finish_summary: result.finish_summary.clone(),
+        finish_blocked_reason: result.finish_blocked_reason.clone(),
+        finish_next_column: result.finish_next_column.clone(),
     };
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client.submit_result(job_id, &submit, &access_token).await {

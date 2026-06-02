@@ -67,3 +67,16 @@ pub struct IsolatedEnvironment {
     pub server_host_port: Option<u16>,
     pub limits: ResourceLimits,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FinishRunArtifact {
+    pub status: String,
+    #[serde(default)]
+    pub pr_url: Option<String>,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub blocked_reason: Option<String>,
+    #[serde(default)]
+    pub next_column: Option<String>,
+}

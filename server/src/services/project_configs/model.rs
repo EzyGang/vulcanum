@@ -15,6 +15,8 @@ pub struct ProjectConfig {
     pub pickup_column: String,
     pub target_column: String,
     pub progress_column: String,
+    pub blocked_column: String,
+    pub max_turns: i32,
     pub prompt_template: String,
     pub repo_url: String,
     pub agents_md: String,
@@ -36,6 +38,10 @@ pub struct CreateProjectConfigRequest {
     pub progress_column: String,
     #[serde(default = "default_target_column")]
     pub target_column: String,
+    #[serde(default = "default_blocked_column")]
+    pub blocked_column: String,
+    #[serde(default = "default_max_turns")]
+    pub max_turns: i32,
     pub prompt_template: String,
     #[serde(default)]
     pub repo_url: String,
@@ -57,6 +63,8 @@ pub struct UpdateProjectConfigRequest {
     #[serde(default)]
     pub target_column: Option<String>,
     #[serde(default)]
+    pub blocked_column: Option<String>,
+    pub max_turns: Option<i32>,
     pub prompt_template: Option<String>,
     #[serde(default)]
     pub repo_url: Option<String>,
@@ -103,6 +111,7 @@ impl ProjectConfig {
             kaneo_project_id: self.kaneo_project_id.clone(),
             kaneo_workspace_id: self.kaneo_workspace_id.clone(),
             opencode_config: self.opencode_config.clone(),
+            max_turns: self.max_turns,
             provider_id: self.provider_id,
         }
     }
@@ -113,6 +122,7 @@ pub struct JobConfigFields {
     pub kaneo_project_id: String,
     pub kaneo_workspace_id: String,
     pub opencode_config: String,
+    pub max_turns: i32,
     pub provider_id: Option<Uuid>,
 }
 
@@ -130,4 +140,12 @@ fn default_progress_column() -> String {
 
 fn default_target_column() -> String {
     "in-review".to_owned()
+}
+
+fn default_blocked_column() -> String {
+    "Blocked".to_owned()
+}
+
+fn default_max_turns() -> i32 {
+    3
 }

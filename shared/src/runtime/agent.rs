@@ -18,6 +18,11 @@ pub trait RunningSession: Send {
     fn wait(
         &mut self,
     ) -> Pin<Box<dyn Future<Output = Result<SessionExport, HarnessError>> + Send + '_>>;
+
+    fn continue_with(
+        &mut self,
+        prompt: &str,
+    ) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>>;
 }
 
 pub trait AgentRuntime: Send + Sync {

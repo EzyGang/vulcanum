@@ -152,6 +152,10 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
+        finish_status: None,
+        finish_summary: None,
+        finish_blocked_reason: None,
+        finish_next_column: None,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -192,6 +196,10 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
+        finish_status: None,
+        finish_summary: None,
+        finish_blocked_reason: None,
+        finish_next_column: None,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -218,6 +226,10 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
+        finish_status: None,
+        finish_summary: None,
+        finish_blocked_reason: None,
+        finish_next_column: None,
     };
     let err = svc
         .submit_result(wr_id, worker_id, params)
@@ -254,6 +266,10 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
+        finish_status: None,
+        finish_summary: None,
+        finish_blocked_reason: None,
+        finish_next_column: None,
     };
     let err = svc
         .submit_result(wr_id, worker_b, params)
