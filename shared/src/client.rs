@@ -143,29 +143,6 @@ impl ApiClient {
 
         Err(build_error(resp).await.into())
     }
-
-    pub async fn get_task_status(
-        &self,
-        job_id: Uuid,
-        access_token: &str,
-    ) -> anyhow::Result<String> {
-        #[derive(serde::Deserialize)]
-        struct TaskStatusResponse {
-            column: String,
-        }
-
-        let url = format!("{}/api/v1/jobs/{}/task-status", self.base_url, job_id);
-        let resp = self
-            .http
-            .get(&url)
-            .bearer_auth(access_token)
-            .send()
-            .await
-            .context("task status request failed")?;
-
-        let body: TaskStatusResponse = map_response(resp).await?;
-        Ok(body.column)
-    }
 }
 
 pub async fn probe_url(url: &str) -> anyhow::Result<StatusResponse> {

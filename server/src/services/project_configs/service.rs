@@ -187,6 +187,8 @@ impl ProjectConfigsService {
 }
 
 fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
+    // max_turns is intentionally excluded — column validation is only
+    // required for Kanéo column names, not for turn-limit configuration.
     params.pickup_column.is_some()
         || params.progress_column.is_some()
         || params.target_column.is_some()

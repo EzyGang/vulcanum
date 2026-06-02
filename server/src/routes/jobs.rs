@@ -1,5 +1,4 @@
 use actix_web::{web, HttpResponse};
-use serde::Serialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
@@ -117,19 +116,4 @@ pub async fn list_events(
         events,
         has_more: result.has_more,
     }))
-}
-
-#[derive(Serialize)]
-struct TaskStatusResponse {
-    column: String,
-}
-
-pub async fn task_status(
-    state: web::Data<AppState>,
-    path: web::Path<Uuid>,
-    _auth: WorkerAuth,
-) -> Result<HttpResponse, AppError> {
-    let column = state.jobs.task_status(path.into_inner()).await?;
-
-    Ok(HttpResponse::Ok().json(TaskStatusResponse { column }))
 }

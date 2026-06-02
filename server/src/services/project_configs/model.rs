@@ -64,6 +64,7 @@ pub struct UpdateProjectConfigRequest {
     pub target_column: Option<String>,
     #[serde(default)]
     pub blocked_column: Option<String>,
+    #[serde(default)]
     pub max_turns: Option<i32>,
     pub prompt_template: Option<String>,
     #[serde(default)]

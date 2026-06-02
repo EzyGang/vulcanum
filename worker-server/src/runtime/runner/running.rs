@@ -150,6 +150,7 @@ impl RunningSession for OpenCodeRunningSession {
         Box::pin(async move {
             session::send_message_async(&client, &session_id, &prompt).await?;
 
+            self.event_stream = None;
             let stream = events::connect_events(&client).await?;
             self.event_stream = Some(stream);
             self.status = SessionStatus::Running;
