@@ -22,14 +22,27 @@ pub(super) async fn launch_host_server(
                 .to_string(),
         )
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null());
+        .stderr(std::process::Stdio::piped());
 
     for (k, v) in env_vars {
         cmd.env(k, v);
     }
 
-    cmd.spawn()
-        .map_err(|e| HarnessError::ServerLaunch(format!("failed to spawn opencode serve: {e}")))
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| HarnessError::ServerLaunch(format!("failed to spawn opencode serve: {e}")))?;
+
+    if let Some(stderr) = child.stderr.take() {
+        tokio::spawn(async move {
+            use tokio::io::{AsyncBufReadExt, BufReader};
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                tracing::debug!(target: "opencode::stderr", "{}", line);
+            }
+        });
+    }
+
+    Ok(child)
 }
 
 pub(super) async fn launch_container_server(

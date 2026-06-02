@@ -2,10 +2,7 @@
 name = "vulcanum-shared"
 version = "0.1.0"
 edition = "2021"
-autodoctest = false
 
-[profile.dev]
-debug = 0
 
 [dependencies]
 anyhow = "1"

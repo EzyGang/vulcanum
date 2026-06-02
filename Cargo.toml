@@ -1,3 +1,6 @@
 [workspace]
 members = ["cli", "worker-server", "server", "shared"]
 resolver = "2"
+
+[profile.dev]
+debug = 0

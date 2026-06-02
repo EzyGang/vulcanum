@@ -39,16 +39,40 @@ impl OpenCodeServeRuntime {
         Ok(port)
     }
 
-    async fn wait_for_health(client: &client::OpenCodeClient) -> Result<(), HarnessError> {
+    async fn wait_for_health(
+        client: &client::OpenCodeClient,
+        child: &mut Option<tokio::process::Child>,
+    ) -> Result<(), HarnessError> {
         let deadline =
             std::time::Instant::now() + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
 
         loop {
             match health::health_check(client).await {
                 Ok(resp) if resp.healthy => return Ok(()),
-                Ok(_) => {}
-                Err(HarnessError::Http(_)) => {}
+                Ok(_) => (),
+                Err(HarnessError::Http(ref msg)) => {
+                    tracing::debug!(error = %msg, "health check connection error, retrying");
+                }
+                Err(HarnessError::ServerUnhealthy(ref msg)) => {
+                    tracing::debug!(error = %msg, "health check server not ready, retrying");
+                }
                 Err(e) => return Err(e),
+            }
+
+            if let Some(ref mut c) = child {
+                match c.try_wait() {
+                    Ok(Some(status)) => {
+                        return Err(HarnessError::ServerLaunch(format!(
+                            "opencode process exited prematurely with {status}"
+                        )));
+                    }
+                    Ok(None) => (),
+                    Err(e) => {
+                        return Err(HarnessError::ServerLaunch(format!(
+                            "failed to check process status: {e}"
+                        )));
+                    }
+                }
             }
 
             if std::time::Instant::now() >= deadline {
@@ -74,7 +98,7 @@ impl AgentRuntime for OpenCodeServeRuntime {
         let password = Self::generate_password();
         let is_container = env.container_name.is_some();
 
-        let (host_port, child_process) = if is_container {
+        let (host_port, mut child_process) = if is_container {
             let (port, _cid) = launch::launch_container_server(env, &password).await?;
             (port, None)
         } else {
@@ -87,7 +111,7 @@ impl AgentRuntime for OpenCodeServeRuntime {
         let base_url = format!("http://127.0.0.1:{host_port}");
         let oc_client = client::OpenCodeClient::new(&base_url, "opencode", &password);
 
-        Self::wait_for_health(&oc_client).await?;
+        Self::wait_for_health(&oc_client, &mut child_process).await?;
 
         let sess = session::create_session(&oc_client, "vulcanum-run").await?;
         session::send_message_async(&oc_client, &sess.id, prompt).await?;
