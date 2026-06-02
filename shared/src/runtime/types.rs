@@ -1,8 +1,34 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FinishStatus {
+    Completed,
+    Failed,
+    Blocked,
+}
+
+impl fmt::Display for FinishStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FinishStatus {
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Blocked => "blocked",
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResourceLimits {
@@ -70,7 +96,7 @@ pub struct IsolatedEnvironment {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct FinishRunArtifact {
-    pub status: String,
+    pub status: FinishStatus,
     #[serde(default)]
     pub pr_url: Option<String>,
     #[serde(default)]

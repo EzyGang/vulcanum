@@ -7,6 +7,7 @@ use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
 use crate::services::work_runs::repository::work_runs::SetResultParams;
 use crate::services::work_runs::service::WorkRunsService;
 use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::runtime::types::FinishStatus;
 
 impl WorkRunsService {
     pub async fn submit_result(
@@ -15,10 +16,10 @@ impl WorkRunsService {
         worker_id: Uuid,
         params: SubmitResultRequest,
     ) -> Result<WorkRun, WorkRunsError> {
-        let status = match params.finish_status.as_deref() {
-            Some("completed") => WorkRunStatus::Completed,
-            Some("failed") | Some("blocked") => WorkRunStatus::Failed,
-            _ => {
+        let status = match params.finish_status {
+            Some(FinishStatus::Completed) => WorkRunStatus::Completed,
+            Some(FinishStatus::Failed) | Some(FinishStatus::Blocked) => WorkRunStatus::Failed,
+            None => {
                 if params.exit_code == 0 {
                     WorkRunStatus::Completed
                 } else {
@@ -55,7 +56,7 @@ impl WorkRunsService {
                     cache_read_tokens: params.cache_read_tokens,
                     cache_write_tokens: params.cache_write_tokens,
                     model_used: params.model_used.as_deref(),
-                    finish_status: params.finish_status.as_deref(),
+                    finish_status: params.finish_status.as_ref().map(|s| s.as_str()),
                     finish_summary: params.finish_summary.as_deref(),
                     finish_blocked_reason: params.finish_blocked_reason.as_deref(),
                     finish_next_column: params.finish_next_column.as_deref(),
@@ -214,26 +215,30 @@ impl WorkRunsService {
             }
         };
 
-        let new_column = match params.finish_status.as_deref() {
-            Some("completed") => &project_config.target_column,
-            Some("blocked") => &project_config.blocked_column,
-            Some("failed") => &project_config.pickup_column,
-            _ => match status {
-                WorkRunStatus::Completed => &project_config.target_column,
-                _ => &project_config.pickup_column,
-            },
-        };
+        let is_blocked = matches!(params.finish_status, Some(FinishStatus::Blocked));
 
-        if let Err(e) = client
-            .update_task_status(&run.external_task_ref, new_column)
-            .await
-        {
-            tracing::warn!(
-                task_ref = %run.external_task_ref,
-                column = %new_column,
-                error = %e,
-                "failed to update kaneo task status",
-            );
+        if !is_blocked {
+            let new_column = match params.finish_status {
+                Some(FinishStatus::Completed) => &project_config.target_column,
+                Some(FinishStatus::Failed) => &project_config.pickup_column,
+                None => match status {
+                    WorkRunStatus::Completed => &project_config.target_column,
+                    _ => &project_config.pickup_column,
+                },
+                _ => unreachable!(),
+            };
+
+            if let Err(e) = client
+                .update_task_status(&run.external_task_ref, new_column)
+                .await
+            {
+                tracing::warn!(
+                    task_ref = %run.external_task_ref,
+                    column = %new_column,
+                    error = %e,
+                    "failed to update kaneo task status",
+                );
+            }
         }
 
         let comment = match (

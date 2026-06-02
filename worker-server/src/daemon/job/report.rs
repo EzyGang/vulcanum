@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::runtime::types::{FinishRunArtifact, SessionExport};
+use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::state::journal::{Journal, JournalStatus};
@@ -15,7 +15,7 @@ pub(crate) struct FailedResult {
     pub(crate) tokens_used: i64,
     pub(crate) pr_url: Option<String>,
     pub(crate) duration_ms: i64,
-    pub(crate) finish_status: Option<String>,
+    pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
     pub(crate) finish_blocked_reason: Option<String>,
     pub(crate) finish_next_column: Option<String>,
@@ -126,7 +126,7 @@ pub(crate) fn read_finish_artifact(path: &std::path::Path) -> Option<FinishRunAr
     let raw = std::fs::read_to_string(path).ok()?;
     match serde_json::from_str::<FinishRunArtifact>(&raw) {
         Ok(artifact) => {
-            tracing::info!(status = %artifact.status, "parsed finish artifact");
+            tracing::info!(status = ?artifact.status, "parsed finish artifact");
             Some(artifact)
         }
         Err(e) => {

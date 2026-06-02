@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::runtime::types::FinishStatus;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConnectRequest {
     pub code: String,
@@ -70,7 +72,7 @@ pub struct SubmitResultRequest {
     pub cache_read_tokens: i64,
     pub cache_write_tokens: i64,
     pub model_used: Option<String>,
-    pub finish_status: Option<String>,
+    pub finish_status: Option<FinishStatus>,
     pub finish_summary: Option<String>,
     pub finish_blocked_reason: Option<String>,
     pub finish_next_column: Option<String>,
