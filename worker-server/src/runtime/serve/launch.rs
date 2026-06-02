@@ -7,6 +7,7 @@ pub(super) async fn launch_host_server(
     workdir: &std::path::Path,
     env_vars: &std::collections::HashMap<String, String>,
     port: u16,
+    repo_dir: Option<&std::path::Path>,
 ) -> Result<tokio::process::Child, HarnessError> {
     let mut cmd = tokio::process::Command::new("opencode");
     cmd.args(["serve", "--port", &port.to_string()])
@@ -21,6 +22,10 @@ pub(super) async fn launch_host_server(
         )
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped());
+
+    if let Some(repo) = repo_dir {
+        cmd.current_dir(repo);
+    }
 
     for (k, v) in env_vars {
         cmd.env(k, v);
@@ -45,6 +50,7 @@ pub(super) async fn launch_host_server(
 
 pub(super) async fn launch_container_server(
     env: &IsolatedEnvironment,
+    repo_dir: &str,
 ) -> Result<(u16, String), HarnessError> {
     let container_name = env
         .container_name
@@ -85,6 +91,10 @@ pub(super) async fn launch_container_server(
     for (k, v) in &env.env_vars {
         docker_args.push("-e".to_owned());
         docker_args.push(format!("{k}={v}"));
+    }
+
+    if !repo_dir.is_empty() {
+        docker_args.extend(["--workdir".to_owned(), repo_dir.to_owned()]);
     }
 
     docker_args.extend([

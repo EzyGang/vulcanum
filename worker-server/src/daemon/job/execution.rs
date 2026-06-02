@@ -150,13 +150,7 @@ pub(crate) async fn handle_job(
 
     let runtime = crate::runtime::serve::OpenCodeServeRuntime::new();
     let mut running_session: Box<dyn RunningSession> = match runtime
-        .execute(
-            &job.prompt_text,
-            &isolated_env,
-            &job.repo_url,
-            &job.agents_md,
-            &job.opencode_config,
-        )
+        .execute(&job.prompt_text, &isolated_env, &job.repo_url)
         .await
     {
         Ok(session) => session,
