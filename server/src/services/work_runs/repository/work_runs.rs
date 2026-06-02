@@ -16,7 +16,6 @@ pub struct InsertWorkRunParams {
 }
 
 impl WorkRunsRepository {
-    #[allow(dead_code)]
     pub async fn insert_work_run<'c, Q: Queryer<'c>>(
         &self,
         db: Q,

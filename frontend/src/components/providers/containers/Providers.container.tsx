@@ -23,7 +23,11 @@ export const ProvidersContainer = (): JSX.Element => {
     handleSave,
     handleConfirmDelete,
     handleCancelDelete,
-    handleDelete
+    handleDelete,
+    onNameChange,
+    onUrlChange,
+    onApiKeyChange,
+    onProviderTypeChange
   } = useProviders();
 
   return (
@@ -34,12 +38,12 @@ export const ProvidersContainer = (): JSX.Element => {
         deleteError,
         showForm,
         editId,
-        name,
-        url,
-        apiKey,
-        providerType,
-        formError,
-        formSubmitting
+        name: name.value,
+        url: url.value,
+        apiKey: apiKey.value,
+        providerType: providerType.value,
+        formError: formError.value,
+        formSubmitting: formSubmitting.value
       }}
       status={{ loading, error }}
       actions={{
@@ -49,7 +53,11 @@ export const ProvidersContainer = (): JSX.Element => {
         onSave: handleSave,
         onConfirmDelete: handleConfirmDelete,
         onCancelDelete: handleCancelDelete,
-        onDelete: handleDelete
+        onDelete: handleDelete,
+        onNameChange,
+        onUrlChange,
+        onApiKeyChange,
+        onProviderTypeChange
       }}
     />
   );

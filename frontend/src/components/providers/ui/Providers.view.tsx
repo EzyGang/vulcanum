@@ -20,12 +20,12 @@ interface ProvidersViewProps {
     deleteError: Signal<string | null>;
     showForm: Signal<boolean>;
     editId: Signal<string | null>;
-    name: Signal<string>;
-    url: Signal<string>;
-    apiKey: Signal<string>;
-    providerType: Signal<string>;
-    formError: Signal<string | null>;
-    formSubmitting: Signal<boolean>;
+    name: string;
+    url: string;
+    apiKey: string;
+    providerType: string;
+    formError: string | null;
+    formSubmitting: boolean;
   };
   status: {
     loading: boolean;
@@ -39,6 +39,10 @@ interface ProvidersViewProps {
     onConfirmDelete: (id: string) => void;
     onCancelDelete: () => void;
     onDelete: (id: string) => void;
+    onNameChange: (value: string) => void;
+    onUrlChange: (value: string) => void;
+    onApiKeyChange: (value: string) => void;
+    onProviderTypeChange: (value: string) => void;
   };
 }
 
@@ -64,7 +68,11 @@ export const ProvidersView = ({
     onSave,
     onConfirmDelete,
     onCancelDelete,
-    onDelete
+    onDelete,
+    onNameChange,
+    onUrlChange,
+    onApiKeyChange,
+    onProviderTypeChange
   }
 }: ProvidersViewProps): JSX.Element => (
   <div class='flex flex-col gap-8'>
@@ -102,6 +110,10 @@ export const ProvidersView = ({
           mode={editId.value ? 'edit' : 'create'}
           onSave={onSave}
           onCancel={onCancelForm}
+          onNameChange={onNameChange}
+          onUrlChange={onUrlChange}
+          onApiKeyChange={onApiKeyChange}
+          onProviderTypeChange={onProviderTypeChange}
         />
       )}
 

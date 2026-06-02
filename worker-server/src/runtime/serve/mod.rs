@@ -9,7 +9,7 @@ use crate::runtime::client;
 use crate::runtime::client::events;
 use crate::runtime::client::health;
 use crate::runtime::client::session;
-use crate::runtime::runner::OpenCodeRunningSession;
+use crate::runtime::runner::{OpenCodeRunningSession, SessionConfig};
 
 const HEALTH_CHECK_TIMEOUT_SECS: u64 = 60;
 const HEALTH_CHECK_INTERVAL_MS: u64 = 500;
@@ -96,15 +96,15 @@ impl AgentRuntime for OpenCodeServeRuntime {
 
         let max_duration = env.limits.max_duration_secs;
 
-        let runner = OpenCodeRunningSession::new(
-            oc_client,
-            sess.id,
+        let runner = OpenCodeRunningSession::new(SessionConfig {
+            client: oc_client,
+            session_id: sess.id,
             event_stream,
-            max_duration,
+            max_duration_secs: max_duration,
             is_container,
-            env.container_name.clone(),
-            child_process,
-        );
+            container_name: env.container_name.clone(),
+            server_process: child_process,
+        });
 
         Ok(Box::new(runner))
     }

@@ -4,6 +4,8 @@ mod console;
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 
+use crate::commands::setup::utils::worker_server_path;
+
 #[derive(Parser)]
 #[command(name = "vulcanum", about = "Vulcanum worker CLI")]
 struct Cli {
@@ -69,25 +71,13 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn run_daemon_subcommand() -> anyhow::Result<()> {
-    let exe = std::env::current_exe().context("failed to get current exe")?;
-    let dir = exe
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("failed to get exe directory"))?;
-    let name = if cfg!(windows) {
-        "vulcanum-server.exe"
-    } else {
-        "vulcanum-server"
-    };
-    let path = dir.join(name);
-    if !path.exists() {
-        anyhow::bail!("worker-server binary not found at {}", path.display());
-    }
+    let path = worker_server_path()?;
     let mut child = tokio::process::Command::new(&path)
         .spawn()
-        .with_context(|| format!("failed to spawn {}", path.display()))?;
+        .with_context(|| format!("failed to spawn {path}"))?;
     let status = child
         .wait()
         .await
-        .with_context(|| format!("failed to wait for {}", path.display()))?;
+        .with_context(|| format!("failed to wait for {path}"))?;
     std::process::exit(status.code().unwrap_or(1));
 }

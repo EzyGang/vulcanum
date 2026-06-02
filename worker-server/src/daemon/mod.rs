@@ -1,4 +1,6 @@
 pub(crate) mod job;
+mod queue;
+mod tick;
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -9,16 +11,14 @@ use tokio::signal;
 use tokio::sync::{Mutex, RwLock, Semaphore};
 use tokio::time::sleep;
 
-use vulcanum_shared::api_error::is_fatal_api_error;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::token::ensure_valid_token;
 use vulcanum_shared::validate::is_environment_ready_for_backend;
 use vulcanum_shared::worker_state::{load_state, WorkerState};
 
+use crate::runtime::recovery;
 use crate::state::journal::Journal;
 
-use crate::runtime::recovery;
-use job::handle_job;
+use tick::tick;
 
 const POLL_INTERVAL_SECS: u64 = 15;
 const INITIAL_BACKOFF_MS: u64 = 1_000;
@@ -126,85 +126,6 @@ pub async fn run() -> anyhow::Result<()> {
             tracing::error!("job task failed permanently: {msg}");
             return Err(anyhow::anyhow!("{msg}"));
         }
-    }
-}
-
-async fn tick(state: &DaemonState, refresh_buffer_secs: i64) -> TickOutcome {
-    {
-        let mut worker_state = state.worker_state.write().await;
-        if let Err(e) =
-            ensure_valid_token(&state.client, &mut worker_state, refresh_buffer_secs).await
-        {
-            if is_fatal_api_error(&e) {
-                return TickOutcome::Fatal(format!(
-                    "token refresh failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"
-                ));
-            }
-            tracing::warn!("token refresh failed: {e:#} — if this persists, try `vulcanum worker setup --instance <instance> --code <code>`");
-            return TickOutcome::Transient(e.to_string());
-        }
-    }
-
-    try_drain_queue(state).await;
-
-    let access_token = state.worker_state.read().await.access_token.clone();
-
-    tracing::info!("polling server for jobs");
-
-    match state.client.poll(&access_token).await {
-        Ok(Some(job_id)) => {
-            {
-                let mut queue = state.pending_queue.lock().await;
-                queue.push_back(job_id);
-            }
-            try_drain_queue(state).await;
-            TickOutcome::Success
-        }
-        Ok(None) => {
-            tracing::info!("no jobs available, sleeping {POLL_INTERVAL_SECS}s");
-            sleep(std::time::Duration::from_secs(POLL_INTERVAL_SECS)).await;
-            TickOutcome::Success
-        }
-        Err(e) => {
-            if is_fatal_api_error(&e) {
-                return TickOutcome::Fatal(format!(
-                    "poll failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"
-                ));
-            }
-            TickOutcome::Transient(e.to_string())
-        }
-    }
-}
-
-async fn try_drain_queue(state: &DaemonState) {
-    loop {
-        let semaphore = Arc::clone(&state.semaphore);
-        let Ok(permit) = semaphore.try_acquire_owned() else {
-            break;
-        };
-
-        let job_id = {
-            let mut queue = state.pending_queue.lock().await;
-            queue.pop_front()
-        };
-
-        let Some(job_id) = job_id else {
-            break;
-        };
-
-        let client = Arc::clone(&state.client);
-        let worker_state = Arc::clone(&state.worker_state);
-        let journal = Arc::clone(&state.journal);
-        let shutdown_tx = state.shutdown_tx.clone();
-        let harness_type = state.harness_type.clone();
-
-        tokio::spawn(async move {
-            let _permit = permit;
-            if let Err(msg) = handle_job(client, worker_state, journal, job_id, &harness_type).await
-            {
-                let _ = shutdown_tx.send(Some(msg));
-            }
-        });
     }
 }
 

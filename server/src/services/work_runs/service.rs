@@ -1,3 +1,4 @@
+pub mod submit_result;
 pub mod work_runs;
 
 #[cfg(test)]

@@ -1,4 +1,3 @@
-import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
@@ -9,15 +8,19 @@ const PROVIDER_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 interface ProviderFormFieldsProps {
-  name: Signal<string>;
-  url: Signal<string>;
-  apiKey: Signal<string>;
-  providerType: Signal<string>;
-  error: Signal<string | null>;
-  submitting: Signal<boolean>;
+  name: string;
+  url: string;
+  apiKey: string;
+  providerType: string;
+  error: string | null;
+  submitting: boolean;
   mode: 'create' | 'edit';
   onSave: (e: Event) => void;
   onCancel: () => void;
+  onNameChange: (value: string) => void;
+  onUrlChange: (value: string) => void;
+  onApiKeyChange: (value: string) => void;
+  onProviderTypeChange: (value: string) => void;
 }
 
 export const ProviderFormFields = ({
@@ -29,14 +32,18 @@ export const ProviderFormFields = ({
   submitting,
   mode,
   onSave,
-  onCancel
+  onCancel,
+  onNameChange,
+  onUrlChange,
+  onApiKeyChange,
+  onProviderTypeChange
 }: ProviderFormFieldsProps): JSX.Element => {
   const saveLabel =
     mode === 'create'
-      ? submitting.value
+      ? submitting
         ? 'Creating...'
         : 'Create Provider'
-      : submitting.value
+      : submitting
         ? 'Updating...'
         : 'Update Provider';
 
@@ -49,11 +56,11 @@ export const ProviderFormFields = ({
         <Label for='field-provider-type'>Type</Label>
         <select
           id='field-provider-type'
-          value={providerType.value}
+          value={providerType}
           onChange={(e) => {
-            providerType.value = (e.target as HTMLSelectElement).value;
+            onProviderTypeChange((e.target as HTMLSelectElement).value);
           }}
-          disabled={submitting.value}
+          disabled={submitting}
           class='bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full'
         >
           {PROVIDER_TYPE_OPTIONS.map((opt) => (
@@ -65,37 +72,37 @@ export const ProviderFormFields = ({
       </div>
       <Input
         type='text'
-        value={name.value}
+        value={name}
         onInput={(e) => {
-          name.value = (e.target as HTMLInputElement).value;
+          onNameChange((e.target as HTMLInputElement).value);
         }}
         placeholder='Provider name'
-        disabled={submitting.value}
+        disabled={submitting}
       />
       <Input
         type='text'
-        value={url.value}
+        value={url}
         onInput={(e) => {
-          url.value = (e.target as HTMLInputElement).value;
+          onUrlChange((e.target as HTMLInputElement).value);
         }}
         placeholder='Instance URL (e.g. cloud.kaneo.app)'
-        disabled={submitting.value}
+        disabled={submitting}
       />
       <Input
         type='password'
-        value={apiKey.value}
+        value={apiKey}
         onInput={(e) => {
-          apiKey.value = (e.target as HTMLInputElement).value;
+          onApiKeyChange((e.target as HTMLInputElement).value);
         }}
         placeholder='API key'
-        disabled={submitting.value}
+        disabled={submitting}
       />
-      {error.value && <div class='text-error text-sm'>{error.value}</div>}
+      {error && <div class='text-error text-sm'>{error}</div>}
       <div class='flex items-center gap-2'>
-        <Button variant='primary' onClick={onSave} disabled={submitting.value}>
+        <Button variant='primary' onClick={onSave} disabled={submitting}>
           {saveLabel}
         </Button>
-        <Button variant='secondary' onClick={onCancel} disabled={submitting.value}>
+        <Button variant='secondary' onClick={onCancel} disabled={submitting}>
           Cancel
         </Button>
       </div>

@@ -10,6 +10,7 @@ Vulcanum has three components:
 
 ### Server (Control Panel)
 - **actix-web** HTTP server with PostgreSQL
+- Two binaries: `vulcanum-web` (API server) and `vulcanum-dispatcher` (background dispatcher) — both must be running
 - Background poller watches enabled Kaneo projects for new tasks
 - Dispatcher assigns pending work runs to available workers via Redis flags
 - Full layered architecture (HTTP → Service → Repository)
@@ -25,6 +26,10 @@ Vulcanum has three components:
 - Preact + @preact/signals + Tailwind CSS v4
 - Dashboard, workers, projects, and runs management
 - Served via nginx alongside the API
+
+### Docker Agent Image
+- Lives in `docker/agent/` — builds an image with OpenCode CLI and Kaneo CLI
+- Used by worker daemon inside container isolation (Kata Containers, gVisor, or host)
 
 ## How It Works
 
@@ -55,13 +60,13 @@ All packages are managed via **pnpm workspaces** and **Turborepo**. Rust crates 
 ## Getting Started
 
 ```bash
-# Run main server (needs DATABASE_URL, REDIS_URL, JWT_SECRET in .env)
+# Run main server (needs DATABASE_URL, REDIS_URL, JWT_SECRET, INSTANCE_PASSWORD in .env)
 cargo run -p vulcanum-server --bin vulcanum-web
 ```
 
 ## CI
 
-CI runs on every push via `pnpm run validate` (format, clippy, lint, type-check) and `pnpm run test` (migrations + test suite). Configured in `.github/workflows/ci.yml`.
+CI runs on every push via self-hosted runners executing `pnpm run validate` (format, clippy, lint, type-check) and `pnpm run test` (migrations + test suite). Configured in `.github/workflows/ci.yml`.
 
 ## Design Docs
 

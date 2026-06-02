@@ -2,7 +2,7 @@ import { signal } from '@preact/signals';
 import { instanceLogin } from '../services/auth/auth.service';
 import { fetchApi } from '../utils/api/client';
 
-const STORAGE_KEY = 'vulcanum-auth-token';
+export const STORAGE_KEY = 'vulcanum-auth-token';
 
 const loadToken = (): string | null => localStorage.getItem(STORAGE_KEY);
 

@@ -12,7 +12,7 @@ export const listRunEvents = (
 ): Promise<RunEventsResponse> => {
   const query: Record<string, number> = {};
   if (params?.afterSequence !== undefined) {
-    query.after_sequence = params.afterSequence;
+    query.afterSequence = params.afterSequence;
   }
   if (params?.limit !== undefined) {
     query.limit = params.limit;

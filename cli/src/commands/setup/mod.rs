@@ -3,12 +3,17 @@ use vulcanum_shared::worker_state;
 
 use crate::console;
 
+use prompts::resolve_backend;
+use registration::{connect_worker, verify_connection};
+
 mod docker;
 pub(crate) mod gvisor;
 pub(crate) mod image;
 mod kata;
+mod prompts;
+mod registration;
 pub(crate) mod systemd;
-mod utils;
+pub(crate) mod utils;
 
 #[cfg(test)]
 mod gvisor_tests;
@@ -138,7 +143,7 @@ fn interaction_mode(code: &Option<String>, instance: &Option<String>) -> Interac
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Backend {
+pub(crate) enum Backend {
     Kata,
     Gvisor,
     None,
@@ -152,169 +157,4 @@ impl Backend {
             Self::None => "host",
         }
     }
-}
-
-fn resolve_backend(
-    mode: InteractionMode,
-    isolation: Option<crate::IsolationBackend>,
-) -> anyhow::Result<Backend> {
-    let backend = match isolation {
-        Some(crate::IsolationBackend::Kata) => {
-            if !utils::is_kvm_available() {
-                anyhow::bail!("--isolation=kata requires KVM, but /dev/kvm is not available");
-            }
-            Backend::Kata
-        }
-        Some(crate::IsolationBackend::Gvisor) => Backend::Gvisor,
-        Some(crate::IsolationBackend::None) => Backend::None,
-        None => match mode {
-            InteractionMode::NonInteractive => {
-                anyhow::bail!(
-                    "--isolation is required in non-interactive mode (kata, gvisor, or none)"
-                );
-            }
-            InteractionMode::Interactive => {
-                return prompt_backend();
-            }
-        },
-    };
-
-    Ok(backend)
-}
-
-fn prompt_backend() -> anyhow::Result<Backend> {
-    let kvm_available = utils::is_kvm_available();
-
-    let items = vec![
-        "Kata Containers (VM-based isolation, requires KVM)",
-        "gVisor (container sandboxing)",
-        "None (run directly on host)",
-    ];
-
-    let default = if kvm_available { 0 } else { 1 };
-
-    let selection = dialoguer::Select::new()
-        .with_prompt("Choose an isolation backend")
-        .items(&items)
-        .default(default)
-        .interact()?;
-
-    match selection {
-        0 => {
-            if !kvm_available {
-                anyhow::bail!("Kata Containers requires KVM, but /dev/kvm is not available");
-            }
-            Ok(Backend::Kata)
-        }
-        1 => Ok(Backend::Gvisor),
-        2 => Ok(Backend::None),
-        _ => anyhow::bail!("invalid backend selection"),
-    }
-}
-
-async fn verify_connection() -> anyhow::Result<()> {
-    use vulcanum_shared::client::ApiClient;
-    use vulcanum_shared::worker_state;
-
-    let state =
-        worker_state::load_state()?.ok_or_else(|| anyhow::anyhow!("no worker state found"))?;
-    let client = ApiClient::new(&state.instance_url);
-    client.status().await?;
-    Ok(())
-}
-
-async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
-    use vulcanum_shared::client::{probe_url_with_scheme_fallback, ApiClient};
-    use vulcanum_shared::worker_state::{save_state, WorkerState};
-
-    let raw_instance = match instance {
-        Some(url) => url,
-        None => prompt_instance_url()?,
-    };
-
-    console::info("Probing instance URL...");
-    let (resolved_url, _) = probe_url_with_scheme_fallback(&raw_instance).await?;
-    if resolved_url != raw_instance.trim_end_matches('/') {
-        console::info(&format!("Using {} (scheme fallback)", resolved_url));
-    }
-
-    let code = match code {
-        Some(c) => c,
-        None => prompt_code()?,
-    };
-
-    let worker_name = hostname::get()
-        .ok()
-        .and_then(|h| h.to_str().map(|s| s.to_owned()))
-        .unwrap_or_else(|| "unnamed-worker".to_owned());
-
-    let client = ApiClient::new(&resolved_url);
-
-    let resp = client.connect(&code, &worker_name).await?;
-
-    let state = WorkerState {
-        worker_id: resp.worker_id,
-        instance_url: resolved_url,
-        access_token: resp.access_token,
-        refresh_token: resp.refresh_token,
-        expires_at: resp.expires_at,
-        max_concurrent_jobs: resp.max_concurrent_jobs,
-    };
-
-    save_state(&state)?;
-
-    tracing::info!(
-        worker_id = resp.worker_id.to_string().as_str(),
-        worker_name = resp.name.as_str(),
-        "connected as worker '{}' (id: {}, token expires: {})",
-        resp.name,
-        resp.worker_id,
-        resp.expires_at
-    );
-
-    if systemd::is_unit_installed() {
-        tracing::info!("restarting systemd service after connect");
-        systemd::enable_and_restart_service()?;
-    }
-
-    Ok(())
-}
-
-fn nonempty(field: &str, input: &str) -> Result<(), String> {
-    if input.trim().is_empty() {
-        return Err(format!("{field} is required"));
-    }
-    Ok(())
-}
-
-fn normalize_instance_url(input: &str) -> String {
-    let trimmed = input.trim();
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        trimmed.to_owned()
-    } else {
-        format!("https://{trimmed}")
-    }
-}
-
-fn prompt_instance_url() -> anyhow::Result<String> {
-    let url = dialoguer::Input::<String>::new()
-        .with_prompt("Instance URL")
-        .validate_with(|input: &String| {
-            let normalized = normalize_instance_url(input);
-            nonempty("Instance URL", input)?;
-            match url::Url::parse(&normalized) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("Please enter a valid URL".to_owned()),
-            }
-        })
-        .interact_text()?;
-    Ok(normalize_instance_url(&url))
-}
-
-fn prompt_code() -> anyhow::Result<String> {
-    let code = dialoguer::Input::<String>::new()
-        .with_prompt("Connection code")
-        .validate_with(|input: &String| nonempty("Connection code", input))
-        .interact_text()?;
-    Ok(code.trim().to_owned())
 }

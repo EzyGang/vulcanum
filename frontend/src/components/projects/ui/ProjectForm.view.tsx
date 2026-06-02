@@ -53,6 +53,9 @@ interface ProjectFormViewProps {
     onRepoUrlChange: (value: string) => void;
     onAgentsMdChange: (value: string) => void;
     onOpencodeConfigChange: (value: string) => void;
+    onPickupColumnChange: (value: string) => void;
+    onProgressColumnChange: (value: string) => void;
+    onTargetColumnChange: (value: string) => void;
   };
 }
 
@@ -90,7 +93,19 @@ export const ProjectFormView = ({
               onProviderChange: a.onProviderChange,
               onShowProviderForm: a.onShowProviderForm,
               onCancelProviderForm: a.onCancelProviderForm,
-              onCreateProvider: a.onCreateProvider
+              onCreateProvider: a.onCreateProvider,
+              onNewProviderNameChange: (v: string) => {
+                d.newProviderName.value = v;
+              },
+              onNewProviderUrlChange: (v: string) => {
+                d.newProviderUrl.value = v;
+              },
+              onNewProviderKeyChange: (v: string) => {
+                d.newProviderKey.value = v;
+              },
+              onNewProviderTypeChange: (v: string) => {
+                d.newProviderType.value = v;
+              }
             }}
           />
 
@@ -113,13 +128,16 @@ export const ProjectFormView = ({
             <>
               <ProjectFormColumns
                 enabled={d.enabled}
-                pickupColumn={d.pickupColumn}
-                progressColumn={d.progressColumn}
-                targetColumn={d.targetColumn}
-                columns={d.columns}
-                columnsLoading={d.columnsLoading}
-                submitting={submitting}
+                pickupColumn={d.pickupColumn.value}
+                progressColumn={d.progressColumn.value}
+                targetColumn={d.targetColumn.value}
+                columns={d.columns.value}
+                columnsLoading={d.columnsLoading.value}
+                submitting={submitting.value}
                 onEnabledChange={a.onEnabledChange}
+                onPickupColumnChange={a.onPickupColumnChange}
+                onProgressColumnChange={a.onProgressColumnChange}
+                onTargetColumnChange={a.onTargetColumnChange}
               />
 
               <ProjectFormTextFields

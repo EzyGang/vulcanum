@@ -46,11 +46,6 @@ impl ProjectConfigsService {
         self.repo.find_by_id(&self.db, id).await
     }
 
-    #[allow(dead_code)]
-    pub async fn list_enabled(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
-        self.repo.list_enabled(&self.db).await
-    }
-
     pub async fn create(
         &self,
         mut params: CreateProjectConfigRequest,

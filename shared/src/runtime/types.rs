@@ -56,11 +56,6 @@ pub struct AgentEvent {
     pub timestamp: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AgentKind {
-    OpenCodeServe,
-}
-
 #[derive(Debug, Clone)]
 pub struct IsolatedEnvironment {
     pub workdir: PathBuf,

@@ -26,7 +26,6 @@ impl JournalStatus {
         }
     }
 
-    #[allow(dead_code)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "running" => Some(Self::Running),
@@ -94,7 +93,7 @@ impl Journal {
         harness_type: &str,
         started_at: DateTime<Utc>,
     ) -> anyhow::Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
             "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -120,7 +119,7 @@ impl Journal {
         status: JournalStatus,
     ) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
             "UPDATE job_journal SET status = ?1, finished_at = ?2, exit_code = ?3, tokens_used = ?4, pr_url = ?5, duration_ms = ?6
              WHERE job_id = ?7",
@@ -140,7 +139,7 @@ impl Journal {
     #[allow(dead_code)]
     pub fn mark_lost(&self, job_id: Uuid, error_message: &str) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
             "UPDATE job_journal SET status = ?1, finished_at = ?2, error_message = ?3
              WHERE job_id = ?4",
@@ -155,7 +154,7 @@ impl Journal {
     }
 
     pub fn mark_submitted(&self, job_id: Uuid) -> anyhow::Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
             "UPDATE job_journal SET status = ?1 WHERE job_id = ?2",
             rusqlite::params![JournalStatus::Submitted.as_str(), job_id.to_string()],
@@ -163,9 +162,8 @@ impl Journal {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn list_running(&self) -> anyhow::Result<Vec<JournalEntry>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare(
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
                     finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message

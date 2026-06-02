@@ -1,18 +1,20 @@
-import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { ColumnInfo } from '../../../types/projects';
 import { Label } from '../../shared/ui/Label.view';
 import { ProjectFormColumnSelect } from './ProjectFormColumnSelect.view';
 
 interface ProjectFormColumnsProps {
-  enabled: Signal<boolean>;
-  pickupColumn: Signal<string>;
-  progressColumn: Signal<string>;
-  targetColumn: Signal<string>;
-  columns: Signal<ColumnInfo[]>;
-  columnsLoading: Signal<boolean>;
-  submitting: Signal<boolean>;
+  enabled: { value: boolean };
+  pickupColumn: string;
+  progressColumn: string;
+  targetColumn: string;
+  columns: ColumnInfo[];
+  columnsLoading: boolean;
+  submitting: boolean;
   onEnabledChange: (checked: boolean) => void;
+  onPickupColumnChange: (value: string) => void;
+  onProgressColumnChange: (value: string) => void;
+  onTargetColumnChange: (value: string) => void;
 }
 
 export const ProjectFormColumns = ({
@@ -23,7 +25,10 @@ export const ProjectFormColumns = ({
   columns,
   columnsLoading,
   submitting,
-  onEnabledChange
+  onEnabledChange,
+  onPickupColumnChange,
+  onProgressColumnChange,
+  onTargetColumnChange
 }: ProjectFormColumnsProps): JSX.Element => (
   <>
     <label for='field-enabled' class='flex items-center gap-2 cursor-pointer'>
@@ -32,7 +37,7 @@ export const ProjectFormColumns = ({
         type='checkbox'
         checked={enabled.value}
         onChange={(e) => onEnabledChange((e.target as HTMLInputElement).checked)}
-        disabled={submitting.value}
+        disabled={submitting}
       />
       <Label for='field-enabled'>Enabled</Label>
     </label>
@@ -43,8 +48,9 @@ export const ProjectFormColumns = ({
       value={pickupColumn}
       columns={columns}
       columnsLoading={columnsLoading}
-      disabled={submitting.value}
+      disabled={submitting}
       placeholderText='Select pickup column'
+      onChange={onPickupColumnChange}
     />
     <ProjectFormColumnSelect
       id='field-progress-column'
@@ -52,8 +58,9 @@ export const ProjectFormColumns = ({
       value={progressColumn}
       columns={columns}
       columnsLoading={columnsLoading}
-      disabled={submitting.value}
+      disabled={submitting}
       placeholderText='Select progress column'
+      onChange={onProgressColumnChange}
     />
     <ProjectFormColumnSelect
       id='field-target-column'
@@ -61,8 +68,9 @@ export const ProjectFormColumns = ({
       value={targetColumn}
       columns={columns}
       columnsLoading={columnsLoading}
-      disabled={submitting.value}
+      disabled={submitting}
       placeholderText='Select target column'
+      onChange={onTargetColumnChange}
     />
   </>
 );
