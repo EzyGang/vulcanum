@@ -26,13 +26,10 @@ pub trait RunningSession: Send {
 }
 
 pub trait AgentRuntime: Send + Sync {
-    #[allow(clippy::too_many_arguments)]
     fn execute(
         &self,
         prompt: &str,
         env: &IsolatedEnvironment,
         repo_url: &str,
-        agents_md: &str,
-        opencode_config: &str,
     ) -> impl std::future::Future<Output = Result<Box<dyn RunningSession>, HarnessError>> + Send;
 }
