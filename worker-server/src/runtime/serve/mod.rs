@@ -135,11 +135,15 @@ impl AgentRuntime for OpenCodeServeRuntime {
             env.container_name.as_deref(),
         )
         .await?;
+        tracing::debug!(host_port, "opencode server healthy");
 
         let sess = session::create_session(&oc_client, "vulcanum-run").await?;
+        tracing::debug!(session_id = %sess.id, "session created");
         session::send_message_async(&oc_client, &sess.id, prompt).await?;
+        tracing::debug!(session_id = %sess.id, prompt_len = prompt.len(), "prompt submitted");
 
         let event_stream = events::connect_events(&oc_client).await?;
+        tracing::debug!(session_id = %sess.id, "event stream connected");
 
         let max_duration = env.limits.max_duration_secs;
 
@@ -152,6 +156,12 @@ impl AgentRuntime for OpenCodeServeRuntime {
             container_name: env.container_name.clone(),
             server_process: child_process,
         });
+
+        tracing::info!(
+            session_id = %runner.session_id(),
+            max_duration_secs = max_duration,
+            "session runner ready, starting event loop"
+        );
 
         Ok(Box::new(runner))
     }
