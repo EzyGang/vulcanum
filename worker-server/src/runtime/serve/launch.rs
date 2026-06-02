@@ -93,6 +93,8 @@ pub(super) async fn launch_container_server(
         image.to_owned(),
         "opencode".to_owned(),
         "serve".to_owned(),
+        "--hostname".to_owned(),
+        "0.0.0.0".to_owned(),
         "--port".to_owned(),
         port_str,
     ]);
