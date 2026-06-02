@@ -3,10 +3,6 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: "Branch or ref to release from"
-        default: "main"
-        type: string
       release_type:
         description: "Release type"
         type: choice
@@ -26,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: main
 
       - name: Parse version
         id: version
@@ -65,7 +61,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          target_commitish: ${{ inputs.branch }}
+          target_commitish: main
           name: ${{ steps.tag.outputs.name }}
           prerelease: ${{ steps.tag.outputs.prerelease == 'true' }}
           generate_release_notes: true
