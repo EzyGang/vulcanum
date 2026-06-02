@@ -145,7 +145,7 @@ export const RunsView = ({
               </Dialog.Description>
               <div class='flex justify-end gap-3'>
                 <Dialog.Close>
-                  <Button variant='secondary'>Cancel</Button>
+                  <Button variant='ghost'>Cancel</Button>
                 </Dialog.Close>
                 <Button variant='danger' onClick={handleConfirmBulkDelete}>
                   Delete
