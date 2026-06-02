@@ -1,6 +1,5 @@
 mod launch;
 
-use rand::Rng;
 use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
@@ -8,10 +7,11 @@ use vulcanum_shared::runtime::types::IsolatedEnvironment;
 use crate::runtime::client;
 use crate::runtime::client::events;
 use crate::runtime::client::health;
+use crate::runtime::client::health::HealthResponse;
 use crate::runtime::client::session;
 use crate::runtime::runner::{OpenCodeRunningSession, SessionConfig};
 
-const HEALTH_CHECK_TIMEOUT_SECS: u64 = 60;
+const HEALTH_CHECK_TIMEOUT_SECS: u64 = 180;
 const HEALTH_CHECK_INTERVAL_MS: u64 = 500;
 
 pub struct OpenCodeServeRuntime;
@@ -19,13 +19,6 @@ pub struct OpenCodeServeRuntime;
 impl OpenCodeServeRuntime {
     pub fn new() -> Self {
         Self
-    }
-
-    fn generate_password() -> String {
-        let mut rng = rand::thread_rng();
-        (0..32)
-            .map(|_| rng.sample(rand::distributions::Alphanumeric) as char)
-            .collect()
     }
 
     fn discover_host_port() -> Result<u16, HarnessError> {
@@ -42,19 +35,26 @@ impl OpenCodeServeRuntime {
     async fn wait_for_health(
         client: &client::OpenCodeClient,
         child: &mut Option<tokio::process::Child>,
+        container_name: Option<&str>,
     ) -> Result<(), HarnessError> {
         let deadline =
             std::time::Instant::now() + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
+        let mut last_health: Option<HealthResponse> = None;
+        let mut last_error: Option<String> = None;
 
         loop {
             match health::health_check(client).await {
                 Ok(resp) if resp.healthy => return Ok(()),
-                Ok(_) => (),
+                Ok(resp) => {
+                    last_health = Some(resp);
+                }
                 Err(HarnessError::Http(ref msg)) => {
                     tracing::debug!(error = %msg, "health check connection error, retrying");
+                    last_error = Some(msg.clone());
                 }
                 Err(HarnessError::ServerUnhealthy(ref msg)) => {
                     tracing::debug!(error = %msg, "health check server not ready, retrying");
+                    last_error = Some(msg.clone());
                 }
                 Err(e) => return Err(e),
             }
@@ -76,9 +76,29 @@ impl OpenCodeServeRuntime {
             }
 
             if std::time::Instant::now() >= deadline {
-                return Err(HarnessError::ServerUnhealthy(format!(
-                    "server not healthy after {HEALTH_CHECK_TIMEOUT_SECS}s"
-                )));
+                let waited = HEALTH_CHECK_TIMEOUT_SECS;
+                let mut msg = format!("server not healthy after {waited}s");
+                if let Some(ref resp) = last_health {
+                    msg.push_str(&format!(
+                        "; last health: healthy={}, version={}",
+                        resp.healthy, resp.version
+                    ));
+                }
+                if let Some(ref err) = last_error {
+                    msg.push_str(&format!("; last error: {err}"));
+                }
+                if let Some(name) = container_name {
+                    if let Ok(output) = tokio::process::Command::new("docker")
+                        .args(["inspect", "--format={{.State.Status}}", name])
+                        .output()
+                        .await
+                    {
+                        let status = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+                        msg.push_str(&format!("; container status: {status}"));
+                    }
+                }
+                tracing::warn!(error = %msg, "health check timed out");
+                return Err(HarnessError::ServerUnhealthy(msg));
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(HEALTH_CHECK_INTERVAL_MS)).await;
@@ -95,23 +115,26 @@ impl AgentRuntime for OpenCodeServeRuntime {
         _agents_md: &str,
         _opencode_config: &str,
     ) -> Result<Box<dyn RunningSession>, HarnessError> {
-        let password = Self::generate_password();
         let is_container = env.container_name.is_some();
 
         let (host_port, mut child_process) = if is_container {
-            let (port, _cid) = launch::launch_container_server(env, &password).await?;
+            let (port, _cid) = launch::launch_container_server(env).await?;
             (port, None)
         } else {
             let port = Self::discover_host_port()?;
-            let child =
-                launch::launch_host_server(&env.workdir, &env.env_vars, &password, port).await?;
+            let child = launch::launch_host_server(&env.workdir, &env.env_vars, port).await?;
             (port, Some(child))
         };
 
         let base_url = format!("http://127.0.0.1:{host_port}");
-        let oc_client = client::OpenCodeClient::new(&base_url, "opencode", &password);
+        let oc_client = client::OpenCodeClient::new(&base_url);
 
-        Self::wait_for_health(&oc_client, &mut child_process).await?;
+        Self::wait_for_health(
+            &oc_client,
+            &mut child_process,
+            env.container_name.as_deref(),
+        )
+        .await?;
 
         let sess = session::create_session(&oc_client, "vulcanum-run").await?;
         session::send_message_async(&oc_client, &sess.id, prompt).await?;

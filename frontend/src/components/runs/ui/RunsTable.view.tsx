@@ -66,6 +66,7 @@ export const RunsTable = ({
     <Table.Body>
       {runs.map((run) => {
         const expanded = expandedIds.value.has(run.id);
+        const cancellable = isCancellable(run.status);
         return (
           <>
             <Table.Row key={run.id}>
@@ -118,12 +119,12 @@ export const RunsTable = ({
               </Table.Cell>
               <Table.Cell>
                 <div class='flex items-center gap-2'>
-                  {isCancellable(run.status) && (
-                    <Button variant='secondary' onClick={() => onCancelRun(run.id)}>
+                  {cancellable && (
+                    <Button variant='ghost' onClick={() => onCancelRun(run.id)}>
                       Cancel
                     </Button>
                   )}
-                  {isCancellable(run.status) && (
+                  {cancellable && (
                     <Button variant='ghost-danger' onClick={() => onFailRun(run.id)}>
                       Fail
                     </Button>

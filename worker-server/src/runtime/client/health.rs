@@ -16,7 +16,6 @@ pub async fn health_check(client: &OpenCodeClient) -> Result<HealthResponse, Har
     let resp = client
         .http_client()
         .get(&url)
-        .basic_auth(client.username(), Some(client.password()))
         .send()
         .await
         .map_err(|e| HarnessError::Http(format!("health check request failed: {e}")))?;

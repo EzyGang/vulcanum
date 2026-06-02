@@ -10,12 +10,10 @@ use vulcanum_shared::runtime::errors::HarnessError;
 pub struct OpenCodeClient {
     http: Client,
     base_url: String,
-    username: String,
-    password: String,
 }
 
 impl OpenCodeClient {
-    pub fn new(base_url: &str, username: &str, password: &str) -> Self {
+    pub fn new(base_url: &str) -> Self {
         let http = Client::builder()
             .timeout(std::time::Duration::from_secs(300))
             .build()
@@ -23,8 +21,6 @@ impl OpenCodeClient {
         Self {
             http,
             base_url: base_url.to_owned(),
-            username: username.to_owned(),
-            password: password.to_owned(),
         }
     }
 
@@ -35,14 +31,6 @@ impl OpenCodeClient {
 
     pub(crate) fn http_client(&self) -> &Client {
         &self.http
-    }
-
-    pub(crate) fn username(&self) -> &str {
-        &self.username
-    }
-
-    pub(crate) fn password(&self) -> &str {
-        &self.password
     }
 
     pub(super) async fn check_response<F>(
