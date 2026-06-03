@@ -107,6 +107,9 @@ pub(crate) async fn handle_job(
     secrets.insert("KANEO_PROJECT_ID".to_owned(), job.kaneo_project_id);
     secrets.insert("KANEO_WORKSPACE_ID".to_owned(), job.kaneo_workspace_id);
     secrets.insert("KANEO_TASK_ID".to_owned(), job.external_task_ref.clone());
+    if let Some(ref token) = job.github_token {
+        secrets.insert("GITHUB_TOKEN".to_owned(), token.clone());
+    }
     let env_vars = HashMap::new();
 
     let isolated_env = match provider

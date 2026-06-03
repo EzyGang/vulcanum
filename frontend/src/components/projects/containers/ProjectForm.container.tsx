@@ -24,6 +24,7 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         repoUrl: form.repoUrl,
         agentsMd: form.agentsMd,
         opencodeConfig: form.opencodeConfig,
+        githubToken: form.githubToken,
         columns: form.columns,
         columnsLoading: form.columnsLoading,
         lookupProjectName: form.lookupProjectName,
@@ -56,6 +57,7 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         onRepoUrlChange: form.onRepoUrlChange,
         onAgentsMdChange: form.onAgentsMdChange,
         onOpencodeConfigChange: form.onOpencodeConfigChange,
+        onGithubTokenChange: form.onGithubTokenChange,
         onPickupColumnChange: form.onPickupColumnChange,
         onProgressColumnChange: form.onProgressColumnChange,
         onTargetColumnChange: form.onTargetColumnChange

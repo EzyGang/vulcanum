@@ -135,6 +135,7 @@ impl ProjectConfigsService {
                     enabled: params.enabled,
                     integration_type: params.integration_type,
                     provider_id: params.provider_id,
+                    github_token: params.github_token.as_deref(),
                 },
             )
             .await

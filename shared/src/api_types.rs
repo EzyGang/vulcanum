@@ -59,6 +59,7 @@ pub struct JobResponse {
     pub kaneo_project_id: String,
     pub kaneo_workspace_id: String,
     pub max_turns: i32,
+    pub github_token: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

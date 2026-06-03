@@ -8,11 +8,13 @@ interface ProjectFormTextFieldsProps {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
+  githubToken: Signal<string>;
   submitting: Signal<boolean>;
   onPromptTemplateChange: (value: string) => void;
   onRepoUrlChange: (value: string) => void;
   onAgentsMdChange: (value: string) => void;
   onOpencodeConfigChange: (value: string) => void;
+  onGithubTokenChange: (value: string) => void;
 }
 
 const inputStyles =
@@ -24,11 +26,13 @@ export const ProjectFormTextFields = ({
   repoUrl,
   agentsMd,
   opencodeConfig,
+  githubToken,
   submitting,
   onPromptTemplateChange,
   onRepoUrlChange,
   onAgentsMdChange,
-  onOpencodeConfigChange
+  onOpencodeConfigChange,
+  onGithubTokenChange
 }: ProjectFormTextFieldsProps): JSX.Element => (
   <>
     <div class='flex flex-col gap-2'>
@@ -91,6 +95,21 @@ export const ProjectFormTextFields = ({
         disabled={submitting.value}
         rows={6}
         class={textareaStyles}
+      />
+    </div>
+
+    <div class='flex flex-col gap-2'>
+      <Label for='field-github-token'>GitHub Token</Label>
+      <span class='text-text-muted text-xs'>
+        Personal access token for PR creation. Leave empty to skip PRs.
+      </span>
+      <Input
+        id='field-github-token'
+        type='password'
+        value={githubToken.value}
+        onInput={(e) => onGithubTokenChange((e.target as HTMLInputElement).value)}
+        placeholder='ghp_...'
+        disabled={submitting.value}
       />
     </div>
   </>

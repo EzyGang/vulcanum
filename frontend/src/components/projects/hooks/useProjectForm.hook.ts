@@ -27,6 +27,7 @@ export const useProjectForm = (projectId: string | null) => {
   const repoUrl = useSignal('');
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
+  const githubToken = useSignal('');
 
   const lookup = useProjectFormLookup(providerId, kaneoProjectId);
   const providerForm = useProjectFormProvider((newId: string) => {
@@ -44,6 +45,7 @@ export const useProjectForm = (projectId: string | null) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
+    githubToken,
     providerId,
     kaneoProjectId
   });
@@ -61,6 +63,7 @@ export const useProjectForm = (projectId: string | null) => {
       repoUrl.value = p.repoUrl;
       agentsMd.value = p.agentsMd;
       opencodeConfig.value = p.opencodeConfig;
+      githubToken.value = p.githubToken ?? '';
     }
   }, [projectId, existingProject]);
 
@@ -100,6 +103,7 @@ export const useProjectForm = (projectId: string | null) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
+    githubToken,
     submitting,
     formError,
     columns: lookup.columns,
@@ -142,6 +146,9 @@ export const useProjectForm = (projectId: string | null) => {
     },
     onOpencodeConfigChange: (value: string) => {
       opencodeConfig.value = value;
+    },
+    onGithubTokenChange: (value: string) => {
+      githubToken.value = value;
     },
     onPickupColumnChange: (value: string) => {
       pickupColumn.value = value;

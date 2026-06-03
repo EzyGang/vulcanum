@@ -16,6 +16,7 @@ interface UseProjectFormSubmitOptions {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
+  githubToken: Signal<string>;
   providerId: Signal<string>;
   kaneoProjectId: Signal<string>;
 }
@@ -31,6 +32,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
+    githubToken,
     providerId,
     kaneoProjectId
   } = options;
@@ -85,6 +87,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               repoUrl: repoUrl.value || undefined,
               agentsMd: agentsMd.value || undefined,
               opencodeConfig: opencodeConfig.value || undefined,
+              githubToken: githubToken.value || undefined,
               providerId: providerId.value || undefined
             }
           });

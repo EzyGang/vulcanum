@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             blocked_column = COALESCE($5, blocked_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = COALESCE($7, prompt_template),\n             repo_url = COALESCE($8, repo_url),\n             agents_md = COALESCE($9, agents_md),\n             enabled = COALESCE($10, enabled),\n             kaneo_workspace_id = COALESCE($11, kaneo_workspace_id),\n             integration_type = COALESCE($12, integration_type),\n             provider_id = COALESCE($13, provider_id),\n             opencode_config = COALESCE($14, opencode_config)\n             WHERE id = $1\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
+  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             blocked_column = COALESCE($5, blocked_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = COALESCE($7, prompt_template),\n             repo_url = COALESCE($8, repo_url),\n             agents_md = COALESCE($9, agents_md),\n             enabled = COALESCE($10, enabled),\n             kaneo_workspace_id = COALESCE($11, kaneo_workspace_id),\n             integration_type = COALESCE($12, integration_type),\n             provider_id = COALESCE($13, provider_id),\n             opencode_config = COALESCE($14, opencode_config),\n             github_token = COALESCE($15, github_token)\n             WHERE id = $1\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id, github_token",
   "describe": {
     "columns": [
       {
@@ -91,6 +91,11 @@
         "ordinal": 15,
         "name": "provider_id",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 16,
+        "name": "github_token",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -117,6 +122,7 @@
           }
         },
         "Uuid",
+        "Text",
         "Text"
       ]
     },
@@ -136,8 +142,9 @@
       false,
       false,
       true,
+      true,
       true
     ]
   },
-  "hash": "47e0d24375aa0bb64298b03ac30e6aa7377b26be19f8598089fbcd290316a12d"
+  "hash": "99ecb8fc683daa1cca454460a874e674292c96880129d7992134673719d9e6bc"
 }

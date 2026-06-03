@@ -23,6 +23,7 @@ pub struct ProjectConfig {
     pub opencode_config: String,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
+    pub github_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,6 +53,8 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
+    #[serde(default)]
+    pub github_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,6 +84,8 @@ pub struct UpdateProjectConfigRequest {
     pub integration_type: Option<IntegrationType>,
     #[serde(default)]
     pub provider_id: Option<Uuid>,
+    #[serde(default)]
+    pub github_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -114,6 +119,7 @@ impl ProjectConfig {
             opencode_config: self.opencode_config.clone(),
             max_turns: self.max_turns,
             provider_id: self.provider_id,
+            github_token: self.github_token.clone(),
         }
     }
 }
@@ -125,6 +131,7 @@ pub struct JobConfigFields {
     pub opencode_config: String,
     pub max_turns: i32,
     pub provider_id: Option<Uuid>,
+    pub github_token: Option<String>,
 }
 
 fn default_enabled() -> bool {
