@@ -96,5 +96,5 @@ cargo run --bin vulcanum-server
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |
-| `VULCANUM_HARNESS` | `host` | Which isolation to use: `host`, `kata`, or `gvisor` |
+| `VULCANUM_HARNESS` | `host` | Which isolation to use: `host`, `docker`, `kata`, or `gvisor` |
 | `VULCANUM_IMAGE` | `ghcr.io/ezygang/vulcanum/agent:latest` | Docker image for container isolation providers |

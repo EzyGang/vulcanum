@@ -28,6 +28,9 @@ pub fn validate_environment_for_backend(backend: &str) -> Vec<ValidationIssue> {
         "gvisor" => {
             check_binary("runsc", &mut issues, Severity::Warning);
         }
+        "docker" => {
+            check_binary("opencode", &mut issues, Severity::Warning);
+        }
         _ => {
             check_binary("opencode", &mut issues, Severity::Warning);
         }

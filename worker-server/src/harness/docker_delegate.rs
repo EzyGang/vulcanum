@@ -8,14 +8,17 @@ macro_rules! docker_isolation_delegate {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    inner: $crate::harness::container::DockerIsolation::new($runtime),
+                    inner: $crate::harness::container::DockerIsolation::new(Some($runtime)),
                 }
             }
 
             #[allow(dead_code)]
             pub fn with_image(image: String) -> Self {
                 Self {
-                    inner: $crate::harness::container::DockerIsolation::with_image(image, $runtime),
+                    inner: $crate::harness::container::DockerIsolation::with_image(
+                        image,
+                        Some($runtime),
+                    ),
                 }
             }
         }
