@@ -37,8 +37,8 @@ impl OpenCodeServeRuntime {
         child: &mut Option<tokio::process::Child>,
         container_name: Option<&str>,
     ) -> Result<(), HarnessError> {
-        let deadline = std::time::Instant::now()
-            + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
+        let deadline =
+            std::time::Instant::now() + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
 
         loop {
             if let Some(ref mut c) = child {
@@ -129,13 +129,13 @@ impl AgentRuntime for OpenCodeServeRuntime {
         .await?;
         tracing::debug!(host_port, "opencode server healthy");
 
+        let event_stream = events::connect_events(&oc_client).await?;
+        tracing::debug!("event stream connected");
+
         let sess = session::create_session(&oc_client, "vulcanum-run").await?;
         tracing::debug!(session_id = %sess.id, "session created");
         session::send_message_async(&oc_client, &sess.id, prompt).await?;
         tracing::debug!(session_id = %sess.id, prompt_len = prompt.len(), "prompt submitted");
-
-        let event_stream = events::connect_events(&oc_client).await?;
-        tracing::debug!(session_id = %sess.id, "event stream connected");
 
         let max_duration = env.limits.max_duration_secs;
 

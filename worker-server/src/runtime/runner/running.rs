@@ -44,6 +44,11 @@ impl RunningSession for OpenCodeRunningSession {
 
             match result {
                 Ok(Some(sse)) => {
+                    tracing::debug!(
+                        session_id = %self.session_id,
+                        event_type = %sse.event_type,
+                        "sse event received"
+                    );
                     let mapped = mapping::map_event(&sse);
                     let last = mapped.last().cloned();
                     for event in &mapped {
@@ -56,6 +61,10 @@ impl RunningSession for OpenCodeRunningSession {
                     last
                 }
                 Ok(None) => {
+                    tracing::info!(
+                        session_id = %self.session_id,
+                        "event stream ended, session failed"
+                    );
                     self.status = SessionStatus::Failed;
                     Some(AgentEvent {
                         event_type: "session.failed".to_owned(),
@@ -64,6 +73,11 @@ impl RunningSession for OpenCodeRunningSession {
                     })
                 }
                 Err(_) => {
+                    tracing::warn!(
+                        session_id = %self.session_id,
+                        stall_timeout_secs = STALL_TIMEOUT_SECS,
+                        "session stalled, no events received"
+                    );
                     self.status = SessionStatus::Failed;
                     Some(AgentEvent {
                         event_type: "stall.detected".to_owned(),
