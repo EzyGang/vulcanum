@@ -69,7 +69,6 @@ pub struct SessionExport {
     pub output_tokens: u64,
     pub cache_read_tokens: u64,
     pub cache_write_tokens: u64,
-    pub pr_url: Option<String>,
     pub duration_ms: u64,
     pub model_used: Option<String>,
     pub raw_output: Option<String>,

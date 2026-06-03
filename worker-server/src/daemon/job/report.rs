@@ -86,17 +86,21 @@ pub(crate) async fn submit_turn_result(
         _ => JournalStatus::Failed,
     };
 
+    let pr_url = finish_artifact.and_then(|a| a.pr_url.as_deref());
+
     let _ = journal.update_result(
         job_id,
         session_export.exit_code,
         session_export.tokens_used as i64,
-        session_export.pr_url.as_deref(),
+        pr_url,
         session_export.duration_ms as i64,
         journal_status,
     );
 
     let result = SubmitResultRequest {
-        pr_url: session_export.pr_url.clone().unwrap_or_default(),
+        pr_url: finish_artifact
+            .and_then(|a| a.pr_url.clone())
+            .unwrap_or_default(),
         exit_code: session_export.exit_code,
         tokens_used: session_export.tokens_used as i64,
         duration_ms: session_export.duration_ms as i64,

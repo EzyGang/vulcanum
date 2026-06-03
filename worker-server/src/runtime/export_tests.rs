@@ -1,37 +1,22 @@
 use crate::runtime::export;
 
 #[test]
-fn parse_export_extracts_tokens() {
+fn parse_export_extracts_tokens_and_model() {
     let raw = r#"{
-        "messages": [
-            {
-                "role": "user",
-                "tokens": null,
-                "model": null,
-                "parts": []
+        "info": {
+            "tokens": {
+                "input": 500,
+                "output": 200,
+                "cache": {
+                    "read": 50,
+                    "write": 25
+                }
             },
-            {
-                "role": "assistant",
-                "tokens": {
-                    "input": 500,
-                    "output": 200,
-                    "cache": {
-                        "read": 50,
-                        "write": 25
-                    }
-                },
-                "model": {
-                    "providerID": "anthropic",
-                    "modelID": "claude-3"
-                },
-                "parts": [
-                    {
-                        "type": "text",
-                        "text": "Done! Created PR at https://github.com/org/repo/pull/42"
-                    }
-                ]
+            "model": {
+                "id": "claude-3",
+                "providerID": "anthropic"
             }
-        ]
+        }
     }"#;
 
     let result = export::parse_export(raw).unwrap();
@@ -41,31 +26,17 @@ fn parse_export_extracts_tokens() {
     assert_eq!(result.cache_write_tokens, 25);
     assert_eq!(result.tokens_used, 775);
     assert_eq!(result.model_used.as_deref(), Some("anthropic/claude-3"));
-    assert_eq!(
-        result.pr_url.as_deref(),
-        Some("https://github.com/org/repo/pull/42")
-    );
 }
 
 #[test]
 fn parse_export_handles_missing_cache() {
     let raw = r#"{
-        "messages": [
-            {
-                "role": "assistant",
-                "tokens": {
-                    "input": 100,
-                    "output": 50
-                },
-                "model": null,
-                "parts": [
-                    {
-                        "type": "text",
-                        "text": "result"
-                    }
-                ]
+        "info": {
+            "tokens": {
+                "input": 100,
+                "output": 50
             }
-        ]
+        }
     }"#;
 
     let result = export::parse_export(raw).unwrap();
@@ -76,50 +47,33 @@ fn parse_export_handles_missing_cache() {
 }
 
 #[test]
-fn parse_export_handles_empty_messages() {
-    let raw = r#"{"messages": []}"#;
-    let result = export::parse_export(raw).unwrap();
-    assert_eq!(result.tokens_used, 0);
-    assert!(result.model_used.is_none());
-    assert!(result.pr_url.is_none());
-}
-
-#[test]
-fn parse_export_extracts_pr_url_from_gitlab() {
+fn parse_export_handles_null_tokens() {
     let raw = r#"{
-        "messages": [
-            {
-                "role": "assistant",
-                "tokens": {"input": 10, "output": 5},
-                "model": null,
-                "parts": [
-                    {
-                        "type": "text",
-                        "text": "See https://gitlab.com/group/project/-/merge_requests/1"
-                    }
-                ]
+        "info": {
+            "tokens": {
+                "input": null,
+                "output": null
             }
-        ]
+        }
     }"#;
 
     let result = export::parse_export(raw).unwrap();
-    assert_eq!(
-        result.pr_url.as_deref(),
-        Some("https://gitlab.com/group/project/-/merge_requests/1")
-    );
+    assert_eq!(result.tokens_used, 0);
+    assert!(result.model_used.is_none());
 }
 
 #[test]
-fn parse_export_model_with_only_model_id() {
+fn parse_export_model_with_only_id() {
     let raw = r#"{
-        "messages": [
-            {
-                "role": "assistant",
-                "tokens": {"input": 10, "output": 5},
-                "model": {"modelID": "gpt-4"},
-                "parts": []
+        "info": {
+            "tokens": {
+                "input": 10,
+                "output": 5
+            },
+            "model": {
+                "id": "gpt-4"
             }
-        ]
+        }
     }"#;
 
     let result = export::parse_export(raw).unwrap();
@@ -127,29 +81,22 @@ fn parse_export_model_with_only_model_id() {
 }
 
 #[test]
-fn parse_export_invalid_json_returns_error() {
-    let result = export::parse_export("not json");
-    assert!(result.is_err());
-}
-
-#[test]
-fn parse_export_no_pr_url_when_absent() {
+fn parse_export_model_missing() {
     let raw = r#"{
-        "messages": [
-            {
-                "role": "assistant",
-                "tokens": {"input": 10, "output": 5},
-                "model": null,
-                "parts": [
-                    {
-                        "type": "text",
-                        "text": "Task completed successfully"
-                    }
-                ]
+        "info": {
+            "tokens": {
+                "input": 10,
+                "output": 5
             }
-        ]
+        }
     }"#;
 
     let result = export::parse_export(raw).unwrap();
-    assert!(result.pr_url.is_none());
+    assert!(result.model_used.is_none());
+}
+
+#[test]
+fn parse_export_invalid_json_returns_error() {
+    let result = export::parse_export("not json");
+    assert!(result.is_err());
 }
