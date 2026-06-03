@@ -5,6 +5,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
+use crate::harness::container::DockerIsolation;
 use crate::harness::gvisor::GvisorIsolation;
 use crate::harness::host::HostIsolation;
 use crate::harness::kata::KataIsolation;
@@ -13,6 +14,7 @@ pub enum IsolationKind {
     Host(HostIsolation),
     Kata(KataIsolation),
     Gvisor(GvisorIsolation),
+    Docker(DockerIsolation),
 }
 
 pub fn create_isolation_provider(harness_type: &str) -> IsolationKind {
@@ -24,6 +26,10 @@ pub fn create_isolation_provider(harness_type: &str) -> IsolationKind {
         "gvisor" => {
             tracing::debug!("using gVisor isolation");
             IsolationKind::Gvisor(GvisorIsolation::new())
+        }
+        "docker" => {
+            tracing::debug!("using Docker isolation");
+            IsolationKind::Docker(DockerIsolation::new(None))
         }
         _ => {
             tracing::debug!("using host isolation");
@@ -80,6 +86,18 @@ impl IsolationProvider for IsolationKind {
                 )
                 .await
             }
+            IsolationKind::Docker(d) => {
+                d.prepare(
+                    workdir,
+                    secrets,
+                    env_vars,
+                    limits,
+                    agents_md,
+                    opencode_config,
+                    repo_url,
+                )
+                .await
+            }
         }
     }
 
@@ -88,6 +106,7 @@ impl IsolationProvider for IsolationKind {
             IsolationKind::Host(h) => h.cleanup(env).await,
             IsolationKind::Kata(k) => k.cleanup(env).await,
             IsolationKind::Gvisor(g) => g.cleanup(env).await,
+            IsolationKind::Docker(d) => d.cleanup(env).await,
         }
     }
 }

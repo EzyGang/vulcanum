@@ -10,17 +10,17 @@ use crate::harness::prepare;
 
 pub struct DockerIsolation {
     pub(crate) image: String,
-    pub(crate) runtime: &'static str,
+    pub(crate) runtime: Option<&'static str>,
 }
 
 impl DockerIsolation {
-    pub fn new(runtime: &'static str) -> Self {
+    pub fn new(runtime: Option<&'static str>) -> Self {
         let image = std::env::var("VULCANUM_IMAGE").unwrap_or_else(|_| DEFAULT_IMAGE.to_owned());
         Self { image, runtime }
     }
 
     #[allow(dead_code)]
-    pub fn with_image(image: String, runtime: &'static str) -> Self {
+    pub fn with_image(image: String, runtime: Option<&'static str>) -> Self {
         Self { image, runtime }
     }
 
@@ -78,7 +78,7 @@ impl IsolationProvider for DockerIsolation {
             container_name: Some(container_name),
             secrets: secrets.clone(),
             env_vars: combined_env,
-            runtime: Some(self.runtime),
+            runtime: self.runtime,
             image: Some(self.image.clone()),
             server_host_port: None,
             limits: limits.clone(),

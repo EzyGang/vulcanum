@@ -46,8 +46,8 @@ pub async fn run(
             console::step("gVisor", gvisor::install_gvisor)?;
             console::step("Docker gVisor runtime", gvisor::configure_docker_for_gvisor)?;
         }
-        Backend::None => {
-            console::info("Skipping container runtime installation (host mode).");
+        Backend::Docker | Backend::None => {
+            console::info("Skipping sandbox runtime installation.");
         }
     }
 
@@ -146,6 +146,7 @@ fn interaction_mode(code: &Option<String>, instance: &Option<String>) -> Interac
 pub(crate) enum Backend {
     Kata,
     Gvisor,
+    Docker,
     None,
 }
 
@@ -154,6 +155,7 @@ impl Backend {
         match self {
             Self::Kata => "kata",
             Self::Gvisor => "gvisor",
+            Self::Docker => "docker",
             Self::None => "host",
         }
     }

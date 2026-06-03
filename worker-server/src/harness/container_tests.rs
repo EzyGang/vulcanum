@@ -4,7 +4,14 @@ use crate::harness::kata::KataIsolation;
 
 #[test]
 fn container_image_default() {
-    let isolation = DockerIsolation::new("test-runtime");
+    let isolation = DockerIsolation::new(Some("test-runtime"));
+    assert!(!isolation.image.is_empty());
+}
+
+#[test]
+fn docker_plain_no_runtime() {
+    let isolation = DockerIsolation::new(None);
+    assert!(isolation.runtime.is_none());
     assert!(!isolation.image.is_empty());
 }
 

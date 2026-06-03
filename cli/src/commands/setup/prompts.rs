@@ -29,11 +29,12 @@ pub(super) fn resolve_backend(
             Backend::Kata
         }
         Some(crate::IsolationBackend::Gvisor) => Backend::Gvisor,
+        Some(crate::IsolationBackend::Docker) => Backend::Docker,
         Some(crate::IsolationBackend::None) => Backend::None,
         None => match mode {
             super::InteractionMode::NonInteractive => {
                 anyhow::bail!(
-                    "--isolation is required in non-interactive mode (kata, gvisor, or none)"
+                    "--isolation is required in non-interactive mode (kata, gvisor, docker, or none)"
                 );
             }
             super::InteractionMode::Interactive => {
@@ -51,6 +52,7 @@ fn prompt_backend() -> anyhow::Result<Backend> {
     let items = vec![
         "Kata Containers (VM-based isolation, requires KVM)",
         "gVisor (container sandboxing)",
+        "Docker (container isolation, no sandbox)",
         "None (run directly on host)",
     ];
 
@@ -70,7 +72,8 @@ fn prompt_backend() -> anyhow::Result<Backend> {
             Ok(Backend::Kata)
         }
         1 => Ok(Backend::Gvisor),
-        2 => Ok(Backend::None),
+        2 => Ok(Backend::Docker),
+        3 => Ok(Backend::None),
         _ => anyhow::bail!("invalid backend selection"),
     }
 }
