@@ -19,5 +19,11 @@ RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path \
 COPY docker/agent/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
 WORKDIR /workdir
+
+RUN mkdir -p /workdir/home \
+    && cd /workdir/home \
+    && kaneo install-skill --scope local --agent opencode
+
+
+ENTRYPOINT ["/entrypoint.sh"]
