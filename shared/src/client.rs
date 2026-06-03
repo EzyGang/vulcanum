@@ -3,8 +3,9 @@ use uuid::Uuid;
 
 use crate::api_error::ApiError;
 use crate::api_types::{
-    AckRequest, ConnectRequest, ConnectResponse, JobResponse, PollResponse, RefreshRequest,
-    RefreshResponse, StatusResponse, SubmitResultRequest,
+    AckRequest, AppendEventsRequest, AppendEventsResponse, ConnectRequest, ConnectResponse,
+    JobResponse, PollResponse, RefreshRequest, RefreshResponse, StatusResponse,
+    SubmitResultRequest, WireEvent,
 };
 
 #[derive(Clone)]
@@ -142,6 +143,28 @@ impl ApiClient {
         }
 
         Err(build_error(resp).await.into())
+    }
+
+    pub async fn append_events(
+        &self,
+        job_id: Uuid,
+        events: &[WireEvent],
+        access_token: &str,
+    ) -> anyhow::Result<AppendEventsResponse> {
+        let url = format!("{}/api/v1/jobs/{}/events", self.base_url, job_id);
+        let body = AppendEventsRequest {
+            events: events.to_vec(),
+        };
+        let resp = self
+            .http
+            .post(&url)
+            .json(&body)
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .context("append events request failed")?;
+
+        map_response(resp).await.map_err(Into::into)
     }
 }
 

@@ -1,9 +1,13 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
 use tokio::time::timeout;
+use uuid::Uuid;
+
+use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, SessionExport, SessionStatus};
@@ -20,6 +24,16 @@ const STALL_TIMEOUT_SECS: u64 = 300;
 impl RunningSession for OpenCodeRunningSession {
     fn status(&self) -> SessionStatus {
         self.status.clone()
+    }
+
+    fn session_id(&self) -> Option<&str> {
+        Some(&self.session_id)
+    }
+
+    fn set_event_reporter(&mut self, client: Arc<ApiClient>, token: String, job_id: Uuid) {
+        self.api_client = Some(client);
+        self.access_token = Some(token);
+        self.job_id = Some(job_id);
     }
 
     fn poll_event(&mut self) -> Pin<Box<dyn Future<Output = Option<AgentEvent>> + Send + '_>> {
@@ -56,6 +70,9 @@ impl RunningSession for OpenCodeRunningSession {
                             "session.completed" => self.status = SessionStatus::Completed,
                             "session.failed" => self.status = SessionStatus::Failed,
                             _ => (),
+                        }
+                        if super::HIGH_LEVEL_EVENT_TYPES.contains(&event.event_type.as_str()) {
+                            self.send_event(&event.event_type, event.payload.clone());
                         }
                     }
                     last

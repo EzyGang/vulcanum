@@ -88,8 +88,7 @@ pub async fn run() -> anyhow::Result<()> {
         harness_type,
     };
 
-    let recovery_token = worker_state.read().await.access_token.clone();
-    recovery::reconcile_running_jobs(&journal, &client, &recovery_token).await;
+    recovery::reconcile_running_jobs(&journal, &client, &worker_state).await;
 
     tracing::info!("daemon started, starting poll loop");
 

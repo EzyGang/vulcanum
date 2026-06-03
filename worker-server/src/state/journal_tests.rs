@@ -20,6 +20,7 @@ fn insert_and_list_running() {
             Some("vulcanum-container"),
             "kata",
             Utc::now(),
+            1,
         )
         .expect("should insert");
 
@@ -40,7 +41,7 @@ fn update_result_transitions_status() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now())
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
         .expect("should insert");
 
     journal
@@ -64,7 +65,7 @@ fn mark_lost_sets_status_and_error() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now())
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
         .expect("should insert");
 
     journal
@@ -81,7 +82,7 @@ fn mark_submitted_transitions() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now())
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
         .expect("should insert");
 
     journal
@@ -111,13 +112,13 @@ fn multiple_jobs_with_mixed_statuses() {
     let id3 = Uuid::new_v4();
 
     journal
-        .insert_job(id1, "/tmp/a", None, "host", Utc::now())
+        .insert_job(id1, "/tmp/a", None, "host", Utc::now(), 1)
         .expect("insert 1");
     journal
-        .insert_job(id2, "/tmp/b", None, "host", Utc::now())
+        .insert_job(id2, "/tmp/b", None, "host", Utc::now(), 1)
         .expect("insert 2");
     journal
-        .insert_job(id3, "/tmp/c", None, "host", Utc::now())
+        .insert_job(id3, "/tmp/c", None, "host", Utc::now(), 1)
         .expect("insert 3");
 
     journal

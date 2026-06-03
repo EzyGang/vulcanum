@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -23,6 +24,125 @@ fn continuation_prompt(turn: i32, max_turns: i32) -> String {
          Continue from the current workspace state. Do not restart. \
          Focus on remaining work. When done, call the finish_run tool."
     )
+}
+
+pub(crate) struct TurnLoopCtx {
+    pub client: Arc<ApiClient>,
+    pub worker_state: Arc<RwLock<WorkerState>>,
+    pub journal: Arc<Journal>,
+    pub job_id: Uuid,
+    pub worker_id: Uuid,
+}
+
+pub(crate) async fn run_turn_loop(
+    running_session: &mut Box<dyn RunningSession>,
+    artifact_path: &Path,
+    max_turns: i32,
+    initial_turn: i32,
+    ctx: &TurnLoopCtx,
+) -> bool {
+    let mut turn = initial_turn;
+
+    loop {
+        let session_export = match running_session.wait().await {
+            Ok(export) => export,
+            Err(e) => {
+                tracing::error!(
+                    worker_id = %ctx.worker_id,
+                    work_run_id = %ctx.job_id,
+                    turn = turn,
+                    error = %e,
+                    "session wait failed",
+                );
+                let _ = running_session.cancel().await;
+                submit_failed_result(
+                    ctx.client.clone(),
+                    ctx.worker_state.clone(),
+                    ctx.journal.clone(),
+                    ctx.job_id,
+                    &FailedResult::empty(),
+                )
+                .await;
+                return false;
+            }
+        };
+
+        tracing::info!(
+            worker_id = %ctx.worker_id,
+            work_run_id = %ctx.job_id,
+            turn = turn,
+            exit_code = session_export.exit_code,
+            tokens_used = session_export.tokens_used,
+            "turn completed",
+        );
+
+        let finish_artifact = read_finish_artifact(artifact_path);
+
+        match finish_artifact {
+            Some(ref artifact) => {
+                tracing::info!(
+                    worker_id = %ctx.worker_id,
+                    work_run_id = %ctx.job_id,
+                    status = %artifact.status,
+                    "agent declared finish via artifact",
+                );
+                submit_turn_result(
+                    &ctx.client,
+                    &ctx.worker_state,
+                    &ctx.journal,
+                    ctx.job_id,
+                    &session_export,
+                    Some(artifact),
+                )
+                .await;
+                return true;
+            }
+            None => {
+                if turn >= max_turns {
+                    tracing::info!(
+                        worker_id = %ctx.worker_id,
+                        work_run_id = %ctx.job_id,
+                        turn = turn,
+                        max_turns = max_turns,
+                        "max turns reached, submitting result",
+                    );
+                    submit_turn_result(
+                        &ctx.client,
+                        &ctx.worker_state,
+                        &ctx.journal,
+                        ctx.job_id,
+                        &session_export,
+                        None,
+                    )
+                    .await;
+                    return true;
+                }
+
+                let prompt = continuation_prompt(turn, max_turns);
+                if let Err(e) = running_session.continue_with(&prompt).await {
+                    tracing::error!(
+                        worker_id = %ctx.worker_id,
+                        work_run_id = %ctx.job_id,
+                        turn = turn,
+                        error = %e,
+                        "continuation prompt failed",
+                    );
+                    submit_failed_result(
+                        ctx.client.clone(),
+                        ctx.worker_state.clone(),
+                        ctx.journal.clone(),
+                        ctx.job_id,
+                        &FailedResult::empty(),
+                    )
+                    .await;
+                    return false;
+                }
+
+                turn += 1;
+                let _ = ctx.journal.update_turn(ctx.job_id, turn);
+            }
+        }
+    }
 }
 
 pub(crate) async fn handle_job(
@@ -94,6 +214,7 @@ pub(crate) async fn handle_job(
         _ => None,
     };
 
+    let max_turns = job.max_turns.max(1);
     let started_at = Utc::now();
     if let Err(e) = journal.insert_job(
         job_id,
@@ -101,6 +222,7 @@ pub(crate) async fn handle_job(
         container_name.as_deref(),
         harness_type,
         started_at,
+        max_turns,
     ) {
         tracing::warn!(work_run_id = %job_id, error = %e, "journal insert failed, continuing without tracking");
     }
@@ -180,112 +302,22 @@ pub(crate) async fn handle_job(
         "session started, entering turn loop",
     );
 
-    let artifact_path = workdir.join("home").join("finish_artifact.json");
-    let max_turns = job.max_turns.max(1);
-    let mut turn = 1;
-
-    loop {
-        let session_export = match running_session.wait().await {
-            Ok(export) => export,
-            Err(e) => {
-                tracing::error!(
-                    worker_id = %worker_id,
-                    work_run_id = %job_id,
-                    turn = turn,
-                    error = %e,
-                    "session wait failed",
-                );
-                let _ = running_session.cancel().await;
-                provider.cleanup(&isolated_env).await;
-                submit_failed_result(
-                    client,
-                    worker_state,
-                    journal,
-                    job_id,
-                    &FailedResult::empty(),
-                )
-                .await;
-                return Ok(());
-            }
-        };
-
-        tracing::info!(
-            worker_id = %worker_id,
-            work_run_id = %job_id,
-            turn = turn,
-            exit_code = session_export.exit_code,
-            tokens_used = session_export.tokens_used,
-            "turn completed",
-        );
-
-        let finish_artifact = read_finish_artifact(&artifact_path);
-
-        match finish_artifact {
-            Some(ref artifact) => {
-                tracing::info!(
-                    worker_id = %worker_id,
-                    work_run_id = %job_id,
-                    status = %artifact.status,
-                    "agent declared finish via artifact",
-                );
-                submit_turn_result(
-                    &client,
-                    &worker_state,
-                    &journal,
-                    job_id,
-                    &session_export,
-                    Some(artifact),
-                )
-                .await;
-                break;
-            }
-            None => {
-                if turn >= max_turns {
-                    tracing::info!(
-                        worker_id = %worker_id,
-                        work_run_id = %job_id,
-                        turn = turn,
-                        max_turns = max_turns,
-                        "max turns reached, submitting result",
-                    );
-                    submit_turn_result(
-                        &client,
-                        &worker_state,
-                        &journal,
-                        job_id,
-                        &session_export,
-                        None,
-                    )
-                    .await;
-                    break;
-                }
-
-                let prompt = continuation_prompt(turn, max_turns);
-                if let Err(e) = running_session.continue_with(&prompt).await {
-                    tracing::error!(
-                        worker_id = %worker_id,
-                        work_run_id = %job_id,
-                        turn = turn,
-                        error = %e,
-                        "continuation prompt failed",
-                    );
-                    provider.cleanup(&isolated_env).await;
-                    submit_failed_result(
-                        client,
-                        worker_state,
-                        journal,
-                        job_id,
-                        &FailedResult::empty(),
-                    )
-                    .await;
-                    return Ok(());
-                }
-
-                turn += 1;
-                let _ = journal.update_turn(job_id, turn);
-            }
-        }
+    if let Some(sid) = running_session.session_id() {
+        let _ = journal.set_session_id(job_id, sid);
     }
+    running_session.set_event_reporter(client.clone(), access_token.clone(), job_id);
+
+    let artifact_path = workdir.join("home").join("finish_artifact.json");
+
+    let ctx = TurnLoopCtx {
+        client: client.clone(),
+        worker_state: worker_state.clone(),
+        journal: journal.clone(),
+        job_id,
+        worker_id,
+    };
+
+    run_turn_loop(&mut running_session, &artifact_path, max_turns, 1, &ctx).await;
 
     provider.cleanup(&isolated_env).await;
 
