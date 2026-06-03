@@ -1,9 +1,16 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use sqlx::FromRow;
 use uuid::Uuid;
 
 use crate::services::integrations::model::{IntegrationColumn, IntegrationType};
+
+fn mask_token<S: Serializer>(val: &Option<String>, s: S) -> Result<S::Ok, S::Error> {
+    match val {
+        Some(_) => s.serialize_some("********"),
+        None => s.serialize_none(),
+    }
+}
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
@@ -23,6 +30,7 @@ pub struct ProjectConfig {
     pub opencode_config: String,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
+    #[serde(serialize_with = "mask_token")]
     pub github_token: Option<String>,
 }
 
@@ -86,6 +94,8 @@ pub struct UpdateProjectConfigRequest {
     pub provider_id: Option<Uuid>,
     #[serde(default)]
     pub github_token: Option<String>,
+    #[serde(default)]
+    pub clear_github_token: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]

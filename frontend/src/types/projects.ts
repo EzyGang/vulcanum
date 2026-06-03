@@ -40,6 +40,7 @@ export interface UpdateProjectRequest {
   opencodeConfig?: string;
   providerId?: string;
   githubToken?: string;
+  clearGithubToken?: boolean;
 }
 
 export interface ColumnInfo {
