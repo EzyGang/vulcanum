@@ -12,12 +12,11 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, SessionExport, SessionStatus};
 
-use crate::runtime::export;
-use crate::runtime::mapping;
-
-use super::OpenCodeRunningSession;
 use crate::runtime::client::events;
 use crate::runtime::client::session;
+use crate::runtime::export;
+use crate::runtime::mapping;
+use crate::runtime::runner::OpenCodeRunningSession;
 
 const STALL_TIMEOUT_SECS: u64 = 300;
 

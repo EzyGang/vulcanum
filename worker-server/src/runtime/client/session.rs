@@ -6,10 +6,10 @@ use super::OpenCodeClient;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[allow(dead_code)]
 pub enum OpenCodeSessionStatus {
     Idle,
     Busy,
+    #[allow(dead_code)]
     Retry {
         attempt: u32,
         message: String,
