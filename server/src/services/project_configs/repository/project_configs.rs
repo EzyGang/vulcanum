@@ -17,7 +17,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id, github_token
              FROM project_configs ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -33,7 +33,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id, github_token
              FROM project_configs WHERE id = $1"#,
             id,
         )
@@ -49,7 +49,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id, github_token
              FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -67,10 +67,10 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"INSERT INTO project_configs (id, kaneo_project_id, kaneo_workspace_id, integration_type, enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id, github_token)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
              RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id, github_token"#,
             id,
             &params.kaneo_project_id,
             &params.kaneo_workspace_id,
@@ -86,6 +86,7 @@ impl ProjectConfigsRepository {
             &params.agents_md,
             &params.opencode_config,
             params.provider_id,
+            params.github_token.as_deref(),
         )
         .fetch_one(db)
         .await
@@ -113,10 +114,11 @@ impl ProjectConfigsRepository {
              kaneo_workspace_id = COALESCE($11, kaneo_workspace_id),
              integration_type = COALESCE($12, integration_type),
              provider_id = COALESCE($13, provider_id),
-             opencode_config = COALESCE($14, opencode_config)
+             opencode_config = COALESCE($14, opencode_config),
+             github_token = COALESCE($15, github_token)
              WHERE id = $1
              RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id, github_token"#,
             id,
             params.pickup_column,
             params.target_column,
@@ -131,6 +133,7 @@ impl ProjectConfigsRepository {
             params.integration_type.as_ref() as Option<&IntegrationType>,
             params.provider_id,
             params.opencode_config,
+            params.github_token,
         )
         .fetch_optional(db)
         .await?

@@ -8,11 +8,16 @@ interface ProjectFormTextFieldsProps {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
+  githubToken: Signal<string>;
+  hasGithubToken: Signal<boolean>;
+  clearGithubToken: Signal<boolean>;
   submitting: Signal<boolean>;
   onPromptTemplateChange: (value: string) => void;
   onRepoUrlChange: (value: string) => void;
   onAgentsMdChange: (value: string) => void;
   onOpencodeConfigChange: (value: string) => void;
+  onGithubTokenChange: (value: string) => void;
+  onClearGithubToken: (checked: boolean) => void;
 }
 
 const inputStyles =
@@ -24,11 +29,16 @@ export const ProjectFormTextFields = ({
   repoUrl,
   agentsMd,
   opencodeConfig,
+  githubToken,
+  hasGithubToken,
+  clearGithubToken,
   submitting,
   onPromptTemplateChange,
   onRepoUrlChange,
   onAgentsMdChange,
-  onOpencodeConfigChange
+  onOpencodeConfigChange,
+  onGithubTokenChange,
+  onClearGithubToken
 }: ProjectFormTextFieldsProps): JSX.Element => (
   <>
     <div class='flex flex-col gap-2'>
@@ -92,6 +102,34 @@ export const ProjectFormTextFields = ({
         rows={6}
         class={textareaStyles}
       />
+    </div>
+
+    <div class='flex flex-col gap-2'>
+      <Label for='field-github-token'>GitHub Token</Label>
+      <span class='text-text-muted text-xs'>
+        Personal access token for PR creation. Leave empty to skip PRs.
+      </span>
+      {hasGithubToken.value && <span class='text-xs text-green-400'>Token configured</span>}
+      <Input
+        id='field-github-token'
+        type='password'
+        value={githubToken.value}
+        onInput={(e) => onGithubTokenChange((e.target as HTMLInputElement).value)}
+        placeholder={hasGithubToken.value ? 'Enter new token to change' : 'ghp_...'}
+        disabled={submitting.value}
+      />
+      {hasGithubToken.value && (
+        <label class='flex items-center gap-2 text-sm text-text-muted'>
+          <input
+            type='checkbox'
+            checked={clearGithubToken.value}
+            onChange={(e) => onClearGithubToken((e.target as HTMLInputElement).checked)}
+            disabled={submitting.value}
+            class='w-4 h-4'
+          />
+          Clear existing token
+        </label>
+      )}
     </div>
   </>
 );

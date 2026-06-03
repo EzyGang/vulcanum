@@ -21,6 +21,9 @@ interface ProjectFormViewProps {
     repoUrl: Signal<string>;
     agentsMd: Signal<string>;
     opencodeConfig: Signal<string>;
+    githubToken: Signal<string>;
+    hasGithubToken: Signal<boolean>;
+    clearGithubToken: Signal<boolean>;
     columns: Signal<ColumnInfo[]>;
     columnsLoading: Signal<boolean>;
     lookupProjectName: Signal<string>;
@@ -53,6 +56,8 @@ interface ProjectFormViewProps {
     onRepoUrlChange: (value: string) => void;
     onAgentsMdChange: (value: string) => void;
     onOpencodeConfigChange: (value: string) => void;
+    onGithubTokenChange: (value: string) => void;
+    onClearGithubToken: (checked: boolean) => void;
     onPickupColumnChange: (value: string) => void;
     onProgressColumnChange: (value: string) => void;
     onTargetColumnChange: (value: string) => void;
@@ -145,11 +150,16 @@ export const ProjectFormView = ({
                 repoUrl={d.repoUrl}
                 agentsMd={d.agentsMd}
                 opencodeConfig={d.opencodeConfig}
+                githubToken={d.githubToken}
+                hasGithubToken={d.hasGithubToken}
+                clearGithubToken={d.clearGithubToken}
                 submitting={submitting}
                 onPromptTemplateChange={a.onPromptTemplateChange}
                 onRepoUrlChange={a.onRepoUrlChange}
                 onAgentsMdChange={a.onAgentsMdChange}
                 onOpencodeConfigChange={a.onOpencodeConfigChange}
+                onGithubTokenChange={a.onGithubTokenChange}
+                onClearGithubToken={a.onClearGithubToken}
               />
 
               {formError.value && <div class='text-error text-sm'>{formError.value}</div>}

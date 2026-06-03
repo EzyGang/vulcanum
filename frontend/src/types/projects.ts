@@ -12,6 +12,7 @@ export interface ProjectConfig {
   opencodeConfig: string;
   createdAt: string;
   providerId?: string;
+  githubToken?: string;
 }
 
 export interface CreateProjectRequest {
@@ -25,6 +26,7 @@ export interface CreateProjectRequest {
   repoUrl?: string;
   agentsMd?: string;
   opencodeConfig?: string;
+  githubToken?: string;
 }
 
 export interface UpdateProjectRequest {
@@ -37,6 +39,8 @@ export interface UpdateProjectRequest {
   agentsMd?: string;
   opencodeConfig?: string;
   providerId?: string;
+  githubToken?: string;
+  clearGithubToken?: boolean;
 }
 
 export interface ColumnInfo {

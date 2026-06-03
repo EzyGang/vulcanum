@@ -41,6 +41,7 @@ fn test_params(kaneo_project_id: &str, provider_id: Uuid) -> CreateProjectConfig
         kaneo_workspace_id: String::new(),
         integration_type: IntegrationType::Kaneo,
         provider_id,
+        github_token: None,
     }
 }
 
@@ -59,6 +60,7 @@ fn test_update_params() -> UpdateProjectConfigParams<'static> {
         enabled: None,
         integration_type: None,
         provider_id: None,
+        github_token: None,
     }
 }
 

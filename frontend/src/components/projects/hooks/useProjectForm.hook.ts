@@ -27,6 +27,8 @@ export const useProjectForm = (projectId: string | null) => {
   const repoUrl = useSignal('');
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
+  const githubToken = useSignal('');
+  const hasGithubToken = useSignal(false);
 
   const lookup = useProjectFormLookup(providerId, kaneoProjectId);
   const providerForm = useProjectFormProvider((newId: string) => {
@@ -34,7 +36,7 @@ export const useProjectForm = (projectId: string | null) => {
     lookup.resetLookup();
   });
 
-  const { formError, submitting, handleSubmit } = useProjectFormSubmit({
+  const { formError, submitting, clearGithubToken, handleSubmit } = useProjectFormSubmit({
     projectId,
     enabled,
     pickupColumn,
@@ -44,6 +46,7 @@ export const useProjectForm = (projectId: string | null) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
+    githubToken,
     providerId,
     kaneoProjectId
   });
@@ -61,6 +64,7 @@ export const useProjectForm = (projectId: string | null) => {
       repoUrl.value = p.repoUrl;
       agentsMd.value = p.agentsMd;
       opencodeConfig.value = p.opencodeConfig;
+      hasGithubToken.value = p.githubToken != null;
     }
   }, [projectId, existingProject]);
 
@@ -100,8 +104,11 @@ export const useProjectForm = (projectId: string | null) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
+    githubToken,
+    hasGithubToken,
     submitting,
     formError,
+    clearGithubToken,
     columns: lookup.columns,
     columnsLoading: lookup.columnsLoading,
     lookupProjectName: lookup.lookupProjectName,
@@ -142,6 +149,12 @@ export const useProjectForm = (projectId: string | null) => {
     },
     onOpencodeConfigChange: (value: string) => {
       opencodeConfig.value = value;
+    },
+    onGithubTokenChange: (value: string) => {
+      githubToken.value = value;
+    },
+    onClearGithubToken: (checked: boolean) => {
+      clearGithubToken.value = checked;
     },
     onPickupColumnChange: (value: string) => {
       pickupColumn.value = value;

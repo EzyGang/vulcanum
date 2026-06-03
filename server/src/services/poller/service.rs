@@ -175,7 +175,7 @@ impl PollerService {
         let mut inserted = 0;
 
         for task in &tasks {
-            let prompt_text = crate::services::poller::template::render_template(
+            let mut prompt_text = crate::services::poller::template::render_template(
                 &config.prompt_template,
                 &crate::services::poller::template::TemplateVars {
                     task_title: &task.title,
@@ -183,6 +183,10 @@ impl PollerService {
                     repo_url: &config.repo_url,
                 },
             );
+
+            if config.github_token.is_some() {
+                prompt_text.push_str("\n\nWhen the task is complete and implemented:\n1. Create a pull request using `gh pr create` with a descriptive title and body\n2. Call the `finish_run` tool with the PR URL in the `pr_url` field");
+            }
             let params = InsertWorkRunParams {
                 external_task_ref: task.id.clone(),
                 project_config_id: config.id,

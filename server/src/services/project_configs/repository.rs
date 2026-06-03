@@ -33,6 +33,7 @@ pub struct UpdateProjectConfigParams<'a> {
     pub enabled: Option<bool>,
     pub integration_type: Option<IntegrationType>,
     pub provider_id: Option<Uuid>,
+    pub github_token: Option<&'a str>,
 }
 
 #[derive(Clone)]
