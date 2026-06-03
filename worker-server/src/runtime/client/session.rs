@@ -2,7 +2,20 @@ use serde::{Deserialize, Serialize};
 
 use vulcanum_shared::runtime::errors::HarnessError;
 
-use crate::runtime::client::OpenCodeClient;
+use super::OpenCodeClient;
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum OpenCodeSessionStatus {
+    Idle,
+    Busy,
+    #[allow(dead_code)]
+    Retry {
+        attempt: u32,
+        message: String,
+        next: u64,
+    },
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Session {
@@ -94,4 +107,25 @@ pub async fn abort_session(client: &OpenCodeClient, session_id: &str) -> Result<
     .await?;
 
     Ok(())
+}
+
+pub async fn get_session_status(
+    client: &OpenCodeClient,
+) -> Result<std::collections::HashMap<String, OpenCodeSessionStatus>, HarnessError> {
+    let url = format!("{}/session/status", client.base_url());
+    let resp = client
+        .http_client()
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| HarnessError::Http(format!("get session status failed: {e}")))?;
+
+    let resp = OpenCodeClient::check_response(resp, |msg| {
+        HarnessError::Http(format!("get session status {msg}"))
+    })
+    .await?;
+
+    resp.json::<std::collections::HashMap<String, OpenCodeSessionStatus>>()
+        .await
+        .map_err(|e| HarnessError::Http(format!("parse session status failed: {e}")))
 }

@@ -54,6 +54,8 @@ pub struct JournalEntry {
     pub duration_ms: Option<i64>,
     pub error_message: Option<String>,
     pub turn_count: Option<i32>,
+    pub session_id: Option<String>,
+    pub max_turns: Option<i32>,
 }
 
 pub struct Journal {
@@ -79,12 +81,18 @@ impl Journal {
                 pr_url TEXT,
                 duration_ms INTEGER,
                 error_message TEXT,
-                turn_count INTEGER NOT NULL DEFAULT 0
+                turn_count INTEGER NOT NULL DEFAULT 0,
+                session_id TEXT,
+                max_turns INTEGER NOT NULL DEFAULT 1
             )",
         )?;
 
         let _ = conn.execute_batch(
             "ALTER TABLE job_journal ADD COLUMN turn_count INTEGER NOT NULL DEFAULT 0",
+        );
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN session_id TEXT");
+        let _ = conn.execute_batch(
+            "ALTER TABLE job_journal ADD COLUMN max_turns INTEGER NOT NULL DEFAULT 1",
         );
 
         Ok(Self {
@@ -99,11 +107,12 @@ impl Journal {
         container_name: Option<&str>,
         harness_type: &str,
         started_at: DateTime<Utc>,
+        max_turns: i32,
     ) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
-            "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at, max_turns)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
                 job_id.to_string(),
                 workdir,
@@ -111,6 +120,7 @@ impl Journal {
                 harness_type,
                 JournalStatus::Running.as_str(),
                 started_at.to_rfc3339(),
+                max_turns,
             ],
         )?;
         Ok(())
@@ -152,6 +162,15 @@ impl Journal {
         Ok(())
     }
 
+    pub fn set_session_id(&self, job_id: Uuid, session_id: &str) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE job_journal SET session_id = ?1 WHERE job_id = ?2",
+            rusqlite::params![session_id, job_id.to_string()],
+        )?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     pub fn mark_lost(&self, job_id: Uuid, error_message: &str) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
@@ -182,7 +201,8 @@ impl Journal {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare(
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
-                    finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message, turn_count
+                    finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message, turn_count,
+                    session_id, max_turns
              FROM job_journal WHERE status = 'running'",
         )?;
 
@@ -208,6 +228,8 @@ impl Journal {
                     duration_ms: row.get(10)?,
                     error_message: row.get(11)?,
                     turn_count: row.get(12)?,
+                    session_id: row.get(13)?,
+                    max_turns: row.get(14)?,
                 })
             })?
             .filter_map(|r| r.ok())

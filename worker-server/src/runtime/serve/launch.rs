@@ -162,7 +162,7 @@ where
     }
 }
 
-async fn read_container_port(name: &str) -> Result<u16, HarnessError> {
+pub(crate) async fn read_container_port(name: &str) -> Result<u16, HarnessError> {
     let output = tokio::process::Command::new("docker")
         .args(["port", name, &OPENCODE_DEFAULT_PORT.to_string()])
         .stdout(std::process::Stdio::piped())

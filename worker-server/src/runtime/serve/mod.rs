@@ -1,4 +1,4 @@
-mod launch;
+pub(crate) mod launch;
 
 use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::errors::HarnessError;
@@ -139,6 +139,8 @@ impl AgentRuntime for OpenCodeServeRuntime {
 
         let max_duration = env.limits.max_duration_secs;
 
+        let runner_session_id = sess.id.clone();
+
         let runner = OpenCodeRunningSession::new(SessionConfig {
             client: oc_client,
             session_id: sess.id,
@@ -150,7 +152,7 @@ impl AgentRuntime for OpenCodeServeRuntime {
         });
 
         tracing::info!(
-            session_id = %runner.session_id(),
+            session_id = %runner_session_id,
             max_duration_secs = max_duration,
             "session runner ready, starting event loop"
         );
