@@ -7,12 +7,12 @@ use vulcanum_shared::runtime::types::IsolatedEnvironment;
 use crate::runtime::client;
 use crate::runtime::client::events;
 use crate::runtime::client::health;
-use crate::runtime::client::health::HealthResponse;
 use crate::runtime::client::session;
 use crate::runtime::runner::{OpenCodeRunningSession, SessionConfig};
 
 const HEALTH_CHECK_TIMEOUT_SECS: u64 = 180;
 const HEALTH_CHECK_INTERVAL_MS: u64 = 3000;
+const HEALTH_CHECK_REQUEST_TIMEOUT_SECS: u64 = 5;
 
 pub struct OpenCodeServeRuntime;
 
@@ -37,28 +37,10 @@ impl OpenCodeServeRuntime {
         child: &mut Option<tokio::process::Child>,
         container_name: Option<&str>,
     ) -> Result<(), HarnessError> {
-        let deadline =
-            std::time::Instant::now() + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
-        let mut last_health: Option<HealthResponse> = None;
-        let mut last_error: Option<String> = None;
+        let deadline = std::time::Instant::now()
+            + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
 
         loop {
-            match health::health_check(client).await {
-                Ok(resp) if resp.healthy => return Ok(()),
-                Ok(resp) => {
-                    last_health = Some(resp);
-                }
-                Err(HarnessError::Http(ref msg)) => {
-                    tracing::debug!(error = %msg, "health check connection error, retrying");
-                    last_error = Some(msg.clone());
-                }
-                Err(HarnessError::ServerUnhealthy(ref msg)) => {
-                    tracing::debug!(error = %msg, "health check server not ready, retrying");
-                    last_error = Some(msg.clone());
-                }
-                Err(e) => return Err(e),
-            }
-
             if let Some(ref mut c) = child {
                 match c.try_wait() {
                     Ok(Some(status)) => {
@@ -76,17 +58,7 @@ impl OpenCodeServeRuntime {
             }
 
             if std::time::Instant::now() >= deadline {
-                let waited = HEALTH_CHECK_TIMEOUT_SECS;
-                let mut msg = format!("server not healthy after {waited}s");
-                if let Some(ref resp) = last_health {
-                    msg.push_str(&format!(
-                        "; last health: healthy={}, version={}",
-                        resp.healthy, resp.version
-                    ));
-                }
-                if let Some(ref err) = last_error {
-                    msg.push_str(&format!("; last error: {err}"));
-                }
+                let mut msg = format!("server not healthy after {HEALTH_CHECK_TIMEOUT_SECS}s");
                 if let Some(name) = container_name {
                     if let Ok(output) = tokio::process::Command::new("docker")
                         .args(["inspect", "--format={{.State.Status}}", name])
@@ -97,8 +69,25 @@ impl OpenCodeServeRuntime {
                         msg.push_str(&format!("; container status: {status}"));
                     }
                 }
-                tracing::warn!(error = %msg, "health check timed out");
+                tracing::warn!("{msg}");
                 return Err(HarnessError::ServerUnhealthy(msg));
+            }
+
+            let health_result = tokio::time::timeout(
+                std::time::Duration::from_secs(HEALTH_CHECK_REQUEST_TIMEOUT_SECS),
+                health::health_check(client),
+            )
+            .await;
+
+            match health_result {
+                Ok(Ok(resp)) if resp.healthy => return Ok(()),
+                Ok(Ok(_)) => {}
+                Ok(Err(e)) => {
+                    tracing::debug!(error = %e, "health check failed");
+                }
+                Err(_) => {
+                    tracing::debug!("health check request timed out");
+                }
             }
 
             tokio::time::sleep(std::time::Duration::from_millis(HEALTH_CHECK_INTERVAL_MS)).await;
