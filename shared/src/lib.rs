@@ -1,8 +1,10 @@
 pub mod api_error;
 pub mod api_types;
 pub mod client;
+pub mod config;
 pub mod constants;
 pub mod crypto;
+pub mod paths;
 pub mod runtime;
 pub mod telemetry;
 pub mod token;

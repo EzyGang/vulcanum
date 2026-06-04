@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -14,8 +13,7 @@ pub struct DockerIsolation {
 }
 
 impl DockerIsolation {
-    pub fn new(runtime: Option<&'static str>) -> Self {
-        let image = std::env::var("VULCANUM_IMAGE").unwrap_or_else(|_| DEFAULT_IMAGE.to_owned());
+    pub fn new(runtime: Option<&'static str>, image: String) -> Self {
         Self { image, runtime }
     }
 

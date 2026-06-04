@@ -3,7 +3,6 @@ mod queue;
 mod tick;
 
 use std::collections::VecDeque;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -12,15 +11,16 @@ use tokio::sync::{Mutex, RwLock, Semaphore};
 use tokio::time::sleep;
 
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::config::{load_config, WorkerConfig};
+use vulcanum_shared::paths;
 use vulcanum_shared::validate::is_environment_ready_for_backend;
 use vulcanum_shared::worker_state::{load_state, WorkerState};
 
-use crate::runtime::recovery;
+use crate::recovery;
 use crate::state::journal::Journal;
 
 use tick::tick;
 
-const POLL_INTERVAL_SECS: u64 = 15;
 const INITIAL_BACKOFF_MS: u64 = 1_000;
 const MAX_BACKOFF_MS: u64 = 60_000;
 const BACKOFF_MULTIPLIER: u64 = 2;
@@ -40,12 +40,13 @@ struct DaemonState {
     shutdown_rx: tokio::sync::watch::Receiver<Option<String>>,
     shutdown_tx: tokio::sync::watch::Sender<Option<String>>,
     pending_queue: Mutex<VecDeque<uuid::Uuid>>,
-    harness_type: String,
+    config: WorkerConfig,
 }
 
 pub async fn run() -> anyhow::Result<()> {
-    let harness_type = std::env::var("VULCANUM_HARNESS").unwrap_or_else(|_| "host".to_owned());
-    if !is_environment_ready_for_backend(&harness_type) {
+    let config = load_config().context("failed to load worker config")?;
+
+    if !is_environment_ready_for_backend(&config.harness) {
         tracing::error!("environment validation failed — run `vulcanum worker setup` for details");
         return Err(anyhow::anyhow!(
             "worker environment is not ready — run `vulcanum worker setup` to diagnose"
@@ -67,7 +68,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let refresh_buffer_secs = status.access_token_ttl_minutes * 60 / 3;
 
-    let journal_path = journal_db_path()?;
+    let journal_path = paths::db_path()?;
     let journal = Arc::new(Journal::open(&journal_path).context("failed to open job journal")?);
 
     let semaphore = Arc::new(Semaphore::new(state.max_concurrent_jobs as usize));
@@ -85,7 +86,7 @@ pub async fn run() -> anyhow::Result<()> {
         shutdown_rx,
         shutdown_tx,
         pending_queue,
-        harness_type,
+        config,
     };
 
     recovery::reconcile_running_jobs(&journal, &client, &worker_state).await;
@@ -126,13 +127,4 @@ pub async fn run() -> anyhow::Result<()> {
             return Err(anyhow::anyhow!("{msg}"));
         }
     }
-}
-
-fn journal_db_path() -> anyhow::Result<PathBuf> {
-    let dir = dirs::config_dir()
-        .context("failed to find config directory")?
-        .join("vulcanum");
-    std::fs::create_dir_all(&dir)
-        .with_context(|| format!("failed to create config dir {}", dir.display()))?;
-    Ok(dir.join("worker.db"))
 }

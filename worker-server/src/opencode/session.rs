@@ -177,3 +177,29 @@ pub async fn get_session_status(
         .await
         .map_err(|e| HarnessError::Http(format!("parse session status failed: {e}")))
 }
+
+pub async fn get_session_messages(
+    client: &OpenCodeClient,
+    session_id: &str,
+    limit: Option<u64>,
+) -> Result<serde_json::Value, HarnessError> {
+    let mut url = format!("{}/session/{session_id}/message", client.base_url());
+    if let Some(n) = limit {
+        url.push_str(&format!("?limit={n}"));
+    }
+    let resp = client
+        .http_client()
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| HarnessError::Http(format!("get messages failed: {e}")))?;
+
+    let resp = OpenCodeClient::check_response(resp, |msg| {
+        HarnessError::Http(format!("get messages {msg}"))
+    })
+    .await?;
+
+    resp.json::<serde_json::Value>()
+        .await
+        .map_err(|e| HarnessError::Http(format!("parse messages failed: {e}")))
+}

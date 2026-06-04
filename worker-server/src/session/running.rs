@@ -12,10 +12,11 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, SessionExport, SessionStatus};
 
-use crate::runtime::client::events;
-use crate::runtime::client::session;
+use crate::opencode::events;
+use crate::opencode::session;
 use crate::runtime::mapping;
-use crate::runtime::runner::OpenCodeRunningSession;
+
+use super::OpenCodeRunningSession;
 
 const STALL_TIMEOUT_SECS: u64 = 300;
 
@@ -26,6 +27,10 @@ impl RunningSession for OpenCodeRunningSession {
 
     fn session_id(&self) -> Option<&str> {
         Some(&self.session_id)
+    }
+
+    fn opencode_base_url(&self) -> Option<&str> {
+        Some(self.client.base_url())
     }
 
     fn set_event_reporter(&mut self, client: Arc<ApiClient>, token: String, job_id: Uuid) {
@@ -108,7 +113,7 @@ impl RunningSession for OpenCodeRunningSession {
         let session_id = self.session_id.clone();
         let client = self.client.clone();
         Box::pin(async move {
-            crate::runtime::client::session::abort_session(&client, &session_id).await?;
+            crate::opencode::session::abort_session(&client, &session_id).await?;
             self.status = SessionStatus::Cancelled;
             self.kill_server().await;
             Ok(())

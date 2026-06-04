@@ -8,9 +8,9 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
-use crate::runtime::client::events;
-use crate::runtime::client::OpenCodeClient;
-use crate::runtime::runner::{remove_container, OpenCodeRunningSession, SessionConfig};
+use crate::opencode::events;
+use crate::opencode::OpenCodeClient;
+use crate::session::{remove_container, OpenCodeRunningSession, SessionConfig};
 use crate::state::journal::{Journal, JournalEntry, JournalStatus};
 
 pub(crate) async fn recover_session_task(

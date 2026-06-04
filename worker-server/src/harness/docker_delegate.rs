@@ -6,9 +6,9 @@ macro_rules! docker_isolation_delegate {
         }
 
         impl $name {
-            pub fn new() -> Self {
+            pub fn new(image: String) -> Self {
                 Self {
-                    inner: $crate::harness::container::DockerIsolation::new(Some($runtime)),
+                    inner: $crate::harness::container::DockerIsolation::new(Some($runtime), image),
                 }
             }
 
@@ -20,12 +20,6 @@ macro_rules! docker_isolation_delegate {
                         Some($runtime),
                     ),
                 }
-            }
-        }
-
-        impl std::default::Default for $name {
-            fn default() -> Self {
-                Self::new()
             }
         }
 
