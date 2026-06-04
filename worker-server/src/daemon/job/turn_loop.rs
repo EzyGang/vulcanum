@@ -8,17 +8,9 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::worker_state::WorkerState;
 
+use super::prompts::continuation_prompt;
 use super::report::{read_finish_artifact, submit_failed_result, submit_turn_result, FailedResult};
 use crate::state::journal::Journal;
-
-fn continuation_prompt(turn: i32, max_turns: i32) -> String {
-    format!(
-        "[Continuation turn {turn}/{max_turns}]\n\
-         The previous turn completed. The task remains active. \
-         Continue from the current workspace state. Do not restart. \
-         Focus on remaining work. When done, call the finish_run tool."
-    )
-}
 
 pub(crate) struct TurnLoopCtx {
     pub client: Arc<ApiClient>,

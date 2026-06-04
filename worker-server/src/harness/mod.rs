@@ -2,6 +2,7 @@ pub(crate) mod container;
 pub mod dispatch;
 pub mod host;
 pub(crate) mod prepare;
+mod prompts;
 
 mod docker_delegate;
 

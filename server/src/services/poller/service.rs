@@ -13,6 +13,8 @@ use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
+use super::prompts::GITHUB_INSTRUCTION;
+
 #[derive(Debug)]
 enum PollError {
     Integration(IntegrationError),
@@ -185,7 +187,7 @@ impl PollerService {
             );
 
             if config.github_token.is_some() {
-                prompt_text.push_str("\n\nWhen the task is complete and implemented:\n1. Create a pull request using `gh pr create` with a descriptive title and body\n2. Call the `finish_run` tool with the PR URL in the `pr_url` field");
+                prompt_text.push_str(GITHUB_INSTRUCTION);
             }
             let params = InsertWorkRunParams {
                 external_task_ref: task.id.clone(),

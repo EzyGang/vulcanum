@@ -1,3 +1,4 @@
+pub mod prompts;
 pub mod service;
 pub mod template;
 
