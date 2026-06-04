@@ -48,6 +48,7 @@ pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
         | WorkRunsError::InvalidStatusTransition
         | WorkRunsError::NotOwned
         | WorkRunsError::DeleteRunning
+        | WorkRunsError::GithubApp(_)
         | WorkRunsError::Dispatch(_) => WorkRunEventsError::Internal(e.to_string()),
     }
 }

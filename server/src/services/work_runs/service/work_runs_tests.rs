@@ -3,6 +3,8 @@ use uuid::Uuid;
 
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::github_app::repository::GithubAppRepository;
+use crate::services::github_app::service::GithubAppManager;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -13,11 +15,36 @@ use crate::services::workers::repository::WorkersRepository;
 use crate::test_helpers;
 use vulcanum_shared::api_types::SubmitResultRequest;
 
+fn build_github_manager() -> GithubAppManager {
+    let cfg = crate::config::AppConfig {
+        db_url: String::new(),
+        max_conns: 1,
+        poll_period_secs: 30,
+        jwt_secret: String::new(),
+        stale_worker_threshold_secs: 120,
+        unhealthy_threshold: 3,
+        stalled_running_threshold_secs: 1800,
+        instance_password: String::new(),
+        redis_url: String::new(),
+        github_app_id: None,
+        github_app_private_key: None,
+        github_app_slug: None,
+    };
+    GithubAppManager::new(
+        GithubAppRepository::new(),
+        sqlx::PgPool::connect_lazy("").unwrap_or_else(|_| panic!("lazy pool failed")),
+        "",
+        &cfg,
+    )
+    .expect("build github manager for tests")
+}
+
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     WorkRunsService::new(
         WorkRunsRepository::new(),
         WorkersRepository::new(),
         ProjectConfigsRepository::new(),
+        build_github_manager(),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),

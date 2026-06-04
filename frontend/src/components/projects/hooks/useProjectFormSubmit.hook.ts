@@ -16,7 +16,6 @@ interface UseProjectFormSubmitOptions {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
-  githubToken: Signal<string>;
   providerId: Signal<string>;
   kaneoProjectId: Signal<string>;
 }
@@ -32,7 +31,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
-    githubToken,
     providerId,
     kaneoProjectId
   } = options;
@@ -40,7 +38,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
   const [, setLocation] = useLocation();
   const formError = useSignal<string | null>(null);
   const submitting = useSignal(false);
-  const clearGithubToken = useSignal(false);
 
   const createMutation = useApiMutation(
     (input: Parameters<typeof createProject>[0]) => createProject(input),
@@ -88,8 +85,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               repoUrl: repoUrl.value || undefined,
               agentsMd: agentsMd.value || undefined,
               opencodeConfig: opencodeConfig.value || undefined,
-              githubToken: githubToken.value || undefined,
-              clearGithubToken: clearGithubToken.value || undefined,
               providerId: providerId.value || undefined
             }
           });
@@ -124,7 +119,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
   return {
     formError,
     submitting,
-    clearGithubToken,
     handleSubmit
   };
 };

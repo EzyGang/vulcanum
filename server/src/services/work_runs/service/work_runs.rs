@@ -49,6 +49,22 @@ impl WorkRunsService {
             None => (String::new(), String::new()),
         };
 
+        let github_token = match cfg.repo_url.is_empty() {
+            true => None,
+            false => match self.github.generate_installation_token(&cfg.repo_url).await {
+                Ok(token) => Some(token.token),
+                Err(e) => {
+                    tracing::error!(
+                        work_run_id = %id,
+                        repo_url = %cfg.repo_url,
+                        error = %e,
+                        "failed to mint github installation token"
+                    );
+                    return Err(e.into());
+                }
+            },
+        };
+
         Ok(JobResponse {
             prompt_text: run.prompt_text,
             repo_url: run.repo_url,
@@ -60,7 +76,7 @@ impl WorkRunsService {
             kaneo_project_id: cfg.kaneo_project_id,
             kaneo_workspace_id: cfg.kaneo_workspace_id,
             max_turns: cfg.max_turns,
-            github_token: cfg.github_token,
+            github_token,
         })
     }
 

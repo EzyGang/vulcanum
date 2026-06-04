@@ -1,16 +1,9 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
 use crate::services::integrations::model::{IntegrationColumn, IntegrationType};
-
-fn mask_token<S: Serializer>(val: &Option<String>, s: S) -> Result<S::Ok, S::Error> {
-    match val {
-        Some(_) => s.serialize_some("********"),
-        None => s.serialize_none(),
-    }
-}
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
@@ -30,8 +23,6 @@ pub struct ProjectConfig {
     pub opencode_config: String,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
-    #[serde(serialize_with = "mask_token")]
-    pub github_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -61,8 +52,6 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
-    #[serde(default)]
-    pub github_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,10 +81,6 @@ pub struct UpdateProjectConfigRequest {
     pub integration_type: Option<IntegrationType>,
     #[serde(default)]
     pub provider_id: Option<Uuid>,
-    #[serde(default)]
-    pub github_token: Option<String>,
-    #[serde(default)]
-    pub clear_github_token: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -129,7 +114,7 @@ impl ProjectConfig {
             opencode_config: self.opencode_config.clone(),
             max_turns: self.max_turns,
             provider_id: self.provider_id,
-            github_token: self.github_token.clone(),
+            repo_url: self.repo_url.clone(),
         }
     }
 }
@@ -141,7 +126,7 @@ pub struct JobConfigFields {
     pub opencode_config: String,
     pub max_turns: i32,
     pub provider_id: Option<Uuid>,
-    pub github_token: Option<String>,
+    pub repo_url: String,
 }
 
 fn default_enabled() -> bool {

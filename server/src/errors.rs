@@ -2,6 +2,7 @@ use actix_web::{HttpResponse, ResponseError};
 use thiserror::Error;
 
 use crate::services::auth::errors::AuthError;
+use crate::services::github_app::errors::GithubAppError;
 use crate::services::integration_providers::errors::IntegrationProvidersError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::users::errors::UsersError;
@@ -11,6 +12,8 @@ use crate::services::workers::errors::WorkersError;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error("bad request: {0}")]
+    BadRequest(String),
     #[error("user not found")]
     UserNotFound,
     #[error("invalid token")]
@@ -58,6 +61,9 @@ pub enum AppError {
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         match self {
+            Self::BadRequest(msg) => {
+                HttpResponse::BadRequest().json(ErrorBody { error: msg.clone() })
+            }
             Self::UserNotFound => HttpResponse::NotFound().json(ErrorBody {
                 error: "User not found".to_owned(),
             }),
@@ -185,6 +191,7 @@ impl From<WorkRunsError> for AppError {
                 Self::Internal
             }
             WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
+            WorkRunsError::GithubApp(e) => e.into(),
         }
     }
 }
@@ -241,6 +248,34 @@ impl From<WorkRunEventsError> for AppError {
             }
             WorkRunEventsError::Internal(msg) => {
                 tracing::error!(operation = "work_run_events", "internal error: {msg}");
+                Self::Internal
+            }
+        }
+    }
+}
+
+impl From<GithubAppError> for AppError {
+    fn from(err: GithubAppError) -> Self {
+        match err {
+            GithubAppError::NoInstallation => {
+                Self::BadRequest("No GitHub installation configured".to_string())
+            }
+            GithubAppError::NotConfigured => {
+                Self::BadRequest("GitHub App not configured".to_string())
+            }
+            GithubAppError::InvalidRepoUrl(url) => {
+                Self::BadRequest(format!("Invalid repo URL: {url}"))
+            }
+            GithubAppError::Api(msg) => {
+                tracing::error!(error = %msg, operation = "github_app", "github api error");
+                Self::Internal
+            }
+            GithubAppError::Database(e) => {
+                tracing::error!(error = %e, operation = "github_app", "database error");
+                Self::Internal
+            }
+            GithubAppError::Redis(e) => {
+                tracing::error!(error = %e, operation = "github_app", "redis error");
                 Self::Internal
             }
         }

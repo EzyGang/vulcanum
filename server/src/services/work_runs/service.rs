@@ -10,6 +10,7 @@ use sqlx::PgPool;
 
 use crate::services::dispatcher::cancel_store::CancelStore;
 use crate::services::dispatcher::flag_store::DispatchStore;
+use crate::services::github_app::service::GithubAppManager;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -19,6 +20,7 @@ pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
     pub workers_repo: WorkersRepository,
     pub project_configs_repo: ProjectConfigsRepository,
+    pub github: GithubAppManager,
     pub db: PgPool,
     pub dispatch_store: Arc<dyn DispatchStore>,
     pub cancel_store: Arc<dyn CancelStore>,
@@ -32,6 +34,7 @@ impl Clone for WorkRunsService {
             work_runs_repo: self.work_runs_repo.clone(),
             workers_repo: self.workers_repo.clone(),
             project_configs_repo: self.project_configs_repo.clone(),
+            github: self.github.clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
             cancel_store: self.cancel_store.clone(),
@@ -47,6 +50,7 @@ impl WorkRunsService {
         work_runs_repo: WorkRunsRepository,
         workers_repo: WorkersRepository,
         project_configs_repo: ProjectConfigsRepository,
+        github: GithubAppManager,
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
         providers_repo: IntegrationProvidersRepository,
@@ -57,6 +61,7 @@ impl WorkRunsService {
             work_runs_repo,
             workers_repo,
             project_configs_repo,
+            github,
             db,
             dispatch_store,
             cancel_store,

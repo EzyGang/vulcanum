@@ -10,6 +10,9 @@ pub struct AppConfig {
     pub stalled_running_threshold_secs: u64,
     pub instance_password: String,
     pub redis_url: String,
+    pub github_app_id: Option<u64>,
+    pub github_app_private_key: Option<String>,
+    pub github_app_slug: Option<String>,
 }
 
 impl AppConfig {
@@ -34,6 +37,11 @@ impl AppConfig {
         let instance_password = std::env::var("INSTANCE_PASSWORD")?;
         let redis_url =
             std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
+        let github_app_id = std::env::var("GITHUB_APP_ID")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok());
+        let github_app_private_key = std::env::var("GITHUB_APP_PRIVATE_KEY").ok();
+        let github_app_slug = std::env::var("GITHUB_APP_SLUG").ok();
 
         Ok(Self {
             db_url,
@@ -45,6 +53,9 @@ impl AppConfig {
             stalled_running_threshold_secs,
             instance_password,
             redis_url,
+            github_app_id,
+            github_app_private_key,
+            github_app_slug,
         })
     }
 }

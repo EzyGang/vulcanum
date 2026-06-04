@@ -18,6 +18,9 @@ fn cfg() -> AppConfig {
         stalled_running_threshold_secs: 1800,
         instance_password: "test-password".to_owned(),
         redis_url: String::new(),
+        github_app_id: None,
+        github_app_private_key: None,
+        github_app_slug: None,
     }
 }
 
