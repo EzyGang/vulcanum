@@ -45,7 +45,6 @@ pub(crate) async fn recover_session_task(
         session_id: session_id.clone(),
         event_stream,
         max_duration_secs: 1800,
-        is_container: true,
         container_name: Some(container_name.clone()),
         server_process: None,
     });
