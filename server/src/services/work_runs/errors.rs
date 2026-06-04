@@ -1,4 +1,5 @@
 use crate::services::dispatcher::errors::DispatchError;
+use crate::services::github_app::errors::GithubAppError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorkRunsError {
@@ -16,4 +17,6 @@ pub enum WorkRunsError {
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]
     Dispatch(#[from] DispatchError),
+    #[error("github app error: {0}")]
+    GithubApp(#[from] GithubAppError),
 }

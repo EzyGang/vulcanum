@@ -3,6 +3,8 @@ use uuid::Uuid;
 
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::github_app::repository::GithubAppRepository;
+use crate::services::github_app::service::GithubAppManager;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -13,11 +15,36 @@ use crate::services::workers::repository::WorkersRepository;
 use crate::test_helpers;
 use vulcanum_shared::api_types::SubmitResultRequest;
 
+fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
+    let cfg = crate::config::AppConfig {
+        db_url: String::new(),
+        max_conns: 1,
+        poll_period_secs: 30,
+        jwt_secret: String::new(),
+        stale_worker_threshold_secs: 120,
+        unhealthy_threshold: 3,
+        stalled_running_threshold_secs: 1800,
+        instance_password: String::new(),
+        redis_url: "redis://127.0.0.1:6379".to_owned(),
+        github_app_id: None,
+        github_app_private_key: None,
+        github_app_slug: None,
+    };
+    GithubAppManager::new(
+        GithubAppRepository::new(),
+        pool,
+        "redis://127.0.0.1:6379",
+        &cfg,
+    )
+    .expect("build github manager for tests")
+}
+
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     WorkRunsService::new(
         WorkRunsRepository::new(),
         WorkersRepository::new(),
         ProjectConfigsRepository::new(),
+        build_github_manager(pool.clone()),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
@@ -299,4 +326,31 @@ async fn get_job_returns_not_found(pool: sqlx::PgPool) {
     let err = svc.get_job(Uuid::new_v4()).await.expect_err("Should fail");
 
     assert!(matches!(err, WorkRunsError::NotFound));
+}
+
+#[sqlx::test]
+async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-2").await;
+
+    sqlx::query!(
+        "UPDATE project_configs SET repo_url = $1 WHERE id = $2",
+        "https://github.com/org/repo",
+        project_id
+    )
+    .execute(&pool)
+    .await
+    .expect("Should update repo_url");
+
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-2").await;
+
+    let err = svc
+        .get_job(wr_id)
+        .await
+        .expect_err("Should fail without GitHub installation");
+
+    assert!(
+        matches!(err, WorkRunsError::GithubApp(_)),
+        "Expected GithubApp error, got {err:?}"
+    );
 }

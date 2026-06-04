@@ -8,6 +8,8 @@ use crate::services::dispatcher::cancel_store::{
     CancelStore, InMemoryCancelStore, RedisCancelStore,
 };
 use crate::services::dispatcher::flag_store::DispatchStore;
+use crate::services::github_app::repository::GithubAppRepository;
+use crate::services::github_app::service::GithubAppManager;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::integration_providers::service::IntegrationProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
@@ -30,6 +32,7 @@ pub struct AppState {
     pub workers: WorkersService,
     pub jobs: WorkRunsService,
     pub events: WorkRunEventsService,
+    pub github: GithubAppManager,
     pub db_pool: PgPool,
     pub work_runs: WorkRunsRepository,
     pub dispatch_store: Arc<dyn DispatchStore>,
@@ -65,6 +68,12 @@ impl AppState {
             cfg,
             Arc::new(code_store),
         );
+        let github = GithubAppManager::new(
+            GithubAppRepository::new(),
+            db_pool.clone(),
+            &cfg.redis_url,
+            cfg,
+        )?;
         let work_runs = WorkRunsRepository::new();
         let dispatch_store: Arc<dyn DispatchStore> = Arc::new(
             crate::services::dispatcher::flag_store::RedisDispatchStore::new(&cfg.redis_url)?,
@@ -74,6 +83,7 @@ impl AppState {
             work_runs.clone(),
             workers_repo,
             project_configs_repo,
+            github.clone(),
             db_pool.clone(),
             dispatch_store.clone(),
             providers_repo.clone(),
@@ -96,6 +106,7 @@ impl AppState {
             workers,
             jobs,
             events,
+            github,
             db_pool,
             work_runs,
             dispatch_store,

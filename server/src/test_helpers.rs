@@ -6,6 +6,8 @@ use crate::app_state::AppState;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::github_app::repository::GithubAppRepository;
+use crate::services::github_app::service::GithubAppManager;
 use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::integration_providers::service::IntegrationProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
@@ -140,7 +142,10 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         unhealthy_threshold: 3,
         stalled_running_threshold_secs: 1800,
         instance_password: "test-password".to_owned(),
-        redis_url: String::new(),
+        redis_url: "redis://127.0.0.1:6379".to_owned(),
+        github_app_id: None,
+        github_app_private_key: None,
+        github_app_slug: None,
     };
 
     let workers_repo = WorkersRepository::new();
@@ -149,6 +154,15 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
     let project_configs_repo = ProjectConfigsRepository::new();
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
+    let providers_repo_clone = providers_repo.clone();
+
+    let github = GithubAppManager::new(
+        GithubAppRepository::new(),
+        pool.clone(),
+        &cfg.redis_url,
+        &cfg,
+    )
+    .expect("build github manager for tests");
 
     let auth = AuthService::new(
         UsersService::new(UsersRepository::new(), pool.clone()),
@@ -160,9 +174,10 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         work_runs_repo.clone(),
         workers_repo,
         project_configs_repo.clone(),
+        github.clone(),
         pool.clone(),
         dispatch_store.clone(),
-        providers_repo,
+        providers_repo_clone,
         cancel_store.clone(),
         cfg.unhealthy_threshold,
     );
@@ -191,6 +206,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         ),
         jobs,
         events,
+        github,
         db_pool: pool,
         work_runs: work_runs_repo,
         dispatch_store,

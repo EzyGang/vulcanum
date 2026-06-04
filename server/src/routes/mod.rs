@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod github;
 pub mod health;
 pub mod instance_auth;
 pub mod jobs;
@@ -19,6 +20,17 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/auth/verify", web::get().to(auth::verify))
             .route("/auth/instance-login", web::post().to(auth::instance_login))
             .route("/auth/logout", web::post().to(auth::logout))
+            .service(
+                web::scope("/github")
+                    .route("/auth", web::get().to(github::auth_redirect))
+                    .route("/callback", web::get().to(github::callback))
+                    .route("/repos", web::get().to(github::list_repos))
+                    .route("/installation", web::get().to(github::get_installation))
+                    .route(
+                        "/installation/{id}",
+                        web::delete().to(github::delete_installation),
+                    ),
+            )
             .route("/poll", web::get().to(jobs::poll))
             .route("/health", web::get().to(health::get))
             .route("/status", web::get().to(status::get))

@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod dispatcher;
+pub mod github_app;
 pub mod integration_providers;
 pub mod integrations;
 pub mod kaneo;

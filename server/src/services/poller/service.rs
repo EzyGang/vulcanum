@@ -186,7 +186,7 @@ impl PollerService {
                 },
             );
 
-            if config.github_token.is_some() {
+            if !config.repo_url.is_empty() && config.repo_url.starts_with("https://github.com/") {
                 prompt_text.push_str(GITHUB_INSTRUCTION);
             }
             let params = InsertWorkRunParams {

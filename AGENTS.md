@@ -54,6 +54,15 @@ pnpm run test
 # Dev server (frontend)
 pnpm run dev
 
+# Run migrations up
+pnpm migrate-server-up
+
+# Run migrations down
+pnpm migrate-server-down
+
+# Prepare queries cache
+pnpm prep-queries
+
 # Run a specific Rust binary
 cargo run -p vulcanum-server --bin vulcanum-web
 cargo run -p vulcanum-worker-server --bin vulcanum-server

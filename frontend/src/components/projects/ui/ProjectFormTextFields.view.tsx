@@ -8,16 +8,13 @@ interface ProjectFormTextFieldsProps {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
-  githubToken: Signal<string>;
-  hasGithubToken: Signal<boolean>;
-  clearGithubToken: Signal<boolean>;
+  repos: string[];
+  reposLoading: boolean;
   submitting: Signal<boolean>;
   onPromptTemplateChange: (value: string) => void;
   onRepoUrlChange: (value: string) => void;
   onAgentsMdChange: (value: string) => void;
   onOpencodeConfigChange: (value: string) => void;
-  onGithubTokenChange: (value: string) => void;
-  onClearGithubToken: (checked: boolean) => void;
 }
 
 const inputStyles =
@@ -29,16 +26,13 @@ export const ProjectFormTextFields = ({
   repoUrl,
   agentsMd,
   opencodeConfig,
-  githubToken,
-  hasGithubToken,
-  clearGithubToken,
+  repos,
+  reposLoading,
   submitting,
   onPromptTemplateChange,
   onRepoUrlChange,
   onAgentsMdChange,
-  onOpencodeConfigChange,
-  onGithubTokenChange,
-  onClearGithubToken
+  onOpencodeConfigChange
 }: ProjectFormTextFieldsProps): JSX.Element => (
   <>
     <div class='flex flex-col gap-2'>
@@ -60,17 +54,32 @@ export const ProjectFormTextFields = ({
 
     <div class='flex flex-col gap-2'>
       <Label for='field-repo-url'>Repo URL</Label>
-      <span class='text-text-muted text-xs'>
-        Git repository URL. Use https://{'{token}'}@github.com/org/repo for private repos.
-      </span>
-      <Input
-        id='field-repo-url'
-        type='text'
-        value={repoUrl.value}
-        onInput={(e) => onRepoUrlChange((e.target as HTMLInputElement).value)}
-        placeholder='https://github.com/org/repo'
-        disabled={submitting.value}
-      />
+      {repos.length > 0 ? (
+        <select
+          id='field-repo-url'
+          value={repoUrl.value}
+          onChange={(e) => onRepoUrlChange((e.target as HTMLSelectElement).value)}
+          disabled={submitting.value}
+          class={`${inputStyles} cursor-pointer`}
+        >
+          <option value=''>Select a repository...</option>
+          {repos.map((r) => (
+            <option key={r} value={`https://github.com/${r}`}>
+              {r}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <Input
+          id='field-repo-url'
+          type='text'
+          value={repoUrl.value}
+          onInput={(e) => onRepoUrlChange((e.target as HTMLInputElement).value)}
+          placeholder='https://github.com/org/repo'
+          disabled={submitting.value || reposLoading}
+        />
+      )}
+      {reposLoading && <span class='text-xs text-text-muted'>Loading repos...</span>}
     </div>
 
     <div class='flex flex-col gap-2'>
@@ -102,34 +111,6 @@ export const ProjectFormTextFields = ({
         rows={6}
         class={textareaStyles}
       />
-    </div>
-
-    <div class='flex flex-col gap-2'>
-      <Label for='field-github-token'>GitHub Token</Label>
-      <span class='text-text-muted text-xs'>
-        Personal access token for PR creation. Leave empty to skip PRs.
-      </span>
-      {hasGithubToken.value && <span class='text-xs text-green-400'>Token configured</span>}
-      <Input
-        id='field-github-token'
-        type='password'
-        value={githubToken.value}
-        onInput={(e) => onGithubTokenChange((e.target as HTMLInputElement).value)}
-        placeholder={hasGithubToken.value ? 'Enter new token to change' : 'ghp_...'}
-        disabled={submitting.value}
-      />
-      {hasGithubToken.value && (
-        <label class='flex items-center gap-2 text-sm text-text-muted'>
-          <input
-            type='checkbox'
-            checked={clearGithubToken.value}
-            onChange={(e) => onClearGithubToken((e.target as HTMLInputElement).checked)}
-            disabled={submitting.value}
-            class='w-4 h-4'
-          />
-          Clear existing token
-        </label>
-      )}
     </div>
   </>
 );

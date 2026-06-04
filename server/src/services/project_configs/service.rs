@@ -117,21 +117,7 @@ impl ProjectConfigsService {
 
         validate_and_normalize_optional_columns(&mut params);
 
-        if params.clear_github_token == Some(true) {
-            let _ = sqlx::query!(
-                "UPDATE project_configs SET github_token = NULL WHERE id = $1",
-                id
-            )
-            .execute(&self.db)
-            .await;
-            params.github_token = None;
-        } else if params
-            .github_token
-            .as_deref()
-            .is_none_or(|t| t.is_empty() || t == "********")
-        {
-            params.github_token = None;
-        }
+        validate_and_normalize_optional_columns(&mut params);
 
         self.repo
             .update(
@@ -151,10 +137,6 @@ impl ProjectConfigsService {
                     enabled: params.enabled,
                     integration_type: params.integration_type,
                     provider_id: params.provider_id,
-                    github_token: params
-                        .github_token
-                        .as_deref()
-                        .filter(|t| !t.is_empty() && *t != "********"),
                 },
             )
             .await
