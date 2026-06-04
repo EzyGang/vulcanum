@@ -138,9 +138,11 @@ async fn poller_inserts_tasks(pool: PgPool) {
 
     assert_eq!(rows.len(), 2, "Should insert 2 work_runs");
     assert_eq!(rows[0].external_task_ref, "task-1");
-    assert_eq!(rows[0].prompt_text, "Review Fix login bug");
+    assert!(rows[0].prompt_text.starts_with("Review Fix login bug"));
+    assert!(rows[0].prompt_text.contains("Debian-based container"));
     assert_eq!(rows[1].external_task_ref, "task-2");
-    assert_eq!(rows[1].prompt_text, "Review Add dark mode");
+    assert!(rows[1].prompt_text.starts_with("Review Add dark mode"));
+    assert!(rows[1].prompt_text.contains("Debian-based container"));
 }
 
 #[sqlx::test]
