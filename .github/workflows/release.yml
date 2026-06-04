@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: main
+          fetch-depth: 0
 
       - name: Parse version
         id: version
@@ -33,14 +34,25 @@ jobs:
         run: |
           version="${{ steps.version.outputs.version }}"
           if [ "${{ inputs.release_type }}" = "alpha" ]; then
-            echo "tag=v${version}-alpha" >> "$GITHUB_OUTPUT"
-            echo "name=v${version}-alpha" >> "$GITHUB_OUTPUT"
+            latest_alpha=$(git tag --list "v${version}-alpha.*" --sort=-v:refname | head -1 || true)
+            if [ -z "$latest_alpha" ]; then
+              alpha_num=1
+              prev_tag=$(git tag --list 'v*' --sort=-v:refname | grep -v '\-alpha' | head -1 || true)
+            else
+              alpha_num=$(echo "$latest_alpha" | sed 's/.*-alpha\.//')
+              alpha_num=$((alpha_num + 1))
+              prev_tag="$latest_alpha"
+            fi
+            echo "tag=v${version}-alpha.${alpha_num}" >> "$GITHUB_OUTPUT"
+            echo "name=v${version}-alpha.${alpha_num}" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
+            prev_tag=$(git tag --list 'v*' --sort=-v:refname | grep -v '\-alpha' | head -1 || true)
             echo "tag=v${version}" >> "$GITHUB_OUTPUT"
             echo "name=v${version}" >> "$GITHUB_OUTPUT"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
+          echo "prev_tag=${prev_tag:-}" >> "$GITHUB_OUTPUT"
 
       - name: Install Build Dependencies
         run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
@@ -65,6 +77,7 @@ jobs:
           name: ${{ steps.tag.outputs.name }}
           prerelease: ${{ steps.tag.outputs.prerelease == 'true' }}
           generate_release_notes: true
+          previous_tag: ${{ steps.tag.outputs.prev_tag || null }}
           files: |
             target/release/vulcanum
             target/release/vulcanum-server
