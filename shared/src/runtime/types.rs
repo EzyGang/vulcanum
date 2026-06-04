@@ -71,7 +71,6 @@ pub struct SessionExport {
     pub cache_write_tokens: u64,
     pub duration_ms: u64,
     pub model_used: Option<String>,
-    pub raw_output: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

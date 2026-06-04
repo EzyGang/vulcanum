@@ -158,7 +158,6 @@ impl RunningSession for OpenCodeRunningSession {
                 cache_write_tokens,
                 duration_ms: elapsed_ms,
                 model_used,
-                raw_output: None,
             })
         })
     }

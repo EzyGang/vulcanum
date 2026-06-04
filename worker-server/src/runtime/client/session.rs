@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 use vulcanum_shared::runtime::errors::HarnessError;
 
 use super::OpenCodeClient;
@@ -110,7 +109,7 @@ pub async fn abort_session(client: &OpenCodeClient, session_id: &str) -> Result<
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SessionInfoResponse {
+pub(crate) struct SessionInfoResponse {
     pub tokens: SessionInfoTokens,
     pub model: Option<SessionInfoModel>,
 }
