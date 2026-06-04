@@ -15,7 +15,7 @@ use crate::services::workers::repository::WorkersRepository;
 use crate::test_helpers;
 use vulcanum_shared::api_types::SubmitResultRequest;
 
-fn build_github_manager() -> GithubAppManager {
+fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
     let cfg = crate::config::AppConfig {
         db_url: String::new(),
         max_conns: 1,
@@ -25,18 +25,13 @@ fn build_github_manager() -> GithubAppManager {
         unhealthy_threshold: 3,
         stalled_running_threshold_secs: 1800,
         instance_password: String::new(),
-        redis_url: String::new(),
+        redis_url: "redis://127.0.0.1:6379".to_owned(),
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
     };
-    GithubAppManager::new(
-        GithubAppRepository::new(),
-        sqlx::PgPool::connect_lazy("").unwrap_or_else(|_| panic!("lazy pool failed")),
-        "",
-        &cfg,
-    )
-    .expect("build github manager for tests")
+    GithubAppManager::new(GithubAppRepository::new(), pool, "redis://127.0.0.1:6379", &cfg)
+        .expect("build github manager for tests")
 }
 
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
@@ -44,7 +39,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         WorkRunsRepository::new(),
         WorkersRepository::new(),
         ProjectConfigsRepository::new(),
-        build_github_manager(),
+        build_github_manager(pool.clone()),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),

@@ -142,7 +142,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         unhealthy_threshold: 3,
         stalled_running_threshold_secs: 1800,
         instance_password: "test-password".to_owned(),
-        redis_url: String::new(),
+        redis_url: "redis://127.0.0.1:6379".to_owned(),
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
