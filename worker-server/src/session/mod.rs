@@ -10,8 +10,8 @@ use vulcanum_shared::api_types::WireEvent;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::SessionStatus;
 
-use crate::runtime::client::events::SseEventStream;
-use crate::runtime::client::OpenCodeClient;
+use crate::opencode::events::SseEventStream;
+use crate::opencode::OpenCodeClient;
 
 pub struct SessionConfig {
     pub client: OpenCodeClient,

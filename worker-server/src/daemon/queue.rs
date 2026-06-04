@@ -23,12 +23,11 @@ pub(super) async fn try_drain_queue(state: &DaemonState) {
         let worker_state = Arc::clone(&state.worker_state);
         let journal = Arc::clone(&state.journal);
         let shutdown_tx = state.shutdown_tx.clone();
-        let harness_type = state.harness_type.clone();
+        let config = state.config.clone();
 
         tokio::spawn(async move {
             let _permit = permit;
-            if let Err(msg) = handle_job(client, worker_state, journal, job_id, &harness_type).await
-            {
+            if let Err(msg) = handle_job(client, worker_state, journal, job_id, &config).await {
                 let _ = shutdown_tx.send(Some(msg));
             }
         });

@@ -5,7 +5,7 @@ Refer to the root-level `AGENTS.md` for shared project conventions, Rust code gu
 
 ## Overview
 
-Host machine worker daemon that polls the Vulcanum server for jobs and executes them via opencode.
+Host machine worker daemon that polls the Vulcanum server for jobs, executes them via opencode, and captures session message history.
 
 ## Architecture
 
@@ -14,8 +14,13 @@ Host machine worker daemon that polls the Vulcanum server for jobs and executes 
 | Layer       | Path                   | Responsibility                                         |
 | ----------- | ---------------------- | ------------------------------------------------------ |
 | Daemon      | `src/daemon/`          | Main loop, polling, job dispatch                       |
-| Isolation   | `src/harness/`         | Environment preparation (host, Kata, gVisor)           |
+| Isolation   | `src/harness/`         | Environment preparation (host, Docker, Kata, gVisor)   |
 | State       | `src/state/`           | Local SQLite journal for job state                     |
+| Runtime     | `src/runtime/`         | OpenCode service orchestration, agent runtime          |
+| OpenCode    | `src/opencode/`        | HTTP client for the opencode server API                |
+| Session     | `src/session/`         | Running session wrapper, event handling                |
+| Recovery    | `src/recovery/`        | Crash recovery: reconnecting to live sessions          |
+| Storage     | `src/storage/`         | Local message history persistence                      |
 
 ### Isolation Layer
 
@@ -27,11 +32,11 @@ The harness module provides environment isolation via the `IsolationProvider` tr
 - `GvisorIsolation` — delegates to `DockerIsolation` with `runsc`.
 - `IsolationKind` — enum dispatch selecting the provider at runtime via `create_isolation_provider()`.
 
-The isolation layer only prepares the environment. The runtime execution (`AgentRuntime`) is stubbed with `todo!()` until VLC-40 implements it.
+The isolation layer only prepares the environment. The runtime layer handles opencode server launch and session execution.
 
 ### Daemon Flow
 
-**Startup**: Load worker identity and tokens from `~/.config/vulcanum/worker.json`.
+**Startup**: Load worker config from `~/.vulcanum/config.json` and worker identity from `~/.vulcanum/worker.json`.
 
 **Poll loop**: Acquire a `tokio::sync::Semaphore` permit (size = `max_concurrent_jobs` received from the server at registration).
 - `GET /api/v1/poll` → `job_id` or 204.
@@ -39,7 +44,7 @@ The isolation layer only prepares the environment. The runtime execution (`Agent
 - The loop never blocks on individual jobs — it returns to polling immediately.
 - Fatal API errors (401/403) from spawned tasks are propagated to the main loop via a `watch` channel.
 
-**Job execution**: Fetch job details, ack, insert journal entry, prepare isolation, `todo!()` for runtime execution.
+**Job execution**: Fetch job details, ack, insert journal entry, prepare isolation, launch opencode server, create session, enter multi-turn loop, submit result, capture message history, cleanup.
 
 ### Concurrent Job Model
 
@@ -49,7 +54,7 @@ The isolation layer only prepares the environment. The runtime execution (`Agent
 
 ### State Journal (SQLite)
 
-Located at `~/.config/vulcanum/worker.db`.
+Located at `~/.vulcanum/worker.db`.
 
 Schema:
 
@@ -66,20 +71,41 @@ CREATE TABLE job_journal (
     tokens_used INTEGER,
     pr_url TEXT,
     duration_ms INTEGER,
-    error_message TEXT
+    error_message TEXT,
+    turn_count INTEGER NOT NULL DEFAULT 0,
+    session_id TEXT,
+    max_turns INTEGER NOT NULL DEFAULT 1
 );
 ```
 
 Statuses: `running` → `completed` | `failed` | `lost` → `submitted`.
 
+### Message History
+
+After each job completes, the daemon fetches the full message history from the opencode server via `GET /session/:id/message` and persists it to `~/.vulcanum/sessions/{work_run_id}/{session_id}.json` as raw JSON. This happens before the isolation provider is cleaned up (i.e., while the opencode server is still running).
+
 ### Composition Pattern
 
 ```
-create_isolation_provider(harness_type) → IsolationKind
+create_isolation_provider(config) → IsolationKind
 IsolationProvider::prepare() → IsolatedEnvironment
-todo!("AgentRuntime not yet implemented — see VLC-40")
+OpenCodeServeRuntime::execute() → RunningSession
+run_turn_loop() → multi-turn with continuation prompts
+[message history capture via GET /session/:id/message]
 IsolationProvider::cleanup()
 ```
+
+## Configuration
+
+All worker configuration lives in `~/.vulcanum/config.json`. On first run, defaults are written automatically.
+
+| Field | Default | Description |
+| ----- | ------- | ----------- |
+| `harness` | `"host"` | Which isolation to use: `host`, `docker`, `kata`, or `gvisor` |
+| `image` | `"ghcr.io/ezygang/vulcanum/agent:latest"` | Docker image for container isolation providers |
+| `log_format` | `null` | Set to `"json"` for JSON-formatted logs |
+| `debug` | `false` | Enable debug-level logging |
+| `poll_interval_secs` | `15` | Seconds to sleep between polls when no jobs are available |
 
 ## Build & Run
 
@@ -91,10 +117,3 @@ cargo run -p vulcanum-worker-server --bin vulcanum-server
 cd worker-server
 cargo run --bin vulcanum-server
 ```
-
-## Environment Variables
-
-| Variable | Default | Description |
-| -------- | ------- | ----------- |
-| `VULCANUM_HARNESS` | `host` | Which isolation to use: `host`, `docker`, `kata`, or `gvisor` |
-| `VULCANUM_IMAGE` | `ghcr.io/ezygang/vulcanum/agent:latest` | Docker image for container isolation providers |

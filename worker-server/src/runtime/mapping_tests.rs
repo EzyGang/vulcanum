@@ -1,4 +1,4 @@
-use crate::runtime::client::events::SseEvent;
+use crate::opencode::events::SseEvent;
 use crate::runtime::mapping;
 
 fn make_sse(event_type: &str, properties: &str) -> SseEvent {

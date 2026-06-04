@@ -1,3 +1,5 @@
+pub(crate) mod task;
+
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -5,11 +7,11 @@ use tokio::sync::RwLock;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::runtime::client::session;
-use crate::runtime::client::OpenCodeClient;
-use crate::runtime::recovery_task::{mark_lost_and_submit, recover_session_task};
-use crate::runtime::runner::remove_container;
-use crate::runtime::serve::launch::read_container_port;
+use crate::opencode;
+use crate::opencode::session;
+use crate::recovery::task::{mark_lost_and_submit, recover_session_task};
+use crate::runtime::launch::read_container_port;
+use crate::session::remove_container;
 use crate::state::journal::{Journal, JournalEntry};
 
 pub async fn reconcile_running_jobs(
@@ -60,7 +62,7 @@ pub async fn reconcile_running_jobs(
         };
 
         let base_url = format!("http://127.0.0.1:{port}");
-        let oc_client = OpenCodeClient::new(&base_url);
+        let oc_client = opencode::OpenCodeClient::new(&base_url);
 
         let status_map = match session::get_session_status(&oc_client).await {
             Ok(map) => map,

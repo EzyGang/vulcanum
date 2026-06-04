@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
@@ -15,15 +16,18 @@ use vulcanum_shared::worker_state::WorkerState;
 use super::report::{submit_failed_result, FailedResult};
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::harness::dispatch::create_isolation_provider;
+use crate::opencode::{self, session};
 use crate::state::journal::Journal;
+use crate::storage::messages::MessageStore;
 
 pub(crate) async fn handle_job(
     client: Arc<ApiClient>,
     worker_state: Arc<RwLock<WorkerState>>,
     journal: Arc<Journal>,
     job_id: Uuid,
-    harness_type: &str,
+    config: &WorkerConfig,
 ) -> Result<(), String> {
+    let harness_type = config.harness.as_str();
     let worker_id = worker_state.read().await.worker_id;
 
     tracing::info!(
@@ -99,7 +103,7 @@ pub(crate) async fn handle_job(
         tracing::warn!(work_run_id = %job_id, error = %e, "journal insert failed, continuing without tracking");
     }
 
-    let provider = create_isolation_provider(harness_type);
+    let provider = create_isolation_provider(config);
     let limits = ResourceLimits::default();
     let mut secrets = HashMap::new();
     secrets.insert("KANEO_INSTANCE".to_owned(), job.kaneo_instance);
@@ -145,7 +149,7 @@ pub(crate) async fn handle_job(
         }
     };
 
-    let runtime = crate::runtime::serve::OpenCodeServeRuntime::new();
+    let runtime = crate::runtime::OpenCodeServeRuntime::new();
     let mut running_session: Box<dyn RunningSession> = match runtime
         .execute(&job.prompt_text, &isolated_env, &job.repo_url)
         .await
@@ -193,6 +197,26 @@ pub(crate) async fn handle_job(
     };
 
     run_turn_loop(&mut running_session, &artifact_path, max_turns, 1, &ctx).await;
+
+    if let (Some(sid), Some(base_url)) = (
+        running_session.session_id(),
+        running_session.opencode_base_url(),
+    ) {
+        let oc_client = opencode::OpenCodeClient::new(base_url);
+        match session::get_session_messages(&oc_client, sid, None).await {
+            Ok(messages) => match MessageStore::new() {
+                Ok(store) => {
+                    let _ = store.save(job_id, sid, &messages);
+                }
+                Err(e) => {
+                    tracing::warn!(work_run_id = %job_id, error = %e, "failed to create message store");
+                }
+            },
+            Err(e) => {
+                tracing::warn!(work_run_id = %job_id, error = %e, "failed to fetch session messages");
+            }
+        }
+    }
 
     provider.cleanup(&isolated_env).await;
 

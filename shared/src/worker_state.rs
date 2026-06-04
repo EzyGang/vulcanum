@@ -17,10 +17,7 @@ pub struct WorkerState {
 }
 
 pub fn state_path() -> anyhow::Result<PathBuf> {
-    let dir = dirs::config_dir()
-        .context("failed to find config directory")?
-        .join("vulcanum");
-    Ok(dir.join("worker.json"))
+    crate::paths::state_path()
 }
 
 pub fn load_state() -> anyhow::Result<Option<WorkerState>> {

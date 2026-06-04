@@ -15,6 +15,10 @@ pub trait RunningSession: Send {
         None
     }
 
+    fn opencode_base_url(&self) -> Option<&str> {
+        None
+    }
+
     fn poll_event(&mut self) -> Pin<Box<dyn Future<Output = Option<AgentEvent>> + Send + '_>>;
 
     fn cancel(&mut self) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>>;

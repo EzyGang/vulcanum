@@ -1,12 +1,18 @@
 mod daemon;
 mod harness;
+mod opencode;
+mod recovery;
 mod runtime;
+mod session;
 mod state;
+mod storage;
 
 use anyhow::Context;
+use vulcanum_shared::config::load_config;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    vulcanum_shared::telemetry::init();
+    let config = load_config().context("failed to load worker config")?;
+    vulcanum_shared::telemetry::init_with_config(config.debug, config.log_format.as_deref());
     daemon::run().await.context("daemon exited with error")
 }

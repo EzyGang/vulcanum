@@ -4,7 +4,7 @@ use vulcanum_shared::api_error::is_fatal_api_error;
 use vulcanum_shared::token::ensure_valid_token;
 
 use super::queue::try_drain_queue;
-use super::{DaemonState, TickOutcome, POLL_INTERVAL_SECS};
+use super::{DaemonState, TickOutcome};
 
 pub(super) async fn tick(state: &DaemonState, refresh_buffer_secs: i64) -> TickOutcome {
     {
@@ -38,8 +38,9 @@ pub(super) async fn tick(state: &DaemonState, refresh_buffer_secs: i64) -> TickO
             TickOutcome::Success
         }
         Ok(None) => {
-            tracing::info!("no jobs available, sleeping {POLL_INTERVAL_SECS}s");
-            sleep(std::time::Duration::from_secs(POLL_INTERVAL_SECS)).await;
+            let interval = state.config.poll_interval_secs;
+            tracing::info!("no jobs available, sleeping {interval}s");
+            sleep(std::time::Duration::from_secs(interval)).await;
             TickOutcome::Success
         }
         Err(e) => {

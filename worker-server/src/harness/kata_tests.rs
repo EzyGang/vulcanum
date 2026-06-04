@@ -4,7 +4,7 @@ use crate::harness::kata::KataIsolation;
 
 #[test]
 fn kata_inner_image_default() {
-    let isolation = KataIsolation::new();
+    let isolation = KataIsolation::new("test-image:v1".to_owned());
     assert!(!isolation.inner.image.is_empty());
 }
 

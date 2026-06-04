@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -17,19 +18,20 @@ pub enum IsolationKind {
     Docker(DockerIsolation),
 }
 
-pub fn create_isolation_provider(harness_type: &str) -> IsolationKind {
+pub fn create_isolation_provider(config: &WorkerConfig) -> IsolationKind {
+    let harness_type = config.harness.as_str();
     match harness_type {
         "kata" => {
             tracing::debug!("using Kata Containers isolation");
-            IsolationKind::Kata(KataIsolation::new())
+            IsolationKind::Kata(KataIsolation::new(config.image.clone()))
         }
         "gvisor" => {
             tracing::debug!("using gVisor isolation");
-            IsolationKind::Gvisor(GvisorIsolation::new())
+            IsolationKind::Gvisor(GvisorIsolation::new(config.image.clone()))
         }
         "docker" => {
             tracing::debug!("using Docker isolation");
-            IsolationKind::Docker(DockerIsolation::new(None))
+            IsolationKind::Docker(DockerIsolation::new(None, config.image.clone()))
         }
         _ => {
             tracing::debug!("using host isolation");
