@@ -14,7 +14,6 @@ use vulcanum_shared::runtime::types::{AgentEvent, SessionExport, SessionStatus};
 
 use crate::runtime::client::events;
 use crate::runtime::client::session;
-use crate::runtime::export;
 use crate::runtime::mapping;
 use crate::runtime::runner::OpenCodeRunningSession;
 
@@ -119,52 +118,47 @@ impl RunningSession for OpenCodeRunningSession {
     fn export(
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<SessionExport, HarnessError>> + Send + '_>> {
-        let is_container = self.is_container;
-        let container_name = self.container_name.clone();
+        let client = self.client.clone();
         let session_id = self.session_id.clone();
         let current_status = self.status.clone();
         let started_at = self.started_at;
 
         Box::pin(async move {
-            let raw = if is_container {
-                let name = container_name.as_deref().ok_or_else(|| {
-                    HarnessError::OutputParse("container name missing for export".to_owned())
-                })?;
-                let output = tokio::process::Command::new("docker")
-                    .args(["exec", name, "opencode", "export", &session_id])
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::null())
-                    .output()
-                    .await
-                    .map_err(|e| {
-                        HarnessError::OutputParse(format!("docker exec export failed: {e}"))
-                    })?;
-                String::from_utf8_lossy(&output.stdout).to_string()
-            } else {
-                let output = tokio::process::Command::new("opencode")
-                    .args(["export", &session_id])
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::null())
-                    .output()
-                    .await
-                    .map_err(|e| {
-                        HarnessError::OutputParse(format!("opencode export failed: {e}"))
-                    })?;
-                String::from_utf8_lossy(&output.stdout).to_string()
-            };
+            let info = session::get_session_info(&client, &session_id).await?;
 
-            let session_export = export::parse_export(&raw)?;
+            let tokens = &info.tokens;
+            let input_tokens = tokens.input.unwrap_or(0);
+            let output_tokens = tokens.output.unwrap_or(0);
+            let cache_read_tokens = tokens.cache.as_ref().and_then(|c| c.read).unwrap_or(0);
+            let cache_write_tokens = tokens.cache.as_ref().and_then(|c| c.write).unwrap_or(0);
+            let tokens_used = input_tokens + output_tokens + cache_read_tokens + cache_write_tokens;
+
+            let model_used = info
+                .model
+                .as_ref()
+                .and_then(|m| match (&m.provider_id, &m.id) {
+                    (Some(p), Some(m_id)) => Some(format!("{p}/{m_id}")),
+                    (None, Some(m_id)) => Some(m_id.to_owned()),
+                    _ => None,
+                });
+
             let elapsed_ms = (Utc::now() - started_at).num_milliseconds() as u64;
             let exit_code = match current_status {
                 SessionStatus::Failed => 1,
                 SessionStatus::Cancelled => 2,
-                _ => session_export.exit_code,
+                _ => 0,
             };
 
             Ok(SessionExport {
-                duration_ms: elapsed_ms,
                 exit_code,
-                ..session_export
+                tokens_used,
+                input_tokens,
+                output_tokens,
+                cache_read_tokens,
+                cache_write_tokens,
+                duration_ms: elapsed_ms,
+                model_used,
+                raw_output: None,
             })
         })
     }

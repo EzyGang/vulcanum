@@ -18,7 +18,6 @@ pub struct SessionConfig {
     pub session_id: String,
     pub event_stream: SseEventStream,
     pub max_duration_secs: u64,
-    pub is_container: bool,
     pub container_name: Option<String>,
     pub server_process: Option<Child>,
 }
@@ -30,7 +29,6 @@ pub struct OpenCodeRunningSession {
     pub(crate) status: SessionStatus,
     pub(crate) started_at: chrono::DateTime<chrono::Utc>,
     pub(crate) max_duration_secs: u64,
-    pub(crate) is_container: bool,
     pub(crate) container_name: Option<String>,
     pub(crate) server_process: Option<Child>,
     pub(crate) api_client: Option<Arc<ApiClient>>,
@@ -55,7 +53,6 @@ impl OpenCodeRunningSession {
             status: SessionStatus::Running,
             started_at: chrono::Utc::now(),
             max_duration_secs: config.max_duration_secs,
-            is_container: config.is_container,
             container_name: config.container_name,
             server_process: config.server_process,
             api_client: None,

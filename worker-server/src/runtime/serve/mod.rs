@@ -146,7 +146,6 @@ impl AgentRuntime for OpenCodeServeRuntime {
             session_id: sess.id,
             event_stream,
             max_duration_secs: max_duration,
-            is_container,
             container_name: env.container_name.clone(),
             server_process: child_process,
         });

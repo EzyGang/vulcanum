@@ -109,6 +109,55 @@ pub async fn abort_session(client: &OpenCodeClient, session_id: &str) -> Result<
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SessionInfoResponse {
+    pub tokens: SessionInfoTokens,
+    pub model: Option<SessionInfoModel>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct SessionInfoTokens {
+    pub input: Option<u64>,
+    pub output: Option<u64>,
+    #[serde(default)]
+    pub cache: Option<SessionInfoCache>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct SessionInfoCache {
+    pub read: Option<u64>,
+    pub write: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct SessionInfoModel {
+    pub id: Option<String>,
+    #[serde(rename = "providerID")]
+    pub provider_id: Option<String>,
+}
+
+pub async fn get_session_info(
+    client: &OpenCodeClient,
+    session_id: &str,
+) -> Result<SessionInfoResponse, HarnessError> {
+    let url = format!("{}/session/{session_id}", client.base_url());
+    let resp = client
+        .http_client()
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| HarnessError::Http(format!("get session info failed: {e}")))?;
+
+    let resp = OpenCodeClient::check_response(resp, |msg| {
+        HarnessError::Http(format!("get session info {msg}"))
+    })
+    .await?;
+
+    resp.json::<SessionInfoResponse>()
+        .await
+        .map_err(|e| HarnessError::Http(format!("parse session info failed: {e}")))
+}
+
 pub async fn get_session_status(
     client: &OpenCodeClient,
 ) -> Result<std::collections::HashMap<String, OpenCodeSessionStatus>, HarnessError> {
