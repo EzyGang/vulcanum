@@ -1,25 +1,19 @@
-use std::path::PathBuf;
-
 use anyhow::Context;
 use serde_json::Value;
 use uuid::Uuid;
 
 use vulcanum_shared::paths;
 
-pub struct MessageStore {
-    base_dir: PathBuf,
-}
+pub struct MessageStore;
 
 impl MessageStore {
     pub fn new() -> anyhow::Result<Self> {
-        let base_dir = paths::sessions_dir()?;
-        std::fs::create_dir_all(&base_dir)
-            .with_context(|| format!("failed to create sessions dir {}", base_dir.display()))?;
-        Ok(Self { base_dir })
+        paths::ensure_vulcanum_dir()?;
+        Ok(Self)
     }
 
     pub fn save(&self, work_run_id: Uuid, session_id: &str, data: &Value) -> anyhow::Result<()> {
-        let dir = self.base_dir.join(work_run_id.to_string());
+        let dir = paths::session_messages_dir(&work_run_id.to_string())?;
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("failed to create session dir {}", dir.display()))?;
         let path = dir.join(format!("{session_id}.json"));

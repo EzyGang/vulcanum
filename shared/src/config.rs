@@ -10,7 +10,7 @@ fn default_harness() -> String {
 }
 
 fn default_image() -> String {
-    "ghcr.io/ezygang/vulcanum/agent:latest".to_owned()
+    crate::constants::DEFAULT_IMAGE.to_owned()
 }
 
 const fn default_poll_interval() -> u64 {
@@ -46,6 +46,7 @@ impl Default for WorkerConfig {
 pub fn load_config() -> anyhow::Result<WorkerConfig> {
     let path = paths::config_path()?;
     if !path.exists() {
+        let _ = paths::ensure_vulcanum_dir()?;
         let config = WorkerConfig::default();
         save_config(&config)?;
         return Ok(config);
