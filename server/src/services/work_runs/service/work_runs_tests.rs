@@ -30,8 +30,13 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
         github_app_private_key: None,
         github_app_slug: None,
     };
-    GithubAppManager::new(GithubAppRepository::new(), pool, "redis://127.0.0.1:6379", &cfg)
-        .expect("build github manager for tests")
+    GithubAppManager::new(
+        GithubAppRepository::new(),
+        pool,
+        "redis://127.0.0.1:6379",
+        &cfg,
+    )
+    .expect("build github manager for tests")
 }
 
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
