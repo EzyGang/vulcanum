@@ -28,7 +28,7 @@ export const useProjectForm = (projectId: string | null) => {
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
   const githubToken = useSignal('');
-  const hasGithubToken = useSignal(false);
+  const showingObfuscatedToken = useSignal(false);
 
   const lookup = useProjectFormLookup(providerId, kaneoProjectId);
   const providerForm = useProjectFormProvider((newId: string) => {
@@ -36,7 +36,7 @@ export const useProjectForm = (projectId: string | null) => {
     lookup.resetLookup();
   });
 
-  const { formError, submitting, clearGithubToken, handleSubmit } = useProjectFormSubmit({
+  const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
     enabled,
     pickupColumn,
@@ -47,6 +47,7 @@ export const useProjectForm = (projectId: string | null) => {
     agentsMd,
     opencodeConfig,
     githubToken,
+    showingObfuscatedToken,
     providerId,
     kaneoProjectId
   });
@@ -64,7 +65,10 @@ export const useProjectForm = (projectId: string | null) => {
       repoUrl.value = p.repoUrl;
       agentsMd.value = p.agentsMd;
       opencodeConfig.value = p.opencodeConfig;
-      hasGithubToken.value = p.githubToken != null;
+      if (p.githubToken) {
+        githubToken.value = '********';
+        showingObfuscatedToken.value = true;
+      }
     }
   }, [projectId, existingProject]);
 
@@ -105,10 +109,9 @@ export const useProjectForm = (projectId: string | null) => {
     agentsMd,
     opencodeConfig,
     githubToken,
-    hasGithubToken,
+    showingObfuscatedToken,
     submitting,
     formError,
-    clearGithubToken,
     columns: lookup.columns,
     columnsLoading: lookup.columnsLoading,
     lookupProjectName: lookup.lookupProjectName,
@@ -153,8 +156,11 @@ export const useProjectForm = (projectId: string | null) => {
     onGithubTokenChange: (value: string) => {
       githubToken.value = value;
     },
-    onClearGithubToken: (checked: boolean) => {
-      clearGithubToken.value = checked;
+    onGithubTokenFocus: () => {
+      if (showingObfuscatedToken.value) {
+        githubToken.value = '';
+        showingObfuscatedToken.value = false;
+      }
     },
     onPickupColumnChange: (value: string) => {
       pickupColumn.value = value;

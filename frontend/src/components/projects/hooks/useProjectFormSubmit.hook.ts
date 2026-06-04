@@ -5,6 +5,7 @@ import { useLocation } from 'wouter-preact';
 import { createProject, updateProject } from '../../../services/projects/projects.service';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation } from '../../../utils/api/query/hooks';
+import type { UpdateProjectRequest } from '../../../types/projects';
 
 interface UseProjectFormSubmitOptions {
   projectId: string | null;
@@ -17,6 +18,7 @@ interface UseProjectFormSubmitOptions {
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
   githubToken: Signal<string>;
+  showingObfuscatedToken: Signal<boolean>;
   providerId: Signal<string>;
   kaneoProjectId: Signal<string>;
 }
@@ -33,6 +35,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     agentsMd,
     opencodeConfig,
     githubToken,
+    showingObfuscatedToken,
     providerId,
     kaneoProjectId
   } = options;
@@ -40,7 +43,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
   const [, setLocation] = useLocation();
   const formError = useSignal<string | null>(null);
   const submitting = useSignal(false);
-  const clearGithubToken = useSignal(false);
 
   const createMutation = useApiMutation(
     (input: Parameters<typeof createProject>[0]) => createProject(input),
@@ -77,21 +79,29 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
 
       try {
         if (projectId) {
+          const input: UpdateProjectRequest = {
+            enabled: enabled.value,
+            pickupColumn: pickupColumn.value || undefined,
+            progressColumn: progressColumn.value || undefined,
+            targetColumn: targetColumn.value || undefined,
+            promptTemplate: promptTemplate.value || undefined,
+            repoUrl: repoUrl.value || undefined,
+            agentsMd: agentsMd.value || undefined,
+            opencodeConfig: opencodeConfig.value || undefined,
+            providerId: providerId.value || undefined
+          };
+
+          if (showingObfuscatedToken.value) {
+            // No change to token
+          } else if (githubToken.value) {
+            input.githubToken = githubToken.value;
+          } else {
+            input.clearGithubToken = true;
+          }
+
           await updateMutation.mutateAsync({
             id: projectId,
-            input: {
-              enabled: enabled.value,
-              pickupColumn: pickupColumn.value || undefined,
-              progressColumn: progressColumn.value || undefined,
-              targetColumn: targetColumn.value || undefined,
-              promptTemplate: promptTemplate.value || undefined,
-              repoUrl: repoUrl.value || undefined,
-              agentsMd: agentsMd.value || undefined,
-              opencodeConfig: opencodeConfig.value || undefined,
-              githubToken: githubToken.value || undefined,
-              clearGithubToken: clearGithubToken.value || undefined,
-              providerId: providerId.value || undefined
-            }
+            input
           });
         } else {
           if (!providerId.value) {
@@ -124,7 +134,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
   return {
     formError,
     submitting,
-    clearGithubToken,
     handleSubmit
   };
 };
