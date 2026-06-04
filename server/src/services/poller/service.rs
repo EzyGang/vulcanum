@@ -13,7 +13,7 @@ use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
-use super::prompts::GITHUB_INSTRUCTION;
+use super::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
 
 #[derive(Debug)]
 enum PollError {
@@ -185,6 +185,8 @@ impl PollerService {
                     repo_url: &config.repo_url,
                 },
             );
+
+            prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
 
             if !config.repo_url.is_empty() && config.repo_url.starts_with("https://github.com/") {
                 prompt_text.push_str(GITHUB_INSTRUCTION);
