@@ -20,16 +20,16 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/auth/verify", web::get().to(auth::verify))
             .route("/auth/instance-login", web::post().to(auth::instance_login))
             .route("/auth/logout", web::post().to(auth::logout))
-            .route("/github/auth", web::get().to(github::auth_redirect))
-            .route("/github/callback", web::get().to(github::callback))
-            .route("/github/repos", web::get().to(github::list_repos))
-            .route(
-                "/github/installation",
-                web::get().to(github::get_installation),
-            )
-            .route(
-                "/github/installation/{id}",
-                web::delete().to(github::delete_installation),
+            .service(
+                web::scope("/github")
+                    .route("/auth", web::get().to(github::auth_redirect))
+                    .route("/callback", web::get().to(github::callback))
+                    .route("/repos", web::get().to(github::list_repos))
+                    .route("/installation", web::get().to(github::get_installation))
+                    .route(
+                        "/installation/{id}",
+                        web::delete().to(github::delete_installation),
+                    ),
             )
             .route("/poll", web::get().to(jobs::poll))
             .route("/health", web::get().to(health::get))

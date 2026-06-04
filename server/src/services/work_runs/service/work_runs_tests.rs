@@ -327,3 +327,30 @@ async fn get_job_returns_not_found(pool: sqlx::PgPool) {
 
     assert!(matches!(err, WorkRunsError::NotFound));
 }
+
+#[sqlx::test]
+async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-2").await;
+
+    sqlx::query!(
+        "UPDATE project_configs SET repo_url = $1 WHERE id = $2",
+        "https://github.com/org/repo",
+        project_id
+    )
+    .execute(&pool)
+    .await
+    .expect("Should update repo_url");
+
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-2").await;
+
+    let err = svc
+        .get_job(wr_id)
+        .await
+        .expect_err("Should fail without GitHub installation");
+
+    assert!(
+        matches!(err, WorkRunsError::GithubApp(_)),
+        "Expected GithubApp error, got {err:?}"
+    );
+}

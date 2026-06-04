@@ -8,8 +8,8 @@ interface ProjectFormTextFieldsProps {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
-  repos: Signal<string[]>;
-  reposLoading: Signal<boolean>;
+  repos: string[];
+  reposLoading: boolean;
   submitting: Signal<boolean>;
   onPromptTemplateChange: (value: string) => void;
   onRepoUrlChange: (value: string) => void;
@@ -54,7 +54,7 @@ export const ProjectFormTextFields = ({
 
     <div class='flex flex-col gap-2'>
       <Label for='field-repo-url'>Repo URL</Label>
-      {repos.value.length > 0 ? (
+      {repos.length > 0 ? (
         <select
           id='field-repo-url'
           value={repoUrl.value}
@@ -63,7 +63,7 @@ export const ProjectFormTextFields = ({
           class={`${inputStyles} cursor-pointer`}
         >
           <option value=''>Select a repository...</option>
-          {repos.value.map((r) => (
+          {repos.map((r) => (
             <option key={r} value={`https://github.com/${r}`}>
               {r}
             </option>
@@ -76,10 +76,10 @@ export const ProjectFormTextFields = ({
           value={repoUrl.value}
           onInput={(e) => onRepoUrlChange((e.target as HTMLInputElement).value)}
           placeholder='https://github.com/org/repo'
-          disabled={submitting.value || reposLoading.value}
+          disabled={submitting.value || reposLoading}
         />
       )}
-      {reposLoading.value && <span class='text-xs text-text-muted'>Loading repos...</span>}
+      {reposLoading && <span class='text-xs text-text-muted'>Loading repos...</span>}
     </div>
 
     <div class='flex flex-col gap-2'>

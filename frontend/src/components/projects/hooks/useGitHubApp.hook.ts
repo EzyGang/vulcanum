@@ -1,5 +1,3 @@
-import { useSignal } from '@preact/signals';
-import { useCallback, useEffect } from 'preact/hooks';
 import {
   disconnectInstallation,
   getInstallation,
@@ -17,32 +15,14 @@ export const useGitHubApp = () => {
     }
   );
 
-  const repos = useSignal<string[]>([]);
-  const reposLoading = useSignal(false);
-  const reposError = useSignal<string | null>(null);
-
-  const fetchRepos = useCallback(async () => {
-    reposLoading.value = true;
-    reposError.value = null;
-    try {
-      const data = await listRepos();
-      repos.value = data.map((r) => r.fullName);
-    } catch (e) {
-      reposError.value = e instanceof Error ? e.message : 'Failed to load repos';
-    } finally {
-      reposLoading.value = false;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (installation) {
-      fetchRepos();
-    }
-  }, [installation, fetchRepos]);
+  const { data: repos = [], isLoading: reposLoading } = useApiQuery(
+    ['github-repos'],
+    () => listRepos().then((r) => r.map((repo) => repo.fullName)),
+    { enabled: !!installation, retry: false }
+  );
 
   const disconnectMutation = useApiMutation((id: number) => disconnectInstallation(id), {
     onSuccess: () => {
-      repos.value = [];
       refetch();
     }
   });
@@ -53,11 +33,9 @@ export const useGitHubApp = () => {
     installation,
     repos,
     reposLoading,
-    reposError,
     connectUrl,
     disconnectInstallation: disconnectMutation.mutateAsync,
     disconnectPending: disconnectMutation.isPending,
-    refetch,
-    fetchRepos
+    refetch
   };
 };

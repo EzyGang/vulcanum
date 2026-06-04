@@ -35,7 +35,7 @@ export const GithubAppSection = ({
   return (
     <div class='flex flex-col gap-2 p-4 border border-white/10 bg-bg-surface'>
       <div class='flex items-center justify-between'>
-        <span class='text-xs text-green-400'>
+        <span class='text-xs text-success'>
           GitHub App connected &mdash; {installation.accountLogin}
         </span>
         <Button

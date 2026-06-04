@@ -21,8 +21,8 @@ interface ProjectFormViewProps {
     repoUrl: Signal<string>;
     agentsMd: Signal<string>;
     opencodeConfig: Signal<string>;
-    repos: Signal<string[]>;
-    reposLoading: Signal<boolean>;
+    repos: string[];
+    reposLoading: boolean;
     columns: Signal<ColumnInfo[]>;
     columnsLoading: Signal<boolean>;
     lookupProjectName: Signal<string>;
