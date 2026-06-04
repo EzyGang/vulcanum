@@ -1,6 +1,5 @@
 use octocrab::models::InstallationId;
 use octocrab::Octocrab;
-use secrecy::ExposeSecret;
 
 use crate::config::AppConfig;
 use crate::services::github_app::errors::GithubAppError;
@@ -199,21 +198,34 @@ impl GithubAppManager {
             .await?
             .ok_or(GithubAppError::NoInstallation)?;
 
-        let (_owner, _repo_name) = parse_github_repo(repo_url)?;
+        let (_owner, repo_name) = parse_github_repo(repo_url)?;
 
         let octo = self.app_octocrab()?;
-        let installation_client = octo
-            .installation(InstallationId(installation.id as u64))
-            .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
+        let route = format!("/app/installations/{}/access_tokens", installation.id);
 
-        let token = installation_client
-            .installation_token()
+        let body = serde_json::json!({
+            "repositories": [repo_name],
+            "permissions": {
+                "contents": "write",
+                "pull_requests": "write"
+            }
+        });
+
+        let response: octocrab::models::InstallationToken = octo
+            .post(&route, Some(&body))
             .await
             .map_err(|e| GithubAppError::Api(format!("token mint failed: {e}")))?;
 
+        let expires_at = response
+            .expires_at
+            .as_ref()
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&chrono::Utc))
+            .unwrap_or_else(chrono::Utc::now);
+
         Ok(InstallationToken {
-            token: token.expose_secret().to_string(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+            token: response.token,
+            expires_at,
         })
     }
 }

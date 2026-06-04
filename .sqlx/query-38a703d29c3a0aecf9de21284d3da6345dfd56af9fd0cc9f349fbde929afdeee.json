@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, account_login, created_at as \"created_at!: DateTime<Utc>\" FROM github_installations LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "38a703d29c3a0aecf9de21284d3da6345dfd56af9fd0cc9f349fbde929afdeee"
+}

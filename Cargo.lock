@@ -4040,7 +4040,6 @@ dependencies = [
  "octocrab",
  "rand 0.8.6",
  "redis",
- "secrecy",
  "serde",
  "serde_json",
  "sha2",
