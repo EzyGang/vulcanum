@@ -7,14 +7,12 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
 use crate::harness::container::DockerIsolation;
-use crate::harness::gvisor::GvisorIsolation;
 use crate::harness::host::HostIsolation;
 use crate::harness::kata::KataIsolation;
 
 pub enum IsolationKind {
     Host(HostIsolation),
     Kata(KataIsolation),
-    Gvisor(GvisorIsolation),
     Docker(DockerIsolation),
 }
 
@@ -24,10 +22,6 @@ pub fn create_isolation_provider(config: &WorkerConfig) -> IsolationKind {
         "kata" => {
             tracing::debug!("using Kata Containers isolation");
             IsolationKind::Kata(KataIsolation::new(config.image.clone()))
-        }
-        "gvisor" => {
-            tracing::debug!("using gVisor isolation");
-            IsolationKind::Gvisor(GvisorIsolation::new(config.image.clone()))
         }
         "docker" => {
             tracing::debug!("using Docker isolation");
@@ -76,18 +70,6 @@ impl IsolationProvider for IsolationKind {
                 )
                 .await
             }
-            IsolationKind::Gvisor(g) => {
-                g.prepare(
-                    workdir,
-                    secrets,
-                    env_vars,
-                    limits,
-                    agents_md,
-                    opencode_config,
-                    repo_url,
-                )
-                .await
-            }
             IsolationKind::Docker(d) => {
                 d.prepare(
                     workdir,
@@ -107,7 +89,6 @@ impl IsolationProvider for IsolationKind {
         match self {
             IsolationKind::Host(h) => h.cleanup(env).await,
             IsolationKind::Kata(k) => k.cleanup(env).await,
-            IsolationKind::Gvisor(g) => g.cleanup(env).await,
             IsolationKind::Docker(d) => d.cleanup(env).await,
         }
     }

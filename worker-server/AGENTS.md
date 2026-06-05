@@ -14,7 +14,7 @@ Host machine worker daemon that polls the Vulcanum server for jobs, executes the
 | Layer       | Path                   | Responsibility                                         |
 | ----------- | ---------------------- | ------------------------------------------------------ |
 | Daemon      | `src/daemon/`          | Main loop, polling, job dispatch                       |
-| Isolation   | `src/harness/`         | Environment preparation (host, Docker, Kata, gVisor)   |
+| Isolation   | `src/harness/`         | Environment preparation (host, Docker, Kata)          |
 | State       | `src/state/`           | Local SQLite journal for job state                     |
 | Runtime     | `src/runtime/`         | OpenCode service orchestration, agent runtime          |
 | OpenCode    | `src/opencode/`        | HTTP client for the opencode server API                |
@@ -27,9 +27,9 @@ Host machine worker daemon that polls the Vulcanum server for jobs, executes the
 The harness module provides environment isolation via the `IsolationProvider` trait (defined in `vulcanum-shared`).
 
 - `HostIsolation` — runs on the host directly, creating workdir and cloning the repo.
+  > ⚠️ Host harness provides no security boundary. Jobs share the host UID, filesystem, and network namespace. Use only in single-tenant or trusted environments where users accept the risk of arbitrary code execution on the host. Host mode is designed for correctness (parallel jobs do not interfere) rather than security isolation.
 - `DockerIsolation` — runs inside a Docker container with a configurable runtime.
 - `KataIsolation` — delegates to `DockerIsolation` with `kata-runtime`.
-- `GvisorIsolation` — delegates to `DockerIsolation` with `runsc`.
 - `IsolationKind` — enum dispatch selecting the provider at runtime via `create_isolation_provider()`.
 
 The isolation layer only prepares the environment. The runtime layer handles opencode server launch and session execution.
@@ -101,7 +101,7 @@ All worker configuration lives in `~/.vulcanum/config.json`. On first run, defau
 
 | Field | Default | Description |
 | ----- | ------- | ----------- |
-| `harness` | `"host"` | Which isolation to use: `host`, `docker`, `kata`, or `gvisor` |
+| `harness` | `"host"` | Which isolation to use: `host`, `docker`, or `kata` |
 | `image` | `"ghcr.io/ezygang/vulcanum/agent:latest"` | Docker image for container isolation providers |
 | `log_format` | `null` | Set to `"json"` for JSON-formatted logs |
 | `debug` | `false` | Enable debug-level logging |

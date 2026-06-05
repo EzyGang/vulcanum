@@ -22,6 +22,11 @@ impl Default for HostIsolation {
     }
 }
 
+fn is_safe_workdir(path: &Path) -> bool {
+    let temp = std::env::temp_dir();
+    path.starts_with(&temp) && path.to_string_lossy().contains("vulcanum-work-")
+}
+
 impl IsolationProvider for HostIsolation {
     async fn prepare(
         &self,
@@ -65,5 +70,20 @@ impl IsolationProvider for HostIsolation {
         })
     }
 
-    async fn cleanup(&self, _env: &IsolatedEnvironment) {}
+    async fn cleanup(&self, env: &IsolatedEnvironment) {
+        if !is_safe_workdir(&env.workdir) {
+            tracing::warn!(
+                workdir = %env.workdir.display(),
+                "refusing to delete unsafe workdir"
+            );
+            return;
+        }
+        if let Err(e) = fs::remove_dir_all(&env.workdir).await {
+            tracing::warn!(
+                workdir = %env.workdir.display(),
+                error = %e,
+                "cleanup failed"
+            );
+        }
+    }
 }

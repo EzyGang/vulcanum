@@ -37,6 +37,10 @@ pub trait RunningSession: Send {
     ) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>>;
 
     fn set_event_reporter(&mut self, _client: Arc<ApiClient>, _token: String, _job_id: Uuid) {}
+
+    fn host_server_info(&self) -> Option<(u32, u16)> {
+        None
+    }
 }
 
 pub trait AgentRuntime: Send + Sync {

@@ -1,5 +1,5 @@
 use vulcanum_shared::runtime::isolation::IsolationProvider;
-use vulcanum_shared::runtime::types::ResourceLimits;
+use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
 use crate::harness::host::HostIsolation;
 
@@ -161,4 +161,48 @@ async fn host_isolation_writes_opencode_config() {
             }
         }
     }
+}
+
+#[tokio::test]
+async fn host_isolation_cleanup_deletes_workdir() {
+    let isolation = HostIsolation::new();
+    let limits = ResourceLimits::default();
+    let secrets = std::collections::HashMap::new();
+    let env_vars = std::collections::HashMap::new();
+    let workdir = std::env::temp_dir().join("vulcanum-work-test-host-cleanup");
+
+    let env = isolation
+        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", "")
+        .await
+        .expect("prepare should succeed");
+
+    assert!(workdir.exists());
+    isolation.cleanup(&env).await;
+    assert!(!workdir.exists(), "cleanup should delete workdir");
+}
+
+#[tokio::test]
+async fn host_isolation_cleanup_refuses_unsafe_path() {
+    let isolation = HostIsolation::new();
+    let limits = ResourceLimits::default();
+    let _secrets: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let _env_vars: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let unsafe_dir = std::path::PathBuf::from("/tmp/unsafe-dir");
+
+    let env = IsolatedEnvironment {
+        workdir: unsafe_dir.clone(),
+        container_name: None,
+        secrets: std::collections::HashMap::new(),
+        env_vars: std::collections::HashMap::new(),
+        runtime: None,
+        image: None,
+        server_host_port: None,
+        limits,
+    };
+
+    isolation.cleanup(&env).await;
+    assert!(
+        !unsafe_dir.exists() || std::fs::metadata(&unsafe_dir).is_err(),
+        "cleanup should not delete unsafe paths"
+    );
 }

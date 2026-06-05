@@ -1,5 +1,6 @@
 pub(crate) mod task;
 
+use std::process::Stdio;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -34,30 +35,50 @@ pub async fn reconcile_running_jobs(
     tracing::info!(count = running.len(), "reconciling stale running jobs");
 
     for entry in &running {
-        let alive = check_container_alive(entry);
+        let is_host = entry.harness_type == "host";
+        let alive = if is_host {
+            check_host_alive(entry)
+        } else {
+            check_container_alive(entry)
+        };
 
         if !alive {
+            cleanup_stale_job(entry);
             mark_lost_and_submit(journal, client, worker_state, entry).await;
             continue;
         }
 
-        let Some(container_name) = entry.container_name.as_deref() else {
-            mark_lost_and_submit(journal, client, worker_state, entry).await;
-            continue;
-        };
-
-        let port = match read_container_port(container_name).await {
-            Ok(p) => p,
-            Err(e) => {
-                tracing::warn!(
-                    job_id = %entry.job_id,
-                    container_name = container_name,
-                    error = %e,
-                    "failed to read container port"
-                );
-                remove_container(Some(container_name));
+        let port = if is_host {
+            match entry.host_port {
+                Some(p) => p as u16,
+                None => {
+                    tracing::warn!(
+                        job_id = %entry.job_id,
+                        "no host_port in journal, killing orphan"
+                    );
+                    cleanup_stale_job(entry);
+                    mark_lost_and_submit(journal, client, worker_state, entry).await;
+                    continue;
+                }
+            }
+        } else {
+            let Some(container_name) = entry.container_name.as_deref() else {
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
+            };
+            match read_container_port(container_name).await {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::warn!(
+                        job_id = %entry.job_id,
+                        container_name = container_name,
+                        error = %e,
+                        "failed to read container port"
+                    );
+                    remove_container(Some(container_name));
+                    mark_lost_and_submit(journal, client, worker_state, entry).await;
+                    continue;
+                }
             }
         };
 
@@ -72,7 +93,7 @@ pub async fn reconcile_running_jobs(
                     error = %e,
                     "failed to query session status"
                 );
-                remove_container(Some(container_name));
+                cleanup_stale_job(entry);
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -85,7 +106,7 @@ pub async fn reconcile_running_jobs(
                     job_id = %entry.job_id,
                     "no session_id in journal"
                 );
-                remove_container(Some(container_name));
+                cleanup_stale_job(entry);
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -99,7 +120,7 @@ pub async fn reconcile_running_jobs(
                     session_id = session_id,
                     "session not found in status map"
                 );
-                remove_container(Some(container_name));
+                cleanup_stale_job(entry);
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -119,7 +140,7 @@ pub async fn reconcile_running_jobs(
                 let worker = Arc::clone(worker_state);
                 let jrnl = Arc::clone(journal);
                 let sid = session_id.to_owned();
-                let cname = container_name.to_owned();
+                let cname = entry.container_name.clone();
                 tokio::spawn(recover_session_task(
                     task_entry, api_client, worker, jrnl, oc_client, sid, cname,
                 ));
@@ -135,12 +156,45 @@ fn check_container_alive(entry: &JournalEntry) -> bool {
 
     let output = std::process::Command::new("docker")
         .args(["inspect", "--format", "{{.State.Running}}", name])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .output();
 
     match output {
         Ok(out) => String::from_utf8_lossy(&out.stdout).trim() == "true",
         Err(_) => false,
     }
+}
+
+fn check_host_alive(entry: &JournalEntry) -> bool {
+    let Some(pid) = entry.host_pid else {
+        return false;
+    };
+
+    std::process::Command::new("kill")
+        .args(["-0", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+fn cleanup_stale_job(entry: &JournalEntry) {
+    if entry.harness_type == "host" {
+        kill_host_process_group(entry);
+    } else if let Some(name) = entry.container_name.as_deref() {
+        remove_container(Some(name));
+    }
+}
+
+pub(crate) fn kill_host_process_group(entry: &JournalEntry) {
+    let Some(pid) = entry.host_pid else {
+        return;
+    };
+    let _ = std::process::Command::new("kill")
+        .args(["-9", &format!("-{pid}")])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }

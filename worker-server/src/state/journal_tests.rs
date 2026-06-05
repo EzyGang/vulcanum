@@ -45,14 +45,7 @@ fn update_result_transitions_status() {
         .expect("should insert");
 
     journal
-        .update_result(
-            job_id,
-            0,
-            1234,
-            Some("https://github.com/x/pr/1"),
-            30000,
-            JournalStatus::Completed,
-        )
+        .update_result(job_id, 0, 100, None, 5_000, JournalStatus::Completed)
         .expect("should update");
 
     let running = journal.list_running().expect("should list");
@@ -86,7 +79,7 @@ fn mark_submitted_transitions() {
         .expect("should insert");
 
     journal
-        .update_result(job_id, 0, 100, None, 5000, JournalStatus::Completed)
+        .update_result(job_id, 0, 100, None, 5_000, JournalStatus::Completed)
         .expect("should update");
 
     journal
@@ -122,9 +115,32 @@ fn multiple_jobs_with_mixed_statuses() {
         .expect("insert 3");
 
     journal
-        .update_result(id1, 0, 500, None, 10000, JournalStatus::Completed)
+        .update_result(id1, 0, 500, None, 10_000, JournalStatus::Completed)
         .expect("complete 1");
 
     let running = journal.list_running().expect("should list");
     assert_eq!(running.len(), 2);
+}
+
+#[test]
+fn journal_persists_host_info() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+
+    journal
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .expect("insert job");
+
+    journal
+        .set_host_info(job_id, 12_345, 5555)
+        .expect("set host info");
+
+    let running = journal.list_running().expect("list running");
+    let entry = running
+        .into_iter()
+        .find(|e| e.job_id == job_id)
+        .expect("entry found");
+
+    assert_eq!(entry.host_pid, Some(12_345));
+    assert_eq!(entry.host_port, Some(5555));
 }

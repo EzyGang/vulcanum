@@ -15,7 +15,7 @@ Engineering teams using AI agents face three problems:
 Vulcanum puts engineers in charge:
 
 - **You define triggers**: connect a task tracker, pick a column, agents only run what you route
-- **You control execution**: choose the isolation level (host, Docker, Kata, gVisor), resource limits, timeouts
+- **You control execution**: choose the isolation level (host, Docker, Kata), resource limits, timeouts
 - **You manage secrets**: tokens never float as plaintext env vars (agent-vault/ironproxy planned for secure injection)
 - **You see everything**: full run history, token usage, PR results, event streams per work item
 
@@ -35,7 +35,7 @@ Four components communicate over HTTP:
 
 - Single binary spawned by the CLI, runs a polling loop
 - Embedded SQLite journal for crash-robust job recovery
-- Spawns agents inside sandboxed harnesses (Kata Containers, gVisor, Docker, or host)
+- Spawns agents inside sandboxed harnesses (Kata Containers, Docker, or host)
 - Reports results: exit code, PR URL, token usage, duration
 
 ### Frontend UI
@@ -70,7 +70,6 @@ Every work item runs inside an isolated environment. The isolation level is conf
 |----------|-----------|-------------|--------------|
 | **Host** | None (direct) | default | OpenCode installed locally |
 | **Docker** | Container | `--runtime=runc` | Docker |
-| **gVisor** | Application kernel (sandbox) | `--runtime=runsc` | Docker + gVisor |
 | **Kata** | Lightweight VM (KVM) | `--runtime=kata-runtime` | Docker + KVM |
 
 Resource limits per job: max duration (default 30 min), vCPU count, memory cap. Containers are destroyed on completion. No persistent state leaks.
@@ -157,7 +156,7 @@ All packages are managed via **pnpm workspaces** and **Turborepo**. Rust crates 
 - Redis
 - Node.js 20+ with pnpm
 - Rust toolchain (see `rust-toolchain.toml`)
-- (Worker) Docker + Kata/gVisor runtime for containerized isolation
+- (Worker) Docker + Kata runtime for containerized isolation
 
 ### Server
 
@@ -183,7 +182,7 @@ cargo run -p vulcanum-server --bin vulcanum-dispatcher
 ```bash
 # Generate a registration code from the dashboard (/workers)
 
-# Auto-provision the machine (installs Docker, Kata/gVisor, OpenCode, agent image, systemd service)
+# Auto-provision the machine (installs Docker, Kata, OpenCode, agent image, systemd service)
 vulcanum worker setup --instance http://<instance>:8080 --code <code> --isolation kata
 
 # Or run the daemon directly if already set up

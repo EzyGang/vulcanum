@@ -3,6 +3,17 @@ use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
 const OPENCODE_DEFAULT_PORT: u16 = 4096;
 
+pub(crate) const HOST_ENV_ALLOWLIST: &[&str] = &[
+    "PATH",
+    "TMPDIR",
+    "HOME",
+    "LANG",
+    "RUSTUP_HOME",
+    "CARGO_HOME",
+    "NVM_DIR",
+    "NPM_CONFIG_PREFIX",
+];
+
 pub(super) async fn launch_host_server(
     workdir: &std::path::Path,
     env_vars: &std::collections::HashMap<String, String>,
@@ -11,7 +22,17 @@ pub(super) async fn launch_host_server(
 ) -> Result<tokio::process::Child, HarnessError> {
     let mut cmd = tokio::process::Command::new("opencode");
     cmd.args(["serve", "--port", &port.to_string()])
-        .env("HOME", workdir.join("home").to_string_lossy().to_string())
+        .env_clear()
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+
+    for (k, v) in std::env::vars() {
+        if HOST_ENV_ALLOWLIST.contains(&k.as_str()) {
+            cmd.env(&k, v);
+        }
+    }
+
+    cmd.env("HOME", workdir.join("home").to_string_lossy().to_string())
         .env(
             "FINISH_ARTIFACT_PATH",
             workdir
@@ -19,16 +40,19 @@ pub(super) async fn launch_host_server(
                 .join("finish_artifact.json")
                 .to_string_lossy()
                 .to_string(),
-        )
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped());
+        );
+
+    for (k, v) in env_vars {
+        cmd.env(k, v);
+    }
 
     if let Some(repo) = repo_dir {
         cmd.current_dir(repo);
     }
 
-    for (k, v) in env_vars {
-        cmd.env(k, v);
+    #[cfg(unix)]
+    {
+        cmd.process_group(0);
     }
 
     let mut child = cmd
@@ -75,6 +99,7 @@ pub(super) async fn launch_container_server(
         container_name.to_owned(),
         "-p".to_owned(),
         format!("127.0.0.1::{OPENCODE_DEFAULT_PORT}"),
+        "--security-opt=no-new-privileges".to_owned(),
         "-e".to_owned(),
         config_env,
         "-e".to_owned(),

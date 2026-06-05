@@ -38,7 +38,7 @@ enum WorkerCommand {
         /// Force re-registration even if already connected
         #[arg(long)]
         force: bool,
-        /// Isolation backend to use (kata, gvisor, docker, or none)
+        /// Isolation backend to use (kata, docker, or none)
         #[arg(long, value_enum)]
         isolation: Option<IsolationBackend>,
     },
@@ -47,7 +47,6 @@ enum WorkerCommand {
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum IsolationBackend {
     Kata,
-    Gvisor,
     Docker,
     None,
 }

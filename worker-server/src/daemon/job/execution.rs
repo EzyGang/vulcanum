@@ -86,7 +86,7 @@ pub(crate) async fn handle_job(
     let workdir_str = workdir.to_string_lossy().to_string();
 
     let container_name = match harness_type {
-        "kata" | "gvisor" | "docker" => Some(crate::harness::prepare::container_name(&workdir)),
+        "kata" | "docker" => Some(crate::harness::prepare::container_name(&workdir)),
         _ => None,
     };
 
@@ -183,6 +183,9 @@ pub(crate) async fn handle_job(
 
     if let Some(sid) = running_session.session_id() {
         let _ = journal.set_session_id(job_id, sid);
+    }
+    if let Some((pid, port)) = running_session.host_server_info() {
+        let _ = journal.set_host_info(job_id, pid.into(), port.into());
     }
     running_session.set_event_reporter(client.clone(), access_token.clone(), job_id);
 

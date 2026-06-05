@@ -2,6 +2,8 @@ pub(crate) mod launch;
 pub mod mapping;
 
 #[cfg(test)]
+mod launch_tests;
+#[cfg(test)]
 mod mapping_tests;
 
 use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
@@ -145,6 +147,11 @@ impl AgentRuntime for OpenCodeServeRuntime {
 
         let runner_session_id = sess.id.clone();
 
+        let (host_pid, host_port) = match &child_process {
+            Some(child) => (child.id(), Some(host_port)),
+            None => (None, None),
+        };
+
         let runner = OpenCodeRunningSession::new(SessionConfig {
             client: oc_client,
             session_id: sess.id,
@@ -152,6 +159,8 @@ impl AgentRuntime for OpenCodeServeRuntime {
             max_duration_secs: max_duration,
             container_name: env.container_name.clone(),
             server_process: child_process,
+            host_pid,
+            host_port,
         });
 
         tracing::info!(
