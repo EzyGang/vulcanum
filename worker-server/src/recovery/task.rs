@@ -1,4 +1,3 @@
-use std::process::Stdio;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -13,6 +12,7 @@ use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::harness::host::HostIsolation;
 use crate::opencode::events;
 use crate::opencode::OpenCodeClient;
+use crate::recovery::kill_host_process_group;
 use crate::session::{remove_container, OpenCodeRunningSession, SessionConfig};
 use crate::state::journal::{Journal, JournalEntry, JournalStatus};
 
@@ -84,13 +84,7 @@ pub(crate) async fn recover_session_task(
 
 fn cleanup_recovery(entry: &JournalEntry) {
     if entry.harness_type == "host" {
-        if let Some(pid) = entry.host_pid {
-            let _ = std::process::Command::new("kill")
-                .args(["-9", &format!("-{pid}")])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status();
-        }
+        kill_host_process_group(entry);
         let provider = HostIsolation::new();
         let env = vulcanum_shared::runtime::types::IsolatedEnvironment {
             workdir: std::path::PathBuf::from(&entry.workdir),

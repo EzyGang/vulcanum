@@ -43,6 +43,7 @@ pub async fn reconcile_running_jobs(
         };
 
         if !alive {
+            cleanup_stale_job(entry);
             mark_lost_and_submit(journal, client, worker_state, entry).await;
             continue;
         }
@@ -55,7 +56,7 @@ pub async fn reconcile_running_jobs(
                         job_id = %entry.job_id,
                         "no host_port in journal, killing orphan"
                     );
-                    kill_host_process_group(entry);
+                    cleanup_stale_job(entry);
                     mark_lost_and_submit(journal, client, worker_state, entry).await;
                     continue;
                 }
@@ -92,11 +93,7 @@ pub async fn reconcile_running_jobs(
                     error = %e,
                     "failed to query session status"
                 );
-                if is_host {
-                    kill_host_process_group(entry);
-                } else if let Some(name) = entry.container_name.as_deref() {
-                    remove_container(Some(name));
-                }
+                cleanup_stale_job(entry);
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -109,11 +106,7 @@ pub async fn reconcile_running_jobs(
                     job_id = %entry.job_id,
                     "no session_id in journal"
                 );
-                if is_host {
-                    kill_host_process_group(entry);
-                } else if let Some(name) = entry.container_name.as_deref() {
-                    remove_container(Some(name));
-                }
+                cleanup_stale_job(entry);
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -127,11 +120,7 @@ pub async fn reconcile_running_jobs(
                     session_id = session_id,
                     "session not found in status map"
                 );
-                if is_host {
-                    kill_host_process_group(entry);
-                } else if let Some(name) = entry.container_name.as_deref() {
-                    remove_container(Some(name));
-                }
+                cleanup_stale_job(entry);
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -191,7 +180,15 @@ fn check_host_alive(entry: &JournalEntry) -> bool {
         .unwrap_or(false)
 }
 
-fn kill_host_process_group(entry: &JournalEntry) {
+fn cleanup_stale_job(entry: &JournalEntry) {
+    if entry.harness_type == "host" {
+        kill_host_process_group(entry);
+    } else if let Some(name) = entry.container_name.as_deref() {
+        remove_container(Some(name));
+    }
+}
+
+pub(crate) fn kill_host_process_group(entry: &JournalEntry) {
     let Some(pid) = entry.host_pid else {
         return;
     };
