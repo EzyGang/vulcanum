@@ -25,9 +25,6 @@ pub fn validate_environment_for_backend(backend: &str) -> Vec<ValidationIssue> {
             check_kvm(&mut issues);
             check_binary("kata-runtime", &mut issues, Severity::Warning);
         }
-        "gvisor" => {
-            check_binary("runsc", &mut issues, Severity::Warning);
-        }
         "docker" => (),
         _ => {
             check_binary("opencode", &mut issues, Severity::Warning);

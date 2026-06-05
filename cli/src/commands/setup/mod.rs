@@ -7,7 +7,6 @@ use prompts::resolve_backend;
 use registration::{connect_worker, verify_connection};
 
 mod docker;
-pub(crate) mod gvisor;
 pub(crate) mod image;
 mod kata;
 mod prompts;
@@ -15,8 +14,6 @@ mod registration;
 pub(crate) mod systemd;
 pub(crate) mod utils;
 
-#[cfg(test)]
-mod gvisor_tests;
 #[cfg(test)]
 mod kata_tests;
 #[cfg(test)]
@@ -41,10 +38,6 @@ pub async fn run(
         Backend::Kata => {
             console::step("Kata Containers", kata::install_kata)?;
             console::step("Docker Kata runtime", kata::configure_docker_for_kata)?;
-        }
-        Backend::Gvisor => {
-            console::step("gVisor", gvisor::install_gvisor)?;
-            console::step("Docker gVisor runtime", gvisor::configure_docker_for_gvisor)?;
         }
         Backend::Docker | Backend::None => {
             console::info("Skipping sandbox runtime installation.");
@@ -145,7 +138,6 @@ fn interaction_mode(code: &Option<String>, instance: &Option<String>) -> Interac
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Backend {
     Kata,
-    Gvisor,
     Docker,
     None,
 }
@@ -154,7 +146,6 @@ impl Backend {
     fn harness_name(&self) -> &'static str {
         match self {
             Self::Kata => "kata",
-            Self::Gvisor => "gvisor",
             Self::Docker => "docker",
             Self::None => "host",
         }
