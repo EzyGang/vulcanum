@@ -56,6 +56,8 @@ pub struct JournalEntry {
     pub turn_count: Option<i32>,
     pub session_id: Option<String>,
     pub max_turns: Option<i32>,
+    pub host_pid: Option<i64>,
+    pub host_port: Option<i64>,
 }
 
 pub struct Journal {
@@ -94,6 +96,8 @@ impl Journal {
         let _ = conn.execute_batch(
             "ALTER TABLE job_journal ADD COLUMN max_turns INTEGER NOT NULL DEFAULT 1",
         );
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN host_pid INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN host_port INTEGER");
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -171,6 +175,15 @@ impl Journal {
         Ok(())
     }
 
+    pub fn set_host_info(&self, job_id: Uuid, host_pid: i64, host_port: i64) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE job_journal SET host_pid = ?1, host_port = ?2 WHERE job_id = ?3",
+            rusqlite::params![host_pid, host_port, job_id.to_string()],
+        )?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     pub fn mark_lost(&self, job_id: Uuid, error_message: &str) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
@@ -202,7 +215,7 @@ impl Journal {
         let mut stmt = conn.prepare(
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
                     finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message, turn_count,
-                    session_id, max_turns
+                    session_id, max_turns, host_pid, host_port
              FROM job_journal WHERE status = 'running'",
         )?;
 
@@ -230,6 +243,8 @@ impl Journal {
                     turn_count: row.get(12)?,
                     session_id: row.get(13)?,
                     max_turns: row.get(14)?,
+                    host_pid: row.get(15)?,
+                    host_port: row.get(16)?,
                 })
             })?
             .filter_map(|r| r.ok())

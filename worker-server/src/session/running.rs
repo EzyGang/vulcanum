@@ -39,6 +39,13 @@ impl RunningSession for OpenCodeRunningSession {
         self.job_id = Some(job_id);
     }
 
+    fn host_server_info(&self) -> Option<(u32, u16)> {
+        match (self.host_pid, self.host_port) {
+            (Some(pid), Some(port)) => Some((pid, port)),
+            _ => None,
+        }
+    }
+
     fn poll_event(&mut self) -> Pin<Box<dyn Future<Output = Option<AgentEvent>> + Send + '_>> {
         Box::pin(async move {
             let elapsed = (Utc::now() - self.started_at).num_seconds() as u64;

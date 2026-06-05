@@ -43,8 +43,14 @@ pub async fn write_env_files(
 
 pub async fn clone_repo(url: &str, dest: &Path) -> Result<(), HarnessError> {
     let output = tokio::process::Command::new("git")
-        .arg("clone")
-        .arg(url)
+        .args([
+            "-c",
+            "credential.helper=",
+            "-c",
+            "core.askPass=",
+            "clone",
+            url,
+        ])
         .arg(dest)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())

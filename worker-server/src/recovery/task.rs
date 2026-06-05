@@ -1,3 +1,4 @@
+use std::process::Stdio;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -5,9 +6,11 @@ use tokio::sync::RwLock;
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
+use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::harness::host::HostIsolation;
 use crate::opencode::events;
 use crate::opencode::OpenCodeClient;
 use crate::session::{remove_container, OpenCodeRunningSession, SessionConfig};
@@ -20,7 +23,7 @@ pub(crate) async fn recover_session_task(
     journal: Arc<Journal>,
     oc_client: OpenCodeClient,
     session_id: String,
-    container_name: String,
+    container_name: Option<String>,
 ) {
     let event_stream = match events::connect_events(&oc_client).await {
         Ok(s) => s,
@@ -30,7 +33,7 @@ pub(crate) async fn recover_session_task(
                 error = %e,
                 "failed to reconnect event stream during recovery"
             );
-            remove_container(Some(&container_name));
+            cleanup_recovery(&entry);
             mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
             return;
         }
@@ -45,8 +48,10 @@ pub(crate) async fn recover_session_task(
         session_id: session_id.clone(),
         event_stream,
         max_duration_secs: 1800,
-        container_name: Some(container_name.clone()),
+        container_name,
         server_process: None,
+        host_pid: entry.host_pid.map(|v| v as u32),
+        host_port: entry.host_port.map(|v| v as u16),
     });
 
     let access_token = worker_state.read().await.access_token.clone();
@@ -73,8 +78,36 @@ pub(crate) async fn recover_session_task(
     };
     run_turn_loop(&mut boxed, &artifact_path, max_turns, initial_turn, &ctx).await;
 
-    remove_container(Some(&container_name));
+    cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "recovery session completed");
+}
+
+fn cleanup_recovery(entry: &JournalEntry) {
+    if entry.harness_type == "host" {
+        if let Some(pid) = entry.host_pid {
+            let _ = std::process::Command::new("kill")
+                .args(["-9", &format!("-{pid}")])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
+        let provider = HostIsolation::new();
+        let env = vulcanum_shared::runtime::types::IsolatedEnvironment {
+            workdir: std::path::PathBuf::from(&entry.workdir),
+            container_name: entry.container_name.clone(),
+            secrets: std::collections::HashMap::new(),
+            env_vars: std::collections::HashMap::new(),
+            runtime: None,
+            image: None,
+            server_host_port: None,
+            limits: vulcanum_shared::runtime::types::ResourceLimits::default(),
+        };
+        tokio::spawn(async move {
+            provider.cleanup(&env).await;
+        });
+    } else if let Some(ref name) = entry.container_name {
+        remove_container(Some(name));
+    }
 }
 
 pub(crate) async fn mark_lost_and_submit(
