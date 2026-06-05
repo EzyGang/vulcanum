@@ -52,7 +52,6 @@ pub(super) async fn launch_host_server(
 
     #[cfg(unix)]
     {
-        use std::os::unix::process::CommandExt;
         cmd.process_group(0);
     }
 
