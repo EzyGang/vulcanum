@@ -6,6 +6,8 @@ export type WorkRunStatus =
   | 'failed'
   | 'stalled';
 
+export const CANCELLABLE_STATUSES: WorkRunStatus[] = ['running', 'dispatched'];
+
 export interface WorkRunListItem {
   id: string;
   externalTaskRef: string;

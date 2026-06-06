@@ -4,12 +4,13 @@ import { useLocation } from 'wouter-preact';
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
+import type { ProjectFormContextValue } from '../../context/ProjectFormContext';
 import { useGitHubApp } from './useGitHubApp.hook';
 import { useProjectFormLookup } from './useProjectFormLookup.hook';
 import { useProjectFormProvider } from './useProjectFormProvider.hook';
 import { useProjectFormSubmit } from './useProjectFormSubmit.hook';
 
-export const useProjectForm = (projectId: string | null) => {
+export const useProjectForm = (projectId: string | null): ProjectFormContextValue => {
   const [, setLocation] = useLocation();
   const { data: existingProject, isLoading: projectLoading } = useApiQuery(
     ['project', projectId ?? ''],
@@ -92,86 +93,92 @@ export const useProjectForm = (projectId: string | null) => {
   const canShowFields = !!projectId || lookup.lookedUp.value;
 
   return {
-    isEdit: !!projectId,
-    projectLoading: projectId ? projectLoading : false,
-    providers,
-    providerId,
-    externalProjectId,
-    enabled,
-    pickupColumn,
-    progressColumn,
-    targetColumn,
-    promptTemplate,
-    repoUrl,
-    agentsMd,
-    opencodeConfig,
-    repos,
-    reposLoading,
-    submitting,
-    formError,
-    columns: lookup.columns,
-    columnsLoading: lookup.columnsLoading,
-    lookupProjectName: lookup.lookupProjectName,
-    lookupError: lookup.lookupError,
-    lookedUp: lookup.lookedUp,
-    canShowLookup,
-    canShowFields,
-    showProviderForm: providerForm.showProviderForm,
-    newProviderName: providerForm.newProviderName,
-    newProviderUrl: providerForm.newProviderUrl,
-    newProviderKey: providerForm.newProviderKey,
-    newProviderType: providerForm.newProviderType,
-    providerFormError: providerForm.providerFormError,
-    providerSubmitting: providerForm.providerSubmitting,
-    handleLookup: lookup.handleLookup,
-    handleSubmit,
-    cancel,
-    handleCreateProvider: providerForm.handleCreateProvider,
-    onShowProviderForm: providerForm.onShowProviderForm,
-    onCancelProviderForm: providerForm.onCancelProviderForm,
-    onProviderChange: (id: string) => {
-      providerId.value = id;
-      resetLookup();
+    data: {
+      isEdit: !!projectId,
+      providers,
+      providerId,
+      externalProjectId,
+      enabled,
+      pickupColumn,
+      progressColumn,
+      targetColumn,
+      promptTemplate,
+      repoUrl,
+      agentsMd,
+      opencodeConfig,
+      repos,
+      reposLoading,
+      columns: lookup.columns,
+      columnsLoading: lookup.columnsLoading,
+      lookupProjectName: lookup.lookupProjectName,
+      lookupError: lookup.lookupError,
+      lookedUp: lookup.lookedUp,
+      canShowLookup,
+      canShowFields,
+      showProviderForm: providerForm.showProviderForm,
+      newProviderName: providerForm.newProviderName,
+      newProviderUrl: providerForm.newProviderUrl,
+      newProviderKey: providerForm.newProviderKey,
+      newProviderType: providerForm.newProviderType,
+      providerFormError: providerForm.providerFormError,
+      providerSubmitting: providerForm.providerSubmitting
     },
-    onProjectIdChange: (id: string) => {
-      externalProjectId.value = id;
-      resetLookup();
+    status: {
+      submitting,
+      formError,
+      projectLoading: projectId ? projectLoading : false
     },
-    onEnabledChange: (checked: boolean) => {
-      enabled.value = checked;
-    },
-    onPromptTemplateChange: (value: string) => {
-      promptTemplate.value = value;
-    },
-    onRepoUrlChange: (value: string) => {
-      repoUrl.value = value;
-    },
-    onAgentsMdChange: (value: string) => {
-      agentsMd.value = value;
-    },
-    onOpencodeConfigChange: (value: string) => {
-      opencodeConfig.value = value;
-    },
-    onPickupColumnChange: (value: string) => {
-      pickupColumn.value = value;
-    },
-    onProgressColumnChange: (value: string) => {
-      progressColumn.value = value;
-    },
-    onTargetColumnChange: (value: string) => {
-      targetColumn.value = value;
-    },
-    onNewProviderNameChange: (value: string) => {
-      providerForm.newProviderName.value = value;
-    },
-    onNewProviderUrlChange: (value: string) => {
-      providerForm.newProviderUrl.value = value;
-    },
-    onNewProviderKeyChange: (value: string) => {
-      providerForm.newProviderKey.value = value;
-    },
-    onNewProviderTypeChange: (value: string) => {
-      providerForm.newProviderType.value = value;
+    actions: {
+      onLookup: lookup.handleLookup,
+      onSubmit: handleSubmit,
+      onCancel: cancel,
+      onCreateProvider: providerForm.handleCreateProvider,
+      onShowProviderForm: providerForm.onShowProviderForm,
+      onCancelProviderForm: providerForm.onCancelProviderForm,
+      onProviderChange: (id: string) => {
+        providerId.value = id;
+        resetLookup();
+      },
+      onProjectIdChange: (id: string) => {
+        externalProjectId.value = id;
+        resetLookup();
+      },
+      onEnabledChange: (checked: boolean) => {
+        enabled.value = checked;
+      },
+      onPromptTemplateChange: (value: string) => {
+        promptTemplate.value = value;
+      },
+      onRepoUrlChange: (value: string) => {
+        repoUrl.value = value;
+      },
+      onAgentsMdChange: (value: string) => {
+        agentsMd.value = value;
+      },
+      onOpencodeConfigChange: (value: string) => {
+        opencodeConfig.value = value;
+      },
+      onPickupColumnChange: (value: string) => {
+        pickupColumn.value = value;
+      },
+      onProgressColumnChange: (value: string) => {
+        progressColumn.value = value;
+      },
+      onTargetColumnChange: (value: string) => {
+        targetColumn.value = value;
+      },
+      onNewProviderNameChange: (value: string) => {
+        providerForm.newProviderName.value = value;
+      },
+      onNewProviderUrlChange: (value: string) => {
+        providerForm.newProviderUrl.value = value;
+      },
+      onNewProviderKeyChange: (value: string) => {
+        providerForm.newProviderKey.value = value;
+      },
+      onNewProviderTypeChange: (value: string) => {
+        providerForm.newProviderType.value = value;
+      }
     }
   };
 };

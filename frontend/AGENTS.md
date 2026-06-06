@@ -79,6 +79,22 @@ Every feature uses exact naming:
 • Max 6-8 props passed from Container → View. If more, refactor to use Context.
 • Views consuming Context have ZERO props - all data comes from `useContext()` hooks.
 
+### Context Conventions
+
+When Container → View prop count exceeds 6-8, introduce a Preact context:
+
+- **File naming:** `FooContext.tsx` (not `.view.tsx` or `.hook.ts`)
+- **Exports:** `FooProvider` + `useFooContext()`
+- **Hook contract:** The domain hook (e.g. `useFooForm`) should return the context value directly (grouped as `{ data, status, actions }`) so the container stays ≤20 lines:
+  ```tsx
+  export const FooContainer = ({ id }: { id: string }): JSX.Element => (
+    <FooProvider value={useFooForm(id)}>
+      <FooView />
+    </FooProvider>
+  );
+  ```
+- **Type location:** Keep `FooContextValue` interface inside `context/FooContext.tsx`
+
 Pages in `src/pages/` render a single container + routing/error handling.
 
 ## Key Conventions

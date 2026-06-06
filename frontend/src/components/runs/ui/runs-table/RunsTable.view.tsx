@@ -1,6 +1,7 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../../types/runs';
+import { CANCELLABLE_STATUSES } from '../../../../types/runs';
 import { formatDuration, formatRelativeTime } from '../../../../utils/format';
 import { Button } from '../../../shared/ui/Button.view';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
@@ -25,9 +26,6 @@ interface RunsTableProps {
   onDelete: (id: string) => void;
   onCancelDelete: () => void;
 }
-
-const isCancellable = (status: WorkRunListItem['status']): boolean =>
-  status === 'running' || status === 'dispatched';
 
 export const RunsTable = ({
   runs,
@@ -66,7 +64,7 @@ export const RunsTable = ({
     <Table.Body>
       {runs.map((run) => {
         const expanded = expandedIds.value.has(run.id);
-        const cancellable = isCancellable(run.status);
+        const cancellable = CANCELLABLE_STATUSES.includes(run.status);
         return (
           <>
             <Table.Row key={run.id}>

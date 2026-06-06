@@ -1,11 +1,10 @@
 import type { JSX } from 'preact';
 import type { WorkRunStatus } from '../../../../types/runs';
+import { CANCELLABLE_STATUSES } from '../../../../types/runs';
 import { useRunEvents } from '../../hooks/run-events/useRunEvents.hook';
 import { RunEventTimeline } from '../../ui/run-events/RunEventTimeline.view';
 
-const CANCELLABLE_STATUSES: WorkRunStatus[] = ['running', 'dispatched'];
-
-interface RunEventTimelineContainerProps {
+export interface RunEventTimelineContainerProps {
   runId: string;
   status: WorkRunStatus;
 }
@@ -14,7 +13,7 @@ export const RunEventTimelineContainer = ({
   runId,
   status
 }: RunEventTimelineContainerProps): JSX.Element => {
-  const isLive = status === 'running' || status === 'dispatched';
+  const isLive = CANCELLABLE_STATUSES.includes(status);
   const canCancel = CANCELLABLE_STATUSES.includes(status);
 
   const { data, status: rs, actions } = useRunEvents({ runId, isLive });
