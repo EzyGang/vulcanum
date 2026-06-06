@@ -1,5 +1,5 @@
-use super::utils::is_kvm_available;
-use super::Backend;
+use crate::commands::setup::host::is_kvm_available;
+use crate::commands::setup::Backend;
 
 fn normalize_instance_url(input: &str) -> String {
     let trimmed = input.trim();

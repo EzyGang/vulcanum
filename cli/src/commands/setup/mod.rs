@@ -3,21 +3,18 @@ use vulcanum_shared::worker_state;
 
 use crate::console;
 
+use connect::{connect_worker, verify_connection};
 use prompts::resolve_backend;
-use registration::{connect_worker, verify_connection};
 
-mod docker;
-pub(crate) mod image;
-mod kata;
+mod backends;
+mod connect;
+pub(crate) mod docker_daemon;
+pub(crate) mod host;
 mod prompts;
-mod registration;
 pub(crate) mod systemd;
-pub(crate) mod utils;
 
 #[cfg(test)]
-mod kata_tests;
-#[cfg(test)]
-mod mod_tests;
+mod setup_tests;
 
 pub async fn run(
     code: Option<String>,
@@ -26,25 +23,28 @@ pub async fn run(
     isolation: Option<crate::IsolationBackend>,
 ) -> anyhow::Result<()> {
     console::info("Checking prerequisites...");
-    utils::has_sudo_access()?;
+    host::has_sudo_access()?;
 
     console::info("Provisioning worker environment...");
 
-    console::step("Docker", docker::install_docker)?;
+    console::step("Docker", backends::docker::install_docker)?;
 
     let backend = resolve_backend(interaction_mode(&code, &instance), isolation)?;
 
     match backend {
         Backend::Kata => {
-            console::step("Kata Containers", kata::install_kata)?;
-            console::step("Docker Kata runtime", kata::configure_docker_for_kata)?;
+            console::step("Kata Containers", backends::kata::install_kata)?;
+            console::step(
+                "Docker Kata runtime",
+                backends::kata::configure_docker_for_kata,
+            )?;
         }
         Backend::Docker | Backend::None => {
             console::info("Skipping sandbox runtime installation.");
         }
     }
 
-    console::step("Agent image", image::pull_agent_image)?;
+    console::step("Agent image", backends::agent_image::pull_agent_image)?;
     console::step("Systemd service", || {
         systemd::configure_systemd(backend.harness_name())
     })?;
