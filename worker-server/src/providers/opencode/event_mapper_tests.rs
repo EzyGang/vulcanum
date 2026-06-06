@@ -1,5 +1,5 @@
-use crate::opencode::events::SseEvent;
-use crate::runtime::mapping;
+use crate::providers::opencode::events::SseEvent;
+use crate::providers::opencode::event_mapper;
 
 fn make_sse(event_type: &str, properties: &str) -> SseEvent {
     SseEvent {
@@ -14,7 +14,7 @@ fn session_status_busy_maps_to_turn_started() {
         "session.status",
         r#"{"sessionID": "s1", "status": {"type": "busy"}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "turn.started");
 }
@@ -25,7 +25,7 @@ fn session_status_idle_maps_to_session_completed() {
         "session.status",
         r#"{"sessionID": "s1", "status": {"type": "idle"}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "session.completed");
 }
@@ -36,7 +36,7 @@ fn session_status_retry_maps_to_turn_failed() {
         "session.status",
         r#"{"sessionID": "s1", "status": {"type": "retry", "attempt": 1, "message": "err", "next": 0}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "turn.failed");
 }
@@ -44,7 +44,7 @@ fn session_status_retry_maps_to_turn_failed() {
 #[test]
 fn session_idle_maps_to_session_completed() {
     let sse = make_sse("session.idle", r#"{"sessionID": "s1"}"#);
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "session.completed");
 }
@@ -55,7 +55,7 @@ fn session_error_maps_to_session_failed() {
         "session.error",
         r#"{"sessionID": "s1", "error": {"name": "UnknownError", "data": {"message": "boom"}}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "session.failed");
 }
@@ -66,7 +66,7 @@ fn message_updated_assistant_maps_to_message_received() {
         "message.updated",
         r#"{"info": {"role": "assistant", "tokens": {"input": 100, "output": 50}}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "message.received");
     assert_eq!(events[0].payload["role"], "assistant");
@@ -75,7 +75,7 @@ fn message_updated_assistant_maps_to_message_received() {
 #[test]
 fn message_updated_user_is_ignored() {
     let sse = make_sse("message.updated", r#"{"info": {"role": "user"}}"#);
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert!(events.is_empty());
 }
 
@@ -85,7 +85,7 @@ fn message_part_updated_tool_running_maps_to_tool_called() {
         "message.part.updated",
         r#"{"part": {"type": "tool", "tool": "bash", "state": {"status": "running"}}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "tool.called");
     assert_eq!(events[0].payload["tool"], "bash");
@@ -97,7 +97,7 @@ fn message_part_updated_tool_completed_maps_to_tool_completed() {
         "message.part.updated",
         r#"{"part": {"type": "tool", "tool": "edit", "state": {"status": "completed"}}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "tool.completed");
 }
@@ -108,20 +108,20 @@ fn message_part_updated_text_is_ignored() {
         "message.part.updated",
         r#"{"part": {"type": "text", "text": "hello"}}"#,
     );
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert!(events.is_empty());
 }
 
 #[test]
 fn server_connected_is_ignored() {
     let sse = make_sse("server.connected", r#"{}"#);
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert!(events.is_empty());
 }
 
 #[test]
 fn unknown_event_type_is_ignored() {
     let sse = make_sse("custom.event", r#"{"foo": "bar"}"#);
-    let events = mapping::map_event(&sse);
+    let events = event_mapper::map_event(&sse);
     assert!(events.is_empty());
 }

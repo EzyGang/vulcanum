@@ -15,7 +15,7 @@ pub trait RunningSession: Send {
         None
     }
 
-    fn opencode_base_url(&self) -> Option<&str> {
+    fn agent_base_url(&self) -> Option<&str> {
         None
     }
 

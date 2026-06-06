@@ -5,7 +5,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
-use crate::harness::prepare;
+use crate::isolation::workspace;
 
 pub struct DockerIsolation {
     pub(crate) image: String,
@@ -59,14 +59,14 @@ impl IsolationProvider for DockerIsolation {
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        prepare::write_env_files(workdir, agents_md, opencode_config).await?;
-        prepare::write_finish_run_tool(workdir).await?;
+        workspace::write_env_files(workdir, agents_md, opencode_config).await?;
+        workspace::write_finish_run_tool(workdir).await?;
 
         if !repo_url.is_empty() {
-            prepare::clone_repo(repo_url, &workdir.join("repo")).await?;
+            workspace::clone_repo(repo_url, &workdir.join("repo")).await?;
         }
 
-        let container_name = prepare::container_name(workdir);
+        let container_name = workspace::container_name(workdir);
 
         let mut combined_env: HashMap<String, String> = secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());

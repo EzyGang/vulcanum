@@ -8,8 +8,9 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::worker_state::WorkerState;
 
+use super::artifact::read_finish_artifact;
 use super::prompts::continuation_prompt;
-use super::report::{read_finish_artifact, submit_failed_result, submit_turn_result, FailedResult};
+use super::submit::{submit_failed_result, submit_turn_result, FailedResult};
 use crate::state::journal::Journal;
 
 pub(crate) struct TurnLoopCtx {

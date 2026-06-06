@@ -1,17 +1,14 @@
-mod running;
-
 use std::process::Stdio;
 use std::sync::Arc;
 
 use tokio::process::Child;
 use uuid::Uuid;
 
-use vulcanum_shared::api_types::WireEvent;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::SessionStatus;
 
-use crate::opencode::events::SseEventStream;
-use crate::opencode::OpenCodeClient;
+use super::events::SseEventStream;
+use super::OpenCodeClient;
 
 pub struct SessionConfig {
     pub client: OpenCodeClient,
@@ -41,7 +38,7 @@ pub struct OpenCodeRunningSession {
     pub(crate) event_sequence: u64,
 }
 
-const HIGH_LEVEL_EVENT_TYPES: &[&str] = &[
+pub(crate) const HIGH_LEVEL_EVENT_TYPES: &[&str] = &[
     "turn.started",
     "session.completed",
     "session.failed",
@@ -79,56 +76,6 @@ impl OpenCodeRunningSession {
             }
             let _ = child.wait().await;
         }
-        remove_container(self.container_name.as_deref());
+        super::cleanup::remove_container(self.container_name.as_deref());
     }
-
-    pub(crate) fn send_event(&mut self, event_type: &str, payload: serde_json::Value) {
-        let (Some(client), Some(token), Some(job_id)) =
-            (&self.api_client, &self.access_token, self.job_id)
-        else {
-            return;
-        };
-
-        self.event_sequence += 1;
-        let wire = WireEvent {
-            sequence: self.event_sequence,
-            event_type: event_type.to_owned(),
-            payload,
-        };
-
-        let c = Arc::clone(client);
-        let t = token.clone();
-        let jid = job_id;
-        let events = vec![wire];
-        tokio::spawn(async move {
-            match c.append_events(jid, &events, &t).await {
-                Ok(resp) => {
-                    if resp.should_cancel {
-                        tracing::warn!(
-                            work_run_id = %jid,
-                            "server requested cancel via event response"
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        work_run_id = %jid,
-                        error = %e,
-                        "failed to send event to server"
-                    );
-                }
-            }
-        });
-    }
-}
-
-pub(crate) fn remove_container(name: Option<&str>) {
-    let Some(name) = name else {
-        return;
-    };
-    let _ = std::process::Command::new("docker")
-        .args(["rm", "-f", name])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
 }

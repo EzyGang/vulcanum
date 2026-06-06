@@ -6,9 +6,9 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
-use crate::harness::container::DockerIsolation;
-use crate::harness::host::HostIsolation;
-use crate::harness::kata::KataIsolation;
+use crate::isolation::providers::docker::DockerIsolation;
+use crate::isolation::providers::host::HostIsolation;
+use crate::isolation::providers::kata::KataIsolation;
 
 pub enum IsolationKind {
     Host(HostIsolation),

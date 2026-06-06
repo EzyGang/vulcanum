@@ -1,9 +1,7 @@
 mod daemon;
-mod harness;
-mod opencode;
+mod isolation;
+mod providers;
 mod recovery;
-mod runtime;
-mod session;
 mod state;
 mod storage;
 

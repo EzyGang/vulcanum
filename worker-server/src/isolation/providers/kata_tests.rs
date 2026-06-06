@@ -1,6 +1,6 @@
 use vulcanum_shared::runtime::types::ResourceLimits;
 
-use crate::harness::kata::KataIsolation;
+use crate::isolation::providers::kata::KataIsolation;
 
 #[test]
 fn kata_inner_image_default() {

@@ -1,4 +1,4 @@
-use crate::runtime::launch::HOST_ENV_ALLOWLIST;
+use crate::providers::opencode::spawn::HOST_ENV_ALLOWLIST;
 
 #[test]
 fn host_env_allowlist_contains_expected_keys() {

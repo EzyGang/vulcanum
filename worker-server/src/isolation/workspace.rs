@@ -4,7 +4,7 @@ use tokio::fs;
 
 use vulcanum_shared::runtime::errors::HarnessError;
 
-use super::prompts::FINISH_RUN_TOOL_TS;
+use crate::daemon::job::finish_tool::FINISH_RUN_TOOL_TS;
 
 pub fn container_name(workdir: &Path) -> String {
     format!(

@@ -3,7 +3,7 @@ use futures::StreamExt;
 
 use serde::Deserialize;
 
-use crate::opencode::OpenCodeClient;
+use super::OpenCodeClient;
 use vulcanum_shared::runtime::errors::HarnessError;
 
 #[derive(Debug, Clone, Deserialize)]

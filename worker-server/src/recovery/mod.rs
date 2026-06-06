@@ -1,6 +1,7 @@
-pub(crate) mod task;
+pub(crate) mod checks;
+pub(crate) mod cleanup;
+pub(crate) mod recover_session;
 
-use std::process::Stdio;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -8,12 +9,13 @@ use tokio::sync::RwLock;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::opencode;
-use crate::opencode::session;
-use crate::recovery::task::{mark_lost_and_submit, recover_session_task};
-use crate::runtime::launch::read_container_port;
-use crate::session::remove_container;
-use crate::state::journal::{Journal, JournalEntry};
+use crate::providers::opencode;
+use crate::providers::opencode::api;
+use crate::providers::opencode::spawn::read_container_port;
+use crate::recovery::checks::{check_container_alive, check_host_alive};
+use crate::recovery::cleanup::cleanup_stale_job;
+use crate::recovery::recover_session::{mark_lost_and_submit, recover_session_task};
+use crate::state::journal::Journal;
 
 pub async fn reconcile_running_jobs(
     journal: &Arc<Journal>,
@@ -75,7 +77,7 @@ pub async fn reconcile_running_jobs(
                         error = %e,
                         "failed to read container port"
                     );
-                    remove_container(Some(container_name));
+                    crate::providers::opencode::cleanup::remove_container(Some(container_name));
                     mark_lost_and_submit(journal, client, worker_state, entry).await;
                     continue;
                 }
@@ -85,7 +87,7 @@ pub async fn reconcile_running_jobs(
         let base_url = format!("http://127.0.0.1:{port}");
         let oc_client = opencode::OpenCodeClient::new(&base_url);
 
-        let status_map = match session::get_session_status(&oc_client).await {
+        let status_map = match api::get_session_status(&oc_client).await {
             Ok(map) => map,
             Err(e) => {
                 tracing::warn!(
@@ -127,9 +129,9 @@ pub async fn reconcile_running_jobs(
         };
 
         match status {
-            session::OpenCodeSessionStatus::Idle
-            | session::OpenCodeSessionStatus::Busy
-            | session::OpenCodeSessionStatus::Retry { .. } => {
+            api::OpenCodeSessionStatus::Idle
+            | api::OpenCodeSessionStatus::Busy
+            | api::OpenCodeSessionStatus::Retry { .. } => {
                 tracing::info!(
                     job_id = %entry.job_id,
                     session_id = session_id,
@@ -147,54 +149,4 @@ pub async fn reconcile_running_jobs(
             }
         }
     }
-}
-
-fn check_container_alive(entry: &JournalEntry) -> bool {
-    let Some(name) = &entry.container_name else {
-        return false;
-    };
-
-    let output = std::process::Command::new("docker")
-        .args(["inspect", "--format", "{{.State.Running}}", name])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output();
-
-    match output {
-        Ok(out) => String::from_utf8_lossy(&out.stdout).trim() == "true",
-        Err(_) => false,
-    }
-}
-
-fn check_host_alive(entry: &JournalEntry) -> bool {
-    let Some(pid) = entry.host_pid else {
-        return false;
-    };
-
-    std::process::Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
-}
-
-fn cleanup_stale_job(entry: &JournalEntry) {
-    if entry.harness_type == "host" {
-        kill_host_process_group(entry);
-    } else if let Some(name) = entry.container_name.as_deref() {
-        remove_container(Some(name));
-    }
-}
-
-pub(crate) fn kill_host_process_group(entry: &JournalEntry) {
-    let Some(pid) = entry.host_pid else {
-        return;
-    };
-    let _ = std::process::Command::new("kill")
-        .args(["-9", &format!("-{pid}")])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
 }

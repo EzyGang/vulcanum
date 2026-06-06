@@ -9,11 +9,13 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
-use crate::harness::host::HostIsolation;
-use crate::opencode::events;
-use crate::opencode::OpenCodeClient;
-use crate::recovery::kill_host_process_group;
-use crate::session::{remove_container, OpenCodeRunningSession, SessionConfig};
+use crate::isolation::providers::host::HostIsolation;
+use crate::providers::opencode::events;
+use crate::providers::opencode::runner::OpenCodeRunningSession;
+use crate::providers::opencode::runner::SessionConfig;
+use crate::providers::opencode::OpenCodeClient;
+use crate::recovery::cleanup::kill_host_process_group;
+use crate::recovery::cleanup::remove_container;
 use crate::state::journal::{Journal, JournalEntry, JournalStatus};
 
 pub(crate) async fn recover_session_task(

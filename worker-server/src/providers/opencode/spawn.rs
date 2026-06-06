@@ -86,7 +86,7 @@ pub(super) async fn launch_container_server(
         .ok_or_else(|| HarnessError::ServerLaunch("image missing".to_owned()))?;
 
     let config_env = "OPENCODE_CONFIG=/workdir/home/.config/opencode/opencode.json".to_owned();
-    let home_env = "HOME=/workdir/home".to_owned();
+    let home_env = "HOME=/workdir".to_owned();
     let artifact_env = "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json".to_owned();
     let workdir_str = env.workdir.to_string_lossy().to_string();
     let volume_mount = format!("{workdir_str}:/workdir");

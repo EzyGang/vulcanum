@@ -6,7 +6,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
-use crate::harness::prepare;
+use crate::isolation::workspace;
 
 pub struct HostIsolation;
 
@@ -42,11 +42,11 @@ impl IsolationProvider for HostIsolation {
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        prepare::write_env_files(workdir, agents_md, opencode_config).await?;
-        prepare::write_finish_run_tool(workdir).await?;
+        workspace::write_env_files(workdir, agents_md, opencode_config).await?;
+        workspace::write_finish_run_tool(workdir).await?;
 
         if !repo_url.is_empty() {
-            prepare::clone_repo(repo_url, &workdir.join("repo")).await?;
+            workspace::clone_repo(repo_url, &workdir.join("repo")).await?;
         }
 
         let mut combined_env: HashMap<String, String> = env_vars.clone();

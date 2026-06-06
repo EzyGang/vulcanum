@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use vulcanum_shared::runtime::errors::HarnessError;
 
-use crate::opencode::OpenCodeClient;
+use super::OpenCodeClient;
 
 #[derive(Debug, Deserialize)]
 pub struct HealthResponse {

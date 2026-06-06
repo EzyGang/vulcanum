@@ -12,11 +12,9 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, SessionExport, SessionStatus};
 
-use crate::opencode::events;
-use crate::opencode::session;
-use crate::runtime::mapping;
-
-use super::OpenCodeRunningSession;
+use super::api;
+use super::events;
+use super::runner::OpenCodeRunningSession;
 
 const STALL_TIMEOUT_SECS: u64 = 300;
 
@@ -29,7 +27,7 @@ impl RunningSession for OpenCodeRunningSession {
         Some(&self.session_id)
     }
 
-    fn opencode_base_url(&self) -> Option<&str> {
+    fn agent_base_url(&self) -> Option<&str> {
         Some(self.client.base_url())
     }
 
@@ -73,7 +71,7 @@ impl RunningSession for OpenCodeRunningSession {
                         event_type = %sse.event_type,
                         "sse event received"
                     );
-                    let mapped = mapping::map_event(&sse);
+                    let mapped = super::event_mapper::map_event(&sse);
                     let last = mapped.last().cloned();
                     for event in &mapped {
                         match event.event_type.as_str() {
@@ -81,7 +79,9 @@ impl RunningSession for OpenCodeRunningSession {
                             "session.failed" => self.status = SessionStatus::Failed,
                             _ => (),
                         }
-                        if super::HIGH_LEVEL_EVENT_TYPES.contains(&event.event_type.as_str()) {
+                        if super::runner::HIGH_LEVEL_EVENT_TYPES
+                            .contains(&event.event_type.as_str())
+                        {
                             self.send_event(&event.event_type, event.payload.clone());
                         }
                     }
@@ -120,7 +120,7 @@ impl RunningSession for OpenCodeRunningSession {
         let session_id = self.session_id.clone();
         let client = self.client.clone();
         Box::pin(async move {
-            crate::opencode::session::abort_session(&client, &session_id).await?;
+            api::abort_session(&client, &session_id).await?;
             self.status = SessionStatus::Cancelled;
             self.kill_server().await;
             Ok(())
@@ -136,7 +136,7 @@ impl RunningSession for OpenCodeRunningSession {
         let started_at = self.started_at;
 
         Box::pin(async move {
-            let info = session::get_session_info(&client, &session_id).await?;
+            let info = api::get_session_info(&client, &session_id).await?;
 
             let tokens = &info.tokens;
             let input_tokens = tokens.input.unwrap_or(0);
@@ -183,7 +183,7 @@ impl RunningSession for OpenCodeRunningSession {
         let prompt = prompt.to_owned();
 
         Box::pin(async move {
-            session::send_message_async(&client, &session_id, &prompt).await?;
+            api::send_message_async(&client, &session_id, &prompt).await?;
 
             self.event_stream = None;
             let stream = events::connect_events(&client).await?;

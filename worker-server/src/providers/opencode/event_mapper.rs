@@ -3,7 +3,7 @@ use serde_json::json;
 
 use vulcanum_shared::runtime::types::AgentEvent;
 
-use crate::opencode::events::SseEvent;
+use super::events::SseEvent;
 
 pub fn map_event(sse: &SseEvent) -> Vec<AgentEvent> {
     let ts = Utc::now();

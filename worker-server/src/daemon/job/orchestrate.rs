@@ -13,10 +13,10 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
 
-use super::report::{submit_failed_result, FailedResult};
+use super::submit::{submit_failed_result, FailedResult};
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
-use crate::harness::dispatch::create_isolation_provider;
-use crate::opencode::{self, session};
+use crate::isolation::factory::create_isolation_provider;
+use crate::providers::opencode::{self, api};
 use crate::state::journal::Journal;
 use crate::storage::messages::MessageStore;
 
@@ -86,7 +86,7 @@ pub(crate) async fn handle_job(
     let workdir_str = workdir.to_string_lossy().to_string();
 
     let container_name = match harness_type {
-        "kata" | "docker" => Some(crate::harness::prepare::container_name(&workdir)),
+        "kata" | "docker" => Some(crate::isolation::workspace::container_name(&workdir)),
         _ => None,
     };
 
@@ -149,7 +149,7 @@ pub(crate) async fn handle_job(
         }
     };
 
-    let runtime = crate::runtime::OpenCodeServeRuntime::new();
+    let runtime = crate::providers::opencode::runtime::OpenCodeServeRuntime::new();
     let mut running_session: Box<dyn RunningSession> = match runtime
         .execute(&job.prompt_text, &isolated_env, &job.repo_url)
         .await
@@ -203,10 +203,10 @@ pub(crate) async fn handle_job(
 
     if let (Some(sid), Some(base_url)) = (
         running_session.session_id(),
-        running_session.opencode_base_url(),
+        running_session.agent_base_url(),
     ) {
         let oc_client = opencode::OpenCodeClient::new(base_url);
-        match session::get_session_messages(&oc_client, sid, None).await {
+        match api::get_session_messages(&oc_client, sid, None).await {
             Ok(messages) => match MessageStore::new() {
                 Ok(store) => {
                     let _ = store.save(job_id, sid, &messages);

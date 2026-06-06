@@ -1,7 +1,7 @@
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
-use crate::harness::host::HostIsolation;
+use crate::isolation::providers::host::HostIsolation;
 
 #[tokio::test]
 async fn host_isolation_creates_workdir_and_config() {

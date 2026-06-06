@@ -1,20 +1,11 @@
-pub(crate) mod launch;
-pub mod mapping;
-
-#[cfg(test)]
-mod launch_tests;
-#[cfg(test)]
-mod mapping_tests;
-
 use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
-use crate::opencode;
-use crate::opencode::events;
-use crate::opencode::health;
-use crate::opencode::session;
-use crate::session::{OpenCodeRunningSession, SessionConfig};
+use super::api;
+use super::events;
+use super::runner::OpenCodeRunningSession;
+use super::runner::SessionConfig;
 
 const HEALTH_CHECK_TIMEOUT_SECS: u64 = 180;
 const HEALTH_CHECK_INTERVAL_MS: u64 = 3000;
@@ -39,7 +30,7 @@ impl OpenCodeServeRuntime {
     }
 
     async fn wait_for_health(
-        client: &opencode::OpenCodeClient,
+        client: &super::OpenCodeClient,
         child: &mut Option<tokio::process::Child>,
         container_name: Option<&str>,
     ) -> Result<(), HarnessError> {
@@ -81,7 +72,7 @@ impl OpenCodeServeRuntime {
 
             let health_result = tokio::time::timeout(
                 std::time::Duration::from_secs(HEALTH_CHECK_REQUEST_TIMEOUT_SECS),
-                health::health_check(client),
+                super::health::health_check(client),
             )
             .await;
 
@@ -113,19 +104,23 @@ impl AgentRuntime for OpenCodeServeRuntime {
 
         let (host_port, mut child_process) = if is_container {
             let repo_dir = if has_repo { "/workdir/repo" } else { "" };
-            let (port, _cid) = launch::launch_container_server(env, repo_dir).await?;
+            let (port, _cid) = super::spawn::launch_container_server(env, repo_dir).await?;
             (port, None)
         } else {
             let port = Self::discover_host_port()?;
             let repo_dir = has_repo.then(|| env.workdir.join("repo"));
-            let child =
-                launch::launch_host_server(&env.workdir, &env.env_vars, port, repo_dir.as_deref())
-                    .await?;
+            let child = super::spawn::launch_host_server(
+                &env.workdir,
+                &env.env_vars,
+                port,
+                repo_dir.as_deref(),
+            )
+            .await?;
             (port, Some(child))
         };
 
         let base_url = format!("http://127.0.0.1:{host_port}");
-        let oc_client = opencode::OpenCodeClient::new(&base_url);
+        let oc_client = super::OpenCodeClient::new(&base_url);
 
         Self::wait_for_health(
             &oc_client,
@@ -138,9 +133,9 @@ impl AgentRuntime for OpenCodeServeRuntime {
         let event_stream = events::connect_events(&oc_client).await?;
         tracing::debug!("event stream connected");
 
-        let sess = session::create_session(&oc_client, "vulcanum-run").await?;
+        let sess = api::create_session(&oc_client, "vulcanum-run").await?;
         tracing::debug!(session_id = %sess.id, "session created");
-        session::send_message_async(&oc_client, &sess.id, prompt).await?;
+        api::send_message_async(&oc_client, &sess.id, prompt).await?;
         tracing::debug!(session_id = %sess.id, prompt_len = prompt.len(), "prompt submitted");
 
         let max_duration = env.limits.max_duration_secs;

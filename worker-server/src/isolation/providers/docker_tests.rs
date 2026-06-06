@@ -1,5 +1,5 @@
-use crate::harness::container::DockerIsolation;
-use crate::harness::kata::KataIsolation;
+use crate::isolation::providers::docker::DockerIsolation;
+use crate::isolation::providers::kata::KataIsolation;
 
 #[test]
 fn container_image_default() {
