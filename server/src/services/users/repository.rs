@@ -1,4 +1,4 @@
-pub mod users;
+pub mod queries;
 
 #[derive(Clone)]
 pub struct UsersRepository {}

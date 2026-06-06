@@ -5,8 +5,8 @@ import { ProjectsView } from '../components/projects/ui/Projects.view';
 
 const makeProject = (overrides = {}) => ({
   id: '1',
-  kaneoProjectId: 'test-project-1',
-  kaneoWorkspaceId: '',
+  externalProjectId: 'test-project-1',
+  externalWorkspaceId: '',
   enabled: true,
   pickupColumn: 'to-do',
   targetColumn: 'in-review',
@@ -89,8 +89,8 @@ describe('Projects.view', () => {
 
   it('renders projects in the table', () => {
     const projects = [
-      makeProject({ id: '1', kaneoProjectId: 'proj-a' }),
-      makeProject({ id: '2', kaneoProjectId: 'proj-b', enabled: false })
+      makeProject({ id: '1', externalProjectId: 'proj-a' }),
+      makeProject({ id: '2', externalProjectId: 'proj-b', enabled: false })
     ];
 
     const { getByText } = render(

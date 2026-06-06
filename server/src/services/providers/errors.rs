@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::services::kaneo::errors::KaneoError;
+use crate::services::providers::kaneo::errors::KaneoError;
 
 #[derive(Debug, Error)]
 pub enum IntegrationError {

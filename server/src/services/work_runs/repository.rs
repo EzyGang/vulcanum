@@ -1,4 +1,4 @@
-pub mod work_runs;
+pub mod queries;
 
 #[derive(Clone)]
 pub struct WorkRunsRepository {}

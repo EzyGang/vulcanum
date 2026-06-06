@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
+  "query": "INSERT INTO project_configs (id, external_project_id, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\n             RETURNING id, external_project_id, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
   "describe": {
     "columns": [
       {
@@ -10,12 +10,12 @@
       },
       {
         "ordinal": 1,
-        "name": "kaneo_project_id",
+        "name": "external_project_id",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "kaneo_workspace_id",
+        "name": "external_workspace_id",
         "type_info": "Text"
       },
       {
@@ -94,7 +94,32 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -115,5 +140,5 @@
       true
     ]
   },
-  "hash": "0e85a7ef27345d9b77a7488720d18f6fbf449e3b87bea24116b68d2b4a345b99"
+  "hash": "9fdd5dd45c611e8596ca75fa5522d2fc11d2cce860c5c6528a883ed70e24fd58"
 }

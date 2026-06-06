@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::services::integrations::model::IntegrationType;
+use crate::services::providers::model::IntegrationType;
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct IntegrationProvider {

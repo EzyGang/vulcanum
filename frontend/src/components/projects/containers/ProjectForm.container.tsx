@@ -15,7 +15,7 @@ export const ProjectFormContainer = ({ projectId }: ProjectFormContainerProps): 
         isEdit: form.isEdit,
         providers: form.providers,
         providerId: form.providerId,
-        kaneoProjectId: form.kaneoProjectId,
+        externalProjectId: form.externalProjectId,
         enabled: form.enabled,
         pickupColumn: form.pickupColumn,
         progressColumn: form.progressColumn,

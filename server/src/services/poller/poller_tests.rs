@@ -6,11 +6,11 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::services::integrations::client::TaskFetcher;
-use crate::services::integrations::errors::IntegrationError;
-use crate::services::integrations::model::IntegrationTask;
 use crate::services::poller::service::PollerService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::providers::client::TaskFetcher;
+use crate::services::providers::errors::IntegrationError;
+use crate::services::providers::model::IntegrationTask;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 struct MockTaskFetcher {
@@ -75,17 +75,21 @@ async fn insert_provider(pool: &PgPool) -> Uuid {
     id
 }
 
-async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str, provider_id: Uuid) -> Uuid {
+async fn insert_project_config(
+    pool: &PgPool,
+    external_project_id: &str,
+    provider_id: Uuid,
+) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
         "INSERT INTO project_configs \
-         (id, kaneo_project_id, enabled, pickup_column, target_column, progress_column, \
+         (id, external_project_id, enabled, pickup_column, target_column, progress_column, \
           prompt_template, repo_url, provider_id) \
          VALUES ($1, $2, true, 'to-do', 'in-review', 'in-progress', \
           'Review {{task_title}}', '', $3)",
         id,
-        kaneo_project_id,
+        external_project_id,
         provider_id,
     )
     .execute(pool)
@@ -100,7 +104,7 @@ fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
     let service = PollerService::new(
         repo.clone(),
         WorkRunsRepository::new(),
-        crate::services::integration_providers::repository::IntegrationProvidersRepository::new(),
+        crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
         db,
         30,
     );

@@ -2,11 +2,11 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
-use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::WorkRunsRepository;

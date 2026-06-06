@@ -1,4 +1,4 @@
-pub mod workers;
+pub mod queries;
 
 use crate::queryer::Queryer;
 use crate::services::workers::errors::WorkersError;

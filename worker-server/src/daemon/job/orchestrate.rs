@@ -106,11 +106,17 @@ pub(crate) async fn handle_job(
     let provider = create_isolation_provider(config);
     let limits = ResourceLimits::default();
     let mut secrets = HashMap::new();
-    secrets.insert("KANEO_INSTANCE".to_owned(), job.kaneo_instance);
-    secrets.insert("KANEO_API_KEY".to_owned(), job.kaneo_api_key);
-    secrets.insert("KANEO_PROJECT_ID".to_owned(), job.kaneo_project_id);
-    secrets.insert("KANEO_WORKSPACE_ID".to_owned(), job.kaneo_workspace_id);
-    secrets.insert("KANEO_TASK_ID".to_owned(), job.external_task_ref.clone());
+    secrets.insert(
+        "PROVIDER_INSTANCE_URL".to_owned(),
+        job.provider_instance_url,
+    );
+    secrets.insert("PROVIDER_API_KEY".to_owned(), job.provider_api_key);
+    secrets.insert("EXTERNAL_PROJECT_ID".to_owned(), job.external_project_id);
+    secrets.insert(
+        "EXTERNAL_WORKSPACE_ID".to_owned(),
+        job.external_workspace_id,
+    );
+    secrets.insert("EXTERNAL_TASK_ID".to_owned(), job.external_task_ref.clone());
     if let Some(ref token) = job.github_token {
         secrets.insert("GITHUB_TOKEN".to_owned(), token.clone());
     }

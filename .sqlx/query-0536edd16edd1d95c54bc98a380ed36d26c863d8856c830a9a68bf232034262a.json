@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, kaneo_project_id, kaneo_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
+  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             blocked_column = COALESCE($5, blocked_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = COALESCE($7, prompt_template),\n             repo_url = COALESCE($8, repo_url),\n             agents_md = COALESCE($9, agents_md),\n             enabled = COALESCE($10, enabled),\n             external_workspace_id = COALESCE($11, external_workspace_id),\n             integration_type = COALESCE($12, integration_type),\n             provider_id = COALESCE($13, provider_id),\n             opencode_config = COALESCE($14, opencode_config)\n             WHERE id = $1\n             RETURNING id, external_project_id, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
   "describe": {
     "columns": [
       {
@@ -10,12 +10,12 @@
       },
       {
         "ordinal": 1,
-        "name": "kaneo_project_id",
+        "name": "external_project_id",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "kaneo_workspace_id",
+        "name": "external_workspace_id",
         "type_info": "Text"
       },
       {
@@ -98,6 +98,14 @@
         "Uuid",
         "Text",
         "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
         {
           "Custom": {
             "name": "integration_type",
@@ -108,17 +116,8 @@
             }
           }
         },
-        "Bool",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Uuid"
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
@@ -140,5 +139,5 @@
       true
     ]
   },
-  "hash": "43eb7e84fadb4d60285ca31ef2ce254ab112cd4f5e65736b798b4570b4b63359"
+  "hash": "0536edd16edd1d95c54bc98a380ed36d26c863d8856c830a9a68bf232034262a"
 }

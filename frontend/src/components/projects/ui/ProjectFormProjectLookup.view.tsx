@@ -5,7 +5,7 @@ import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 
 interface ProjectFormProjectLookupProps {
-  kaneoProjectId: Signal<string>;
+  externalProjectId: Signal<string>;
   lookupProjectName: Signal<string>;
   lookupError: Signal<string | null>;
   columnsLoading: Signal<boolean>;
@@ -18,7 +18,7 @@ interface ProjectFormProjectLookupProps {
 }
 
 export const ProjectFormProjectLookup = ({
-  kaneoProjectId,
+  externalProjectId,
   lookupProjectName,
   lookupError,
   columnsLoading,
@@ -32,7 +32,7 @@ export const ProjectFormProjectLookup = ({
       <Input
         id='field-kaneo-project-id'
         type='text'
-        value={kaneoProjectId.value}
+        value={externalProjectId.value}
         onInput={(e) => {
           actions.onProjectIdChange((e.target as HTMLInputElement).value);
         }}
@@ -44,7 +44,7 @@ export const ProjectFormProjectLookup = ({
         <Button
           variant='secondary'
           onClick={actions.onLookup}
-          disabled={!kaneoProjectId.value || columnsLoading.value}
+          disabled={!externalProjectId.value || columnsLoading.value}
         >
           Look Up
         </Button>

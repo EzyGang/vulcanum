@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::model::WorkRunEvent;
-use crate::services::work_run_events::repository::work_run_events::InsertEventParams;
+use crate::services::work_run_events::repository::queries::InsertEventParams;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
 use crate::test_helpers;
 

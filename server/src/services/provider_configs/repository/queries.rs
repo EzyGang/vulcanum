@@ -2,10 +2,10 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
-use crate::services::integration_providers::errors::IntegrationProvidersError;
-use crate::services::integration_providers::model::{CreateProviderRequest, IntegrationProvider};
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
-use crate::services::integrations::model::IntegrationType;
+use crate::services::provider_configs::errors::IntegrationProvidersError;
+use crate::services::provider_configs::model::{CreateProviderRequest, IntegrationProvider};
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
+use crate::services::providers::model::IntegrationType;
 
 impl IntegrationProvidersRepository {
     pub async fn list_all<'c, Q: Queryer<'c>>(

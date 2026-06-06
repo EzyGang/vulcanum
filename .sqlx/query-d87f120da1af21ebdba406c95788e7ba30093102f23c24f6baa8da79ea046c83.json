@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             blocked_column = COALESCE($5, blocked_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = COALESCE($7, prompt_template),\n             repo_url = COALESCE($8, repo_url),\n             agents_md = COALESCE($9, agents_md),\n             enabled = COALESCE($10, enabled),\n             kaneo_workspace_id = COALESCE($11, kaneo_workspace_id),\n             integration_type = COALESCE($12, integration_type),\n             provider_id = COALESCE($13, provider_id),\n             opencode_config = COALESCE($14, opencode_config)\n             WHERE id = $1\n             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
+  "query": "SELECT id, external_project_id, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -10,12 +10,12 @@
       },
       {
         "ordinal": 1,
-        "name": "kaneo_project_id",
+        "name": "external_project_id",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "kaneo_workspace_id",
+        "name": "external_workspace_id",
         "type_info": "Text"
       },
       {
@@ -94,31 +94,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Text",
-        "Text",
-        "Text",
-        "Bool",
-        "Text",
-        {
-          "Custom": {
-            "name": "integration_type",
-            "kind": {
-              "Enum": [
-                "kaneo"
-              ]
-            }
-          }
-        },
-        "Uuid",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -139,5 +115,5 @@
       true
     ]
   },
-  "hash": "47e0d24375aa0bb64298b03ac30e6aa7377b26be19f8598089fbcd290316a12d"
+  "hash": "d87f120da1af21ebdba406c95788e7ba30093102f23c24f6baa8da79ea046c83"
 }

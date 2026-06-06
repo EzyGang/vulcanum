@@ -2,12 +2,12 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
-use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
 use crate::services::project_configs::repository::{
     map_sqlx_error, ProjectConfigsRepository, UpdateProjectConfigParams,
 };
+use crate::services::providers::model::IntegrationType;
 
 impl ProjectConfigsRepository {
     pub async fn list_all<'c, Q: Queryer<'c>>(
@@ -16,7 +16,7 @@ impl ProjectConfigsRepository {
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+            r#"SELECT id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs ORDER BY created_at DESC"#,
         )
@@ -32,7 +32,7 @@ impl ProjectConfigsRepository {
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+            r#"SELECT id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE id = $1"#,
             id,
@@ -48,7 +48,7 @@ impl ProjectConfigsRepository {
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+            r#"SELECT id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
         )
@@ -66,14 +66,14 @@ impl ProjectConfigsRepository {
 
         sqlx::query_as!(
             ProjectConfig,
-            r#"INSERT INTO project_configs (id, kaneo_project_id, kaneo_workspace_id, integration_type, enabled, pickup_column, target_column,
+            r#"INSERT INTO project_configs (id, external_project_id, external_workspace_id, integration_type, enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             RETURNING id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
-            &params.kaneo_project_id,
-            &params.kaneo_workspace_id,
+            &params.external_project_id,
+            &params.external_workspace_id,
             &params.integration_type as &IntegrationType,
             params.enabled,
             &params.pickup_column,
@@ -110,12 +110,12 @@ impl ProjectConfigsRepository {
              repo_url = COALESCE($8, repo_url),
              agents_md = COALESCE($9, agents_md),
              enabled = COALESCE($10, enabled),
-             kaneo_workspace_id = COALESCE($11, kaneo_workspace_id),
+             external_workspace_id = COALESCE($11, external_workspace_id),
              integration_type = COALESCE($12, integration_type),
              provider_id = COALESCE($13, provider_id),
              opencode_config = COALESCE($14, opencode_config)
              WHERE id = $1
-             RETURNING id, kaneo_project_id, kaneo_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             RETURNING id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
             params.pickup_column,
@@ -127,7 +127,7 @@ impl ProjectConfigsRepository {
             params.repo_url,
             params.agents_md,
             params.enabled,
-            params.kaneo_workspace_id,
+            params.external_workspace_id,
             params.integration_type.as_ref() as Option<&IntegrationType>,
             params.provider_id,
             params.opencode_config,

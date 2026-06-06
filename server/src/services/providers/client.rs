@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
-use crate::services::kaneo::client::slugify;
-use crate::services::kaneo::client::KaneoClient;
+use crate::services::providers::kaneo::client::slugify;
+use crate::services::providers::kaneo::client::KaneoClient;
 
 use super::errors::IntegrationError;
 use super::model::{IntegrationColumn, IntegrationProject, IntegrationTask};

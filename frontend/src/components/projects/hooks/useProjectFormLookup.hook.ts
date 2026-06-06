@@ -5,7 +5,7 @@ import type { ColumnInfo } from '../../../types/projects';
 
 export const useProjectFormLookup = (
   providerId: { readonly value: string },
-  kaneoProjectId: { readonly value: string }
+  externalProjectId: { readonly value: string }
 ) => {
   const columns = useSignal<ColumnInfo[]>([]);
   const columnsLoading = useSignal(false);
@@ -14,14 +14,14 @@ export const useProjectFormLookup = (
   const lookedUp = useSignal(false);
 
   const handleLookup = useCallback(async () => {
-    if (!providerId.value || !kaneoProjectId.value) return;
+    if (!providerId.value || !externalProjectId.value) return;
 
     lookupError.value = null;
     columnsLoading.value = true;
     lookedUp.value = false;
 
     try {
-      const result = await lookupProject(providerId.value, kaneoProjectId.value);
+      const result = await lookupProject(providerId.value, externalProjectId.value);
       lookupProjectName.value = result.name;
       columns.value = result.columns;
       lookedUp.value = true;

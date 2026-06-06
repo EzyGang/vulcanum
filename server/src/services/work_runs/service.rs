@@ -1,5 +1,12 @@
+pub mod acknowledge;
+pub mod cancel;
+pub mod clear_cancel_flag;
+pub mod delete;
+pub mod fail;
+pub mod get_job;
+pub mod list;
+pub mod poll;
 pub mod submit_result;
-pub mod work_runs;
 
 #[cfg(test)]
 mod work_runs_tests;
@@ -9,10 +16,10 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::services::dispatcher::cancel_store::CancelStore;
-use crate::services::dispatcher::flag_store::DispatchStore;
+use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::repository::WorkersRepository;
 

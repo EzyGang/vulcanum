@@ -2,7 +2,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::signal;
 
 use vulcanum_server::config::config;
-use vulcanum_server::services::dispatcher::flag_store::RedisDispatchStore;
+use vulcanum_server::services::dispatcher::dispatch_store::RedisDispatchStore;
 use vulcanum_server::services::dispatcher::repository::DispatchRepository;
 use vulcanum_server::services::dispatcher::service::DispatcherService;
 use vulcanum_server::services::work_runs::repository::WorkRunsRepository;

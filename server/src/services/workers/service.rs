@@ -4,10 +4,15 @@ use sqlx::PgPool;
 
 use crate::config::AppConfig;
 use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::services::workers::code_store::CodeStore;
+use crate::services::workers::registration_code_store::CodeStore;
 use crate::services::workers::repository::WorkersRepository;
 
-pub mod workers;
+pub mod connect;
+pub mod delete;
+pub mod generate_code;
+pub mod list;
+pub mod refresh;
+pub mod set_status;
 
 #[cfg(test)]
 pub mod workers_tests;

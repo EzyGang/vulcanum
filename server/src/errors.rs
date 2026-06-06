@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use crate::services::auth::errors::AuthError;
 use crate::services::github_app::errors::GithubAppError;
-use crate::services::integration_providers::errors::IntegrationProvidersError;
 use crate::services::project_configs::errors::ProjectConfigsError;
+use crate::services::provider_configs::errors::IntegrationProvidersError;
 use crate::services::users::errors::UsersError;
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -160,7 +160,7 @@ impl From<ProjectConfigsError> for AppError {
     fn from(err: ProjectConfigsError) -> Self {
         match err {
             ProjectConfigsError::NotFound => Self::ProjectConfigNotFound,
-            ProjectConfigsError::DuplicateKaneoProjectId => Self::DuplicateProjectConfig,
+            ProjectConfigsError::DuplicateExternalProjectId => Self::DuplicateProjectConfig,
             ProjectConfigsError::Database(e) => {
                 tracing::error!(error = %e, operation = "project_configs", "database error");
                 Self::Internal

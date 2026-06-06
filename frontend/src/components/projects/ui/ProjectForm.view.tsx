@@ -12,7 +12,7 @@ interface ProjectFormViewProps {
     isEdit: boolean;
     providers: IntegrationProvider[];
     providerId: Signal<string>;
-    kaneoProjectId: Signal<string>;
+    externalProjectId: Signal<string>;
     enabled: Signal<boolean>;
     pickupColumn: Signal<string>;
     progressColumn: Signal<string>;
@@ -113,7 +113,7 @@ export const ProjectFormView = ({
 
           {canShowLookup && (
             <ProjectFormProjectLookup
-              kaneoProjectId={d.kaneoProjectId}
+              externalProjectId={d.externalProjectId}
               lookupProjectName={d.lookupProjectName}
               lookupError={d.lookupError}
               columnsLoading={d.columnsLoading}

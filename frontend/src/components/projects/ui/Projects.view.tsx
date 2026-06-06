@@ -79,7 +79,9 @@ export const ProjectsView = ({
             {projects.map((project) => (
               <Table.Row key={project.id}>
                 <Table.Cell>
-                  <span class='text-text-primary text-sm font-mono'>{project.kaneoProjectId}</span>
+                  <span class='text-text-primary text-sm font-mono'>
+                    {project.externalProjectId}
+                  </span>
                 </Table.Cell>
                 <Table.Cell>
                   {project.enabled ? (

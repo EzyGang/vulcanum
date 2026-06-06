@@ -1,10 +1,10 @@
 use uuid::Uuid;
 
-use crate::services::integrations::client::IntegrationClient;
-use crate::services::integrations::model::IntegrationType;
+use crate::services::providers::client::IntegrationClient;
+use crate::services::providers::model::IntegrationType;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
-use crate::services::work_runs::repository::work_runs::SetResultParams;
+use crate::services::work_runs::repository::queries::SetResultParams;
 use crate::services::work_runs::service::WorkRunsService;
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::runtime::types::FinishStatus;

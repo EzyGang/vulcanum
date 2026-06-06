@@ -3,14 +3,14 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
-use crate::services::integrations::client::{IntegrationClient, TaskFetcher};
-use crate::services::integrations::errors::IntegrationError;
-use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
+use crate::services::providers::client::{IntegrationClient, TaskFetcher};
+use crate::services::providers::errors::IntegrationError;
+use crate::services::providers::model::IntegrationType;
 use crate::services::work_runs::model::WorkRunStatus;
-use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
+use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 use super::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
@@ -97,18 +97,18 @@ impl PollerService {
                             project_count = project_count,
                             tasks_found = tasks_found,
                             tasks_inserted = inserted,
-                            project_id = config.kaneo_project_id.as_str(),
+                            project_id = config.external_project_id.as_str(),
                             "Inserted {} new work_runs for project {}",
                             inserted,
-                            config.kaneo_project_id,
+                            config.external_project_id,
                         );
                     }
                 }
                 Err(e) => {
                     tracing::error!(
-                        project_id = config.kaneo_project_id.as_str(),
+                        project_id = config.external_project_id.as_str(),
                         "Integration poll failed for project {}: {}",
-                        config.kaneo_project_id,
+                        config.external_project_id,
                         e,
                     );
                 }
@@ -118,7 +118,7 @@ impl PollerService {
         for config in &configs {
             if let Err(e) = self.reconcile_blocked_runs(config).await {
                 tracing::warn!(
-                    project_id = %config.kaneo_project_id,
+                    project_id = %config.external_project_id,
                     error = %e,
                     "blocked run reconciliation failed",
                 );
@@ -137,7 +137,7 @@ impl PollerService {
             Some(pid) => pid,
             None => {
                 tracing::warn!(
-                    project_id = %config.kaneo_project_id,
+                    project_id = %config.external_project_id,
                     "skipping poll — no provider configured for project"
                 );
                 return Ok((0, 0));
@@ -149,7 +149,7 @@ impl PollerService {
             Err(e) => {
                 tracing::warn!(
                     provider_id = %provider_id,
-                    project_id = %config.kaneo_project_id,
+                    project_id = %config.external_project_id,
                     error = %e,
                     "skipping poll — provider not found"
                 );
@@ -170,7 +170,7 @@ impl PollerService {
         };
 
         let tasks = fetcher
-            .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
+            .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
             .await?;
 
         let tasks_found = tasks.len();
@@ -241,7 +241,7 @@ impl PollerService {
 
         for run in &blocked_runs {
             let tasks = client
-                .fetch_tasks_in_column(&config.kaneo_project_id, &config.pickup_column)
+                .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
                 .await?;
 
             if tasks.iter().any(|t| t.id == run.external_task_ref) {

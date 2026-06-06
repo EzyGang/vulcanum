@@ -61,6 +61,57 @@ This crate follows the **Web Service Architecture** defined in the root `AGENTS.
   impl<'c> Queryer<'c> for &'c mut PgConnection {}
   ```
 
+## Module Layout
+
+### Provider Namespace (`src/services/providers/`)
+
+All external-provider client code lives under a single `providers/` directory so adding a future alternative only requires adding one sibling directory.
+
+```
+src/services/providers/
+  client.rs      # Dispatcher enum + TaskFetcher trait (e.g. IntegrationClient)
+  errors.rs      # Shared provider error types
+  model.rs       # Shared provider model types (e.g. IntegrationType)
+  kaneo/         # Kaneo-specific HTTP client
+    client.rs
+    errors.rs
+```
+
+### Provider Configuration (`src/services/provider_configs/`)
+
+Stores provider **configuration rows** (name, URL, API key) in Postgres. Named `provider_configs` to avoid colliding with the `providers/` client namespace.
+
+### Repository Conventions
+
+Each domain keeps per-table query logic in `repository/queries.rs` (previously named after the table, which was vague). Example:
+
+```
+src/services/<domain>/
+  repository.rs
+  repository/
+    queries.rs        # SQLx query implementations
+```
+
+### Service Conventions
+
+Business operations are split into individual files under `service/<operation>.rs`:
+
+```
+src/services/<domain>/
+  service.rs
+  service/
+    <operation>.rs   # One file per service method (e.g. poll.rs, acknowledge.rs)
+```
+
+### Dispatcher Stores
+
+- `dispatch_store.rs` — implements the `DispatchStore` trait (previously `flag_store.rs`).
+- `cancel_store.rs` — implements the `CancelStore` trait.
+
+### Worker Registration
+
+- `registration_code_store.rs` — abstract + Redis + in-memory stores for worker registration codes (previously `code_store.rs`).
+
 ## Supported .env Variables
 
 - `DATABASE_URL`

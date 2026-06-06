@@ -1,13 +1,13 @@
 use thiserror::Error;
 
-use crate::services::integrations::errors::IntegrationError;
+use crate::services::providers::errors::IntegrationError;
 
 #[derive(Debug, Error)]
 pub enum ProjectConfigsError {
     #[error("project config not found")]
     NotFound,
-    #[error("a config for this kaneo project already exists")]
-    DuplicateKaneoProjectId,
+    #[error("a config for this external project already exists")]
+    DuplicateExternalProjectId,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("integration error: {0}")]

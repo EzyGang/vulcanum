@@ -1,10 +1,6 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
-use crate::services::integrations::client::IntegrationClient;
-use crate::services::integrations::model::IntegrationType;
-use crate::services::kaneo::client::slugify;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
     ColumnInfo, CreateProjectConfigRequest, LookupProjectResult, ProjectConfig,
@@ -13,6 +9,10 @@ use crate::services::project_configs::model::{
 use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
 };
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
+use crate::services::providers::client::IntegrationClient;
+use crate::services::providers::kaneo::client::slugify;
+use crate::services::providers::model::{IntegrationColumn, IntegrationType};
 
 #[derive(Clone)]
 pub struct ProjectConfigsService {
@@ -50,28 +50,16 @@ impl ProjectConfigsService {
         &self,
         mut params: CreateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
-        normalize_columns(
-            &mut params.pickup_column,
-            &mut params.progress_column,
-            &mut params.target_column,
-            &mut params.blocked_column,
-        );
-
         let client = self.resolve_client(&params.provider_id).await?;
         let all_columns = client
-            .fetch_columns(&params.kaneo_project_id)
+            .fetch_columns(&params.external_project_id)
             .await
             .map_err(ProjectConfigsError::Integration)?;
 
-        for col_slug in [
-            &params.pickup_column,
-            &params.progress_column,
-            &params.target_column,
-        ] {
-            if !all_columns.iter().any(|c| &c.slug == col_slug) {
-                return Err(ProjectConfigsError::ColumnNotFound(col_slug.to_owned()));
-            }
-        }
+        params.pickup_column = resolve_column_slug(&all_columns, &params.pickup_column)?;
+        params.progress_column = resolve_column_slug(&all_columns, &params.progress_column)?;
+        params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
+        params.blocked_column = resolve_column_slug(&all_columns, &params.blocked_column)?;
 
         self.repo.create(&self.db, &params).await
     }
@@ -94,30 +82,23 @@ impl ProjectConfigsService {
         if has_column_changes(&params) {
             let client = self.resolve_client(&provider_id).await?;
             let all_columns = client
-                .fetch_columns(&existing.kaneo_project_id)
+                .fetch_columns(&existing.external_project_id)
                 .await
                 .map_err(ProjectConfigsError::Integration)?;
 
-            if let Some(ref col) = params.pickup_column {
-                if !all_columns.iter().any(|c| &c.slug == col) {
-                    return Err(ProjectConfigsError::ColumnNotFound(col.to_owned()));
-                }
+            if let Some(ref input) = params.pickup_column {
+                params.pickup_column = Some(resolve_column_slug(&all_columns, input)?);
             }
-            if let Some(ref col) = params.progress_column {
-                if !all_columns.iter().any(|c| &c.slug == col) {
-                    return Err(ProjectConfigsError::ColumnNotFound(col.to_owned()));
-                }
+            if let Some(ref input) = params.progress_column {
+                params.progress_column = Some(resolve_column_slug(&all_columns, input)?);
             }
-            if let Some(ref col) = params.target_column {
-                if !all_columns.iter().any(|c| &c.slug == col) {
-                    return Err(ProjectConfigsError::ColumnNotFound(col.to_owned()));
-                }
+            if let Some(ref input) = params.target_column {
+                params.target_column = Some(resolve_column_slug(&all_columns, input)?);
+            }
+            if let Some(ref input) = params.blocked_column {
+                params.blocked_column = Some(resolve_column_slug(&all_columns, input)?);
             }
         }
-
-        validate_and_normalize_optional_columns(&mut params);
-
-        validate_and_normalize_optional_columns(&mut params);
 
         self.repo
             .update(
@@ -133,7 +114,7 @@ impl ProjectConfigsService {
                     repo_url: params.repo_url.as_deref(),
                     agents_md: params.agents_md.as_deref(),
                     opencode_config: params.opencode_config.as_deref(),
-                    kaneo_workspace_id: params.kaneo_workspace_id.as_deref(),
+                    external_workspace_id: params.external_workspace_id.as_deref(),
                     enabled: params.enabled,
                     integration_type: params.integration_type,
                     provider_id: params.provider_id,
@@ -149,17 +130,17 @@ impl ProjectConfigsService {
     pub async fn lookup_project(
         &self,
         provider_id: &Uuid,
-        kaneo_project_id: &str,
+        external_project_id: &str,
     ) -> Result<LookupProjectResult, ProjectConfigsError> {
         let client = self.resolve_client(provider_id).await?;
 
         let project = client
-            .lookup_project(kaneo_project_id)
+            .lookup_project(external_project_id)
             .await
             .map_err(ProjectConfigsError::Integration)?;
 
         let columns = client
-            .fetch_columns(kaneo_project_id)
+            .fetch_columns(external_project_id)
             .await
             .map_err(ProjectConfigsError::Integration)?;
 
@@ -189,37 +170,20 @@ impl ProjectConfigsService {
 }
 
 fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
-    // max_turns is intentionally excluded — column validation is only
-    // required for Kanéo column names, not for turn-limit configuration.
     params.pickup_column.is_some()
         || params.progress_column.is_some()
         || params.target_column.is_some()
         || params.blocked_column.is_some()
 }
 
-fn normalize_columns(
-    pickup: &mut String,
-    progress: &mut String,
-    target: &mut String,
-    blocked: &mut String,
-) {
-    *pickup = slugify(pickup);
-    *progress = slugify(progress);
-    *target = slugify(target);
-    *blocked = slugify(blocked);
-}
-
-fn validate_and_normalize_optional_columns(params: &mut UpdateProjectConfigRequest) {
-    if let Some(ref mut col) = params.pickup_column {
-        *col = slugify(col);
-    }
-    if let Some(ref mut col) = params.progress_column {
-        *col = slugify(col);
-    }
-    if let Some(ref mut col) = params.target_column {
-        *col = slugify(col);
-    }
-    if let Some(ref mut col) = params.blocked_column {
-        *col = slugify(col);
-    }
+fn resolve_column_slug(
+    columns: &[IntegrationColumn],
+    input: &str,
+) -> Result<String, ProjectConfigsError> {
+    let slug = slugify(input);
+    columns
+        .iter()
+        .find(|c| c.slug == slug)
+        .map(|c| c.slug.clone())
+        .ok_or_else(|| ProjectConfigsError::ColumnNotFound(input.to_owned()))
 }

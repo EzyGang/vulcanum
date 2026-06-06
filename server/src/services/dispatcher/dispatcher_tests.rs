@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::services::dispatcher::flag_store::{DispatchStore, InMemoryDispatchStore};
+use crate::services::dispatcher::dispatch_store::{DispatchStore, InMemoryDispatchStore};
 use crate::services::dispatcher::repository::DispatchRepository;
 use crate::services::dispatcher::service::DispatcherService;
 use crate::services::work_runs::model::WorkRunStatus;

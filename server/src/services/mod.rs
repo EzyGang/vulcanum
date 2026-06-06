@@ -1,11 +1,10 @@
 pub mod auth;
 pub mod dispatcher;
 pub mod github_app;
-pub mod integration_providers;
-pub mod integrations;
-pub mod kaneo;
 pub mod poller;
 pub mod project_configs;
+pub mod provider_configs;
+pub mod providers;
 pub mod users;
 pub mod work_run_events;
 pub mod work_runs;

@@ -1,6 +1,6 @@
 pub mod cancel_store;
+pub mod dispatch_store;
 pub mod errors;
-pub mod flag_store;
 pub mod repository;
 pub mod service;
 

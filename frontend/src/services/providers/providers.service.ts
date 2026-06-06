@@ -24,8 +24,8 @@ export const deleteProvider = (id: string): Promise<void> => del<void>(`/provide
 
 export const lookupProject = async (
   providerId: string,
-  kaneoProjectId: string
+  externalProjectId: string
 ): Promise<LookupProjectResponse> =>
   get<LookupProjectResponse>(`/providers/${providerId}/projects/lookup`, {
-    kaneo_project_id: kaneoProjectId
+    external_project_id: externalProjectId
   });

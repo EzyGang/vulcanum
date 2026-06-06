@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::instance_auth::InstanceAuth;
-use crate::services::integration_providers::model::{CreateProviderRequest, UpdateProviderRequest};
 use crate::services::project_configs::model::LookupProjectResult;
+use crate::services::provider_configs::model::{CreateProviderRequest, UpdateProviderRequest};
 
 pub async fn list(
     state: web::Data<AppState>,
@@ -69,7 +69,7 @@ pub async fn lookup_project(
     let provider_id = path.into_inner();
     let result: LookupProjectResult = state
         .project_configs
-        .lookup_project(&provider_id, &query.kaneo_project_id)
+        .lookup_project(&provider_id, &query.external_project_id)
         .await?;
 
     Ok(HttpResponse::Ok().json(result))
@@ -77,5 +77,5 @@ pub async fn lookup_project(
 
 #[derive(serde::Deserialize)]
 pub struct LookupQuery {
-    pub kaneo_project_id: String,
+    pub external_project_id: String,
 }

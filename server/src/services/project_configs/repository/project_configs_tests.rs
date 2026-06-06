@@ -1,12 +1,12 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::integrations::model::IntegrationType;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::CreateProjectConfigRequest;
 use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
 };
+use crate::services::providers::model::IntegrationType;
 
 async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
@@ -25,9 +25,9 @@ async fn insert_provider(pool: &PgPool) -> Uuid {
     id
 }
 
-fn test_params(kaneo_project_id: &str, provider_id: Uuid) -> CreateProjectConfigRequest {
+fn test_params(external_project_id: &str, provider_id: Uuid) -> CreateProjectConfigRequest {
     CreateProjectConfigRequest {
-        kaneo_project_id: kaneo_project_id.to_owned(),
+        external_project_id: external_project_id.to_owned(),
         enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
@@ -38,7 +38,7 @@ fn test_params(kaneo_project_id: &str, provider_id: Uuid) -> CreateProjectConfig
         opencode_config: String::new(),
         blocked_column: "Blocked".to_owned(),
         max_turns: 3,
-        kaneo_workspace_id: String::new(),
+        external_workspace_id: String::new(),
         integration_type: IntegrationType::Kaneo,
         provider_id,
     }
@@ -55,7 +55,7 @@ fn test_update_params() -> UpdateProjectConfigParams<'static> {
         repo_url: None,
         agents_md: None,
         opencode_config: None,
-        kaneo_workspace_id: None,
+        external_workspace_id: None,
         enabled: None,
         integration_type: None,
         provider_id: None,
@@ -73,7 +73,7 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
         .await
         .expect("Should create config");
 
-    assert_eq!(created.kaneo_project_id, params.kaneo_project_id);
+    assert_eq!(created.external_project_id, params.external_project_id);
     assert_eq!(created.pickup_column, "to-do");
     assert!(created.enabled);
 
@@ -98,7 +98,7 @@ async fn list_all_returns_configs(pool: PgPool) {
 
     let p1 = test_params("kaneo-proj-list-a", provider_id);
     let p2 = CreateProjectConfigRequest {
-        kaneo_project_id: "kaneo-proj-list-b".to_owned(),
+        external_project_id: "kaneo-proj-list-b".to_owned(),
         prompt_template: "Template B".to_owned(),
         ..test_params("kaneo-proj-list-b", provider_id)
     };
@@ -111,7 +111,7 @@ async fn list_all_returns_configs(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
+async fn duplicate_external_project_id_fails(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let provider_id = insert_provider(&pool).await;
     let params = test_params("kaneo-proj-dup", provider_id);
@@ -122,8 +122,8 @@ async fn duplicate_kaneo_project_id_fails(pool: PgPool) {
 
     let result = repo.create(&pool, &params).await;
     assert!(
-        matches!(result, Err(ProjectConfigsError::DuplicateKaneoProjectId)),
-        "Second create with same kaneo_project_id should fail with DuplicateKaneoProjectId"
+        matches!(result, Err(ProjectConfigsError::DuplicateExternalProjectId)),
+        "Second create with same external_project_id should fail with DuplicateExternalProjectId"
     );
 }
 
@@ -212,7 +212,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
     assert!(
         !enabled_list
             .iter()
-            .any(|c| c.kaneo_project_id == "kaneo-proj-disabled"),
+            .any(|c| c.external_project_id == "kaneo-proj-disabled"),
         "Disabled config should not be in enabled list"
     );
 }

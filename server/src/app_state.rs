@@ -7,20 +7,20 @@ use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::{
     CancelStore, InMemoryCancelStore, RedisCancelStore,
 };
-use crate::services::dispatcher::flag_store::DispatchStore;
+use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
-use crate::services::integration_providers::service::IntegrationProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
+use crate::services::provider_configs::service::IntegrationProvidersService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
 use crate::services::work_run_events::service::WorkRunEventsService;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::WorkRunsService;
-use crate::services::workers::code_store::RedisCodeStore;
+use crate::services::workers::registration_code_store::RedisCodeStore;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 
@@ -76,7 +76,7 @@ impl AppState {
         )?;
         let work_runs = WorkRunsRepository::new();
         let dispatch_store: Arc<dyn DispatchStore> = Arc::new(
-            crate::services::dispatcher::flag_store::RedisDispatchStore::new(&cfg.redis_url)?,
+            crate::services::dispatcher::dispatch_store::RedisDispatchStore::new(&cfg.redis_url)?,
         );
         let cancel_store: Arc<dyn CancelStore> = Arc::new(RedisCancelStore::new(&cfg.redis_url)?);
         let jobs = WorkRunsService::new(

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::config::AppConfig;
-use crate::services::workers::code_store::InMemoryCodeStore;
 use crate::services::workers::errors::WorkersError;
+use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 use chrono::{Duration, Utc};

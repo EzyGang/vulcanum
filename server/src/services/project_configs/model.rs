@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::services::integrations::model::{IntegrationColumn, IntegrationType};
+use crate::services::providers::model::{IntegrationColumn, IntegrationType};
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
     pub id: Uuid,
-    pub kaneo_project_id: String,
-    pub kaneo_workspace_id: String,
+    pub external_project_id: String,
+    pub external_workspace_id: String,
     pub integration_type: IntegrationType,
     pub enabled: bool,
     pub pickup_column: String,
@@ -27,9 +27,9 @@ pub struct ProjectConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateProjectConfigRequest {
-    pub kaneo_project_id: String,
+    pub external_project_id: String,
     #[serde(default)]
-    pub kaneo_workspace_id: String,
+    pub external_workspace_id: String,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
     #[serde(default = "default_pickup_column")]
@@ -74,7 +74,7 @@ pub struct UpdateProjectConfigRequest {
     #[serde(default)]
     pub opencode_config: Option<String>,
     #[serde(default)]
-    pub kaneo_workspace_id: Option<String>,
+    pub external_workspace_id: Option<String>,
     #[serde(default)]
     pub enabled: Option<bool>,
     #[serde(default)]
@@ -109,8 +109,8 @@ impl From<&IntegrationColumn> for ColumnInfo {
 impl ProjectConfig {
     pub fn job_fields(&self) -> JobConfigFields {
         JobConfigFields {
-            kaneo_project_id: self.kaneo_project_id.clone(),
-            kaneo_workspace_id: self.kaneo_workspace_id.clone(),
+            external_project_id: self.external_project_id.clone(),
+            external_workspace_id: self.external_workspace_id.clone(),
             opencode_config: self.opencode_config.clone(),
             max_turns: self.max_turns,
             provider_id: self.provider_id,
@@ -121,8 +121,8 @@ impl ProjectConfig {
 
 #[derive(Default)]
 pub struct JobConfigFields {
-    pub kaneo_project_id: String,
-    pub kaneo_workspace_id: String,
+    pub external_project_id: String,
+    pub external_workspace_id: String,
     pub opencode_config: String,
     pub max_turns: i32,
     pub provider_id: Option<Uuid>,

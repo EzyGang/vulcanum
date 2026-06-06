@@ -1,7 +1,7 @@
 export interface ProjectConfig {
   id: string;
-  kaneoProjectId: string;
-  kaneoWorkspaceId: string;
+  externalProjectId: string;
+  externalWorkspaceId: string;
   enabled: boolean;
   pickupColumn: string;
   targetColumn: string;
@@ -15,7 +15,7 @@ export interface ProjectConfig {
 }
 
 export interface CreateProjectRequest {
-  kaneoProjectId: string;
+  externalProjectId: string;
   providerId: string;
   enabled?: boolean;
   pickupColumn?: string;

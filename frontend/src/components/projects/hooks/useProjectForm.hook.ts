@@ -20,7 +20,7 @@ export const useProjectForm = (projectId: string | null) => {
   const { repos, reposLoading } = useGitHubApp();
 
   const providerId = useSignal('');
-  const kaneoProjectId = useSignal(projectId ? '' : '');
+  const externalProjectId = useSignal(projectId ? '' : '');
   const enabled = useSignal(true);
   const pickupColumn = useSignal('');
   const progressColumn = useSignal('');
@@ -30,7 +30,7 @@ export const useProjectForm = (projectId: string | null) => {
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
 
-  const lookup = useProjectFormLookup(providerId, kaneoProjectId);
+  const lookup = useProjectFormLookup(providerId, externalProjectId);
   const providerForm = useProjectFormProvider((newId: string) => {
     providerId.value = newId;
     lookup.resetLookup();
@@ -47,13 +47,13 @@ export const useProjectForm = (projectId: string | null) => {
     agentsMd,
     opencodeConfig,
     providerId,
-    kaneoProjectId
+    externalProjectId
   });
 
   useEffect(() => {
     if (projectId && existingProject) {
       const p = existingProject;
-      kaneoProjectId.value = p.kaneoProjectId;
+      externalProjectId.value = p.externalProjectId;
       providerId.value = p.providerId ?? '';
       enabled.value = p.enabled;
       pickupColumn.value = p.pickupColumn;
@@ -69,7 +69,7 @@ export const useProjectForm = (projectId: string | null) => {
   useEffect(() => {
     if (projectId && existingProject && providerId.value) {
       lookup.resetLookup();
-      lookupProject(providerId.value, existingProject.kaneoProjectId)
+      lookupProject(providerId.value, existingProject.externalProjectId)
         .then((result) => {
           lookup.lookupProjectName.value = result.name;
           lookup.columns.value = result.columns;
@@ -93,7 +93,7 @@ export const useProjectForm = (projectId: string | null) => {
     projectLoading: projectId ? projectLoading : false,
     providers,
     providerId,
-    kaneoProjectId,
+    externalProjectId,
     enabled,
     pickupColumn,
     progressColumn,
@@ -129,7 +129,7 @@ export const useProjectForm = (projectId: string | null) => {
       resetLookup();
     },
     onProjectIdChange: (id: string) => {
-      kaneoProjectId.value = id;
+      externalProjectId.value = id;
       resetLookup();
     },
     onEnabledChange: (checked: boolean) => {

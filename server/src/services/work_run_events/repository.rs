@@ -1,4 +1,4 @@
-pub mod work_run_events;
+pub mod queries;
 
 #[derive(Clone)]
 pub struct WorkRunEventsRepository {}

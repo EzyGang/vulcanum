@@ -3,16 +3,16 @@ use uuid::Uuid;
 
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
-use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
+use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
-async fn insert_project_config(pool: &PgPool, kaneo_project_id: &str) -> Uuid {
+async fn insert_project_config(pool: &PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'kaneo')",
+        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'kaneo')",
         id,
-        kaneo_project_id,
+        external_project_id,
         "Review {{task_title}}",
     )
     .execute(pool)

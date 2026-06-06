@@ -15,13 +15,13 @@ fn auth_header(token: &str) -> (&str, String) {
     ("Authorization", format!("Bearer {token}"))
 }
 
-async fn insert_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> Uuid {
+async fn insert_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'kaneo')",
+        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'kaneo')",
         id,
-        kaneo_project_id,
+        external_project_id,
         "Review {{task_title}}",
     )
     .execute(pool)
@@ -81,7 +81,7 @@ async fn get_returns_config(pool: sqlx::PgPool) {
     assert!(resp.status().is_success());
 
     let body: serde_json::Value = test::read_body_json(resp).await;
-    assert_eq!(body["kaneo_project_id"], "test-get");
+    assert_eq!(body["external_project_id"], "test-get");
 }
 
 #[sqlx::test]

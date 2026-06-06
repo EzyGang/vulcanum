@@ -17,7 +17,7 @@ interface UseProjectFormSubmitOptions {
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
   providerId: Signal<string>;
-  kaneoProjectId: Signal<string>;
+  externalProjectId: Signal<string>;
 }
 
 export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
@@ -32,7 +32,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     agentsMd,
     opencodeConfig,
     providerId,
-    kaneoProjectId
+    externalProjectId
   } = options;
 
   const [, setLocation] = useLocation();
@@ -95,7 +95,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             return;
           }
           await createMutation.mutateAsync({
-            kaneoProjectId: kaneoProjectId.value,
+            externalProjectId: externalProjectId.value,
             providerId: providerId.value,
             enabled: enabled.value,
             pickupColumn: pickupColumn.value || undefined,

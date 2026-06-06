@@ -1,4 +1,4 @@
-pub mod providers;
+pub mod queries;
 
 #[derive(Clone, Default)]
 pub struct IntegrationProvidersRepository {}

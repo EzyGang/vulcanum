@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::services::work_run_events::errors::WorkRunEventsError;
-use crate::services::work_run_events::repository::work_run_events::InsertEventParams;
+use crate::services::work_run_events::repository::queries::InsertEventParams;
 use crate::services::work_run_events::service::{map_work_runs_error, WorkRunEventsService};
 use crate::services::work_runs::model::WorkRunStatus;
 

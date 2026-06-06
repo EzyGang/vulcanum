@@ -5,21 +5,21 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
-use crate::services::dispatcher::flag_store::InMemoryDispatchStore;
+use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
-use crate::services::integration_providers::repository::IntegrationProvidersRepository;
-use crate::services::integration_providers::service::IntegrationProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
+use crate::services::provider_configs::repository::IntegrationProvidersRepository;
+use crate::services::provider_configs::service::IntegrationProvidersService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
 use crate::services::work_run_events::service::WorkRunEventsService;
 use crate::services::work_runs::model::WorkRunStatus;
-use crate::services::work_runs::repository::work_runs::InsertWorkRunParams;
+use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::services::workers::code_store::InMemoryCodeStore;
+use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 
@@ -40,13 +40,13 @@ pub async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
     id
 }
 
-pub async fn insert_project_config(pool: &sqlx::PgPool, kaneo_project_id: &str) -> Uuid {
+pub async fn insert_project_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo')",
+        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo')",
         id,
-        kaneo_project_id,
+        external_project_id,
     )
     .execute(pool)
     .await
@@ -57,15 +57,15 @@ pub async fn insert_project_config(pool: &sqlx::PgPool, kaneo_project_id: &str) 
 
 pub async fn insert_project_config_with_provider(
     pool: &sqlx::PgPool,
-    kaneo_project_id: &str,
+    external_project_id: &str,
     provider_id: Uuid,
 ) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, kaneo_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo', $3)",
+        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo', $3)",
         id,
-        kaneo_project_id,
+        external_project_id,
         provider_id,
     )
     .execute(pool)
@@ -193,8 +193,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         project_configs: ProjectConfigsService::new(
             project_configs_repo,
             pool.clone(),
-            crate::services::integration_providers::repository::IntegrationProvidersRepository::new(
-            ),
+            crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
         ),
         providers: providers.clone(),
         workers: WorkersService::new(
