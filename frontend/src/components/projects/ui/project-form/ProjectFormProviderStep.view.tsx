@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import { ProviderFormFields } from '../../../providers/ui/ProviderFormFields.view';
 import { Button } from '../../../shared/ui/Button.view';
 import { Label } from '../../../shared/ui/Label.view';
+import { Select } from '../../../shared/ui/Select.view';
 import { useProjectFormContext } from '../../context/ProjectFormContext';
 
 export const ProjectFormProviderStep = (): JSX.Element => {
@@ -12,14 +13,14 @@ export const ProjectFormProviderStep = (): JSX.Element => {
       <Label for='field-provider'>Provider</Label>
       {d.providers.length > 0 && !d.showProviderForm.value ? (
         <div class='flex items-center gap-2'>
-          <select
+          <Select
             id='field-provider'
             value={d.providerId.value}
             onChange={(e) => {
               a.onProviderChange((e.target as HTMLSelectElement).value);
             }}
             disabled={d.isEdit || status.submitting.value}
-            class='bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full'
+            class='w-full'
           >
             <option value=''>Select a provider</option>
             {d.providers.map((p) => (
@@ -27,7 +28,7 @@ export const ProjectFormProviderStep = (): JSX.Element => {
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
           {!d.isEdit && (
             <Button variant='ghost' onClick={a.onShowProviderForm}>
               + New
