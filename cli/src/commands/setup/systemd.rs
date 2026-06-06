@@ -1,7 +1,20 @@
-use super::utils::{run_systemctl, worker_server_path};
+use crate::commands::setup::host::worker_server_path;
 
 const UNIT_NAME: &str = "vulcanum-worker";
 const UNIT_PATH: &str = "/etc/systemd/system/vulcanum-worker.service";
+
+pub fn run_systemctl(args: &str) -> anyhow::Result<()> {
+    let status = std::process::Command::new("sudo")
+        .arg("systemctl")
+        .args(args.split_whitespace())
+        .status()
+        .map_err(|e| anyhow::anyhow!("failed to run systemctl: {e}"))?;
+
+    if !status.success() {
+        anyhow::bail!("systemctl {} failed", args);
+    }
+    Ok(())
+}
 
 pub fn configure_systemd(harness: &str) -> anyhow::Result<()> {
     let binary_path = worker_server_path()?;

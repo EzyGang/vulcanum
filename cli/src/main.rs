@@ -4,7 +4,7 @@ mod console;
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::commands::setup::utils::worker_server_path;
+use crate::commands::setup::host::worker_server_path;
 
 #[derive(Parser)]
 #[command(name = "vulcanum", about = "Vulcanum worker CLI")]
