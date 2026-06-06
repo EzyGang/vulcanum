@@ -31,7 +31,7 @@ pnpm test:watch       # Vitest watch mode
 ## Directory Structure (src/)
 
 ```
-components/      feature-oriented UI (strict triplet pattern)
+components/      feature-oriented UI (strict triplet pattern + optional context)
 pages/           thin wrappers rendering one container
 hooks/           shared generic hooks
 stores/          global singletons using @preact/signals
@@ -39,6 +39,26 @@ services/        API endpoint helpers (pure request/response)
 utils/           cross-feature helpers
 routes/          public/protected route definitions
 types/           TypeScript type definitions
+```
+
+### Feature Sub-Folder Conventions
+
+As features grow, flat `ui/`, `containers/`, and `hooks/` directories become unmanageable. Related files are grouped into **semantic sub-folders** under each layer:
+
+```
+components/<feature>/
+  ui/
+    list-page/               ← views used only by the list page
+    form/                    ← views used only by create/edit forms
+    table/                   ← table-specific views
+    timeline/                ← timeline / detail sub-views
+  containers/
+    list-page/
+    form/
+  hooks/
+    form/                    ← hooks whose lifetime matches a form
+    list-page/               ← hooks scoped to list behavior (pagination, filters)
+  context/                   ← optional: Preact context for heavy prop drilling
 ```
 
 ## Component Pattern (Strict Triplet)
