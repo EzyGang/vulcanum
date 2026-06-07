@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO github_installations (github_installation_id, account_login)\n               VALUES ($1, $2)\n               ON CONFLICT (account_login) DO UPDATE SET\n                   github_installation_id = EXCLUDED.github_installation_id,\n                   created_at = NOW()\n               RETURNING id, github_installation_id, account_login, created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "account_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "45cd1d66184f5e757a221bb067739da535d068f3996bcad90e855db8dbef7ba6"
+}

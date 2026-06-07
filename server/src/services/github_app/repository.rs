@@ -23,7 +23,7 @@ impl GithubAppRepository {
     ) -> Result<Option<GithubInstallation>, GithubAppError> {
         let row = sqlx::query_as!(
             GithubInstallation,
-            r#"SELECT id, account_login, created_at as "created_at!: DateTime<Utc>" FROM github_installations LIMIT 1"#
+            r#"SELECT id, github_installation_id, account_login, created_at as "created_at!: DateTime<Utc>" FROM github_installations LIMIT 1"#
         )
         .fetch_optional(db)
         .await
@@ -35,11 +35,18 @@ impl GithubAppRepository {
     pub async fn insert_installation<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
+        github_installation_id: i64,
         account_login: &str,
     ) -> Result<GithubInstallation, GithubAppError> {
         let row = sqlx::query_as!(
             GithubInstallation,
-            r#"INSERT INTO github_installations (account_login) VALUES ($1) RETURNING id, account_login, created_at as "created_at!: DateTime<Utc>""#,
+            r#"INSERT INTO github_installations (github_installation_id, account_login)
+               VALUES ($1, $2)
+               ON CONFLICT (account_login) DO UPDATE SET
+                   github_installation_id = EXCLUDED.github_installation_id,
+                   created_at = NOW()
+               RETURNING id, github_installation_id, account_login, created_at as "created_at!: DateTime<Utc>""#,
+            github_installation_id,
             account_login,
         )
         .fetch_one(db)

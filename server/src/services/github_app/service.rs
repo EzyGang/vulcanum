@@ -137,19 +137,19 @@ impl GithubAppManager {
 
     pub async fn create_installation(
         &self,
-        installation_id: i64,
+        github_installation_id: i64,
     ) -> Result<GithubInstallation, GithubAppError> {
         let octo = self.app_octocrab()?;
         let installation = octo
             .apps()
-            .installation(InstallationId(installation_id as u64))
+            .installation(InstallationId(github_installation_id as u64))
             .await
-            .map_err(|e| GithubAppError::Api(format!("get_installation: {e}")))?;
+            .map_err(|e| GithubAppError::Api(format!("get_installation from GitHub: {e}")))?;
 
         let account_login = installation.account.login;
 
         self.repo
-            .insert_installation(&self.db, &account_login)
+            .insert_installation(&self.db, github_installation_id, &account_login)
             .await
     }
 
@@ -170,7 +170,7 @@ impl GithubAppManager {
 
         let octo = self.app_octocrab()?;
         let installation_client = octo
-            .installation(InstallationId(installation.id as u64))
+            .installation(InstallationId(installation.github_installation_id as u64))
             .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
 
         let repos = installation_client
@@ -206,7 +206,10 @@ impl GithubAppManager {
         let (_owner, repo_name) = parse_github_repo(repo_url)?;
 
         let octo = self.app_octocrab()?;
-        let route = format!("/app/installations/{}/access_tokens", installation.id);
+        let route = format!(
+            "/app/installations/{}/access_tokens",
+            installation.github_installation_id
+        );
 
         let body = serde_json::json!({
             "repositories": [repo_name],
