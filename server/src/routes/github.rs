@@ -52,7 +52,7 @@ pub async fn callback(
 
     if query.setup_action != "install" {
         return Ok(HttpResponse::Found()
-            .append_header(("Location", "/projects"))
+            .append_header(("Location", "/"))
             .finish());
     }
 
@@ -66,7 +66,7 @@ pub async fn callback(
         })?;
 
     Ok(HttpResponse::Found()
-        .append_header(("Location", "/projects"))
+        .append_header(("Location", "/"))
         .finish())
 }
 

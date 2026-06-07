@@ -3,21 +3,25 @@ import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
 
 interface GitHubAppCardViewProps {
-  installation: { id: number; accountLogin: string } | null;
-  isLoading: boolean;
-  disconnectPending: boolean;
-  onConnect: () => void;
-  onRefresh: () => void;
-  onDisconnect: () => void;
+  data: {
+    installation: { id: number; accountLogin: string } | null;
+  };
+  status: {
+    isLoading: boolean;
+    isRefreshing: boolean;
+    disconnectPending: boolean;
+  };
+  actions: {
+    onConnect: () => void;
+    onRefresh: () => void;
+    onDisconnect: () => void;
+  };
 }
 
 export const GitHubAppCardView = ({
-  installation,
-  isLoading,
-  disconnectPending,
-  onConnect,
-  onRefresh,
-  onDisconnect
+  data: { installation },
+  status: { isLoading, isRefreshing, disconnectPending },
+  actions: { onConnect, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
   const connected = !!installation;
 
@@ -39,10 +43,13 @@ export const GitHubAppCardView = ({
               Not Connected
             </span>
           )}
+          {isRefreshing && !isLoading && (
+            <span class='text-text-muted text-xs animate-pulse'>Refreshing...</span>
+          )}
         </div>
 
         <div class='flex items-center gap-2'>
-          <Button variant='ghost' onClick={onRefresh}>
+          <Button variant='ghost' onClick={onRefresh} disabled={isRefreshing}>
             Refresh
           </Button>
 

@@ -10,11 +10,11 @@ export const useGitHubApp = () => {
   const {
     data: installation,
     isLoading: installationLoading,
+    isFetching: installationRefreshing,
     error: installationError,
     refetch
   } = useApiQuery(['github-installation'], () => getInstallation(), {
-    retry: false,
-    refetchOnWindowFocus: false
+    retry: false
   });
 
   const { data: repos = [], isLoading: reposLoading } = useApiQuery(
@@ -38,6 +38,7 @@ export const useGitHubApp = () => {
     repos,
     reposLoading,
     installationLoading,
+    installationRefreshing,
     installationError,
     onConnect,
     disconnectInstallation: disconnectMutation.mutateAsync,
