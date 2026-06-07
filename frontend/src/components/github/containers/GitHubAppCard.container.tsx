@@ -6,6 +6,7 @@ export const GitHubAppCardContainer = (): JSX.Element => {
   const {
     installation,
     installationLoading,
+    installationRefreshing,
     disconnectPending,
     onConnect,
     disconnectInstallation,
@@ -14,14 +15,19 @@ export const GitHubAppCardContainer = (): JSX.Element => {
 
   return (
     <GitHubAppCardView
-      installation={installation ?? null}
-      isLoading={installationLoading}
-      disconnectPending={disconnectPending}
-      onConnect={onConnect}
-      onRefresh={refetch}
-      onDisconnect={() => {
-        if (installation) {
-          disconnectInstallation(installation.id);
+      data={{ installation: installation ?? null }}
+      status={{
+        isLoading: installationLoading,
+        isRefreshing: installationRefreshing,
+        disconnectPending
+      }}
+      actions={{
+        onConnect,
+        onRefresh: refetch,
+        onDisconnect: () => {
+          if (installation) {
+            disconnectInstallation(installation.id);
+          }
         }
       }}
     />
