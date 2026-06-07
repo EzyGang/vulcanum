@@ -8,7 +8,6 @@ use crate::routes::instance_auth::InstanceAuth;
 
 pub async fn auth_redirect(
     state: web::Data<AppState>,
-    _auth: InstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let nonce = Uuid::new_v4().to_string();
     state.github.save_state_nonce(&nonce).await.map_err(|e| {
