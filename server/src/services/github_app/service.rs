@@ -230,9 +230,10 @@ impl GithubAppManager {
             .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
 
         let repos = installation_client
-            .current()
-            .list_repos_for_authenticated_user()
-            .send()
+            .get::<octocrab::Page<octocrab::models::Repository>, _, ()>(
+                "/installation/repositories",
+                None::<&()>,
+            )
             .await
             .map_err(|e| GithubAppError::Api(format!("list_repos: {e}")))?;
 
