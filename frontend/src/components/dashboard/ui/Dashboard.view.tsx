@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../types/runs';
 import type { ApiError } from '../../../utils/api/client';
 import { formatDuration, formatRelativeTime } from '../../../utils/format';
+import { GitHubAppCardContainer } from '../../github/containers/GitHubAppCard.container';
 import { Card } from '../../shared/ui/Card.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
@@ -89,6 +90,8 @@ export const DashboardView = ({
   return (
     <div class='flex flex-col gap-8'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Dashboard</h2>
+
+      <GitHubAppCardContainer />
 
       {anyLoading && allDataMissing && <div class='text-text-muted text-sm'>Loading...</div>}
 

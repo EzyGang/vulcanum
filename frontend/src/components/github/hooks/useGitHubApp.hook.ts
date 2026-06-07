@@ -1,19 +1,21 @@
 import {
   disconnectInstallation,
+  getAuthUrl,
   getInstallation,
   listRepos
-} from '../../../../services/github/github.service';
-import { useApiMutation, useApiQuery } from '../../../../utils/api/query/hooks';
+} from '../../../services/github/github.service';
+import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
 export const useGitHubApp = () => {
-  const { data: installation, refetch } = useApiQuery(
-    ['github-installation'],
-    () => getInstallation(),
-    {
-      retry: false,
-      refetchOnWindowFocus: false
-    }
-  );
+  const {
+    data: installation,
+    isLoading: installationLoading,
+    error: installationError,
+    refetch
+  } = useApiQuery(['github-installation'], () => getInstallation(), {
+    retry: false,
+    refetchOnWindowFocus: false
+  });
 
   const { data: repos = [], isLoading: reposLoading } = useApiQuery(
     ['github-repos'],
@@ -27,13 +29,17 @@ export const useGitHubApp = () => {
     }
   });
 
-  const connectUrl = '/api/v1/github/auth';
+  const onConnect = () => {
+    window.location.href = getAuthUrl();
+  };
 
   return {
     installation,
     repos,
     reposLoading,
-    connectUrl,
+    installationLoading,
+    installationError,
+    onConnect,
     disconnectInstallation: disconnectMutation.mutateAsync,
     disconnectPending: disconnectMutation.isPending,
     refetch
