@@ -177,6 +177,59 @@ cargo run -p vulcanum-server --bin vulcanum-web
 cargo run -p vulcanum-server --bin vulcanum-dispatcher
 ```
 
+<details>
+<summary>GitHub App instructions</summary>
+
+### GitHub App Setup
+
+Vulcanum connects to repositories through a **GitHub App** instead of personal access tokens. This provides repository-scoped, short-lived tokens that are automatically rotated.
+
+#### 1. Create a GitHub App
+
+1. Go to **Settings → Developer settings → GitHub Apps → New GitHub App** (in your GitHub account or organization).
+2. Fill in the required fields:
+   - **GitHub App name**: e.g. `Vulcanum App`
+   - **Homepage URL**: your instance URL (e.g. `http://localhost:8080`)
+   - **Callback URL**: `{your_instance}/api/v1/github/callback`
+   - **Webhook**: disable (Vulcanum does not use webhooks)
+3. Under **Permissions → Repository permissions**, enable:
+   - **Contents**: `Read and write` (required for cloning and pushing branches)
+   - **Pull requests**: `Read and write` (required for creating PRs)
+4. Under **Where can this GitHub App be installed?**, choose **Any account** (or restrict to your organization if preferred).
+5. Click **Create GitHub App**.
+6. After creation, note:
+   - **App ID** (numeric, shown at the top)
+   - **App slug** (the URL-friendly name, e.g. `vulcanum-app`)
+   - Generate a **Private key** (`.pem` file) and download it.
+
+#### 2. Configure the Server
+
+Add these environment variables to your `.env`:
+
+```bash
+GITHUB_APP_ID=123456
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----"
+GITHUB_APP_SLUG=vulcanum-app
+```
+
+> **Note:** The private key must include the full PEM format with newlines. If loading from an env file, ensure newlines are preserved (e.g. by using a `.env` file or proper quoting in your shell).
+
+#### 3. Install the App
+
+1. Start the Vulcanum server.
+2. Open the dashboard and navigate to **Projects**.
+3. Click **Connect GitHub** — this redirects you to GitHub to authorize the app.
+4. Select the repositories (or all repos) you want Vulcanum to access, then install.
+5. You will be redirected back to the dashboard. The repo selector in the project form will now show your available repositories.
+
+#### 4. Disconnecting
+
+To revoke access, delete the installation from the dashboard (Projects page) or uninstall the app directly from your GitHub account settings.
+
+</details>
+
 ### Worker
 
 ```bash
