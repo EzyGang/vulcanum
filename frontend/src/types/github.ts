@@ -3,3 +3,9 @@ export interface RepoInfo {
   name: string;
   fullName: string;
 }
+
+export interface GithubInstallation {
+  id: number;
+  accountLogin: string;
+  createdAt: string;
+}
