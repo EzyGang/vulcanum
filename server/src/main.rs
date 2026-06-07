@@ -1,4 +1,5 @@
 use actix_cors::Cors;
+use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use tracing_actix_web::TracingLogger;
 
@@ -25,6 +26,7 @@ async fn main() -> eyre::Result<()> {
         let cors = Cors::permissive();
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(Logger::default())
             .wrap(cors)
             .app_data(web::Data::new(app_state.clone()))
             .configure(vulcanum_server::routes::configure)
