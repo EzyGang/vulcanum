@@ -17,11 +17,14 @@ export const useGitHubApp = () => {
     retry: false
   });
 
-  const { data: repos = [], isLoading: reposLoading } = useApiQuery(
-    ['github-repos'],
-    () => listRepos().then((r) => r.map((repo) => repo.fullName)),
-    { enabled: !!installation, retry: false }
-  );
+  const {
+    data: repos = [],
+    isLoading: reposLoading,
+    error: reposError
+  } = useApiQuery(['github-repos'], () => listRepos().then((r) => r.map((repo) => repo.fullName)), {
+    enabled: !!installation,
+    retry: false
+  });
 
   const disconnectMutation = useApiMutation((id: number) => disconnectInstallation(id), {
     onSuccess: () => {
@@ -30,15 +33,17 @@ export const useGitHubApp = () => {
   });
 
   const onConnect = () => {
-    window.location.href = getAuthUrl();
+    window.open(getAuthUrl(), '_blank');
   };
 
   return {
     installation,
     repos,
     reposLoading,
+    reposError,
     installationLoading,
     installationRefreshing,
+    installationErrorMessage: installationError?.message ?? reposError?.message ?? null,
     installationError,
     onConnect,
     disconnectInstallation: disconnectMutation.mutateAsync,

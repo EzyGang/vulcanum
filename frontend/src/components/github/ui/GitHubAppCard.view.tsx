@@ -1,6 +1,7 @@
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
+import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 
 interface GitHubAppCardViewProps {
   data: {
@@ -10,6 +11,7 @@ interface GitHubAppCardViewProps {
     isLoading: boolean;
     isRefreshing: boolean;
     disconnectPending: boolean;
+    errorMessage: string | null;
   };
   actions: {
     onConnect: () => void;
@@ -20,7 +22,7 @@ interface GitHubAppCardViewProps {
 
 export const GitHubAppCardView = ({
   data: { installation },
-  status: { isLoading, isRefreshing, disconnectPending },
+  status: { isLoading, isRefreshing, disconnectPending, errorMessage },
   actions: { onConnect, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
   const connected = !!installation;
@@ -64,6 +66,8 @@ export const GitHubAppCardView = ({
           )}
         </div>
       </div>
+
+      {errorMessage && <ErrorBanner message={errorMessage} />}
 
       {connected && installation && (
         <div class='flex items-center gap-2'>
