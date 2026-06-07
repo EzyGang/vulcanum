@@ -158,7 +158,39 @@ impl GithubAppManager {
     }
 
     pub async fn get_installation(&self) -> Result<Option<GithubInstallation>, GithubAppError> {
-        self.repo.get_installation(&self.db).await
+        if let Some(inst) = self.repo.get_installation(&self.db).await? {
+            return Ok(Some(inst));
+        }
+        match self.sync_installation_from_github().await {
+            Ok(inst) => Ok(Some(inst)),
+            Err(GithubAppError::NoInstallation | GithubAppError::NotConfigured) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn sync_installation_from_github(
+        &self,
+    ) -> Result<GithubInstallation, GithubAppError> {
+        let octo = self.app_octocrab()?;
+        let page = octo
+            .apps()
+            .installations()
+            .send()
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list installations: {e}")))?;
+
+        let first = page
+            .items
+            .into_iter()
+            .next()
+            .ok_or(GithubAppError::NoInstallation)?;
+
+        let gh_installation_id: i64 = first.id.0 as i64;
+        let account_login = first.account.login;
+
+        self.repo
+            .insert_installation(&self.db, gh_installation_id, &account_login)
+            .await
     }
 
     pub async fn list_repos(&self) -> Result<Vec<RepoInfo>, GithubAppError> {
