@@ -43,6 +43,7 @@ export const useGitHubApp = () => {
     reposError,
     installationLoading,
     installationRefreshing,
+    installationErrorMessage: installationError?.message ?? reposError?.message ?? null,
     installationError,
     onConnect,
     disconnectInstallation: disconnectMutation.mutateAsync,

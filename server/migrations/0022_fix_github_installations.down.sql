@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS github_installations;
+
 CREATE TABLE github_installations (
     id BIGSERIAL PRIMARY KEY,
     account_login TEXT NOT NULL,

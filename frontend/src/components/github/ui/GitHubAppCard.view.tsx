@@ -11,8 +11,7 @@ interface GitHubAppCardViewProps {
     isLoading: boolean;
     isRefreshing: boolean;
     disconnectPending: boolean;
-    installationError: Error | null;
-    reposError: Error | null;
+    errorMessage: string | null;
   };
   actions: {
     onConnect: () => void;
@@ -23,7 +22,7 @@ interface GitHubAppCardViewProps {
 
 export const GitHubAppCardView = ({
   data: { installation },
-  status: { isLoading, isRefreshing, disconnectPending, installationError, reposError },
+  status: { isLoading, isRefreshing, disconnectPending, errorMessage },
   actions: { onConnect, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
   const connected = !!installation;
