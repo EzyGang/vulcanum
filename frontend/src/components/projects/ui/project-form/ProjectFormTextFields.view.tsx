@@ -3,10 +3,12 @@ import { Input } from '../../../shared/ui/Input.view';
 import { Label } from '../../../shared/ui/Label.view';
 import { Select } from '../../../shared/ui/Select.view';
 import { TextArea } from '../../../shared/ui/TextArea.view';
-import { useProjectFormContext } from '../../context/ProjectFormContext';
+import { useProjectFormFieldsContext } from '../../context/ProjectFormFieldsContext';
+import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext';
 
 export const ProjectFormTextFields = (): JSX.Element => {
-  const { data: d, status, actions: a } = useProjectFormContext();
+  const m = useProjectFormMetaContext();
+  const f = useProjectFormFieldsContext();
 
   return (
     <>
@@ -19,24 +21,24 @@ export const ProjectFormTextFields = (): JSX.Element => {
         </div>
         <TextArea
           id='field-prompt-template'
-          value={d.promptTemplate.value}
-          onInput={(e) => a.onPromptTemplateChange((e.target as HTMLTextAreaElement).value)}
-          disabled={status.submitting.value}
+          value={f.promptTemplate.value}
+          onInput={(e) => f.onPromptTemplateChange((e.target as HTMLTextAreaElement).value)}
+          disabled={m.submitting.value}
           rows={4}
         />
       </div>
 
       <div class='flex flex-col gap-2'>
         <Label for='field-repo-url'>Repo URL</Label>
-        {d.repos.length > 0 ? (
+        {f.repos.length > 0 ? (
           <Select
             id='field-repo-url'
-            value={d.repoUrl.value}
-            onChange={(e) => a.onRepoUrlChange((e.target as HTMLSelectElement).value)}
-            disabled={status.submitting.value}
+            value={f.repoUrl.value}
+            onChange={(e) => f.onRepoUrlChange((e.target as HTMLSelectElement).value)}
+            disabled={m.submitting.value}
           >
             <option value=''>Select a repository...</option>
-            {d.repos.map((r) => (
+            {f.repos.map((r) => (
               <option key={r} value={`https://github.com/${r}`}>
                 {r}
               </option>
@@ -46,13 +48,13 @@ export const ProjectFormTextFields = (): JSX.Element => {
           <Input
             id='field-repo-url'
             type='text'
-            value={d.repoUrl.value}
-            onInput={(e) => a.onRepoUrlChange((e.target as HTMLInputElement).value)}
+            value={f.repoUrl.value}
+            onInput={(e) => f.onRepoUrlChange((e.target as HTMLInputElement).value)}
             placeholder='https://github.com/org/repo'
-            disabled={status.submitting.value || d.reposLoading}
+            disabled={m.submitting.value || f.reposLoading}
           />
         )}
-        {d.reposLoading && <span class='text-xs text-text-muted'>Loading repos...</span>}
+        {f.reposLoading && <span class='text-xs text-text-muted'>Loading repos...</span>}
       </div>
 
       <div class='flex flex-col gap-2'>
@@ -62,9 +64,9 @@ export const ProjectFormTextFields = (): JSX.Element => {
         </span>
         <TextArea
           id='field-agents-md'
-          value={d.agentsMd.value}
-          onInput={(e) => a.onAgentsMdChange((e.target as HTMLTextAreaElement).value)}
-          disabled={status.submitting.value}
+          value={f.agentsMd.value}
+          onInput={(e) => f.onAgentsMdChange((e.target as HTMLTextAreaElement).value)}
+          disabled={m.submitting.value}
           rows={6}
         />
       </div>
@@ -77,9 +79,9 @@ export const ProjectFormTextFields = (): JSX.Element => {
         </span>
         <TextArea
           id='field-opencode-config'
-          value={d.opencodeConfig.value}
-          onInput={(e) => a.onOpencodeConfigChange((e.target as HTMLTextAreaElement).value)}
-          disabled={status.submitting.value}
+          value={f.opencodeConfig.value}
+          onInput={(e) => f.onOpencodeConfigChange((e.target as HTMLTextAreaElement).value)}
+          disabled={m.submitting.value}
           rows={6}
         />
       </div>

@@ -1,50 +1,48 @@
 import type { JSX } from 'preact';
 import { Button } from '../../../shared/ui/Button.view';
-import { useProjectFormContext } from '../../context/ProjectFormContext';
+import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext';
 import { ProjectFormColumns } from './ProjectFormColumns.view';
 import { ProjectFormLookup } from './ProjectFormLookup.view';
 import { ProjectFormProviderStep } from './ProjectFormProviderStep.view';
 import { ProjectFormTextFields } from './ProjectFormTextFields.view';
 
 export const ProjectFormView = (): JSX.Element => {
-  const { data: d, status, actions: a } = useProjectFormContext();
+  const m = useProjectFormMetaContext();
 
   return (
     <div class='flex flex-col gap-8'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>
-        {d.isEdit ? 'Edit Project' : 'Connect Project'}
+        {m.isEdit ? 'Edit Project' : 'Connect Project'}
       </h2>
 
-      {status.projectLoading && <div class='text-text-muted text-sm'>Loading project...</div>}
+      {m.projectLoading && <div class='text-text-muted text-sm'>Loading project...</div>}
 
-      {!status.projectLoading && (
-        <form onSubmit={a.onSubmit} class='flex flex-col gap-6 max-w-2xl'>
+      {!m.projectLoading && (
+        <form onSubmit={m.onSubmit} class='flex flex-col gap-6 max-w-2xl'>
           <ProjectFormProviderStep />
 
-          {d.canShowLookup && <ProjectFormLookup />}
+          {m.canShowLookup && <ProjectFormLookup />}
 
-          {d.canShowFields && (
+          {m.canShowFields && (
             <>
               <ProjectFormColumns />
               <ProjectFormTextFields />
 
-              {status.formError.value && (
-                <div class='text-error text-sm'>{status.formError.value}</div>
-              )}
+              {m.formError.value && <div class='text-error text-sm'>{m.formError.value}</div>}
 
               <div class='flex items-center gap-3'>
-                <Button type='submit' variant='primary' disabled={status.submitting.value}>
-                  {status.submitting.value
+                <Button type='submit' variant='primary' disabled={m.submitting.value}>
+                  {m.submitting.value
                     ? 'Saving...'
-                    : d.isEdit
+                    : m.isEdit
                       ? 'Update Project'
                       : 'Create Project'}
                 </Button>
                 <Button
                   type='button'
                   variant='secondary'
-                  onClick={a.onCancel}
-                  disabled={status.submitting.value}
+                  onClick={m.onCancel}
+                  disabled={m.submitting.value}
                 >
                   Cancel
                 </Button>

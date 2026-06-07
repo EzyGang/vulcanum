@@ -1,9 +1,11 @@
 import type { JSX } from 'preact';
-import { useProjectFormContext } from '../../context/ProjectFormContext';
+import { useProjectFormFieldsContext } from '../../context/ProjectFormFieldsContext';
+import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext';
 import { ProjectFormColumnSelect } from './ProjectFormColumnSelect.view';
 
 export const ProjectFormColumns = (): JSX.Element => {
-  const { data: d, status, actions: a } = useProjectFormContext();
+  const m = useProjectFormMetaContext();
+  const f = useProjectFormFieldsContext();
 
   return (
     <>
@@ -11,9 +13,9 @@ export const ProjectFormColumns = (): JSX.Element => {
         <input
           id='field-enabled'
           type='checkbox'
-          checked={d.enabled.value}
-          onChange={(e) => a.onEnabledChange((e.target as HTMLInputElement).checked)}
-          disabled={status.submitting.value}
+          checked={f.enabled.value}
+          onChange={(e) => f.onEnabledChange((e.target as HTMLInputElement).checked)}
+          disabled={m.submitting.value}
         />
         <span class='text-sm text-text-primary'>Enabled</span>
       </label>
@@ -21,32 +23,32 @@ export const ProjectFormColumns = (): JSX.Element => {
       <ProjectFormColumnSelect
         id='field-pickup-column'
         label='Pickup Column'
-        value={d.pickupColumn.value}
-        columns={d.columns.value}
-        columnsLoading={d.columnsLoading.value}
-        disabled={status.submitting.value}
+        value={f.pickupColumn.value}
+        columns={f.columns.value}
+        columnsLoading={f.columnsLoading.value}
+        disabled={m.submitting.value}
         placeholderText='Select pickup column'
-        onChange={a.onPickupColumnChange}
+        onChange={f.onPickupColumnChange}
       />
       <ProjectFormColumnSelect
         id='field-progress-column'
         label='Progress Column'
-        value={d.progressColumn.value}
-        columns={d.columns.value}
-        columnsLoading={d.columnsLoading.value}
-        disabled={status.submitting.value}
+        value={f.progressColumn.value}
+        columns={f.columns.value}
+        columnsLoading={f.columnsLoading.value}
+        disabled={m.submitting.value}
         placeholderText='Select progress column'
-        onChange={a.onProgressColumnChange}
+        onChange={f.onProgressColumnChange}
       />
       <ProjectFormColumnSelect
         id='field-target-column'
         label='Target Column'
-        value={d.targetColumn.value}
-        columns={d.columns.value}
-        columnsLoading={d.columnsLoading.value}
-        disabled={status.submitting.value}
+        value={f.targetColumn.value}
+        columns={f.columns.value}
+        columnsLoading={f.columnsLoading.value}
+        disabled={m.submitting.value}
         placeholderText='Select target column'
-        onChange={a.onTargetColumnChange}
+        onChange={f.onTargetColumnChange}
       />
     </>
   );

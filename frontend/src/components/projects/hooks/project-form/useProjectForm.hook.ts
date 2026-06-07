@@ -4,13 +4,23 @@ import { useLocation } from 'wouter-preact';
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
-import type { ProjectFormContextValue } from '../../context/ProjectFormContext';
+import type { ProjectFormFieldsContextValue } from '../../context/ProjectFormFieldsContext';
+import type { ProjectFormLookupContextValue } from '../../context/ProjectFormLookupContext';
+import type { ProjectFormMetaContextValue } from '../../context/ProjectFormMetaContext';
+import type { ProjectFormProviderContextValue } from '../../context/ProjectFormProviderContext';
 import { useGitHubApp } from './useGitHubApp.hook';
 import { useProjectFormLookup } from './useProjectFormLookup.hook';
 import { useProjectFormProvider } from './useProjectFormProvider.hook';
 import { useProjectFormSubmit } from './useProjectFormSubmit.hook';
 
-export const useProjectForm = (projectId: string | null): ProjectFormContextValue => {
+interface UseProjectFormResult {
+  meta: ProjectFormMetaContextValue;
+  provider: ProjectFormProviderContextValue;
+  lookup: ProjectFormLookupContextValue;
+  fields: ProjectFormFieldsContextValue;
+}
+
+export const useProjectForm = (projectId: string | null): UseProjectFormResult => {
   const [, setLocation] = useLocation();
   const { data: existingProject, isLoading: projectLoading } = useApiQuery(
     ['project', projectId ?? ''],
@@ -87,64 +97,83 @@ export const useProjectForm = (projectId: string | null): ProjectFormContextValu
 
   const resetLookup = () => lookup.resetLookup();
 
-  const cancel = () => setLocation('/projects');
-
-  const canShowLookup = !!projectId || !!providerId.value;
-  const canShowFields = !!projectId || lookup.lookedUp.value;
-
   return {
-    data: {
+    meta: {
       isEdit: !!projectId,
+      projectLoading: projectId ? projectLoading : false,
+      submitting,
+      formError,
+      canShowLookup: !!projectId || !!providerId.value,
+      canShowFields: !!projectId || lookup.lookedUp.value,
+      onSubmit: handleSubmit,
+      onCancel: () => setLocation('/projects')
+    },
+    provider: {
       providers,
       providerId,
-      externalProjectId,
-      enabled,
-      pickupColumn,
-      progressColumn,
-      targetColumn,
-      promptTemplate,
-      repoUrl,
-      agentsMd,
-      opencodeConfig,
-      repos,
-      reposLoading,
-      columns: lookup.columns,
-      columnsLoading: lookup.columnsLoading,
-      lookupProjectName: lookup.lookupProjectName,
-      lookupError: lookup.lookupError,
-      lookedUp: lookup.lookedUp,
-      canShowLookup,
-      canShowFields,
       showProviderForm: providerForm.showProviderForm,
       newProviderName: providerForm.newProviderName,
       newProviderUrl: providerForm.newProviderUrl,
       newProviderKey: providerForm.newProviderKey,
       newProviderType: providerForm.newProviderType,
       providerFormError: providerForm.providerFormError,
-      providerSubmitting: providerForm.providerSubmitting
-    },
-    status: {
-      submitting,
-      formError,
-      projectLoading: projectId ? projectLoading : false
-    },
-    actions: {
-      onLookup: lookup.handleLookup,
-      onSubmit: handleSubmit,
-      onCancel: cancel,
-      onCreateProvider: providerForm.handleCreateProvider,
-      onShowProviderForm: providerForm.onShowProviderForm,
-      onCancelProviderForm: providerForm.onCancelProviderForm,
+      providerSubmitting: providerForm.providerSubmitting,
       onProviderChange: (id: string) => {
         providerId.value = id;
         resetLookup();
       },
+      onShowProviderForm: providerForm.onShowProviderForm,
+      onCancelProviderForm: providerForm.onCancelProviderForm,
+      onCreateProvider: providerForm.handleCreateProvider,
+      onNewProviderNameChange: (value: string) => {
+        providerForm.newProviderName.value = value;
+      },
+      onNewProviderUrlChange: (value: string) => {
+        providerForm.newProviderUrl.value = value;
+      },
+      onNewProviderKeyChange: (value: string) => {
+        providerForm.newProviderKey.value = value;
+      },
+      onNewProviderTypeChange: (value: string) => {
+        providerForm.newProviderType.value = value;
+      }
+    },
+    lookup: {
+      externalProjectId,
+      lookupProjectName: lookup.lookupProjectName,
+      lookupError: lookup.lookupError,
+      onLookup: () => {
+        lookup.handleLookup();
+      },
       onProjectIdChange: (id: string) => {
         externalProjectId.value = id;
         resetLookup();
-      },
+      }
+    },
+    fields: {
+      enabled,
+      pickupColumn,
+      progressColumn,
+      targetColumn,
+      columns: lookup.columns,
+      columnsLoading: lookup.columnsLoading,
+      promptTemplate,
+      repoUrl,
+      agentsMd,
+      opencodeConfig,
+      repos,
+      reposLoading,
       onEnabledChange: (checked: boolean) => {
         enabled.value = checked;
+      },
+      onPickupColumnChange: (value: string) => {
+        pickupColumn.value = value;
+      },
+      onProgressColumnChange: (value: string) => {
+        progressColumn.value = value;
+      },
+      onTargetColumnChange: (value: string) => {
+        targetColumn.value = value;
       },
       onPromptTemplateChange: (value: string) => {
         promptTemplate.value = value;
@@ -157,27 +186,6 @@ export const useProjectForm = (projectId: string | null): ProjectFormContextValu
       },
       onOpencodeConfigChange: (value: string) => {
         opencodeConfig.value = value;
-      },
-      onPickupColumnChange: (value: string) => {
-        pickupColumn.value = value;
-      },
-      onProgressColumnChange: (value: string) => {
-        progressColumn.value = value;
-      },
-      onTargetColumnChange: (value: string) => {
-        targetColumn.value = value;
-      },
-      onNewProviderNameChange: (value: string) => {
-        providerForm.newProviderName.value = value;
-      },
-      onNewProviderUrlChange: (value: string) => {
-        providerForm.newProviderUrl.value = value;
-      },
-      onNewProviderKeyChange: (value: string) => {
-        providerForm.newProviderKey.value = value;
-      },
-      onNewProviderTypeChange: (value: string) => {
-        providerForm.newProviderType.value = value;
       }
     }
   };
