@@ -31,7 +31,7 @@ pnpm test:watch       # Vitest watch mode
 ## Directory Structure (src/)
 
 ```
-components/      feature-oriented UI (strict triplet pattern)
+components/      feature-oriented UI (strict triplet pattern + optional context)
 pages/           thin wrappers rendering one container
 hooks/           shared generic hooks
 stores/          global singletons using @preact/signals
@@ -39,6 +39,26 @@ services/        API endpoint helpers (pure request/response)
 utils/           cross-feature helpers
 routes/          public/protected route definitions
 types/           TypeScript type definitions
+```
+
+### Feature Sub-Folder Conventions
+
+As features grow, flat `ui/`, `containers/`, and `hooks/` directories become unmanageable. Related files are grouped into **semantic sub-folders** under each layer:
+
+```
+components/<feature>/
+  ui/
+    list-page/               ← views used only by the list page
+    form/                    ← views used only by create/edit forms
+    table/                   ← table-specific views
+    timeline/                ← timeline / detail sub-views
+  containers/
+    list-page/
+    form/
+  hooks/
+    form/                    ← hooks whose lifetime matches a form
+    list-page/               ← hooks scoped to list behavior (pagination, filters)
+  context/                   ← optional: Preact context for heavy prop drilling
 ```
 
 ## Component Pattern (Strict Triplet)
@@ -58,6 +78,22 @@ Every feature uses exact naming:
 • Page component in `src/pages` renders a single container + routing / error fallback.
 • Max 6-8 props passed from Container → View. If more, refactor to use Context.
 • Views consuming Context have ZERO props - all data comes from `useContext()` hooks.
+
+### Context Conventions
+
+When Container → View prop count exceeds 6-8, introduce a Preact context:
+
+- **File naming:** `FooContext.tsx` (not `.view.tsx` or `.hook.ts`)
+- **Exports:** `FooProvider` + `useFooContext()`
+- **Hook contract:** The domain hook (e.g. `useFooForm`) should return the context value directly (grouped as `{ data, status, actions }`) so the container stays ≤20 lines:
+  ```tsx
+  export const FooContainer = ({ id }: { id: string }): JSX.Element => (
+    <FooProvider value={useFooForm(id)}>
+      <FooView />
+    </FooProvider>
+  );
+  ```
+- **Type location:** Keep `FooContextValue` interface inside `context/FooContext.tsx`
 
 Pages in `src/pages/` render a single container + routing/error handling.
 

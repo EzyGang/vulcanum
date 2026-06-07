@@ -1,5 +1,5 @@
 import type { JSX } from 'preact';
-import { ProjectFormContainer } from '../components/projects/containers/ProjectForm.container';
+import { ProjectFormContainer } from '../components/projects/containers/project-form/ProjectForm.container';
 
 interface ProjectsPageProps {
   projectId?: string;

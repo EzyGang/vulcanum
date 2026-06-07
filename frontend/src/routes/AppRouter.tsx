@@ -1,7 +1,6 @@
 import type { ComponentChildren, JSX } from 'preact';
 import { Route, Switch, useParams } from 'wouter-preact';
-import { ProtectedRoute } from '../components/auth/ProtectedRoute';
-import { NavigationShellContainer } from '../components/navigation-shell/containers/NavigationShell.container';
+import { NavigationShellContainer } from '../components/app-shell/containers/NavigationShell.container';
 import { Dashboard } from '../pages/Dashboard';
 import { Login } from '../pages/Login';
 import { Projects } from '../pages/Projects';
@@ -9,6 +8,7 @@ import { ProjectsFormPage } from '../pages/ProjectsForm';
 import { Providers } from '../pages/Providers';
 import { Runs } from '../pages/Runs';
 import { Workers } from '../pages/Workers';
+import { ProtectedRoute } from './ProtectedRoute';
 
 const AuthenticatedLayout = ({ children }: { children: ComponentChildren }): JSX.Element => (
   <ProtectedRoute>

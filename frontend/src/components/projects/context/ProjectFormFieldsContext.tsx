@@ -1,0 +1,39 @@
+import type { Signal } from '@preact/signals';
+import { createContext } from 'preact';
+import { useContext } from 'preact/hooks';
+import type { ColumnInfo } from '../../../types/projects';
+
+export interface ProjectFormFieldsContextValue {
+  enabled: Signal<boolean>;
+  pickupColumn: Signal<string>;
+  progressColumn: Signal<string>;
+  targetColumn: Signal<string>;
+  columns: Signal<ColumnInfo[]>;
+  columnsLoading: Signal<boolean>;
+  promptTemplate: Signal<string>;
+  repoUrl: Signal<string>;
+  agentsMd: Signal<string>;
+  opencodeConfig: Signal<string>;
+  repos: string[];
+  reposLoading: boolean;
+  onEnabledChange: (checked: boolean) => void;
+  onPickupColumnChange: (value: string) => void;
+  onProgressColumnChange: (value: string) => void;
+  onTargetColumnChange: (value: string) => void;
+  onPromptTemplateChange: (value: string) => void;
+  onRepoUrlChange: (value: string) => void;
+  onAgentsMdChange: (value: string) => void;
+  onOpencodeConfigChange: (value: string) => void;
+}
+
+const ProjectFormFieldsContext = createContext<ProjectFormFieldsContextValue | null>(null);
+
+export const ProjectFormFieldsProvider = ProjectFormFieldsContext.Provider;
+
+export const useProjectFormFieldsContext = (): ProjectFormFieldsContextValue => {
+  const ctx = useContext(ProjectFormFieldsContext);
+  if (!ctx) {
+    throw new Error('useProjectFormFieldsContext must be used inside a ProjectFormFieldsProvider');
+  }
+  return ctx;
+};

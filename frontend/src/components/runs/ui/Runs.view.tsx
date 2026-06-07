@@ -6,9 +6,9 @@ import { Button } from '../../shared/ui/Button.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import { RunFilterBar } from './RunFilterBar.view';
-import { RunPagination } from './RunPagination.view';
-import { RunsTable } from './RunsTable.view';
+import { RunFilterBar } from './run-controls/RunFilterBar.view';
+import { RunPagination } from './run-controls/RunPagination.view';
+import { RunsTable } from './runs-table/RunsTable.view';
 
 interface RunsViewProps {
   data: {
