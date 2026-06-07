@@ -1,6 +1,8 @@
 use octocrab::models::InstallationId;
 use octocrab::Octocrab;
 
+use base64::Engine;
+
 use crate::config::AppConfig;
 use crate::services::github_app::errors::GithubAppError;
 use crate::services::github_app::model::GithubInstallation;
@@ -62,11 +64,14 @@ impl GithubAppManager {
 
     fn app_octocrab(&self) -> Result<Octocrab, GithubAppError> {
         let app_id = self.app_id.ok_or(GithubAppError::NotConfigured)?;
-        let key_pem = self
+        let key_b64 = self
             .app_private_key
             .as_ref()
             .ok_or(GithubAppError::NotConfigured)?;
-        let key = jsonwebtoken::EncodingKey::from_rsa_pem(key_pem.as_bytes())
+        let key_pem = base64::engine::general_purpose::STANDARD
+            .decode(key_b64)
+            .map_err(|e| GithubAppError::Base64Decode(format!("{e}")))?;
+        let key = jsonwebtoken::EncodingKey::from_rsa_pem(&key_pem)
             .map_err(|e| GithubAppError::Api(format!("invalid private key: {e}")))?;
         Octocrab::builder()
             .app(octocrab::models::AppId(app_id), key)

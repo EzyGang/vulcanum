@@ -4030,6 +4030,7 @@ dependencies = [
  "actix-cors",
  "actix-web",
  "async-trait",
+ "base64",
  "chrono",
  "dotenvy",
  "eyre",

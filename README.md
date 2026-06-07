@@ -208,13 +208,15 @@ Add these environment variables to your `.env`:
 
 ```bash
 GITHUB_APP_ID=123456
-GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
-...
------END RSA PRIVATE KEY-----"
+GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...SA+PRIVATE+KEY...LS0tLS1FTkQ=
 GITHUB_APP_SLUG=vulcanum-app
 ```
 
-> **Note:** The private key must include the full PEM format with newlines. If loading from an env file, ensure newlines are preserved (e.g. by using a `.env` file or proper quoting in your shell).
+> **Note:** The private key must be supplied as a single-line **base64-encoded** string. Generate it from your `.pem` file:
+>
+> ```bash
+> base64 -w0 /path/to/your/private-key.pem
+> ```
 
 #### 3. Install the App
 

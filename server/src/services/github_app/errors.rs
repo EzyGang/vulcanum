@@ -10,6 +10,8 @@ pub enum GithubAppError {
     InvalidRepoUrl(String),
     #[error("github api error: {0}")]
     Api(String),
+    #[error("invalid base64 private key: {0}")]
+    Base64Decode(String),
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("redis error: {0}")]

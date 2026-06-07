@@ -270,6 +270,9 @@ impl From<GithubAppError> for AppError {
                 tracing::error!(error = %msg, operation = "github_app", "github api error");
                 Self::Internal
             }
+            GithubAppError::Base64Decode(msg) => {
+                Self::BadRequest(format!("Invalid base64 private key: {msg}"))
+            }
             GithubAppError::Database(e) => {
                 tracing::error!(error = %e, operation = "github_app", "database error");
                 Self::Internal
