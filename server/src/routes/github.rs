@@ -99,7 +99,10 @@ pub async fn get_installation(
         AppError::Internal
     })?;
 
-    Ok(HttpResponse::Ok().json(inst))
+    match inst {
+        Some(i) => Ok(HttpResponse::Ok().json(i)),
+        None => Ok(HttpResponse::Ok().json(serde_json::json!({}))),
+    }
 }
 
 pub async fn delete_installation(
