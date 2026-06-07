@@ -103,7 +103,7 @@ cargo run --bin vulcanum-web
 
 - Comments should explain **why**, not **what** — only add them when the intent is genuinely hard to infer from the code.
 - Doc comments (`///`) are for public API surfaces, and for non-trivial logic where a single-line description prevents confusion.
-- The length of a single file should not be more than 200 lines; if it exceeds that, split it, unless it is logically correct to keep this as a single file and splitting it will introduce complexity rather than simplificity.
+- The length of a single file should not be more than 300 lines; if it exceeds that, split it, unless it is logically correct to keep this as a single file and splitting it will introduce complexity rather than simplificity.
 - MUST FOLLOW `DRY` (DO NOT REPEAT YOURSELF) principle. NO code repetition should exist for ANY reason.
 - NO `unwrap()`, `expect()`, or `panic!()` in production code — use proper error handling with `Result`.
 - NO `pub use` re-exports — use direct imports of what is needed.
