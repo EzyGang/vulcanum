@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, account_login, created_at as \"created_at!: DateTime<Utc>\" FROM github_installations LIMIT 1",
+  "query": "SELECT id, github_installation_id, account_login, created_at as \"created_at!: DateTime<Utc>\" FROM github_installations LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -10,11 +10,16 @@
       },
       {
         "ordinal": 1,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
         "name": "account_login",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -25,8 +30,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "38a703d29c3a0aecf9de21284d3da6345dfd56af9fd0cc9f349fbde929afdeee"
+  "hash": "0b03e8d98a1698f21a8fa69b520a375d627aea7c6b99fd45369f840fe78519c5"
 }

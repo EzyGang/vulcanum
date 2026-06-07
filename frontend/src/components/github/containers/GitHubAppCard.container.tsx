@@ -7,6 +7,8 @@ export const GitHubAppCardContainer = (): JSX.Element => {
     installation,
     installationLoading,
     installationRefreshing,
+    installationError,
+    reposError,
     disconnectPending,
     onConnect,
     disconnectInstallation,
@@ -19,7 +21,9 @@ export const GitHubAppCardContainer = (): JSX.Element => {
       status={{
         isLoading: installationLoading,
         isRefreshing: installationRefreshing,
-        disconnectPending
+        disconnectPending,
+        installationError,
+        reposError
       }}
       actions={{
         onConnect,
