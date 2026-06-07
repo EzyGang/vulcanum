@@ -26,7 +26,6 @@ export const GitHubAppCardView = ({
   actions: { onConnect, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
   const connected = !!installation;
-  const errorMessage = installationError?.message ?? reposError?.message;
 
   return (
     <Card class='flex flex-col gap-4'>
