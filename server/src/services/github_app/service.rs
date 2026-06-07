@@ -159,9 +159,28 @@ impl GithubAppManager {
             return Ok(Some(inst));
         }
         match self.sync_installation_from_github().await {
-            Ok(inst) => Ok(Some(inst)),
-            Err(GithubAppError::NoInstallation | GithubAppError::NotConfigured) => Ok(None),
-            Err(e) => Err(e),
+            Ok(inst) => {
+                tracing::info!(
+                    github_installation_id = inst.github_installation_id,
+                    account_login = inst.account_login,
+                    "discovered installation from GitHub API"
+                );
+                Ok(Some(inst))
+            }
+            Err(GithubAppError::NoInstallation) => {
+                tracing::warn!("no installations found for this GitHub App");
+                Ok(None)
+            }
+            Err(GithubAppError::NotConfigured) => {
+                tracing::warn!(
+                    "github app not configured — set GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_SLUG"
+                );
+                Ok(None)
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "failed to sync installation from GitHub");
+                Err(e)
+            }
         }
     }
 
