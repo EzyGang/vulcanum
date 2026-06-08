@@ -16,7 +16,7 @@ pub fn run_systemctl(args: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn configure_systemd(harness: &str) -> anyhow::Result<()> {
+pub fn configure_systemd() -> anyhow::Result<()> {
     let binary_path = worker_server_path()?;
     tracing::debug!("binding systemd to binary at: {binary_path}");
 
@@ -31,7 +31,6 @@ pub fn configure_systemd(harness: &str) -> anyhow::Result<()> {
          ExecStart={binary_path}\n\
          Restart=on-failure\n\
          RestartSec=10\n\
-         Environment=VULCANUM_HARNESS={harness}\n\
          \n\
          [Install]\n\
          WantedBy=multi-user.target\n"
