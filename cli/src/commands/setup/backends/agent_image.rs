@@ -11,16 +11,22 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
         );
     }
 
-    let status = Command::new("docker")
-        .args(["pull", DEFAULT_IMAGE])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map_err(|e| anyhow::anyhow!("failed to run docker pull: {e}"))?;
+    for attempt in 1..=2 {
+        let status = Command::new("docker")
+            .args(["pull", DEFAULT_IMAGE])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map_err(|e| anyhow::anyhow!("failed to run docker pull: {e}"))?;
 
-    if !status.success() {
-        anyhow::bail!("docker pull '{DEFAULT_IMAGE}' failed");
+        if status.success() {
+            return Ok(());
+        }
+
+        if attempt < 2 {
+            tracing::debug!("docker pull failed on attempt {attempt}, retrying silently");
+        }
     }
 
-    Ok(())
+    anyhow::bail!("docker pull '{DEFAULT_IMAGE}' failed");
 }

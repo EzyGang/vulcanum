@@ -50,7 +50,7 @@ pub async fn run(
     }
 
     console::step("Agent image", backends::agent_image::pull_agent_image)?;
-    console::step("Systemd service", || systemd::configure_systemd())?;
+    console::step("Systemd service", systemd::configure_systemd)?;
 
     eprintln!();
     console::info("Running final environment validation...");
