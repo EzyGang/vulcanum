@@ -237,7 +237,7 @@ impl GithubAppManager {
             .await
             .map_err(|e| GithubAppError::Api(format!("list_repos: {e}")))?;
 
-        let all_repos = octo
+        let all_repos = installation_client
             .all_pages(repos)
             .await
             .map_err(|e| GithubAppError::Api(format!("list_repos pagination: {e}")))?;
