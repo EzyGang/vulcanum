@@ -60,7 +60,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
       <div class='flex flex-col gap-2'>
         <Label for='field-agents-md'>Agents.md</Label>
         <span class='text-text-muted text-xs'>
-          Project instructions written to AGENTS.md in the work directory.
+          Global agent guide for this project. Does not overwrite any per-repo AGENTS.md file.
         </span>
         <TextArea
           id='field-agents-md'
