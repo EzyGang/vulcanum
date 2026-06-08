@@ -1,13 +1,10 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
 use tokio::time::timeout;
-use uuid::Uuid;
 
-use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, SessionExport, SessionStatus};
@@ -29,12 +26,6 @@ impl RunningSession for OpenCodeRunningSession {
 
     fn agent_base_url(&self) -> Option<&str> {
         Some(self.client.base_url())
-    }
-
-    fn set_event_reporter(&mut self, client: Arc<ApiClient>, token: String, job_id: Uuid) {
-        self.api_client = Some(client);
-        self.access_token = Some(token);
-        self.job_id = Some(job_id);
     }
 
     fn host_server_info(&self) -> Option<(u32, u16)> {
@@ -69,6 +60,7 @@ impl RunningSession for OpenCodeRunningSession {
                     tracing::debug!(
                         session_id = %self.session_id,
                         event_type = %sse.event_type,
+                        properties = %sse.properties,
                         "sse event received"
                     );
                     let mapped = super::event_mapper::map_event(&sse);
@@ -78,15 +70,6 @@ impl RunningSession for OpenCodeRunningSession {
                             "session.completed" => self.status = SessionStatus::Completed,
                             "session.failed" => self.status = SessionStatus::Failed,
                             _ => (),
-                        }
-                        if super::runner::HIGH_LEVEL_EVENT_TYPES
-                            .contains(&event.event_type.as_str())
-                        {
-                            self.send_event(
-                                &event.event_type,
-                                event.payload.clone(),
-                                event.timestamp,
-                            );
                         }
                     }
                     last
@@ -111,8 +94,8 @@ impl RunningSession for OpenCodeRunningSession {
                     );
                     self.status = SessionStatus::Failed;
                     Some(AgentEvent {
-                        event_type: "stall.detected".to_owned(),
-                        payload: serde_json::json!({"timeout_secs": STALL_TIMEOUT_SECS}),
+                        event_type: "session.failed".to_owned(),
+                        payload: serde_json::json!({"reason": "stall_detected", "timeout_secs": STALL_TIMEOUT_SECS}),
                         timestamp: Utc::now(),
                     })
                 }

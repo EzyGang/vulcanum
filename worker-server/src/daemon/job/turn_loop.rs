@@ -9,6 +9,7 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::worker_state::WorkerState;
 
 use super::artifact::read_finish_artifact;
+use super::event_reporter::EventReporter;
 use super::prompts::continuation_prompt;
 use super::submit::{submit_failed_result, submit_turn_result, FailedResult};
 use crate::state::journal::Journal;
@@ -19,6 +20,7 @@ pub(crate) struct TurnLoopCtx {
     pub journal: Arc<Journal>,
     pub job_id: Uuid,
     pub worker_id: Uuid,
+    pub reporter: Arc<EventReporter>,
 }
 
 pub(crate) async fn run_turn_loop(
@@ -29,6 +31,8 @@ pub(crate) async fn run_turn_loop(
     ctx: &TurnLoopCtx,
 ) -> bool {
     let mut turn = initial_turn;
+
+    ctx.reporter.emit("session.started", serde_json::json!({}));
 
     loop {
         let session_export = match running_session.wait().await {
@@ -42,6 +46,10 @@ pub(crate) async fn run_turn_loop(
                     "session wait failed",
                 );
                 let _ = running_session.cancel().await;
+                ctx.reporter.emit(
+                    "session.failed",
+                    serde_json::json!({"reason": "wait_error", "turn": turn}),
+                );
                 submit_failed_result(
                     ctx.client.clone(),
                     ctx.worker_state.clone(),
@@ -63,6 +71,15 @@ pub(crate) async fn run_turn_loop(
             "turn completed",
         );
 
+        ctx.reporter.emit(
+            "turn.completed",
+            serde_json::json!({
+                "turn": turn,
+                "exit_code": session_export.exit_code,
+                "tokens_used": session_export.tokens_used,
+            }),
+        );
+
         let finish_artifact = read_finish_artifact(artifact_path);
 
         match finish_artifact {
@@ -72,6 +89,10 @@ pub(crate) async fn run_turn_loop(
                     work_run_id = %ctx.job_id,
                     status = %artifact.status,
                     "agent declared finish via artifact",
+                );
+                ctx.reporter.emit(
+                    "finish.artifact.found",
+                    serde_json::json!({"status": artifact.status.to_string()}),
                 );
                 submit_turn_result(
                     &ctx.client,
@@ -93,6 +114,10 @@ pub(crate) async fn run_turn_loop(
                         max_turns = max_turns,
                         "max turns reached, submitting result",
                     );
+                    ctx.reporter.emit(
+                        "turn.max_reached",
+                        serde_json::json!({"turn": turn, "max_turns": max_turns}),
+                    );
                     submit_turn_result(
                         &ctx.client,
                         &ctx.worker_state,
@@ -106,6 +131,10 @@ pub(crate) async fn run_turn_loop(
                 }
 
                 let prompt = continuation_prompt(turn, max_turns);
+                ctx.reporter.emit(
+                    "turn.continuing",
+                    serde_json::json!({"turn": turn, "next_turn": turn + 1}),
+                );
                 if let Err(e) = running_session.continue_with(&prompt).await {
                     tracing::error!(
                         worker_id = %ctx.worker_id,
@@ -113,6 +142,10 @@ pub(crate) async fn run_turn_loop(
                         turn = turn,
                         error = %e,
                         "continuation prompt failed",
+                    );
+                    ctx.reporter.emit(
+                        "session.failed",
+                        serde_json::json!({"reason": "continuation_failed", "turn": turn}),
                     );
                     submit_failed_result(
                         ctx.client.clone(),

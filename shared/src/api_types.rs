@@ -94,7 +94,6 @@ pub struct WireEvent {
     pub sequence: u64,
     pub event_type: String,
     pub payload: serde_json::Value,
-    #[serde(default = "chrono::Utc::now")]
     pub occurred_at: chrono::DateTime<chrono::Utc>,
 }
 

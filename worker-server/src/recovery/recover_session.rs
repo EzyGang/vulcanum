@@ -45,7 +45,7 @@ pub(crate) async fn recover_session_task(
     let current_turn = entry.turn_count.unwrap_or(0);
     let initial_turn = current_turn + 1;
 
-    let mut running_session = OpenCodeRunningSession::new(SessionConfig {
+    let running_session = OpenCodeRunningSession::new(SessionConfig {
         client: oc_client,
         session_id: session_id.clone(),
         event_stream,
@@ -55,9 +55,6 @@ pub(crate) async fn recover_session_task(
         host_pid: entry.host_pid.map(|v| v as u32),
         host_port: entry.host_port.map(|v| v as u16),
     });
-
-    let access_token = worker_state.read().await.access_token.clone();
-    running_session.set_event_reporter(api_client.clone(), access_token, entry.job_id);
 
     let workdir = std::path::Path::new(&entry.workdir);
     let artifact_path = workdir.join("home").join("finish_artifact.json");
@@ -71,12 +68,19 @@ pub(crate) async fn recover_session_task(
     );
 
     let mut boxed: Box<dyn RunningSession> = Box::new(running_session);
+    let access_token = worker_state.read().await.access_token.clone();
+    let reporter = Arc::new(crate::daemon::job::event_reporter::EventReporter::new(
+        api_client.clone(),
+        access_token,
+        entry.job_id,
+    ));
     let ctx = TurnLoopCtx {
         client: api_client.clone(),
         worker_state: worker_state.clone(),
         journal: journal.clone(),
         job_id: entry.job_id,
         worker_id: uuid::Uuid::nil(),
+        reporter,
     };
     run_turn_loop(&mut boxed, &artifact_path, max_turns, initial_turn, &ctx).await;
 
