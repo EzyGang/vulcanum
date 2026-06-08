@@ -31,6 +31,11 @@ pub async fn run(
 
     let backend = resolve_backend(interaction_mode(&code, &instance), isolation)?;
 
+    let mut config = vulcanum_shared::config::load_config()
+        .unwrap_or_else(|_| vulcanum_shared::config::WorkerConfig::default());
+    config.harness = backend.harness_name().to_owned();
+    vulcanum_shared::config::save_config(&config)?;
+
     match backend {
         Backend::Kata => {
             console::step("Kata Containers", backends::kata::install_kata)?;
@@ -45,9 +50,7 @@ pub async fn run(
     }
 
     console::step("Agent image", backends::agent_image::pull_agent_image)?;
-    console::step("Systemd service", || {
-        systemd::configure_systemd(backend.harness_name())
-    })?;
+    console::step("Systemd service", systemd::configure_systemd)?;
 
     eprintln!();
     console::info("Running final environment validation...");
