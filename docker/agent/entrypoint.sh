@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-kaneo login --instance "$KANEO_INSTANCE" "$KANEO_API_KEY"
-kaneo set --project "$KANEO_PROJECT_ID" --workspace "$KANEO_WORKSPACE_ID" --global
-kaneo task status "$KANEO_TASK_ID" in-progress
+kaneo login --instance "$PROVIDER_INSTANCE_URL" "$PROVIDER_API_KEY"
+kaneo set --project "$EXTERNAL_PROJECT_ID" --workspace "$EXTERNAL_WORKSPACE_ID" --global
+kaneo task status "$EXTERNAL_TASK_ID" in-progress
 
 [ -f /workdir/setup.sh ] && bash /workdir/setup.sh || true
 
