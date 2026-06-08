@@ -46,7 +46,9 @@ impl IsolationProvider for HostIsolation {
         workspace::write_finish_run_tool(workdir).await?;
 
         if !repo_url.is_empty() {
-            workspace::clone_repo(repo_url, &workdir.join("repo")).await?;
+            let token = secrets.get("GITHUB_TOKEN").map(|s| s.as_str());
+            let clone_url = workspace::authenticated_repo_url(repo_url, token);
+            workspace::clone_repo(&clone_url, &workdir.join("repo")).await?;
         }
 
         let mut combined_env: HashMap<String, String> = env_vars.clone();

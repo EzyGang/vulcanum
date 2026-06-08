@@ -41,6 +41,16 @@ pub async fn write_env_files(
     Ok(())
 }
 
+#[must_use]
+pub fn authenticated_repo_url(repo_url: &str, token: Option<&str>) -> String {
+    if let Some(t) = token {
+        if let Some(host_path) = repo_url.strip_prefix("https://") {
+            return format!("https://x-access-token:{t}@{host_path}");
+        }
+    }
+    repo_url.to_owned()
+}
+
 pub async fn clone_repo(url: &str, dest: &Path) -> Result<(), HarnessError> {
     let output = tokio::process::Command::new("git")
         .args([
