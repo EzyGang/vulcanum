@@ -13,6 +13,7 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
 
+use super::event_reporter::EventReporter;
 use super::submit::{submit_failed_result, FailedResult};
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::factory::create_isolation_provider;
@@ -37,6 +38,11 @@ pub(crate) async fn handle_job(
     );
 
     let access_token = worker_state.read().await.access_token.clone();
+    let reporter = Arc::new(EventReporter::new(
+        client.clone(),
+        access_token.clone(),
+        job_id,
+    ));
 
     let job = match client.get_job(job_id, &access_token).await {
         Ok(j) => j,
@@ -143,6 +149,10 @@ pub(crate) async fn handle_job(
                 error = %e,
                 "isolation prepare failed",
             );
+            reporter.emit(
+                "session.failed",
+                serde_json::json!({"reason": "isolation_prepare_failed"}),
+            );
             submit_failed_result(
                 client,
                 worker_state,
@@ -167,6 +177,10 @@ pub(crate) async fn handle_job(
                 work_run_id = %job_id,
                 error = %e,
                 "runtime execute failed",
+            );
+            reporter.emit(
+                "session.failed",
+                serde_json::json!({"reason": "runtime_execute_failed"}),
             );
             provider.cleanup(&isolated_env).await;
             submit_failed_result(
@@ -193,9 +207,10 @@ pub(crate) async fn handle_job(
     if let Some((pid, port)) = running_session.host_server_info() {
         let _ = journal.set_host_info(job_id, pid.into(), port.into());
     }
-    running_session.set_event_reporter(client.clone(), access_token.clone(), job_id);
 
     let artifact_path = workdir.join("home").join("finish_artifact.json");
+
+    reporter.emit("session.started", serde_json::json!({}));
 
     let ctx = TurnLoopCtx {
         client: client.clone(),
@@ -203,6 +218,7 @@ pub(crate) async fn handle_job(
         journal: journal.clone(),
         job_id,
         worker_id,
+        reporter,
     };
 
     run_turn_loop(&mut running_session, &artifact_path, max_turns, 1, &ctx).await;

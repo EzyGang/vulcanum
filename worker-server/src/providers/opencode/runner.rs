@@ -1,10 +1,6 @@
 use std::process::Stdio;
-use std::sync::Arc;
 
 use tokio::process::Child;
-use uuid::Uuid;
-
-use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::SessionStatus;
 
 use super::events::SseEventStream;
@@ -32,18 +28,7 @@ pub struct OpenCodeRunningSession {
     pub(crate) server_process: Option<Child>,
     pub(crate) host_pid: Option<u32>,
     pub(crate) host_port: Option<u16>,
-    pub(crate) api_client: Option<Arc<ApiClient>>,
-    pub(crate) access_token: Option<String>,
-    pub(crate) job_id: Option<Uuid>,
-    pub(crate) event_sequence: u64,
 }
-
-pub(crate) const HIGH_LEVEL_EVENT_TYPES: &[&str] = &[
-    "turn.started",
-    "session.completed",
-    "session.failed",
-    "turn.failed",
-];
 
 impl OpenCodeRunningSession {
     pub fn new(config: SessionConfig) -> Self {
@@ -58,10 +43,6 @@ impl OpenCodeRunningSession {
             server_process: config.server_process,
             host_pid: config.host_pid,
             host_port: config.host_port,
-            api_client: None,
-            access_token: None,
-            job_id: None,
-            event_sequence: 0,
         }
     }
 

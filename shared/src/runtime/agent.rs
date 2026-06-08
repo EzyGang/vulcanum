@@ -1,10 +1,6 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 
-use uuid::Uuid;
-
-use crate::client::ApiClient;
 use crate::runtime::errors::HarnessError;
 use crate::runtime::types::{AgentEvent, IsolatedEnvironment, SessionExport, SessionStatus};
 
@@ -35,8 +31,6 @@ pub trait RunningSession: Send {
         &mut self,
         prompt: &str,
     ) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>>;
-
-    fn set_event_reporter(&mut self, _client: Arc<ApiClient>, _token: String, _job_id: Uuid) {}
 
     fn host_server_info(&self) -> Option<(u32, u16)> {
         None

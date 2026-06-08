@@ -3,7 +3,6 @@ pub mod cleanup;
 pub mod event_mapper;
 pub mod events;
 pub mod health;
-pub mod reporter;
 pub mod runner;
 pub mod runner_session;
 pub mod runtime;

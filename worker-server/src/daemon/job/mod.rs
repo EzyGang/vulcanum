@@ -1,4 +1,5 @@
 pub(crate) mod artifact;
+pub(crate) mod event_reporter;
 pub(crate) mod finish_tool;
 pub(crate) mod orchestrate;
 mod prompts;
