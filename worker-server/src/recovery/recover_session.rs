@@ -74,6 +74,10 @@ pub(crate) async fn recover_session_task(
         access_token,
         entry.job_id,
     ));
+    reporter.emit(
+        "session.recovered",
+        serde_json::json!({"initial_turn": initial_turn}),
+    );
     let ctx = TurnLoopCtx {
         client: api_client.clone(),
         worker_state: worker_state.clone(),

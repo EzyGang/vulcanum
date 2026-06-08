@@ -32,8 +32,6 @@ pub(crate) async fn run_turn_loop(
 ) -> bool {
     let mut turn = initial_turn;
 
-    ctx.reporter.emit("session.started", serde_json::json!({}));
-
     loop {
         let session_export = match running_session.wait().await {
             Ok(export) => export,

@@ -210,6 +210,8 @@ pub(crate) async fn handle_job(
 
     let artifact_path = workdir.join("home").join("finish_artifact.json");
 
+    reporter.emit("session.started", serde_json::json!({}));
+
     let ctx = TurnLoopCtx {
         client: client.clone(),
         worker_state: worker_state.clone(),
