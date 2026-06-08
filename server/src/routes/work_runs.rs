@@ -77,6 +77,7 @@ pub async fn list_events_recent(
             sequence: e.sequence as u64,
             event_type: e.event_type,
             payload: e.payload,
+            occurred_at: e.occurred_at,
         })
         .collect();
 

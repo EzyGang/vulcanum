@@ -6,7 +6,12 @@ use vulcanum_shared::client::ApiClient;
 use super::runner::OpenCodeRunningSession;
 
 impl OpenCodeRunningSession {
-    pub(crate) fn send_event(&mut self, event_type: &str, payload: serde_json::Value) {
+    pub(crate) fn send_event(
+        &mut self,
+        event_type: &str,
+        payload: serde_json::Value,
+        occurred_at: chrono::DateTime<chrono::Utc>,
+    ) {
         let Some(client) = self.api_client.as_ref() else {
             return;
         };
@@ -22,6 +27,7 @@ impl OpenCodeRunningSession {
             sequence: self.event_sequence,
             event_type: event_type.to_owned(),
             payload,
+            occurred_at,
         };
 
         let c: Arc<ApiClient> = Arc::clone(client);

@@ -7,8 +7,8 @@ use crate::services::work_run_events::service::WorkRunEventsService;
 const RECENT_LIMIT: i64 = 20;
 
 impl WorkRunEventsService {
-    /// Returns the most recent N events in ascending order.
-    /// Used by the frontend to render the last few events when expanding a run row.
+    /// Returns the most recent events in ascending chronological order.
+    /// Used by the frontend to render the event timeline when expanding a run row.
     pub async fn list_recent(
         &self,
         work_run_id: Uuid,

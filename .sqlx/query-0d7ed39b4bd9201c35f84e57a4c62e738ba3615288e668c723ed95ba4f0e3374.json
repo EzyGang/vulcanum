@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO work_run_events (work_run_id, sequence, event_type, payload, occurred_at)\n                   VALUES ($1, $2, $3, $4, $5)\n                   ON CONFLICT (work_run_id, sequence) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Text",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0d7ed39b4bd9201c35f84e57a4c62e738ba3615288e668c723ed95ba4f0e3374"
+}

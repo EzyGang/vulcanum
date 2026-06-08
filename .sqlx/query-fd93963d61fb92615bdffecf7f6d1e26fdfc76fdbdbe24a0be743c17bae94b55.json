@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, work_run_id, sequence, event_type, payload,\n               created_at as \"created_at!: DateTime<Utc>\"\n               FROM (\n                 SELECT * FROM work_run_events\n                 WHERE work_run_id = $1\n                 ORDER BY sequence DESC\n                 LIMIT $2\n               ) sub\n               ORDER BY sequence ASC",
+  "query": "SELECT id, work_run_id, sequence, event_type, payload,\n               created_at as \"created_at!: DateTime<Utc>\",\n               occurred_at as \"occurred_at!: DateTime<Utc>\"\n               FROM work_run_events\n               WHERE work_run_id = $1\n                 AND (occurred_at, sequence) > ($2, $3)\n               ORDER BY occurred_at ASC, sequence ASC\n               LIMIT $4",
   "describe": {
     "columns": [
       {
@@ -32,11 +32,18 @@
         "ordinal": 5,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "occurred_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
+        "Timestamptz",
+        "Int8",
         "Int8"
       ]
     },
@@ -46,8 +53,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "ed412adc2db279cd3ff82f23f7bde0037c1c3b91228d93e1d62f40fa04eef392"
+  "hash": "fd93963d61fb92615bdffecf7f6d1e26fdfc76fdbdbe24a0be743c17bae94b55"
 }
