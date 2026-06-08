@@ -82,7 +82,11 @@ impl RunningSession for OpenCodeRunningSession {
                         if super::runner::HIGH_LEVEL_EVENT_TYPES
                             .contains(&event.event_type.as_str())
                         {
-                            self.send_event(&event.event_type, event.payload.clone());
+                            self.send_event(
+                                &event.event_type,
+                                event.payload.clone(),
+                                event.timestamp,
+                            );
                         }
                     }
                     last

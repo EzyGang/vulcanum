@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::services::work_run_events::errors::WorkRunEventsError;
@@ -19,23 +20,27 @@ impl WorkRunEventsService {
         &self,
         work_run_id: Uuid,
         worker_id: Uuid,
+        after_occurred_at: DateTime<Utc>,
         after_sequence: i64,
         limit: i64,
     ) -> Result<ListResult, WorkRunEventsError> {
         self.verify_work_run_owned(work_run_id, Some(worker_id))
             .await?;
-        self.fetch_page(work_run_id, after_sequence, limit).await
+        self.fetch_page(work_run_id, after_occurred_at, after_sequence, limit)
+            .await
     }
 
     /// Instance-scoped listing. Skips ownership check.
     pub async fn list_events_admin(
         &self,
         work_run_id: Uuid,
+        after_occurred_at: DateTime<Utc>,
         after_sequence: i64,
         limit: i64,
     ) -> Result<ListResult, WorkRunEventsError> {
         self.verify_work_run_owned(work_run_id, None).await?;
-        self.fetch_page(work_run_id, after_sequence, limit).await
+        self.fetch_page(work_run_id, after_occurred_at, after_sequence, limit)
+            .await
     }
 
     async fn verify_work_run_owned(
@@ -58,16 +63,26 @@ impl WorkRunEventsService {
         Ok(())
     }
 
+    /// Uses a composite (occurred_at, sequence) cursor for pagination.
+    /// Passing the last seen event's timestamps prevents re-fetching
+    /// events that share the same occurred_at timestamp.
     async fn fetch_page(
         &self,
         work_run_id: Uuid,
+        after_occurred_at: DateTime<Utc>,
         after_sequence: i64,
         limit: i64,
     ) -> Result<ListResult, WorkRunEventsError> {
         let clamped = clamp_limit(limit);
         let events = self
             .repo
-            .find_after(&self.db, work_run_id, after_sequence, clamped + 1)
+            .find_after(
+                &self.db,
+                work_run_id,
+                after_occurred_at,
+                after_sequence,
+                clamped + 1,
+            )
             .await?;
 
         let has_more = events.len() as i64 > clamped;

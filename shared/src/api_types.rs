@@ -94,6 +94,7 @@ pub struct WireEvent {
     pub sequence: u64,
     pub event_type: String,
     pub payload: serde_json::Value,
+    pub occurred_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -104,7 +105,6 @@ pub struct AppendEventsRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppendEventsResponse {
     pub accepted: u64,
-    pub next_expected_sequence: u64,
     pub should_cancel: bool,
 }
 
@@ -116,6 +116,7 @@ pub struct ListEventsResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct ListEventsQuery {
+    pub after_occurred_at: Option<chrono::DateTime<chrono::Utc>>,
     pub after_sequence: Option<u64>,
     pub limit: Option<i64>,
 }

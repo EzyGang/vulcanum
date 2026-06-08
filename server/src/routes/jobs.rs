@@ -72,7 +72,6 @@ pub async fn append_events(
 
     Ok(HttpResponse::Ok().json(AppendEventsResponse {
         accepted: result.accepted,
-        next_expected_sequence: result.next_expected_sequence as u64,
         should_cancel: result.should_cancel,
     }))
 }
@@ -84,20 +83,29 @@ pub async fn list_events(
     auth: WorkerOrInstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let work_run_id = path.into_inner();
-    let after = query.after_sequence.unwrap_or(0) as i64;
+    let after_occurred_at = query
+        .after_occurred_at
+        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+    let after_sequence = query.after_sequence.unwrap_or(0) as i64;
     let limit = query.limit.unwrap_or(100);
 
     let result = match auth {
         WorkerOrInstanceAuth::Worker { worker_id } => {
             state
                 .events
-                .list_events(work_run_id, worker_id, after, limit)
+                .list_events(
+                    work_run_id,
+                    worker_id,
+                    after_occurred_at,
+                    after_sequence,
+                    limit,
+                )
                 .await?
         }
         WorkerOrInstanceAuth::Instance => {
             state
                 .events
-                .list_events_admin(work_run_id, after, limit)
+                .list_events_admin(work_run_id, after_occurred_at, after_sequence, limit)
                 .await?
         }
     };
@@ -109,6 +117,7 @@ pub async fn list_events(
             sequence: e.sequence as u64,
             event_type: e.event_type,
             payload: e.payload,
+            occurred_at: e.occurred_at,
         })
         .collect();
 

@@ -3,12 +3,10 @@ use uuid::Uuid;
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::repository::queries::InsertEventParams;
 use crate::services::work_run_events::service::{map_work_runs_error, WorkRunEventsService};
-use crate::services::work_runs::model::WorkRunStatus;
 
 #[derive(Debug)]
 pub struct AppendResult {
     pub accepted: u64,
-    pub next_expected_sequence: i64,
     pub should_cancel: bool,
 }
 
@@ -29,19 +27,13 @@ impl WorkRunEventsService {
             return Err(WorkRunEventsError::NotFound);
         }
 
-        if !matches!(
-            run.status,
-            WorkRunStatus::Running | WorkRunStatus::Dispatched
-        ) {
-            return Err(WorkRunEventsError::NotFound);
-        }
-
         let params: Vec<InsertEventParams> = events
             .into_iter()
             .map(|e| InsertEventParams {
                 sequence: e.sequence as i64,
                 event_type: e.event_type,
                 payload: e.payload,
+                occurred_at: e.occurred_at,
             })
             .collect();
 
@@ -58,7 +50,6 @@ impl WorkRunEventsService {
 
         Ok(AppendResult {
             accepted: result.accepted,
-            next_expected_sequence: result.next_expected_sequence,
             should_cancel,
         })
     }

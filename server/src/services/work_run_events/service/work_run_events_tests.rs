@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use chrono::{TimeZone, Utc};
+
 use crate::services::dispatcher::cancel_store::{CancelStore, InMemoryCancelStore};
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
@@ -13,6 +15,7 @@ fn make_wire_event(seq: u64, event_type: &str) -> WireEvent {
         sequence: seq,
         event_type: event_type.to_owned(),
         payload: serde_json::json!({"i": seq}),
+        occurred_at: Utc::now(),
     }
 }
 
@@ -36,16 +39,11 @@ async fn append_events_happy_path_returns_should_cancel_false(pool: sqlx::PgPool
         test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-1", worker_id).await;
 
     let result = svc
-        .append_events(
-            wr_id,
-            worker_id,
-            vec![make_wire_event(1, "session.started")],
-        )
+        .append_events(wr_id, worker_id, vec![make_wire_event(1, "turn.started")])
         .await
         .expect("append");
 
     assert_eq!(result.accepted, 1);
-    assert_eq!(result.next_expected_sequence, 2);
     assert!(!result.should_cancel);
 }
 
@@ -83,29 +81,49 @@ async fn append_events_returns_should_cancel_when_flag_set(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn append_events_rejects_out_of_order(pool: sqlx::PgPool) {
+async fn append_events_accepts_duplicate_sequences(pool: sqlx::PgPool) {
     let (svc, _cancel) = build_service(pool.clone());
     let project_id = test_helpers::insert_project_config(&pool, "evt-svc-4").await;
     let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-4").await;
     let wr_id =
         test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-4", worker_id).await;
 
-    svc.append_events(wr_id, worker_id, vec![make_wire_event(1, "a")])
+    let r1 = svc
+        .append_events(wr_id, worker_id, vec![make_wire_event(1, "a")])
         .await
         .expect("first");
 
-    let err = svc
-        .append_events(wr_id, worker_id, vec![make_wire_event(1, "b")])
+    assert_eq!(r1.accepted, 1);
+
+    let r2 = svc
+        .append_events(wr_id, worker_id, vec![make_wire_event(1, "a")])
         .await
-        .expect_err("duplicate must be rejected");
-    match err {
-        WorkRunEventsError::OutOfOrderSequence {
-            next_expected_sequence,
-        } => {
-            assert_eq!(next_expected_sequence, 2);
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
+        .expect("duplicate silently skipped");
+
+    assert_eq!(r2.accepted, 0);
+}
+
+#[sqlx::test]
+async fn append_events_accepts_out_of_order_sequences(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-8").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-8").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-8", worker_id).await;
+
+    let r1 = svc
+        .append_events(wr_id, worker_id, vec![make_wire_event(2, "late.arrival")])
+        .await
+        .expect("first");
+
+    assert_eq!(r1.accepted, 1);
+
+    let r2 = svc
+        .append_events(wr_id, worker_id, vec![make_wire_event(1, "early.arrival")])
+        .await
+        .expect("second");
+
+    assert_eq!(r2.accepted, 1);
 }
 
 #[sqlx::test]
@@ -120,14 +138,22 @@ async fn list_events_admin_returns_events_for_any_run(pool: sqlx::PgPool) {
         wr_id,
         worker_id,
         vec![
-            make_wire_event(1, "session.started"),
-            make_wire_event(2, "turn.completed"),
+            make_wire_event(1, "turn.started"),
+            make_wire_event(2, "session.completed"),
         ],
     )
     .await
     .expect("append");
 
-    let result = svc.list_events_admin(wr_id, 0, 100).await.expect("list");
+    let result = svc
+        .list_events_admin(
+            wr_id,
+            chrono::Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+            0,
+            100,
+        )
+        .await
+        .expect("list");
     assert_eq!(result.events.len(), 2);
     assert!(!result.has_more);
 }
@@ -142,7 +168,7 @@ async fn list_events_worker_rejects_cross_worker(pool: sqlx::PgPool) {
         test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-6", owner).await;
 
     let err = svc
-        .list_events(wr_id, attacker, 0, 10)
+        .list_events(wr_id, attacker, Utc::now(), 0, 10)
         .await
         .expect_err("must reject cross-worker list");
     assert!(matches!(err, WorkRunEventsError::NotFound));
@@ -150,18 +176,21 @@ async fn list_events_worker_rejects_cross_worker(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_recent_returns_last_n_ascending(pool: sqlx::PgPool) {
+    use chrono::TimeZone;
+
     let (svc, _cancel) = build_service(pool.clone());
     let project_id = test_helpers::insert_project_config(&pool, "evt-svc-7").await;
     let worker_id = test_helpers::insert_worker(&pool, "evt-svc-worker-7").await;
     let wr_id =
         test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-task-7", worker_id).await;
 
-    let events: Vec<WireEvent> = (1..=25)
-        .map(|i| make_wire_event(i, &format!("e{i}")))
-        .collect();
-    svc.append_events(wr_id, worker_id, events)
-        .await
-        .expect("append");
+    for i in 1..=25 {
+        let mut ev = make_wire_event(i, &format!("e{i}"));
+        ev.occurred_at = Utc.with_ymd_and_hms(2025, 6, i as u32, 0, 0, 0).unwrap();
+        svc.append_events(wr_id, worker_id, vec![ev])
+            .await
+            .expect("append");
+    }
 
     let recent = svc.list_recent(wr_id).await.expect("list");
     let sequences: Vec<i64> = recent.iter().map(|e| e.sequence).collect();

@@ -11,4 +11,5 @@ pub struct WorkRunEvent {
     pub event_type: String,
     pub payload: serde_json::Value,
     pub created_at: DateTime<Utc>,
+    pub occurred_at: DateTime<Utc>,
 }
