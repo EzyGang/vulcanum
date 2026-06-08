@@ -237,8 +237,12 @@ impl GithubAppManager {
             .await
             .map_err(|e| GithubAppError::Api(format!("list_repos: {e}")))?;
 
-        let infos = repos
-            .items
+        let all_repos = octo
+            .all_pages(repos)
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list_repos pagination: {e}")))?;
+
+        let infos = all_repos
             .into_iter()
             .map(|r| RepoInfo {
                 owner: r.owner.map(|o| o.login).unwrap_or_default(),
