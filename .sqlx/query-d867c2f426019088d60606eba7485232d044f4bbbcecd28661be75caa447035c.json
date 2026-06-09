@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, external_project_id, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE id = $1",
+  "query": "SELECT id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id\n             FROM project_configs WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -15,11 +15,16 @@
       },
       {
         "ordinal": 2,
-        "name": "external_workspace_id",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
+        "name": "external_workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "integration_type!: _",
         "type_info": {
           "Custom": {
@@ -33,62 +38,62 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "pickup_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "target_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "progress_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "blocked_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "opencode_config",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "provider_id",
         "type_info": "Uuid"
       }
@@ -113,9 +118,10 @@
       false,
       false,
       false,
+      false,
       true,
       true
     ]
   },
-  "hash": "f70d40d3c21310b1a5afaae6b78ea381eab5103b9bb0f5bb9e773caa8d4735e2"
+  "hash": "d867c2f426019088d60606eba7485232d044f4bbbcecd28661be75caa447035c"
 }
