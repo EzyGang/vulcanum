@@ -1,12 +1,13 @@
 import type { JSX } from 'preact';
 import { ProjectFormContainer } from '../components/projects/containers/project-form/ProjectForm.container';
+import { PageLayout } from '../components/shared/ui/PageLayout.view';
 
 interface ProjectsPageProps {
   projectId?: string;
 }
 
 export const ProjectsFormPage = ({ projectId }: ProjectsPageProps): JSX.Element => (
-  <div class='flex flex-col flex-1 px-6 py-8 max-w-3xl w-full mx-auto gap-6'>
+  <PageLayout maxWidth='3xl'>
     <ProjectFormContainer projectId={projectId ?? null} />
-  </div>
+  </PageLayout>
 );

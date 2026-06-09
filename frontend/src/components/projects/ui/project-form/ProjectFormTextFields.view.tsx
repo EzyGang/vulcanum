@@ -34,16 +34,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
           <Select
             id='field-repo-url'
             value={f.repoUrl.value}
-            onChange={(e) => f.onRepoUrlChange((e.target as HTMLSelectElement).value)}
+            onValueChange={f.onRepoUrlChange}
             disabled={m.submitting.value}
-          >
-            <option value=''>Select a repository...</option>
-            {f.repos.map((r) => (
-              <option key={r} value={`https://github.com/${r}`}>
-                {r}
-              </option>
-            ))}
-          </Select>
+            placeholder='Select a repository...'
+            items={f.repos.map((r) => ({
+              value: `https://github.com/${r}`,
+              label: r
+            }))}
+          />
         ) : (
           <Input
             id='field-repo-url'

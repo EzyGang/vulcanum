@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
+import { Select } from '../../shared/ui/Select.view';
 
 const PROVIDER_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'kaneo', label: 'Kaneo' }
@@ -54,21 +55,13 @@ export const ProviderFormFields = ({
       </span>
       <div class='flex flex-col gap-2'>
         <Label for='field-provider-type'>Type</Label>
-        <select
+        <Select
           id='field-provider-type'
           value={providerType}
-          onChange={(e) => {
-            onProviderTypeChange((e.target as HTMLSelectElement).value);
-          }}
+          onValueChange={onProviderTypeChange}
           disabled={submitting}
-          class='bg-bg-input border border-border-base text-text-primary px-4 py-3 text-sm w-full'
-        >
-          {PROVIDER_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          items={PROVIDER_TYPE_OPTIONS}
+        />
       </div>
       <Input
         type='text'

@@ -18,19 +18,12 @@ export const ProjectFormProviderStep = (): JSX.Element => {
           <Select
             id='field-provider'
             value={p.providerId.value}
-            onChange={(e) => {
-              p.onProviderChange((e.target as HTMLSelectElement).value);
-            }}
+            onValueChange={p.onProviderChange}
             disabled={m.isEdit || m.submitting.value}
+            placeholder='Select a provider'
+            items={p.providers.map((prov) => ({ value: prov.id, label: prov.name }))}
             class='w-full'
-          >
-            <option value=''>Select a provider</option>
-            {p.providers.map((prov) => (
-              <option key={prov.id} value={prov.id}>
-                {prov.name}
-              </option>
-            ))}
-          </Select>
+          />
           {!m.isEdit && (
             <Button variant='ghost' onClick={p.onShowProviderForm}>
               + New

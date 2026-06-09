@@ -50,7 +50,7 @@ export const ProjectsView = ({
         </Button>
       </div>
       {!hasProviders && (
-        <p class='text-text-muted text-xs'>Create a provider in the Providers tab first.</p>
+        <p class='text-text-muted text-xs'>Create a provider in the Settings page first.</p>
       )}
 
       {error && <ErrorBanner message={error.message} />}

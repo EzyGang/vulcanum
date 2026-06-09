@@ -47,7 +47,9 @@ interface RowProps {
 }
 
 const Row = ({ children, class: classProp }: RowProps): JSX.Element => (
-  <tr class={clsx('border-b border-border-base', classProp)}>{children}</tr>
+  <tr class={clsx('border-b border-border-base transition-colors hover:bg-bg-hover', classProp)}>
+    {children}
+  </tr>
 );
 
 interface CellProps {
