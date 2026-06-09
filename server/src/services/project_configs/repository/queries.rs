@@ -99,6 +99,7 @@ impl ProjectConfigsRepository {
         id: Uuid,
         params: &UpdateProjectConfigParams<'_>,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
+        // Project names are captured from provider lookup during creation and are immutable here.
         sqlx::query_as!(
             ProjectConfig,
             r#"UPDATE project_configs SET

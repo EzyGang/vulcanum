@@ -113,6 +113,36 @@ async fn list_all_returns_configs(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn name_round_trips_through_create_find_and_list(pool: PgPool) {
+    let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
+    let expected_name = "Vulcanum Project";
+    let params = CreateProjectConfigRequest {
+        name: expected_name.to_owned(),
+        ..test_params("kaneo-proj-name-round-trip", provider_id)
+    };
+
+    let created = repo
+        .create(&pool, &params)
+        .await
+        .expect("Should create config with name");
+    assert_eq!(created.name, expected_name);
+
+    let found = repo
+        .find_by_id(&pool, created.id)
+        .await
+        .expect("Should find config by id");
+    assert_eq!(found.name, expected_name);
+
+    let all = repo.list_all(&pool).await.expect("Should list configs");
+    assert!(
+        all.iter()
+            .any(|config| config.id == created.id && config.name == expected_name),
+        "List should include the created config with its name"
+    );
+}
+
+#[sqlx::test]
 async fn duplicate_external_project_id_fails(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let provider_id = insert_provider(&pool).await;
