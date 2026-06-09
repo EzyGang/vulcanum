@@ -39,90 +39,79 @@ export const ProjectsView = ({
   extra: { hasProviders },
   actions: { onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }
 }: ProjectsViewProps): JSX.Element => (
-  <div class='flex flex-col gap-8'>
-    <section class='flex flex-col gap-4'>
-      <div class='flex items-center justify-between'>
-        <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>
-          Project Configs
-        </h2>
-        <Button variant='primary' onClick={onConnectProject} disabled={!hasProviders}>
-          Connect Project
-        </Button>
-      </div>
-      {!hasProviders && (
-        <p class='text-text-muted text-xs'>Create a provider in the Settings page first.</p>
-      )}
+  <div class='flex flex-col gap-4'>
+    <div class='flex justify-end'>
+      <Button variant='primary' onClick={onConnectProject} disabled={!hasProviders}>
+        Connect Project
+      </Button>
+    </div>
+    {!hasProviders && (
+      <p class='text-text-muted text-xs'>Create a provider in the Settings page first.</p>
+    )}
 
-      {error && <ErrorBanner message={error.message} />}
+    {error && <ErrorBanner message={error.message} />}
 
-      {deleteError.value && <ErrorBanner message={deleteError.value} />}
+    {deleteError.value && <ErrorBanner message={deleteError.value} />}
 
-      {loading && <div class='text-text-muted text-sm'>Loading projects...</div>}
+    {loading && <div class='text-text-muted text-sm'>Loading projects...</div>}
 
-      {!loading && !error && projects.length === 0 && (
-        <EmptyState
-          title='No project configs configured yet.'
-          description='Add a project config to start monitoring Kaneo projects and creating work runs.'
-        />
-      )}
+    {!loading && !error && projects.length === 0 && (
+      <EmptyState
+        title='No project configs configured yet.'
+        description='Add a project config to start monitoring Kaneo projects and creating work runs.'
+      />
+    )}
 
-      {!loading && projects.length > 0 && (
-        <Table>
-          <Table.Head>
-            <Table.HeadCell>Kaneo Project ID</Table.HeadCell>
-            <Table.HeadCell>Enabled</Table.HeadCell>
-            <Table.HeadCell>Columns</Table.HeadCell>
-            <Table.HeadCell>Repo URL</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {projects.map((project) => (
-              <Table.Row key={project.id}>
-                <Table.Cell>
-                  <span class='text-text-primary text-sm font-mono'>
-                    {project.externalProjectId}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  {project.enabled ? (
-                    <span class='text-success text-xs uppercase tracking-wider'>Yes</span>
-                  ) : (
-                    <span class='text-text-muted text-xs uppercase tracking-wider'>No</span>
-                  )}
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm font-mono'>
-                    {columnsTriad(
-                      project.pickupColumn,
-                      project.progressColumn,
-                      project.targetColumn
-                    )}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm font-mono truncate max-w-xs block'>
-                    {project.repoUrl || '—'}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  <ConfirmDelete
-                    itemId={project.id}
-                    deletingId={deleteConfirmId}
-                    onConfirm={onConfirmDelete}
-                    onDelete={onDelete}
-                    onCancel={onCancelDelete}
-                    editActions={
-                      <Button variant='ghost' onClick={() => onEditClick(project.id)}>
-                        Edit
-                      </Button>
-                    }
-                  />
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
-      )}
-    </section>
+    {!loading && projects.length > 0 && (
+      <Table>
+        <Table.Head>
+          <Table.HeadCell>Kaneo Project ID</Table.HeadCell>
+          <Table.HeadCell>Enabled</Table.HeadCell>
+          <Table.HeadCell>Columns</Table.HeadCell>
+          <Table.HeadCell>Repo URL</Table.HeadCell>
+          <Table.HeadCell>Actions</Table.HeadCell>
+        </Table.Head>
+        <Table.Body>
+          {projects.map((project) => (
+            <Table.Row key={project.id}>
+              <Table.Cell>
+                <span class='text-text-primary text-sm font-mono'>{project.externalProjectId}</span>
+              </Table.Cell>
+              <Table.Cell>
+                {project.enabled ? (
+                  <span class='text-success text-xs uppercase tracking-wider'>Yes</span>
+                ) : (
+                  <span class='text-text-muted text-xs uppercase tracking-wider'>No</span>
+                )}
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm font-mono'>
+                  {columnsTriad(project.pickupColumn, project.progressColumn, project.targetColumn)}
+                </span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm font-mono truncate max-w-xs block'>
+                  {project.repoUrl || '—'}
+                </span>
+              </Table.Cell>
+              <Table.Cell>
+                <ConfirmDelete
+                  itemId={project.id}
+                  deletingId={deleteConfirmId}
+                  onConfirm={onConfirmDelete}
+                  onDelete={onDelete}
+                  onCancel={onCancelDelete}
+                  editActions={
+                    <Button variant='ghost' onClick={() => onEditClick(project.id)}>
+                      Edit
+                    </Button>
+                  }
+                />
+              </Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    )}
   </div>
 );
