@@ -18,10 +18,7 @@ interface RunFilterBarProps {
 }
 
 export const RunFilterBar = ({ statusFilter, onStatusFilter }: RunFilterBarProps): JSX.Element => (
-  <Select
-    value={statusFilter ?? ''}
-    onValueChange={onStatusFilter}
-    items={STATUS_OPTIONS}
-    class='w-auto min-w-36'
-  />
+  <div class='w-44'>
+    <Select value={statusFilter ?? ''} onValueChange={onStatusFilter} items={STATUS_OPTIONS} />
+  </div>
 );
