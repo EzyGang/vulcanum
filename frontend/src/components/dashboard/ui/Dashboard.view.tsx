@@ -23,6 +23,7 @@ interface WorkerSummary {
 interface ProjectSummary {
   id: string;
   externalProjectId: string;
+  name: string;
   enabled: boolean;
 }
 
@@ -151,14 +152,16 @@ export const DashboardView = ({
       >
         <Table>
           <Table.Head>
-            <Table.HeadCell>Project ID</Table.HeadCell>
+            <Table.HeadCell>Project</Table.HeadCell>
             <Table.HeadCell>Enabled</Table.HeadCell>
           </Table.Head>
           <Table.Body>
             {projects.map((p) => (
               <Table.Row key={p.id}>
                 <Table.Cell>
-                  <span class='text-text-primary text-sm font-mono'>{p.externalProjectId}</span>
+                  <span class='text-text-primary text-sm font-mono'>
+                    {p.name || p.externalProjectId}
+                  </span>
                 </Table.Cell>
                 <Table.Cell>
                   {p.enabled ? (
@@ -203,29 +206,34 @@ export const DashboardView = ({
         emptyMessage='No GitHub App installed.'
         isEmpty={!githubInstallation && !githubLoading}
       >
-        <div class='flex items-center justify-between px-5 py-3 border-b border-border-base'>
-          <div class='flex items-center gap-3'>
-            <span class='text-text-primary text-sm font-semibold uppercase tracking-wider'>
-              Status
-            </span>
-            {githubLoading ? (
-              <span class='text-text-muted text-xs animate-pulse'>Loading...</span>
-            ) : githubInstallation ? (
-              <span class='text-success text-xs uppercase tracking-wider px-2 py-0.5 border border-success-border bg-success-bg'>
-                Connected
-              </span>
-            ) : (
-              <span class='text-text-muted text-xs uppercase tracking-wider px-2 py-0.5 border border-border-base bg-bg-hover'>
-                Not Connected
-              </span>
-            )}
-          </div>
-          {githubInstallation && (
-            <span class='text-text-secondary text-sm font-mono'>
-              {githubInstallation.accountLogin}
-            </span>
-          )}
-        </div>
+        <Table>
+          <Table.Head>
+            <Table.HeadCell>Status</Table.HeadCell>
+            <Table.HeadCell>Account</Table.HeadCell>
+          </Table.Head>
+          <Table.Body>
+            <Table.Row>
+              <Table.Cell>
+                {githubLoading ? (
+                  <span class='text-text-muted text-xs animate-pulse'>Loading...</span>
+                ) : githubInstallation ? (
+                  <span class='text-success text-xs uppercase tracking-wider px-2 py-0.5 border border-success-border bg-success-bg'>
+                    Connected
+                  </span>
+                ) : (
+                  <span class='text-text-muted text-xs uppercase tracking-wider px-2 py-0.5 border border-border-base bg-bg-hover'>
+                    Not Connected
+                  </span>
+                )}
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm font-mono'>
+                  {githubInstallation ? githubInstallation.accountLogin : '—'}
+                </span>
+              </Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table>
       </DashboardTableSection>
     </div>
   </div>

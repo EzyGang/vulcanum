@@ -32,6 +32,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const providerId = useSignal('');
   const externalProjectId = useSignal(projectId ? '' : '');
+  const name = useSignal('');
   const enabled = useSignal(true);
   const pickupColumn = useSignal('');
   const progressColumn = useSignal('');
@@ -43,6 +44,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
+    name,
     enabled,
     pickupColumn,
     progressColumn,
@@ -66,6 +68,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     if (projectId && existingProject) {
       const p = existingProject;
       externalProjectId.value = p.externalProjectId;
+      name.value = p.name || '';
       providerId.value = p.providerId ?? '';
       enabled.value = p.enabled;
       pickupColumn.value = p.pickupColumn;
@@ -95,6 +98,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         });
     }
   }, [projectId, existingProject, providerId.value]);
+
+  useEffect(() => {
+    name.value = lookup.lookupProjectName.value;
+  }, [lookup.lookupProjectName.value]);
 
   useEffect(() => {
     if (!projectId && providerId.value) {

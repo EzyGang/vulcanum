@@ -68,7 +68,7 @@ export const ProjectsView = ({
     {!loading && projects.length > 0 && (
       <Table>
         <Table.Head>
-          <Table.HeadCell>Kaneo Project ID</Table.HeadCell>
+          <Table.HeadCell>Project</Table.HeadCell>
           <Table.HeadCell>Enabled</Table.HeadCell>
           <Table.HeadCell>Columns</Table.HeadCell>
           <Table.HeadCell>Repo URL</Table.HeadCell>
@@ -78,7 +78,9 @@ export const ProjectsView = ({
           {projects.map((project) => (
             <Table.Row key={project.id}>
               <Table.Cell>
-                <span class='text-text-primary text-sm font-mono'>{project.externalProjectId}</span>
+                <span class='text-text-primary text-sm font-mono'>
+                  {project.name || project.externalProjectId}
+                </span>
               </Table.Cell>
               <Table.Cell>
                 {project.enabled ? (

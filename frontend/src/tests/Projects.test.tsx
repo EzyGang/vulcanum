@@ -6,6 +6,7 @@ import { ProjectsView } from '../components/projects/ui/Projects.view';
 const makeProject = (overrides = {}) => ({
   id: '1',
   externalProjectId: 'test-project-1',
+  name: '',
   externalWorkspaceId: '',
   enabled: true,
   pickupColumn: 'to-do',

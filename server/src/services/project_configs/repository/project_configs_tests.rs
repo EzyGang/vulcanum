@@ -28,6 +28,7 @@ async fn insert_provider(pool: &PgPool) -> Uuid {
 fn test_params(external_project_id: &str, provider_id: Uuid) -> CreateProjectConfigRequest {
     CreateProjectConfigRequest {
         external_project_id: external_project_id.to_owned(),
+        name: String::new(),
         enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
@@ -99,6 +100,7 @@ async fn list_all_returns_configs(pool: PgPool) {
     let p1 = test_params("kaneo-proj-list-a", provider_id);
     let p2 = CreateProjectConfigRequest {
         external_project_id: "kaneo-proj-list-b".to_owned(),
+        name: String::new(),
         prompt_template: "Template B".to_owned(),
         ..test_params("kaneo-proj-list-b", provider_id)
     };
