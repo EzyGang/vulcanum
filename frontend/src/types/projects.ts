@@ -73,6 +73,19 @@ export interface UpdateProviderRequest {
 }
 
 export interface LookupProjectResponse {
+  id: string;
   name: string;
+  slug: string;
   columns: ColumnInfo[];
+}
+
+export interface WorkspaceInfo {
+  id: string;
+  name: string;
+}
+
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  slug: string;
 }

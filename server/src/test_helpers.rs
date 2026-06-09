@@ -88,6 +88,8 @@ pub async fn insert_pending_work_run(
         repo_url: String::new(),
         agents_md: String::new(),
         status: WorkRunStatus::Pending,
+        task_title: None,
+        task_slug: None,
     };
 
     repo.insert_work_run(pool, params)
@@ -110,6 +112,8 @@ pub async fn insert_running_work_run(
         repo_url: String::new(),
         agents_md: String::new(),
         status: WorkRunStatus::Running,
+        task_title: None,
+        task_slug: None,
     };
     let id = repo
         .insert_work_run(pool, params)

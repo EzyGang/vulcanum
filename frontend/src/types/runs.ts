@@ -17,6 +17,8 @@ export interface WorkRunListItem {
   status: WorkRunStatus;
   promptText: string;
   repoUrl: string;
+  taskTitle: string | null;
+  taskSlug: string | null;
   resultPrUrl: string | null;
   resultExitCode: number | null;
   tokensUsed: number | null;

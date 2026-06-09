@@ -34,7 +34,7 @@ fn test_filter_tasks_in_column_exact_match() {
             columns: vec![BoardColumn {
                 id: "c1".to_owned(),
                 name: "To Do".to_owned(),
-                status: None,
+                status: Some("to-do".to_owned()),
                 is_final: None,
                 tasks: vec![task.clone()],
             }],
@@ -78,7 +78,7 @@ fn test_filter_tasks_in_column_case_insensitive() {
             columns: vec![BoardColumn {
                 id: "c2".to_owned(),
                 name: "In Progress".to_owned(),
-                status: None,
+                status: Some("in-progress".to_owned()),
                 is_final: None,
                 tasks: vec![task.clone()],
             }],
@@ -102,7 +102,7 @@ fn test_filter_tasks_in_column_not_found_returns_empty() {
             columns: vec![BoardColumn {
                 id: "c1".to_owned(),
                 name: "To Do".to_owned(),
-                status: None,
+                status: Some("to-do".to_owned()),
                 is_final: None,
                 tasks: vec![],
             }],
@@ -166,14 +166,14 @@ fn test_filter_tasks_in_column_multiple_columns_selects_correct_one() {
                 BoardColumn {
                     id: "c1".to_owned(),
                     name: "To Do".to_owned(),
-                    status: None,
+                    status: Some("to-do".to_owned()),
                     is_final: None,
                     tasks: vec![task_todo],
                 },
                 BoardColumn {
                     id: "c2".to_owned(),
                     name: "Done".to_owned(),
-                    status: None,
+                    status: Some("done".to_owned()),
                     is_final: Some(true),
                     tasks: vec![task_done],
                 },

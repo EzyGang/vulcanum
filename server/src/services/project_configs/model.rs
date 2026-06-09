@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::services::providers::model::{IntegrationColumn, IntegrationType};
+use crate::services::providers::model::{
+    IntegrationColumn, IntegrationProject, IntegrationType, IntegrationWorkspace,
+};
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
@@ -85,8 +87,42 @@ pub struct UpdateProjectConfigRequest {
 
 #[derive(Debug, Serialize)]
 pub struct LookupProjectResult {
+    pub id: String,
     pub name: String,
+    pub slug: String,
     pub columns: Vec<ColumnInfo>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct WorkspaceInfo {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectInfo {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+}
+
+impl From<IntegrationWorkspace> for WorkspaceInfo {
+    fn from(w: IntegrationWorkspace) -> Self {
+        Self {
+            id: w.id,
+            name: w.name,
+        }
+    }
+}
+
+impl From<IntegrationProject> for ProjectInfo {
+    fn from(p: IntegrationProject) -> Self {
+        Self {
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
