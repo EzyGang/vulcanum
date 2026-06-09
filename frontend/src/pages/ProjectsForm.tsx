@@ -6,7 +6,7 @@ interface ProjectsPageProps {
 }
 
 export const ProjectsFormPage = ({ projectId }: ProjectsPageProps): JSX.Element => (
-  <div class='flex flex-col flex-1 px-6 py-8 max-w-3xl w-full mx-auto gap-6'>
+  <div class='flex flex-col flex-1 px-4 sm:px-6 py-8 max-w-3xl w-full mx-auto gap-6 animate-fade-in'>
     <ProjectFormContainer projectId={projectId ?? null} />
   </div>
 );

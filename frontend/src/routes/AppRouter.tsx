@@ -3,10 +3,9 @@ import { Route, Switch, useParams } from 'wouter-preact';
 import { NavigationShellContainer } from '../components/app-shell/containers/NavigationShell.container';
 import { Dashboard } from '../pages/Dashboard';
 import { Login } from '../pages/Login';
-import { Projects } from '../pages/Projects';
 import { ProjectsFormPage } from '../pages/ProjectsForm';
-import { Providers } from '../pages/Providers';
 import { Runs } from '../pages/Runs';
+import { Settings } from '../pages/Settings';
 import { Workers } from '../pages/Workers';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -29,9 +28,9 @@ export const AppRouter = () => (
         <Workers />
       </AuthenticatedLayout>
     </Route>
-    <Route path='/providers'>
+    <Route path='/settings'>
       <AuthenticatedLayout>
-        <Providers />
+        <Settings />
       </AuthenticatedLayout>
     </Route>
     <Route path='/projects/connect'>
@@ -42,11 +41,6 @@ export const AppRouter = () => (
     <Route path='/projects/:id/edit'>
       <AuthenticatedLayout>
         <ProjectsEditRoute />
-      </AuthenticatedLayout>
-    </Route>
-    <Route path='/projects'>
-      <AuthenticatedLayout>
-        <Projects />
       </AuthenticatedLayout>
     </Route>
     <Route path='/runs'>

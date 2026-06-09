@@ -16,7 +16,13 @@ const PADDING_MAP: Record<CardPadding, string> = {
 };
 
 export const Card = ({ children, padding = 'sm', class: classProp }: CardProps): JSX.Element => (
-  <div class={clsx('bg-bg-card border border-border-base', PADDING_MAP[padding], classProp)}>
+  <div
+    class={clsx(
+      'bg-bg-card border border-border-base transition-colors duration-fast',
+      PADDING_MAP[padding],
+      classProp
+    )}
+  >
     {children}
   </div>
 );

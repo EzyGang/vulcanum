@@ -37,7 +37,7 @@ export const DashboardStatsGrid = ({
   workersError
 }: DashboardStatsGridProps): JSX.Element => (
   <section class='flex flex-col gap-4'>
-    <div class='grid grid-cols-4 gap-4'>
+    <div class='grid grid-cols-2 sm:grid-cols-4 gap-4'>
       {loading && !stats ? (
         <>
           <SkeletonStatCard label='Enabled Projects' />

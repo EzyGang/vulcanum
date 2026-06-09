@@ -79,7 +79,7 @@ export const RunsView = ({
   <div class='flex flex-col gap-6'>
     <div class='flex items-center justify-between'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Work Runs</h2>
-      <RunFilterBar statusFilter={statusFilter} onStatusFilter={setStatusFilter} />
+      <RunFilterBar statusFilter={statusFilter.value} onStatusFilter={setStatusFilter} />
     </div>
 
     {error && <ErrorBanner message={error.message} />}

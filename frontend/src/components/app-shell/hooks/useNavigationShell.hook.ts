@@ -1,16 +1,17 @@
+import { useSignal } from '@preact/signals';
 import { useLocation } from 'wouter-preact';
 import type { NavLink } from '../types';
 
 const NAV_LINKS: NavLink[] = [
   { href: '/', label: 'Dashboard' },
   { href: '/workers', label: 'Workers' },
-  { href: '/providers', label: 'Providers' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/runs', label: 'Runs' }
+  { href: '/runs', label: 'Runs' },
+  { href: '/settings', label: 'Settings' }
 ];
 
 export const useNavigationShell = () => {
   const [location, setLocation] = useLocation();
+  const mobileMenuOpen = useSignal(false);
 
   const isActive = (href: string): boolean => {
     if (href === '/') {
@@ -21,7 +22,12 @@ export const useNavigationShell = () => {
 
   const navigate = (href: string) => {
     setLocation(href);
+    mobileMenuOpen.value = false;
   };
 
-  return { navLinks: NAV_LINKS, isActive, navigate };
+  const toggleMobileMenu = () => {
+    mobileMenuOpen.value = !mobileMenuOpen.value;
+  };
+
+  return { navLinks: NAV_LINKS, isActive, navigate, mobileMenuOpen, toggleMobileMenu };
 };
