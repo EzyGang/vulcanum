@@ -32,6 +32,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const providerId = useSignal('');
   const externalProjectId = useSignal(projectId ? '' : '');
+  const workspaceId = useSignal('');
   const name = useSignal('');
   const enabled = useSignal(true);
   const pickupColumn = useSignal('');
@@ -54,20 +55,22 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     agentsMd,
     opencodeConfig,
     providerId,
-    externalProjectId
+    externalProjectId,
+    workspaceId
   });
 
-  const lookup = useProjectFormLookup(providerId, externalProjectId, !!projectId, submitting);
+  const lookup = useProjectFormLookup(providerId, externalProjectId, workspaceId, submitting);
   const providerForm = useProjectFormProvider((newId: string) => {
     providerId.value = newId;
+    name.value = '';
     lookup.resetLookup();
-    lookup.fetchWorkspaces();
   });
 
   useEffect(() => {
     if (projectId && existingProject) {
       const p = existingProject;
       externalProjectId.value = p.externalProjectId;
+      workspaceId.value = p.externalWorkspaceId;
       name.value = p.name || '';
       providerId.value = p.providerId ?? '';
       enabled.value = p.enabled;
@@ -82,8 +85,18 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   }, [projectId, existingProject]);
 
   useEffect(() => {
-    if (projectId && existingProject && providerId.value) {
-      lookup.resetLookup();
+    if (
+      projectId &&
+      existingProject &&
+      providerId.value &&
+      existingProject.externalWorkspaceId &&
+      workspaceId.value === existingProject.externalWorkspaceId &&
+      externalProjectId.value === existingProject.externalProjectId
+    ) {
+      lookup.lookupError.value = null;
+      lookup.columnsLoading.value = true;
+      lookup.columns.value = [];
+      lookup.lookedUp.value = false;
       lookupProject(providerId.value, existingProject.externalProjectId)
         .then((result) => {
           lookup.lookupProjectName.value = result.name;
@@ -98,13 +111,16 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
           lookup.columnsLoading.value = false;
         });
     }
-  }, [projectId, existingProject, providerId.value]);
+  }, [projectId, existingProject, providerId.value, workspaceId.value, externalProjectId.value]);
 
   useEffect(() => {
-    if (!projectId && providerId.value) {
+    if (providerId.value) {
       lookup.fetchWorkspaces();
     }
   }, [providerId.value]);
+
+  const hasProjectSelection = !!workspaceId.value && !!externalProjectId.value;
+  const hasColumns = lookup.lookedUp.value && lookup.columns.value.length > 0;
 
   return {
     meta: {
@@ -113,7 +129,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       submitting,
       formError,
       canShowLookup: !!projectId || !!providerId.value,
-      canShowFields: !!projectId || lookup.lookedUp.value,
+      canShowFields: hasProjectSelection && hasColumns,
       onSubmit: handleSubmit,
       onCancel: () => setLocation('/projects')
     },
@@ -131,7 +147,6 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         providerId.value = id;
         name.value = '';
         lookup.resetLookup();
-        lookup.fetchWorkspaces();
       },
       onShowProviderForm: providerForm.onShowProviderForm,
       onCancelProviderForm: providerForm.onCancelProviderForm,

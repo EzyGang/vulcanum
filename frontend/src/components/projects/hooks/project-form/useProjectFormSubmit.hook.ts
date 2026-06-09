@@ -19,6 +19,7 @@ interface UseProjectFormSubmitOptions {
   opencodeConfig: Signal<string>;
   providerId: Signal<string>;
   externalProjectId: Signal<string>;
+  workspaceId: Signal<string>;
 }
 
 export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
@@ -34,7 +35,8 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     agentsMd,
     opencodeConfig,
     providerId,
-    externalProjectId
+    externalProjectId,
+    workspaceId
   } = options;
 
   const [, setLocation] = useLocation();
@@ -87,7 +89,8 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               repoUrl: repoUrl.value || undefined,
               agentsMd: agentsMd.value || undefined,
               opencodeConfig: opencodeConfig.value || undefined,
-              providerId: providerId.value || undefined
+              providerId: providerId.value || undefined,
+              externalWorkspaceId: workspaceId.value || undefined
             }
           });
         } else {
@@ -98,6 +101,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
           }
           await createMutation.mutateAsync({
             externalProjectId: externalProjectId.value,
+            externalWorkspaceId: workspaceId.value || undefined,
             name: name.value || undefined,
             providerId: providerId.value,
             enabled: enabled.value,

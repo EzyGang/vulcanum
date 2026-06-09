@@ -35,7 +35,10 @@ export const ProjectFormColumnSelect = ({
         onValueChange={onChange}
         disabled={disabled || !columns.length}
         placeholder={placeholderText}
-        items={columns.map((col) => ({ value: col.slug, label: `${col.name} (${col.slug})` }))}
+        items={columns.map((col) => ({
+          value: col.slug || col.name,
+          label: col.slug ? `${col.name} (${col.slug})` : col.name
+        }))}
       />
     )}
   </div>

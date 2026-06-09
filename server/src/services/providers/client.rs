@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod client_tests;
+
 use async_trait::async_trait;
 
 use crate::services::providers::kaneo::client::KaneoClient;
@@ -28,7 +31,12 @@ impl IntegrationClient {
                 Ok(columns
                     .iter()
                     .map(|col| {
-                        let slug = col.status.as_deref().unwrap_or("").to_owned();
+                        let slug = col
+                            .status
+                            .as_deref()
+                            .filter(|status| !status.is_empty())
+                            .map(str::to_owned)
+                            .unwrap_or_else(|| column_name_to_slug(&col.name));
                         IntegrationColumn {
                             id: col.id.clone(),
                             name: col.name.clone(),
@@ -128,6 +136,14 @@ impl IntegrationClient {
             }
         }
     }
+}
+
+pub(crate) fn column_name_to_slug(name: &str) -> String {
+    name.trim()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .join("-")
 }
 
 #[async_trait]

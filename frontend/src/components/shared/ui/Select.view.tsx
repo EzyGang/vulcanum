@@ -46,7 +46,7 @@ export const Select = ({
     >
       <BaseSelect.Trigger
         id={id}
-        className={clsx(
+        class={clsx(
           TRIGGER_CLASS,
           invalid ? 'border-error' : 'border-border-base focus:border-border-focus',
           classProp
@@ -61,9 +61,9 @@ export const Select = ({
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
         <BaseSelect.Positioner sideOffset={4}>
-          <BaseSelect.Popup className={POPUP_CLASS}>
+          <BaseSelect.Popup class={POPUP_CLASS}>
             {items.map((option) => (
-              <BaseSelect.Item key={option.value} value={option.value} className={ITEM_CLASS}>
+              <BaseSelect.Item key={option.value} value={option.value} class={ITEM_CLASS}>
                 <BaseSelect.ItemText>{option.label}</BaseSelect.ItemText>
               </BaseSelect.Item>
             ))}

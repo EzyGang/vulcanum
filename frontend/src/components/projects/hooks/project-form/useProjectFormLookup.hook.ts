@@ -11,7 +11,7 @@ import type { ColumnInfo, ProjectInfo, WorkspaceInfo } from '../../../../types/p
 export const useProjectFormLookup = (
   providerId: Signal<string>,
   externalProjectId: Signal<string>,
-  isEdit: boolean,
+  workspaceId: Signal<string>,
   isSubmitting: Signal<boolean>
 ) => {
   const columns = useSignal<ColumnInfo[]>([]);
@@ -21,7 +21,6 @@ export const useProjectFormLookup = (
   const lookedUp = useSignal(false);
   const workspaces = useSignal<WorkspaceInfo[]>([]);
   const workspacesLoading = useSignal(false);
-  const workspaceId = useSignal('');
   const projects = useSignal<ProjectInfo[]>([]);
   const projectsLoading = useSignal(false);
 
@@ -34,11 +33,11 @@ export const useProjectFormLookup = (
   );
 
   const workspaceSelectDisabled = computed(
-    () => isEdit || isSubmitting.value || workspacesLoading.value || !providerId.value
+    () => isSubmitting.value || workspacesLoading.value || !providerId.value
   );
 
   const projectSelectDisabled = computed(
-    () => isEdit || isSubmitting.value || projectsLoading.value
+    () => isSubmitting.value || projectsLoading.value || !workspaceId.value
   );
 
   const handleLookup = useCallback(async () => {
