@@ -20,8 +20,6 @@ interface NavigationShellProps {
   };
 }
 
-const _NAV_CLASSES = 'sm:flex items-center gap-1';
-
 const MobileNavButton = ({
   link,
   active,

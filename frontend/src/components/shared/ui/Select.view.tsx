@@ -38,7 +38,7 @@ export const Select = ({
 }: SelectProps): JSX.Element => {
   const selectedLabel = items.find((o) => o.value === value)?.label;
 
-  const handleValueChange = (nextValue: string | null, _eventDetails: unknown) => {
+  const handleValueChange = (nextValue: string | null) => {
     onValueChange(nextValue ?? '');
   };
 

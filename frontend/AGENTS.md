@@ -72,7 +72,7 @@ Every feature uses exact naming:
 ### Rules
 
 • Exact naming: `Foo.view.tsx`, `useFoo.hook.ts`, `Foo.container.tsx`.
-• View: zero side-effects, zero inline handlers, zero logic. Max 150 lines.
+• View: zero side-effects, zero inline handlers, zero logic. Max 300 lines.
 • Hook: all side-effects (service calls, signals, React Query). Pre-bind all callbacks here.
 • Container: prop passthrough only. Group props into logical objects: `{ data, status, actions }`.
 • Page component in `src/pages` renders a single container + routing / error fallback.

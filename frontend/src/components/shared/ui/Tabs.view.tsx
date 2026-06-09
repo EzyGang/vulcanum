@@ -15,14 +15,6 @@ interface TabsRootProps {
   class?: string;
 }
 
-const _TAB_CLASS = (active: boolean) =>
-  clsx(
-    'px-4 py-2 text-sm uppercase tracking-wider transition-colors border-b-2 cursor-pointer bg-transparent',
-    active
-      ? 'text-text-primary border-accent'
-      : 'text-text-muted border-transparent hover:text-text-secondary'
-  );
-
 const TabsRoot = ({ tabs, value, onValueChange, children, class: classProp }: TabsRootProps) => (
   <BaseTabs.Root
     value={value}

@@ -5,6 +5,7 @@ import { Card } from '../../shared/ui/Card.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { StatusBadge } from '../../shared/ui/StatusBadge.view';
 import { Table } from '../../shared/ui/Table.view';
+import { DashboardTableSection } from './DashboardTableSection.view';
 
 interface StatsData {
   enabledProjects: number;
@@ -68,21 +69,6 @@ const SkeletonStatCard = ({ label }: { label: string }): JSX.Element => (
   </Card>
 );
 
-const SectionHeader = ({
-  title,
-  onViewAll
-}: {
-  title: string;
-  onViewAll: () => void;
-}): JSX.Element => (
-  <div class='flex items-center justify-between'>
-    <h3 class='text-md font-semibold text-text-primary uppercase tracking-wide'>{title}</h3>
-    <Button variant='ghost' onClick={onViewAll}>
-      View all →
-    </Button>
-  </div>
-);
-
 export const DashboardView = ({
   data: { stats, workers, projects, providers, githubInstallation, githubLoading },
   status: { loading, error },
@@ -133,100 +119,98 @@ export const DashboardView = ({
       </div>
     </Card>
 
-    <section class='flex flex-col gap-4 animate-slide-up' style='animation-delay: 50ms'>
-      <SectionHeader title='Workers' onViewAll={goToWorkers} />
-      {workers.length === 0 ? (
-        <p class='text-text-muted text-sm'>No workers registered.</p>
-      ) : (
-        <div class='max-h-56 overflow-y-auto'>
-          <Table>
-            <Table.Head>
-              <Table.HeadCell>Name</Table.HeadCell>
-              <Table.HeadCell>Status</Table.HeadCell>
-              <Table.HeadCell>Last Seen</Table.HeadCell>
-            </Table.Head>
-            <Table.Body>
-              {workers.map((w) => (
-                <Table.Row key={w.id}>
-                  <Table.Cell>
-                    <span class='text-text-primary text-sm font-mono'>{w.name}</span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <StatusBadge status={w.status} />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <span class='text-text-secondary text-sm'>{w.lastSeen}</span>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        </div>
-      )}
-    </section>
+    <DashboardTableSection
+      title='Workers'
+      onViewAll={goToWorkers}
+      emptyMessage='No workers registered.'
+      isEmpty={workers.length === 0}
+    >
+      <Table>
+        <Table.Head>
+          <Table.HeadCell>Name</Table.HeadCell>
+          <Table.HeadCell>Status</Table.HeadCell>
+          <Table.HeadCell>Last Seen</Table.HeadCell>
+        </Table.Head>
+        <Table.Body>
+          {workers.map((w) => (
+            <Table.Row key={w.id}>
+              <Table.Cell>
+                <span class='text-text-primary text-sm font-mono'>{w.name}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <StatusBadge status={w.status} />
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>{w.lastSeen}</span>
+              </Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    </DashboardTableSection>
 
-    <section class='flex flex-col gap-4 animate-slide-up' style='animation-delay: 100ms'>
-      <SectionHeader title='Projects' onViewAll={goToProjectSettings} />
-      {projects.length === 0 ? (
-        <p class='text-text-muted text-sm'>No projects configured.</p>
-      ) : (
-        <div class='max-h-56 overflow-y-auto'>
-          <Table>
-            <Table.Head>
-              <Table.HeadCell>Project ID</Table.HeadCell>
-              <Table.HeadCell>Enabled</Table.HeadCell>
-            </Table.Head>
-            <Table.Body>
-              {projects.map((p) => (
-                <Table.Row key={p.id}>
-                  <Table.Cell>
-                    <span class='text-text-primary text-sm font-mono'>{p.externalProjectId}</span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    {p.enabled ? (
-                      <span class='text-success text-xs uppercase tracking-wider'>Yes</span>
-                    ) : (
-                      <span class='text-text-muted text-xs uppercase tracking-wider'>No</span>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        </div>
-      )}
-    </section>
+    <DashboardTableSection
+      title='Projects'
+      onViewAll={goToProjectSettings}
+      emptyMessage='No projects configured.'
+      isEmpty={projects.length === 0}
+    >
+      <Table>
+        <Table.Head>
+          <Table.HeadCell>Project ID</Table.HeadCell>
+          <Table.HeadCell>Enabled</Table.HeadCell>
+        </Table.Head>
+        <Table.Body>
+          {projects.map((p) => (
+            <Table.Row key={p.id}>
+              <Table.Cell>
+                <span class='text-text-primary text-sm font-mono'>{p.externalProjectId}</span>
+              </Table.Cell>
+              <Table.Cell>
+                {p.enabled ? (
+                  <span class='text-success text-xs uppercase tracking-wider'>Yes</span>
+                ) : (
+                  <span class='text-text-muted text-xs uppercase tracking-wider'>No</span>
+                )}
+              </Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    </DashboardTableSection>
 
-    <section class='flex flex-col gap-4 animate-slide-up' style='animation-delay: 150ms'>
-      <SectionHeader title='Providers' onViewAll={goToSettings} />
-      {providers.length === 0 ? (
-        <p class='text-text-muted text-sm'>No providers configured.</p>
-      ) : (
-        <div class='max-h-56 overflow-y-auto'>
-          <Table>
-            <Table.Head>
-              <Table.HeadCell>Name</Table.HeadCell>
-              <Table.HeadCell>Type</Table.HeadCell>
-            </Table.Head>
-            <Table.Body>
-              {providers.map((p) => (
-                <Table.Row key={p.id}>
-                  <Table.Cell>
-                    <span class='text-text-primary text-sm'>{p.name}</span>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <span class='text-text-secondary text-sm'>{p.providerType}</span>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        </div>
-      )}
-    </section>
+    <DashboardTableSection
+      title='Providers'
+      onViewAll={goToSettings}
+      emptyMessage='No providers configured.'
+      isEmpty={providers.length === 0}
+    >
+      <Table>
+        <Table.Head>
+          <Table.HeadCell>Name</Table.HeadCell>
+          <Table.HeadCell>Type</Table.HeadCell>
+        </Table.Head>
+        <Table.Body>
+          {providers.map((p) => (
+            <Table.Row key={p.id}>
+              <Table.Cell>
+                <span class='text-text-primary text-sm'>{p.name}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>{p.providerType}</span>
+              </Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    </DashboardTableSection>
 
-    <section class='flex flex-col gap-4 animate-slide-up' style='animation-delay: 200ms'>
-      <SectionHeader title='GitHub App' onViewAll={goToSettings} />
+    <DashboardTableSection
+      title='GitHub App'
+      onViewAll={goToSettings}
+      emptyMessage='No GitHub App installed.'
+      isEmpty={!githubInstallation && !githubLoading}
+    >
       <Card class='flex items-center justify-between'>
         <div class='flex items-center gap-3'>
           <span class='text-text-primary text-sm font-semibold uppercase tracking-wider'>
@@ -250,6 +234,6 @@ export const DashboardView = ({
           </span>
         )}
       </Card>
-    </section>
+    </DashboardTableSection>
   </div>
 );
