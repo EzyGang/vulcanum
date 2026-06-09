@@ -19,12 +19,15 @@ interface SelectProps {
 }
 
 const TRIGGER_CLASS =
-  'inline-flex items-center justify-between gap-2 w-full bg-bg-input border text-text-primary px-3 py-2 text-sm cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus';
+  'inline-flex items-center justify-between gap-2 w-full bg-bg-input border text-text-primary px-3 py-2 text-sm cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:cursor-not-allowed disabled:opacity-50';
 
-const POPUP_CLASS = 'z-50 bg-bg-card border border-border-base py-1';
+const POSITIONER_CLASS = 'z-[100]';
+
+const POPUP_CLASS =
+  'min-w-44 max-h-72 overflow-y-auto bg-bg-input border border-border-base py-1 text-text-primary shadow-[0_8px_24px_oklch(0%_0_0_/_0.45)]';
 
 const ITEM_CLASS =
-  'flex items-center px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary data-highlighted:bg-bg-hover data-highlighted:text-text-primary';
+  'flex w-full items-center whitespace-nowrap px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary outline-none data-highlighted:bg-bg-hover data-highlighted:text-text-primary data-selected:text-text-primary';
 
 export const Select = ({
   items,
@@ -60,7 +63,7 @@ export const Select = ({
         </span>
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
-        <BaseSelect.Positioner sideOffset={4}>
+        <BaseSelect.Positioner sideOffset={4} class={POSITIONER_CLASS}>
           <BaseSelect.Popup class={POPUP_CLASS}>
             {items.map((option) => (
               <BaseSelect.Item key={option.value} value={option.value} class={ITEM_CLASS}>
