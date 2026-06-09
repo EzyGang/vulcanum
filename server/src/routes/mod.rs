@@ -61,7 +61,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route(
                         "/{id}/projects/lookup",
                         web::get().to(providers::lookup_project),
-                    ),
+                    )
+                    .route(
+                        "/{id}/workspaces",
+                        web::get().to(providers::list_workspaces),
+                    )
+                    .route("/{id}/projects", web::get().to(providers::list_projects)),
             )
             .service(
                 web::scope("/workers")

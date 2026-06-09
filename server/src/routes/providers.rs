@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::instance_auth::InstanceAuth;
-use crate::services::project_configs::model::LookupProjectResult;
+use crate::services::project_configs::model::{LookupProjectResult, ProjectInfo, WorkspaceInfo};
 use crate::services::provider_configs::model::{CreateProviderRequest, UpdateProviderRequest};
 
 pub async fn list(
@@ -75,7 +75,39 @@ pub async fn lookup_project(
     Ok(HttpResponse::Ok().json(result))
 }
 
+pub async fn list_workspaces(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let provider_id = path.into_inner();
+    let workspaces: Vec<WorkspaceInfo> =
+        state.project_configs.fetch_workspaces(&provider_id).await?;
+
+    Ok(HttpResponse::Ok().json(workspaces))
+}
+
+pub async fn list_projects(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    query: web::Query<ListProjectsQuery>,
+    _auth: InstanceAuth,
+) -> Result<HttpResponse, AppError> {
+    let provider_id = path.into_inner();
+    let projects: Vec<ProjectInfo> = state
+        .project_configs
+        .fetch_projects(&provider_id, &query.workspace_id)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(projects))
+}
+
 #[derive(serde::Deserialize)]
 pub struct LookupQuery {
     pub external_project_id: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ListProjectsQuery {
+    pub workspace_id: String,
 }

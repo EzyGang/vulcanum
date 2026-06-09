@@ -57,6 +57,8 @@ fn make_task(id: &str, title: &str) -> IntegrationTask {
         title: title.to_owned(),
         project_id: "test-proj".to_owned(),
         description: None,
+        number: Some(1),
+        project_slug: Some("tst".to_owned()),
     }
 }
 
@@ -132,7 +134,7 @@ async fn poller_inserts_tasks(pool: PgPool) {
     service.poll_once().await;
 
     let rows = sqlx::query!(
-        "SELECT external_task_ref, prompt_text FROM work_runs \
+        "SELECT external_task_ref, prompt_text, task_slug, task_title FROM work_runs \
          WHERE project_config_id = $1 ORDER BY external_task_ref",
         project_id,
     )
@@ -142,9 +144,13 @@ async fn poller_inserts_tasks(pool: PgPool) {
 
     assert_eq!(rows.len(), 2, "Should insert 2 work_runs");
     assert_eq!(rows[0].external_task_ref, "task-1");
+    assert_eq!(rows[0].task_slug.as_deref(), Some("tst-1"));
+    assert_eq!(rows[0].task_title.as_deref(), Some("Fix login bug"));
     assert!(rows[0].prompt_text.starts_with("Review Fix login bug"));
     assert!(rows[0].prompt_text.contains("Debian-based container"));
     assert_eq!(rows[1].external_task_ref, "task-2");
+    assert_eq!(rows[1].task_slug.as_deref(), Some("tst-1"));
+    assert_eq!(rows[1].task_title.as_deref(), Some("Add dark mode"));
     assert!(rows[1].prompt_text.starts_with("Review Add dark mode"));
     assert!(rows[1].prompt_text.contains("Debian-based container"));
 }

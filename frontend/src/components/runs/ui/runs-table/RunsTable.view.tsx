@@ -87,7 +87,16 @@ export const RunsTable = ({
                 />
               </Table.Cell>
               <Table.Cell>
-                <span class='text-text-primary text-sm font-mono'>{run.externalTaskRef}</span>
+                {run.taskSlug ? (
+                  <span class='text-text-primary text-sm font-mono'>{run.taskSlug}</span>
+                ) : (
+                  <span class='text-text-muted text-sm'>—</span>
+                )}
+                {run.taskTitle && (
+                  <span class='text-text-secondary text-sm ml-2 truncate max-w-48 inline-block align-middle'>
+                    {run.taskTitle}
+                  </span>
+                )}
               </Table.Cell>
               <Table.Cell>
                 <StatusBadge status={run.status} />

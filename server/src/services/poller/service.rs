@@ -8,7 +8,7 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
 use crate::services::providers::errors::IntegrationError;
-use crate::services::providers::model::IntegrationType;
+use crate::services::providers::model::{IntegrationTask, IntegrationType};
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -191,6 +191,7 @@ impl PollerService {
             if !config.repo_url.is_empty() && config.repo_url.starts_with("https://github.com/") {
                 prompt_text.push_str(GITHUB_INSTRUCTION);
             }
+            let task_slug = build_task_slug(task);
             let params = InsertWorkRunParams {
                 external_task_ref: task.id.clone(),
                 project_config_id: config.id,
@@ -198,6 +199,8 @@ impl PollerService {
                 repo_url: config.repo_url.clone(),
                 agents_md: config.agents_md.clone(),
                 status: WorkRunStatus::Pending,
+                task_title: Some(task.title.clone()),
+                task_slug,
             };
 
             match self
@@ -260,4 +263,16 @@ impl PollerService {
 
         Ok(())
     }
+}
+
+fn build_task_slug(task: &IntegrationTask) -> Option<String> {
+    let project_slug = task.project_slug.as_deref()?;
+    let number = match task.number {
+        Some(n) => n.to_string(),
+        None => {
+            let id_prefix = &task.id[..task.id.len().min(8)];
+            id_prefix.to_owned()
+        }
+    };
+    Some(format!("{project_slug}-{number}"))
 }

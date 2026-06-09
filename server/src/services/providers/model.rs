@@ -15,11 +15,15 @@ pub struct IntegrationTask {
     pub title: String,
     pub project_id: String,
     pub description: Option<String>,
+    pub number: Option<i64>,
+    pub project_slug: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IntegrationProject {
+    pub id: String,
     pub name: String,
+    pub slug: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -27,4 +31,10 @@ pub struct IntegrationColumn {
     pub id: String,
     pub name: String,
     pub slug: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IntegrationWorkspace {
+    pub id: String,
+    pub name: String,
 }

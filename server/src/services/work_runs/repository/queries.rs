@@ -13,6 +13,8 @@ pub struct InsertWorkRunParams {
     pub repo_url: String,
     pub agents_md: String,
     pub status: WorkRunStatus,
+    pub task_title: Option<String>,
+    pub task_slug: Option<String>,
 }
 
 impl WorkRunsRepository {
@@ -25,10 +27,10 @@ impl WorkRunsRepository {
 
         sqlx::query_as!(
             WorkRun,
-            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
-                        repo_url, agents_md,
+                        repo_url, agents_md, task_title, task_slug,
                         result_pr_url, result_exit_code, tokens_used, duration_ms,
                         input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
                         cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -42,6 +44,8 @@ impl WorkRunsRepository {
             &params.prompt_text,
             &params.repo_url,
             &params.agents_md,
+            params.task_title.as_deref(),
+            params.task_slug.as_deref(),
         )
         .fetch_one(db)
         .await
@@ -56,8 +60,8 @@ impl WorkRunsRepository {
         let id = Uuid::new_v4();
 
         sqlx::query!(
-            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT DO NOTHING"#,
             id,
             &params.external_task_ref,
@@ -66,6 +70,8 @@ impl WorkRunsRepository {
             &params.prompt_text,
             &params.repo_url,
             &params.agents_md,
+            params.task_title.as_deref(),
+            params.task_slug.as_deref(),
         )
         .execute(db)
         .await
@@ -81,7 +87,8 @@ impl WorkRunsRepository {
         sqlx::query_as!(
             WorkRun,
             r#"SELECT id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, task_title, task_slug,
+             result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
@@ -122,6 +129,7 @@ impl WorkRunsRepository {
             r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
+             wr.task_title, wr.task_slug,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
@@ -267,7 +275,8 @@ impl WorkRunsRepository {
             r#"UPDATE work_runs SET status = 'running'::work_run_status
              WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, task_title, task_slug,
+             result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
@@ -293,7 +302,8 @@ impl WorkRunsRepository {
              input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0
              WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, task_title, task_slug,
+             result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
@@ -321,7 +331,8 @@ impl WorkRunsRepository {
              finish_next_column = $15
              WHERE id = $1 AND status = 'running'::work_run_status
              RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, result_pr_url, result_exit_code, tokens_used, duration_ms,
+             prompt_text, repo_url, agents_md, task_title, task_slug,
+             result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
@@ -359,6 +370,7 @@ impl WorkRunsRepository {
             r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
+             wr.task_title, wr.task_slug,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",

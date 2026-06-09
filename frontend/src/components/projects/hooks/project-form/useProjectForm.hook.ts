@@ -41,12 +41,6 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
 
-  const lookup = useProjectFormLookup(providerId, externalProjectId);
-  const providerForm = useProjectFormProvider((newId: string) => {
-    providerId.value = newId;
-    lookup.resetLookup();
-  });
-
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
     enabled,
@@ -59,6 +53,13 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     opencodeConfig,
     providerId,
     externalProjectId
+  });
+
+  const lookup = useProjectFormLookup(providerId, externalProjectId, !!projectId, submitting);
+  const providerForm = useProjectFormProvider((newId: string) => {
+    providerId.value = newId;
+    lookup.resetLookup();
+    lookup.fetchWorkspaces();
   });
 
   useEffect(() => {
@@ -95,7 +96,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     }
   }, [projectId, existingProject, providerId.value]);
 
-  const resetLookup = () => lookup.resetLookup();
+  useEffect(() => {
+    if (!projectId && providerId.value) {
+      lookup.fetchWorkspaces();
+    }
+  }, [providerId.value]);
 
   return {
     meta: {
@@ -120,7 +125,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       providerSubmitting: providerForm.providerSubmitting,
       onProviderChange: (id: string) => {
         providerId.value = id;
-        resetLookup();
+        lookup.resetLookup();
+        lookup.fetchWorkspaces();
       },
       onShowProviderForm: providerForm.onShowProviderForm,
       onCancelProviderForm: providerForm.onCancelProviderForm,
@@ -142,12 +148,26 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       externalProjectId,
       lookupProjectName: lookup.lookupProjectName,
       lookupError: lookup.lookupError,
+      lookedUp: lookup.lookedUp,
+      workspaceOptions: lookup.workspaceOptions,
+      workspaceId: lookup.workspaceId,
+      projectOptions: lookup.projectOptions,
+      workspacesLoading: lookup.workspacesLoading,
+      projectsLoading: lookup.projectsLoading,
+      workspaceSelectDisabled: lookup.workspaceSelectDisabled,
+      projectSelectDisabled: lookup.projectSelectDisabled,
       onLookup: () => {
         lookup.handleLookup();
       },
       onProjectIdChange: (id: string) => {
         externalProjectId.value = id;
-        resetLookup();
+        lookup.resetLookup();
+      },
+      onWorkspaceChange: (id: string) => {
+        lookup.handleWorkspaceChange(id);
+      },
+      onProjectSelectById: (id: string) => {
+        lookup.handleProjectSelectById(id);
       }
     },
     fields: {

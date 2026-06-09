@@ -2,7 +2,9 @@ import type {
   CreateProviderRequest,
   IntegrationProvider,
   LookupProjectResponse,
-  UpdateProviderRequest
+  ProjectInfo,
+  UpdateProviderRequest,
+  WorkspaceInfo
 } from '../../types/projects';
 import { del, get, post, put } from '../../utils/api/request';
 
@@ -28,4 +30,12 @@ export const lookupProject = async (
 ): Promise<LookupProjectResponse> =>
   get<LookupProjectResponse>(`/providers/${providerId}/projects/lookup`, {
     external_project_id: externalProjectId
+  });
+
+export const listWorkspaces = (providerId: string): Promise<WorkspaceInfo[]> =>
+  get<WorkspaceInfo[]>(`/providers/${providerId}/workspaces`);
+
+export const listProjects = (providerId: string, workspaceId: string): Promise<ProjectInfo[]> =>
+  get<ProjectInfo[]>(`/providers/${providerId}/projects`, {
+    workspace_id: workspaceId
   });

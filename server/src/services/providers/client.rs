@@ -1,10 +1,9 @@
 use async_trait::async_trait;
 
-use crate::services::providers::kaneo::client::slugify;
 use crate::services::providers::kaneo::client::KaneoClient;
 
 use super::errors::IntegrationError;
-use super::model::{IntegrationColumn, IntegrationProject, IntegrationTask};
+use super::model::{IntegrationColumn, IntegrationProject, IntegrationTask, IntegrationWorkspace};
 
 #[derive(Clone)]
 pub enum IntegrationClient {
@@ -29,11 +28,7 @@ impl IntegrationClient {
                 Ok(columns
                     .iter()
                     .map(|col| {
-                        let slug = col
-                            .status
-                            .as_deref()
-                            .map(|s| s.to_owned())
-                            .unwrap_or_else(|| slugify(&col.name));
+                        let slug = col.status.as_deref().unwrap_or("").to_owned();
                         IntegrationColumn {
                             id: col.id.clone(),
                             name: col.name.clone(),
@@ -79,7 +74,11 @@ impl IntegrationClient {
                     .lookup_project(project_id)
                     .await
                     .map_err(IntegrationError::from)?;
-                Ok(IntegrationProject { name: project.name })
+                Ok(IntegrationProject {
+                    id: project.id,
+                    name: project.name,
+                    slug: project.slug,
+                })
             }
         }
     }
@@ -87,6 +86,46 @@ impl IntegrationClient {
     pub fn instance_and_key(&self) -> (&str, &str) {
         match self {
             Self::Kaneo(client) => (&client.instance, &client.api_key),
+        }
+    }
+
+    pub async fn fetch_workspaces(&self) -> Result<Vec<IntegrationWorkspace>, IntegrationError> {
+        match self {
+            Self::Kaneo(client) => {
+                let workspaces = client
+                    .fetch_workspaces()
+                    .await
+                    .map_err(IntegrationError::from)?;
+                Ok(workspaces
+                    .into_iter()
+                    .map(|w| IntegrationWorkspace {
+                        id: w.id,
+                        name: w.name,
+                    })
+                    .collect())
+            }
+        }
+    }
+
+    pub async fn fetch_projects(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<IntegrationProject>, IntegrationError> {
+        match self {
+            Self::Kaneo(client) => {
+                let projects = client
+                    .fetch_projects(workspace_id)
+                    .await
+                    .map_err(IntegrationError::from)?;
+                Ok(projects
+                    .into_iter()
+                    .map(|p| IntegrationProject {
+                        id: p.id,
+                        name: p.name,
+                        slug: p.slug,
+                    })
+                    .collect())
+            }
         }
     }
 }
@@ -100,7 +139,7 @@ impl TaskFetcher for IntegrationClient {
     ) -> Result<Vec<IntegrationTask>, IntegrationError> {
         match self {
             Self::Kaneo(client) => {
-                let tasks = client
+                let (tasks, project_slug) = client
                     .fetch_tasks_in_column(project_id, column_name)
                     .await
                     .map_err(IntegrationError::from)?;
@@ -111,6 +150,8 @@ impl TaskFetcher for IntegrationClient {
                         title: task.title.clone(),
                         project_id: task.project_id.clone(),
                         description: task.description.clone(),
+                        number: task.number,
+                        project_slug: Some(project_slug.clone()),
                     })
                     .collect())
             }

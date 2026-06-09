@@ -3,15 +3,14 @@ use uuid::Uuid;
 
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
-    ColumnInfo, CreateProjectConfigRequest, LookupProjectResult, ProjectConfig,
-    UpdateProjectConfigRequest,
+    ColumnInfo, CreateProjectConfigRequest, LookupProjectResult, ProjectConfig, ProjectInfo,
+    UpdateProjectConfigRequest, WorkspaceInfo,
 };
 use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
 };
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::IntegrationClient;
-use crate::services::providers::kaneo::client::slugify;
 use crate::services::providers::model::{IntegrationColumn, IntegrationType};
 
 #[derive(Clone)]
@@ -86,18 +85,10 @@ impl ProjectConfigsService {
                 .await
                 .map_err(ProjectConfigsError::Integration)?;
 
-            if let Some(ref input) = params.pickup_column {
-                params.pickup_column = Some(resolve_column_slug(&all_columns, input)?);
-            }
-            if let Some(ref input) = params.progress_column {
-                params.progress_column = Some(resolve_column_slug(&all_columns, input)?);
-            }
-            if let Some(ref input) = params.target_column {
-                params.target_column = Some(resolve_column_slug(&all_columns, input)?);
-            }
-            if let Some(ref input) = params.blocked_column {
-                params.blocked_column = Some(resolve_column_slug(&all_columns, input)?);
-            }
+            resolve_column_if_set(&all_columns, &mut params.pickup_column)?;
+            resolve_column_if_set(&all_columns, &mut params.progress_column)?;
+            resolve_column_if_set(&all_columns, &mut params.target_column)?;
+            resolve_column_if_set(&all_columns, &mut params.blocked_column)?;
         }
 
         self.repo
@@ -145,9 +136,38 @@ impl ProjectConfigsService {
             .map_err(ProjectConfigsError::Integration)?;
 
         Ok(LookupProjectResult {
+            id: project.id,
             name: project.name,
+            slug: project.slug,
             columns: columns.iter().map(ColumnInfo::from).collect(),
         })
+    }
+
+    pub async fn fetch_workspaces(
+        &self,
+        provider_id: &Uuid,
+    ) -> Result<Vec<WorkspaceInfo>, ProjectConfigsError> {
+        let client = self.resolve_client(provider_id).await?;
+        let workspaces = client
+            .fetch_workspaces()
+            .await
+            .map_err(ProjectConfigsError::Integration)?;
+
+        Ok(workspaces.into_iter().map(WorkspaceInfo::from).collect())
+    }
+
+    pub async fn fetch_projects(
+        &self,
+        provider_id: &Uuid,
+        workspace_id: &str,
+    ) -> Result<Vec<ProjectInfo>, ProjectConfigsError> {
+        let client = self.resolve_client(provider_id).await?;
+        let projects = client
+            .fetch_projects(workspace_id)
+            .await
+            .map_err(ProjectConfigsError::Integration)?;
+
+        Ok(projects.into_iter().map(ProjectInfo::from).collect())
     }
 
     async fn resolve_client(
@@ -180,10 +200,22 @@ fn resolve_column_slug(
     columns: &[IntegrationColumn],
     input: &str,
 ) -> Result<String, ProjectConfigsError> {
-    let slug = slugify(input);
     columns
         .iter()
-        .find(|c| c.slug == slug)
+        .find(|c| c.slug == input)
         .map(|c| c.slug.clone())
         .ok_or_else(|| ProjectConfigsError::ColumnNotFound(input.to_owned()))
+}
+
+fn resolve_column_if_set(
+    columns: &[IntegrationColumn],
+    column: &mut Option<String>,
+) -> Result<(), ProjectConfigsError> {
+    match column {
+        Some(ref input) => {
+            *column = Some(resolve_column_slug(columns, input)?);
+            Ok(())
+        }
+        None => Ok(()),
+    }
 }

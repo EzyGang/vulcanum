@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md)\n             VALUES ($1, $2, $3, $4, $5, $6, $7)\n             ON CONFLICT DO NOTHING",
+  "query": "INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n             ON CONFLICT DO NOTHING",
   "describe": {
     "columns": [],
     "parameters": {
@@ -25,10 +25,12 @@
         },
         "Text",
         "Text",
+        "Text",
+        "Text",
         "Text"
       ]
     },
     "nullable": []
   },
-  "hash": "b3058b6ce0bccb0cfe7e6ac1b711f56f061dba0fcd084d72cda655718a805d9b"
+  "hash": "2859be5e08e5a868edb2488153cecaed62a9538a9e270c3caa43cf957dda238f"
 }
