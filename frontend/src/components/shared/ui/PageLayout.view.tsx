@@ -16,7 +16,7 @@ const MAX_WIDTH: Record<PageMaxWidth, string> = {
   '6xl': 'max-w-6xl'
 };
 
-const GAP: Record<number, string> = {
+const GAP: Record<6 | 8, string> = {
   6: 'gap-6',
   8: 'gap-8'
 };
