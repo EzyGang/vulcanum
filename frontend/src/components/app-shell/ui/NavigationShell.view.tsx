@@ -1,6 +1,7 @@
 import { clsx } from 'clsx';
 import type { ComponentChildren, JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
+import { HamburgerIcon } from '../../shared/ui/HamburgerIcon.view';
 import { ThemeToggleContainer } from '../containers/ThemeToggle.container';
 import type { NavLink } from '../types';
 
@@ -72,8 +73,16 @@ export const NavigationShellView = ({
   actions: { onLogout, onNavigate, onToggleMobileMenu }
 }: NavigationShellProps): JSX.Element => (
   <div class='flex flex-col min-h-screen bg-bg-page'>
-    <header class='flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border-base relative'>
+    <header class='sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border-base bg-bg-page'>
       <div class='flex items-center gap-4 sm:gap-8'>
+        <button
+          type='button'
+          onClick={onToggleMobileMenu}
+          class='sm:hidden flex items-center justify-center text-text-primary bg-transparent border-0 cursor-pointer p-2 -ml-2'
+          aria-label='Toggle menu'
+        >
+          <HamburgerIcon open={mobileMenuOpen} />
+        </button>
         <div class='flex items-center gap-2 sm:gap-3'>
           <img src={LOGO_SRC} alt='Vulcanum' class='h-7 w-7 sm:h-8 sm:w-8' />
           <h1 class='text-base sm:text-lg font-semibold text-text-primary uppercase tracking-wide'>
@@ -97,29 +106,6 @@ export const NavigationShellView = ({
         <Button variant='ghost' onClick={onLogout}>
           Logout
         </Button>
-        <button
-          type='button'
-          onClick={onToggleMobileMenu}
-          class='sm:hidden flex items-center justify-center text-text-primary bg-transparent border-0 cursor-pointer p-2'
-          aria-label='Toggle menu'
-        >
-          <svg
-            width='18'
-            height='18'
-            viewBox='0 0 18 18'
-            fill='none'
-            stroke='currentColor'
-            stroke-width='2'
-            stroke-linecap='round'
-          >
-            <title>{mobileMenuOpen ? 'Close menu' : 'Open menu'}</title>
-            {mobileMenuOpen ? (
-              <path d='M4.5 4.5L13.5 13.5M13.5 4.5L4.5 13.5' />
-            ) : (
-              <path d='M3 5H15M3 9H15M3 13H15' />
-            )}
-          </svg>
-        </button>
       </div>
 
       {mobileMenuOpen && (
