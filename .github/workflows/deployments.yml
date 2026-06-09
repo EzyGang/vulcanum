@@ -52,6 +52,7 @@ jobs:
           if !(docker manifest inspect $DOCKER_REGISTRY/$IMAGE_NAME:${GITHUB_SHA::7})
           then
             docker buildx build --push --file server/docker/Dockerfile \
+              --build-arg BUILD_PROFILE=dev-docker \
               --tag $DOCKER_REGISTRY/$IMAGE_NAME:${GITHUB_SHA::7} \
               --cache-to "type=registry,ref=$DOCKER_REGISTRY/$IMAGE_NAME:deps,compression=zstd" \
               --cache-from "type=registry,ref=$DOCKER_REGISTRY/$IMAGE_NAME:deps" \
