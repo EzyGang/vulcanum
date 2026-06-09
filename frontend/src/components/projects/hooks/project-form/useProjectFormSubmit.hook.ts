@@ -8,6 +8,7 @@ import { useApiMutation } from '../../../../utils/api/query/hooks';
 
 interface UseProjectFormSubmitOptions {
   projectId: string | null;
+  name: Signal<string>;
   enabled: Signal<boolean>;
   pickupColumn: Signal<string>;
   progressColumn: Signal<string>;
@@ -23,6 +24,7 @@ interface UseProjectFormSubmitOptions {
 export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
   const {
     projectId,
+    name,
     enabled,
     pickupColumn,
     progressColumn,
@@ -96,6 +98,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
           }
           await createMutation.mutateAsync({
             externalProjectId: externalProjectId.value,
+            name: name.value || undefined,
             providerId: providerId.value,
             enabled: enabled.value,
             pickupColumn: pickupColumn.value || undefined,

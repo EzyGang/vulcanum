@@ -11,6 +11,8 @@ use crate::services::providers::model::{
 pub struct ProjectConfig {
     pub id: Uuid,
     pub external_project_id: String,
+    #[serde(default)]
+    pub name: String,
     pub external_workspace_id: String,
     pub integration_type: IntegrationType,
     pub enabled: bool,
@@ -30,6 +32,8 @@ pub struct ProjectConfig {
 #[derive(Debug, Deserialize)]
 pub struct CreateProjectConfigRequest {
     pub external_project_id: String,
+    #[serde(default)]
+    pub name: String,
     #[serde(default)]
     pub external_workspace_id: String,
     #[serde(default = "default_enabled")]

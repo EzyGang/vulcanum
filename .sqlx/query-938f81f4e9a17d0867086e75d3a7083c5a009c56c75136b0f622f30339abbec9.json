@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             pickup_column = COALESCE($2, pickup_column),\n             target_column = COALESCE($3, target_column),\n             progress_column = COALESCE($4, progress_column),\n             blocked_column = COALESCE($5, blocked_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = COALESCE($7, prompt_template),\n             repo_url = COALESCE($8, repo_url),\n             agents_md = COALESCE($9, agents_md),\n             enabled = COALESCE($10, enabled),\n             external_workspace_id = COALESCE($11, external_workspace_id),\n             integration_type = COALESCE($12, integration_type),\n             provider_id = COALESCE($13, provider_id),\n             opencode_config = COALESCE($14, opencode_config)\n             WHERE id = $1\n             RETURNING id, external_project_id, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
+  "query": "INSERT INTO project_configs (id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)\n             RETURNING id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: DateTime<Utc>\", provider_id",
   "describe": {
     "columns": [
       {
@@ -15,11 +15,16 @@
       },
       {
         "ordinal": 2,
-        "name": "external_workspace_id",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
+        "name": "external_workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
         "name": "integration_type!: _",
         "type_info": {
           "Custom": {
@@ -33,62 +38,62 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "pickup_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "target_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "progress_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "blocked_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "opencode_config",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "provider_id",
         "type_info": "Uuid"
       }
@@ -98,13 +103,6 @@
         "Uuid",
         "Text",
         "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Text",
-        "Text",
-        "Text",
-        "Bool",
         "Text",
         {
           "Custom": {
@@ -116,11 +114,21 @@
             }
           }
         },
-        "Uuid",
-        "Text"
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -139,5 +147,5 @@
       true
     ]
   },
-  "hash": "0536edd16edd1d95c54bc98a380ed36d26c863d8856c830a9a68bf232034262a"
+  "hash": "938f81f4e9a17d0867086e75d3a7083c5a009c56c75136b0f622f30339abbec9"
 }

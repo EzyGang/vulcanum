@@ -32,6 +32,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const providerId = useSignal('');
   const externalProjectId = useSignal(projectId ? '' : '');
+  const name = useSignal('');
   const enabled = useSignal(true);
   const pickupColumn = useSignal('');
   const progressColumn = useSignal('');
@@ -43,6 +44,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
+    name,
     enabled,
     pickupColumn,
     progressColumn,
@@ -66,6 +68,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     if (projectId && existingProject) {
       const p = existingProject;
       externalProjectId.value = p.externalProjectId;
+      name.value = p.name || '';
       providerId.value = p.providerId ?? '';
       enabled.value = p.enabled;
       pickupColumn.value = p.pickupColumn;
@@ -84,6 +87,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       lookupProject(providerId.value, existingProject.externalProjectId)
         .then((result) => {
           lookup.lookupProjectName.value = result.name;
+          name.value = result.name;
           lookup.columns.value = result.columns;
           lookup.lookedUp.value = true;
         })
@@ -125,6 +129,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       providerSubmitting: providerForm.providerSubmitting,
       onProviderChange: (id: string) => {
         providerId.value = id;
+        name.value = '';
         lookup.resetLookup();
         lookup.fetchWorkspaces();
       },
@@ -156,18 +161,22 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       projectsLoading: lookup.projectsLoading,
       workspaceSelectDisabled: lookup.workspaceSelectDisabled,
       projectSelectDisabled: lookup.projectSelectDisabled,
-      onLookup: () => {
-        lookup.handleLookup();
+      onLookup: async () => {
+        await lookup.handleLookup();
+        name.value = lookup.lookupProjectName.value;
       },
       onProjectIdChange: (id: string) => {
         externalProjectId.value = id;
+        name.value = '';
         lookup.resetLookup();
       },
       onWorkspaceChange: (id: string) => {
+        name.value = '';
         lookup.handleWorkspaceChange(id);
       },
       onProjectSelectById: (id: string) => {
         lookup.handleProjectSelectById(id);
+        name.value = lookup.lookupProjectName.value;
       }
     },
     fields: {

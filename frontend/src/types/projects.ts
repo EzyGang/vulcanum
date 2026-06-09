@@ -1,6 +1,7 @@
 export interface ProjectConfig {
   id: string;
   externalProjectId: string;
+  name: string;
   externalWorkspaceId: string;
   enabled: boolean;
   pickupColumn: string;
@@ -16,6 +17,7 @@ export interface ProjectConfig {
 
 export interface CreateProjectRequest {
   externalProjectId: string;
+  name?: string;
   providerId: string;
   enabled?: boolean;
   pickupColumn?: string;

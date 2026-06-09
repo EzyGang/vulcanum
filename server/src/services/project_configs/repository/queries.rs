@@ -16,7 +16,7 @@ impl ProjectConfigsRepository {
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+            r#"SELECT id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs ORDER BY created_at DESC"#,
         )
@@ -32,7 +32,7 @@ impl ProjectConfigsRepository {
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+            r#"SELECT id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE id = $1"#,
             id,
@@ -48,7 +48,7 @@ impl ProjectConfigsRepository {
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+            r#"SELECT id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
              FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
         )
@@ -66,13 +66,14 @@ impl ProjectConfigsRepository {
 
         sqlx::query_as!(
             ProjectConfig,
-            r#"INSERT INTO project_configs (id, external_project_id, external_workspace_id, integration_type, enabled, pickup_column, target_column,
+            r#"INSERT INTO project_configs (id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-             RETURNING id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+             RETURNING id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
             &params.external_project_id,
+            &params.name,
             &params.external_workspace_id,
             &params.integration_type as &IntegrationType,
             params.enabled,
@@ -98,6 +99,7 @@ impl ProjectConfigsRepository {
         id: Uuid,
         params: &UpdateProjectConfigParams<'_>,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
+        // Project names are captured from provider lookup during creation and are immutable here.
         sqlx::query_as!(
             ProjectConfig,
             r#"UPDATE project_configs SET
@@ -115,8 +117,8 @@ impl ProjectConfigsRepository {
              provider_id = COALESCE($13, provider_id),
              opencode_config = COALESCE($14, opencode_config)
              WHERE id = $1
-             RETURNING id, external_project_id, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
+              RETURNING id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
             params.pickup_column,
             params.target_column,

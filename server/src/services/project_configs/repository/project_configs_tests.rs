@@ -28,6 +28,7 @@ async fn insert_provider(pool: &PgPool) -> Uuid {
 fn test_params(external_project_id: &str, provider_id: Uuid) -> CreateProjectConfigRequest {
     CreateProjectConfigRequest {
         external_project_id: external_project_id.to_owned(),
+        name: String::new(),
         enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
@@ -99,6 +100,7 @@ async fn list_all_returns_configs(pool: PgPool) {
     let p1 = test_params("kaneo-proj-list-a", provider_id);
     let p2 = CreateProjectConfigRequest {
         external_project_id: "kaneo-proj-list-b".to_owned(),
+        name: String::new(),
         prompt_template: "Template B".to_owned(),
         ..test_params("kaneo-proj-list-b", provider_id)
     };
@@ -108,6 +110,36 @@ async fn list_all_returns_configs(pool: PgPool) {
 
     let all = repo.list_all(&pool).await.expect("Should list all");
     assert!(all.len() >= 2);
+}
+
+#[sqlx::test]
+async fn name_round_trips_through_create_find_and_list(pool: PgPool) {
+    let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
+    let expected_name = "Vulcanum Project";
+    let params = CreateProjectConfigRequest {
+        name: expected_name.to_owned(),
+        ..test_params("kaneo-proj-name-round-trip", provider_id)
+    };
+
+    let created = repo
+        .create(&pool, &params)
+        .await
+        .expect("Should create config with name");
+    assert_eq!(created.name, expected_name);
+
+    let found = repo
+        .find_by_id(&pool, created.id)
+        .await
+        .expect("Should find config by id");
+    assert_eq!(found.name, expected_name);
+
+    let all = repo.list_all(&pool).await.expect("Should list configs");
+    assert!(
+        all.iter()
+            .any(|config| config.id == created.id && config.name == expected_name),
+        "List should include the created config with its name"
+    );
 }
 
 #[sqlx::test]
