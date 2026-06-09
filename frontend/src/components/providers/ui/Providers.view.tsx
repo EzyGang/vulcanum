@@ -75,93 +75,93 @@ export const ProvidersView = ({
     onProviderTypeChange
   }
 }: ProvidersViewProps): JSX.Element => (
-  <div class='flex flex-col gap-8'>
-    <section class='flex flex-col gap-4'>
-      <div class='flex items-center justify-between'>
-        <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Providers</h2>
-        {!showForm.value && (
-          <Button variant='primary' onClick={onShowCreate}>
-            Add Provider
-          </Button>
-        )}
-      </div>
-
-      {error && <ErrorBanner message={error.message} />}
-
-      {deleteError.value && <ErrorBanner message={deleteError.value} />}
-
-      {loading && <div class='text-text-muted text-sm'>Loading providers...</div>}
-
-      {!loading && !error && providers.length === 0 && !showForm.value && (
-        <EmptyState
-          title='No providers configured yet.'
-          description='Add a provider to connect to your projects.'
-        />
+  <div class='flex flex-col gap-4'>
+    <div class='flex items-center justify-between'>
+      <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>
+        All Providers
+      </h3>
+      {!showForm.value && (
+        <Button variant='primary' onClick={onShowCreate}>
+          Add Provider
+        </Button>
       )}
+    </div>
 
-      {showForm.value && (
-        <ProviderFormFields
-          name={name}
-          url={url}
-          apiKey={apiKey}
-          providerType={providerType}
-          error={formError}
-          submitting={formSubmitting}
-          mode={editId.value ? 'edit' : 'create'}
-          onSave={onSave}
-          onCancel={onCancelForm}
-          onNameChange={onNameChange}
-          onUrlChange={onUrlChange}
-          onApiKeyChange={onApiKeyChange}
-          onProviderTypeChange={onProviderTypeChange}
-        />
-      )}
+    {error && <ErrorBanner message={error.message} />}
 
-      {!loading && providers.length > 0 && (
-        <Table>
-          <Table.Head>
-            <Table.HeadCell>Name</Table.HeadCell>
-            <Table.HeadCell>Type</Table.HeadCell>
-            <Table.HeadCell>Instance URL</Table.HeadCell>
-            <Table.HeadCell>Created</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {providers.map((provider) => (
-              <Table.Row key={provider.id}>
-                <Table.Cell>
-                  <span class='text-text-primary text-sm'>{provider.name}</span>
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm'>
-                    {PROVIDER_TYPE_LABELS[provider.providerType] ?? provider.providerType}
-                  </span>
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm font-mono'>{provider.instanceUrl}</span>
-                </Table.Cell>
-                <Table.Cell>
-                  <span class='text-text-secondary text-sm'>{provider.createdAt}</span>
-                </Table.Cell>
-                <Table.Cell>
-                  <ConfirmDelete
-                    itemId={provider.id}
-                    deletingId={deleteConfirmId}
-                    onConfirm={onConfirmDelete}
-                    onDelete={onDelete}
-                    onCancel={onCancelDelete}
-                    editActions={
-                      <Button variant='ghost' onClick={() => onShowEdit(provider)}>
-                        Edit
-                      </Button>
-                    }
-                  />
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
-      )}
-    </section>
+    {deleteError.value && <ErrorBanner message={deleteError.value} />}
+
+    {loading && <div class='text-text-muted text-sm'>Loading providers...</div>}
+
+    {!loading && !error && providers.length === 0 && !showForm.value && (
+      <EmptyState
+        title='No providers configured yet.'
+        description='Add a provider to connect to your projects.'
+      />
+    )}
+
+    {showForm.value && (
+      <ProviderFormFields
+        name={name}
+        url={url}
+        apiKey={apiKey}
+        providerType={providerType}
+        error={formError}
+        submitting={formSubmitting}
+        mode={editId.value ? 'edit' : 'create'}
+        onSave={onSave}
+        onCancel={onCancelForm}
+        onNameChange={onNameChange}
+        onUrlChange={onUrlChange}
+        onApiKeyChange={onApiKeyChange}
+        onProviderTypeChange={onProviderTypeChange}
+      />
+    )}
+
+    {!loading && providers.length > 0 && (
+      <Table>
+        <Table.Head>
+          <Table.HeadCell>Name</Table.HeadCell>
+          <Table.HeadCell>Type</Table.HeadCell>
+          <Table.HeadCell>Instance URL</Table.HeadCell>
+          <Table.HeadCell>Created</Table.HeadCell>
+          <Table.HeadCell>Actions</Table.HeadCell>
+        </Table.Head>
+        <Table.Body>
+          {providers.map((provider) => (
+            <Table.Row key={provider.id}>
+              <Table.Cell>
+                <span class='text-text-primary text-sm'>{provider.name}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>
+                  {PROVIDER_TYPE_LABELS[provider.providerType] ?? provider.providerType}
+                </span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm font-mono'>{provider.instanceUrl}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>{provider.createdAt}</span>
+              </Table.Cell>
+              <Table.Cell>
+                <ConfirmDelete
+                  itemId={provider.id}
+                  deletingId={deleteConfirmId}
+                  onConfirm={onConfirmDelete}
+                  onDelete={onDelete}
+                  onCancel={onCancelDelete}
+                  editActions={
+                    <Button variant='ghost' onClick={() => onShowEdit(provider)}>
+                      Edit
+                    </Button>
+                  }
+                />
+              </Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    )}
   </div>
 );

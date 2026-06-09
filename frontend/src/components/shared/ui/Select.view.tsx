@@ -19,9 +19,9 @@ interface SelectProps {
 }
 
 const TRIGGER_CLASS =
-  'inline-flex items-center justify-between gap-2 w-full bg-bg-input border text-text-primary px-4 py-3 text-sm cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus';
+  'inline-flex items-center justify-between gap-2 w-full bg-bg-input border text-text-primary px-3 py-2 text-sm cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus';
 
-const POPUP_CLASS = 'z-50 bg-bg-card border border-border-base shadow-modal animate-scale-in';
+const POPUP_CLASS = 'z-50 bg-bg-card border border-border-base py-1';
 
 const ITEM_CLASS =
   'flex items-center px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary data-highlighted:bg-bg-hover data-highlighted:text-text-primary';
@@ -38,12 +38,12 @@ export const Select = ({
 }: SelectProps): JSX.Element => {
   const selectedLabel = items.find((o) => o.value === value)?.label;
 
-  const handleValueChange = (nextValue: string | null) => {
-    onValueChange(nextValue ?? '');
-  };
-
   return (
-    <BaseSelect.Root value={value} onValueChange={handleValueChange} disabled={disabled}>
+    <BaseSelect.Root
+      value={value}
+      onValueChange={(v) => onValueChange(v ?? '')}
+      disabled={disabled}
+    >
       <BaseSelect.Trigger
         id={id}
         className={clsx(
@@ -55,7 +55,7 @@ export const Select = ({
         <BaseSelect.Value placeholder={placeholder}>
           {selectedLabel ?? placeholder}
         </BaseSelect.Value>
-        <span class='text-text-muted text-xs shrink-0 ml-auto' aria-hidden='true'>
+        <span class='text-text-muted text-xs shrink-0' aria-hidden='true'>
           ▼
         </span>
       </BaseSelect.Trigger>

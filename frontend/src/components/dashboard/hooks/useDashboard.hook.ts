@@ -73,8 +73,7 @@ export const useDashboard = () => {
       goToSettings: () => setLocation('/settings'),
       goToWorkers: () => setLocation('/workers'),
       goToRuns: () => setLocation('/runs'),
-      goToNewProject: () => setLocation('/projects/connect'),
-      goToProjectSettings: () => setLocation('/settings')
+      goToNewProject: () => setLocation('/projects/connect')
     }
   };
 };
