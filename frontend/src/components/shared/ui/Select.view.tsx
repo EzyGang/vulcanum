@@ -38,12 +38,12 @@ export const Select = ({
 }: SelectProps): JSX.Element => {
   const selectedLabel = items.find((o) => o.value === value)?.label;
 
-  const handleValueChange = (nextValue: string | null) => {
-    onValueChange(nextValue ?? '');
-  };
-
   return (
-    <BaseSelect.Root value={value} onValueChange={handleValueChange} disabled={disabled}>
+    <BaseSelect.Root
+      value={value}
+      onValueChange={(v) => onValueChange(v ?? '')}
+      disabled={disabled}
+    >
       <BaseSelect.Trigger
         id={id}
         className={clsx(
