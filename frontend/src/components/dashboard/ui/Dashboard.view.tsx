@@ -203,7 +203,7 @@ export const DashboardView = ({
         emptyMessage='No GitHub App installed.'
         isEmpty={!githubInstallation && !githubLoading}
       >
-        <div class='flex items-center justify-between bg-bg-card border border-border-base p-5'>
+        <div class='flex items-center justify-between px-5 py-3 border-b border-border-base'>
           <div class='flex items-center gap-3'>
             <span class='text-text-primary text-sm font-semibold uppercase tracking-wider'>
               Status
