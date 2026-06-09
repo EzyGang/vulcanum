@@ -29,7 +29,7 @@ export const GitHubAppCardView = ({
 
   return (
     <Card class='flex flex-col gap-4'>
-      <div class='flex items-center justify-between'>
+      <div class='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div class='flex items-center gap-3'>
           <span class='text-text-primary text-sm font-semibold uppercase tracking-wider'>
             GitHub App

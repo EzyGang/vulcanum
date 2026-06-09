@@ -10,6 +10,8 @@ import { StatusBadge } from '../../../shared/ui/StatusBadge.view';
 import { Table } from '../../../shared/ui/Table.view';
 import { RunEventTimelineContainer } from '../../containers/run-events/RunEventTimeline.container';
 
+const COL_SPAN = 9;
+
 interface RunsTableProps {
   runs: WorkRunListItem[];
   selectedIds: Signal<Set<string>>;
@@ -55,11 +57,11 @@ export const RunsTable = ({
       </Table.HeadCell>
       <Table.HeadCell>Task</Table.HeadCell>
       <Table.HeadCell>Status</Table.HeadCell>
-      <Table.HeadCell>Worker</Table.HeadCell>
-      <Table.HeadCell>Duration</Table.HeadCell>
-      <Table.HeadCell>PR</Table.HeadCell>
-      <Table.HeadCell>Created</Table.HeadCell>
-      <Table.HeadCell>Actions</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Worker</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Duration</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>PR</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Created</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Actions</Table.HeadCell>
     </Table.Head>
     <Table.Body>
       {runs.map((run) => {
@@ -90,15 +92,15 @@ export const RunsTable = ({
               <Table.Cell>
                 <StatusBadge status={run.status} />
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
                 <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
                 <span class='text-text-secondary text-sm font-mono'>
                   {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
                 </span>
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
                 {run.resultPrUrl ? (
                   <a
                     href={run.resultPrUrl}
@@ -112,10 +114,10 @@ export const RunsTable = ({
                   <span class='text-text-muted text-sm'>—</span>
                 )}
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
                 <span class='text-text-secondary text-sm'>{formatRelativeTime(run.createdAt)}</span>
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
                 <div class='flex items-center gap-2'>
                   {cancellable && (
                     <Button variant='ghost' onClick={() => onCancelRun(run.id)}>
@@ -139,7 +141,7 @@ export const RunsTable = ({
             </Table.Row>
             {expanded && (
               <Table.Row key={`${run.id}-events`}>
-                <td colSpan={9} class='p-0'>
+                <td colSpan={COL_SPAN} class='p-0'>
                   <div class='p-2'>
                     <RunEventTimelineContainer runId={run.id} status={run.status} />
                   </div>

@@ -85,9 +85,9 @@ export const WorkersView = ({
           <Table.Head>
             <Table.HeadCell>Name</Table.HeadCell>
             <Table.HeadCell>Status</Table.HeadCell>
-            <Table.HeadCell>Last Seen</Table.HeadCell>
-            <Table.HeadCell>Load</Table.HeadCell>
-            <Table.HeadCell>Actions</Table.HeadCell>
+            <Table.HeadCell class='hidden md:table-cell'>Last Seen</Table.HeadCell>
+            <Table.HeadCell class='hidden md:table-cell'>Load</Table.HeadCell>
+            <Table.HeadCell class='hidden md:table-cell'>Actions</Table.HeadCell>
           </Table.Head>
           <Table.Body>
             {workers.map((worker) => (
@@ -98,17 +98,17 @@ export const WorkersView = ({
                 <Table.Cell>
                   <StatusBadge status={worker.status} />
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell class='hidden md:table-cell'>
                   <span class='text-text-secondary text-sm'>{worker.lastSeen}</span>
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell class='hidden md:table-cell'>
                   <ProgressBar
                     value={worker.activeJobs}
                     max={worker.maxConcurrentJobs}
                     showFraction
                   />
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell class='hidden md:table-cell'>
                   <div class='flex items-center gap-2'>
                     {worker.status === 'unhealthy' && (
                       <Button variant='ghost' onClick={() => onUpdateStatus(worker.id, 'idle')}>
