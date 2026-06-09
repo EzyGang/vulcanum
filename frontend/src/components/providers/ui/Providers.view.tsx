@@ -76,7 +76,10 @@ export const ProvidersView = ({
   }
 }: ProvidersViewProps): JSX.Element => (
   <div class='flex flex-col gap-4'>
-    <div class='flex justify-end'>
+    <div class='flex items-center justify-between'>
+      <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>
+        All Providers
+      </h3>
       {!showForm.value && (
         <Button variant='primary' onClick={onShowCreate}>
           Add Provider
