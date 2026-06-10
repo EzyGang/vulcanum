@@ -1,3 +1,4 @@
+use crate::commands::setup::host;
 use crate::commands::setup::prompts::{prompt_code, prompt_instance_url};
 use crate::commands::setup::systemd;
 use crate::console;
@@ -39,8 +40,11 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
         .unwrap_or_else(|| "unnamed-worker".to_owned());
 
     let client = ApiClient::new(&resolved_url);
+    let max_concurrent_jobs = host::calculate_worker_capacity();
 
-    let resp = client.connect(&code, &worker_name).await?;
+    let resp = client
+        .connect(&code, &worker_name, Some(max_concurrent_jobs))
+        .await?;
 
     let state = WorkerState {
         worker_id: resp.worker_id,

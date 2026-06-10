@@ -28,11 +28,17 @@ impl ApiClient {
         &self.base_url
     }
 
-    pub async fn connect(&self, code: &str, worker_name: &str) -> anyhow::Result<ConnectResponse> {
+    pub async fn connect(
+        &self,
+        code: &str,
+        worker_name: &str,
+        max_concurrent_jobs: Option<i32>,
+    ) -> anyhow::Result<ConnectResponse> {
         let url = format!("{}/api/v1/workers/connect", self.base_url);
         let body = ConnectRequest {
             code: code.to_owned(),
             worker_name: worker_name.to_owned(),
+            max_concurrent_jobs,
         };
         let resp = self
             .http

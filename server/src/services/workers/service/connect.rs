@@ -23,6 +23,9 @@ impl WorkersService {
         let refresh_token = generate_random_token(model::TOKEN_LENGTH);
         let refresh_hash = hash_token(&refresh_token);
         let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
+        let max_concurrent_jobs = req
+            .max_concurrent_jobs
+            .unwrap_or(model::DEFAULT_MAX_CONCURRENT_JOBS);
 
         let worker = self
             .repo
@@ -32,6 +35,7 @@ impl WorkersService {
                 &refresh_hash,
                 refresh_expires_at,
                 &json!({}),
+                max_concurrent_jobs,
             )
             .await?;
 

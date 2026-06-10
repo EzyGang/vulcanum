@@ -3,6 +3,8 @@ use chrono::{Duration, Utc};
 use crate::services::workers::model::WorkerStatus;
 use crate::services::workers::repository::WorkersRepository;
 
+const DEFAULT_TEST_CAPACITY: i32 = 3;
+
 fn default_expires_at() -> chrono::DateTime<Utc> {
     Utc::now() + Duration::days(30)
 }
@@ -17,12 +19,14 @@ async fn create_inserts_worker(pool: sqlx::PgPool) {
             "refresh-hash",
             default_expires_at(),
             &serde_json::json!({}),
+            DEFAULT_TEST_CAPACITY,
         )
         .await
         .expect("Should create worker");
 
     assert_eq!(worker.name, "test-worker");
     assert_eq!(worker.refresh_token_hash, "refresh-hash");
+    assert_eq!(worker.max_concurrent_jobs, DEFAULT_TEST_CAPACITY);
     assert!(matches!(worker.status, WorkerStatus::Idle));
 }
 
@@ -36,6 +40,7 @@ async fn find_by_id_returns_worker(pool: sqlx::PgPool) {
             "hash1",
             default_expires_at(),
             &serde_json::json!({}),
+            DEFAULT_TEST_CAPACITY,
         )
         .await
         .unwrap();
@@ -72,6 +77,7 @@ async fn find_by_refresh_token_hash_returns_worker(pool: sqlx::PgPool) {
             "rt-hash",
             default_expires_at(),
             &serde_json::json!({}),
+            DEFAULT_TEST_CAPACITY,
         )
         .await
         .unwrap();
@@ -93,6 +99,7 @@ async fn delete_removes_worker(pool: sqlx::PgPool) {
             "h",
             default_expires_at(),
             &serde_json::json!({}),
+            DEFAULT_TEST_CAPACITY,
         )
         .await
         .unwrap();
@@ -113,12 +120,26 @@ async fn delete_removes_worker(pool: sqlx::PgPool) {
 async fn list_all_returns_workers(pool: sqlx::PgPool) {
     let repo = WorkersRepository::new();
     let expiry = default_expires_at();
-    repo.create(&pool, "w1", "h1", expiry, &serde_json::json!({}))
-        .await
-        .unwrap();
-    repo.create(&pool, "w2", "h2", expiry, &serde_json::json!({}))
-        .await
-        .unwrap();
+    repo.create(
+        &pool,
+        "w1",
+        "h1",
+        expiry,
+        &serde_json::json!({}),
+        DEFAULT_TEST_CAPACITY,
+    )
+    .await
+    .unwrap();
+    repo.create(
+        &pool,
+        "w2",
+        "h2",
+        expiry,
+        &serde_json::json!({}),
+        DEFAULT_TEST_CAPACITY,
+    )
+    .await
+    .unwrap();
 
     let all = repo.list_all(&pool).await.expect("Should list");
     assert_eq!(all.len(), 2);
@@ -135,6 +156,7 @@ async fn update_refresh_token_rotates_hash(pool: sqlx::PgPool) {
             "old-hash",
             expiry,
             &serde_json::json!({}),
+            DEFAULT_TEST_CAPACITY,
         )
         .await
         .unwrap();
