@@ -27,6 +27,7 @@ export const useLogin = () => {
         })
         .finally(() => {
           loading.value = false;
+          modeLoading.value = false;
         });
       return;
     }

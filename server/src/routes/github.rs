@@ -17,8 +17,8 @@ pub async fn auth_redirect(
         .resolve_team(&auth, state.is_single_user)
         .await?;
     let user_id = match auth {
-        TeamPrincipal::User { user_id, .. } => user_id,
-        TeamPrincipal::Instance => "instance".to_owned(),
+        TeamPrincipal::User { user_id, .. } => Some(user_id),
+        TeamPrincipal::Instance => None,
     };
     state
         .github
@@ -104,7 +104,7 @@ pub async fn callback(
         .github
         .create_installation(
             install_state.team_id,
-            Some(&install_state.user_id),
+            install_state.user_id.as_deref(),
             query.installation_id,
         )
         .await

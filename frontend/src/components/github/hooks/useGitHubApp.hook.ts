@@ -33,8 +33,19 @@ export const useGitHubApp = () => {
   });
 
   const onConnect = async () => {
-    const { url } = await getAuthUrl();
-    window.open(url, '_blank');
+    const installWindow = window.open('', '_blank');
+
+    try {
+      const { url } = await getAuthUrl();
+      if (installWindow) {
+        installWindow.location.href = url;
+        return;
+      }
+      window.location.href = url;
+    } catch (error) {
+      installWindow?.close();
+      throw error;
+    }
   };
 
   return {

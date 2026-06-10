@@ -47,7 +47,7 @@ pub struct RepoInfo {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GithubInstallState {
-    pub user_id: String,
+    pub user_id: Option<String>,
     pub team_id: Uuid,
 }
 
