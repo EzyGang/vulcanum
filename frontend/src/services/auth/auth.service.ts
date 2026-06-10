@@ -1,4 +1,5 @@
 import type {
+  AuthExchangeRequest,
   AuthModeResponse,
   AuthTokenResponse,
   InstanceLoginRequest,
@@ -16,6 +17,11 @@ export const instanceLogin = (password: string) =>
 export const getAuthMode = () => get<AuthModeResponse>('/auth/mode');
 
 export const getMe = () => get<MeResponse>('/auth/me');
+
+export const exchangeAuthCode = (code: string) =>
+  post<AuthTokenResponse>('/auth/exchange', {
+    code
+  } as AuthExchangeRequest);
 
 export const refreshAuth = (refreshToken: string) =>
   post<AuthTokenResponse>('/auth/refresh', {

@@ -16,6 +16,10 @@ export interface RefreshRequest {
   refreshToken: string;
 }
 
+export interface AuthExchangeRequest {
+  code: string;
+}
+
 export interface AuthModeResponse {
   isSingleUser: boolean;
 }

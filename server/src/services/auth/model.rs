@@ -52,7 +52,12 @@ pub struct LogoutRequest {
     pub refresh_token: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize)]
+pub struct AuthExchangeRequest {
+    pub code: String,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct AuthTokenResponse {
     pub access_token: String,
     pub refresh_token: String,

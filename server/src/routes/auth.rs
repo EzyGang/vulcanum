@@ -4,9 +4,9 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::auth::model::{
-    AuthModeResponse, GithubCallbackQuery, InstanceLoginRequest, InstanceLoginResponse,
-    LoginRequest, LoginResponse, LogoutRequest, MeResponse, RefreshRequest, TeamInfo, UserInfo,
-    VerifyQuery, VerifyResponse,
+    AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, InstanceLoginRequest,
+    InstanceLoginResponse, LoginRequest, LoginResponse, LogoutRequest, MeResponse, RefreshRequest,
+    TeamInfo, UserInfo, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
@@ -63,14 +63,21 @@ pub async fn github_callback(
         .auth
         .github_callback(&query.code, &query.state)
         .await?;
-    let location = format!(
-        "/login?token={}&refresh_token={}",
-        token_pair.access_token, token_pair.refresh_token
-    );
+    let code = state.auth.create_user_callback_code(&token_pair)?;
+    let location = format!("/login?code={code}");
 
     Ok(HttpResponse::Found()
         .append_header(("Location", location))
         .finish())
+}
+
+pub async fn exchange(
+    state: web::Data<AppState>,
+    body: web::Json<AuthExchangeRequest>,
+) -> Result<HttpResponse, AppError> {
+    let response = state.auth.exchange_user_callback_code(&body.code)?;
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub async fn refresh(

@@ -2,7 +2,11 @@ import { type Signal, useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 
-import { getAuthMode, getGithubLoginUrl } from '../../../services/auth/auth.service';
+import {
+  exchangeAuthCode,
+  getAuthMode,
+  getGithubLoginUrl
+} from '../../../services/auth/auth.service';
 import { acceptToken, login } from '../../../stores/auth.store';
 import { ApiError } from '../../../utils/api/client';
 
@@ -38,11 +42,11 @@ export const useLogin = (): LoginViewProps => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    const refreshToken = params.get('refresh_token');
-    if (token) {
+    const code = params.get('code');
+    if (code) {
       loading.value = true;
-      acceptToken(token, true, refreshToken ?? undefined)
+      exchangeAuthCode(code)
+        .then((tokenPair) => acceptToken(tokenPair.accessToken, true, tokenPair.refreshToken))
         .then(() => setLocation('/'))
         .catch(() => {
           error.value = 'GitHub login failed';

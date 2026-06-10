@@ -86,7 +86,13 @@ const refreshAccessToken = async (): Promise<boolean> => {
 };
 
 const shouldRefreshRequest = (path: string): boolean =>
-  !['/auth/refresh', '/auth/instance-login', '/auth/login', '/auth/verify'].includes(path);
+  ![
+    '/auth/exchange',
+    '/auth/refresh',
+    '/auth/instance-login',
+    '/auth/login',
+    '/auth/verify'
+  ].includes(path);
 
 const sanitizeLogBody = (body: unknown): unknown => {
   if (body == null || typeof body !== 'object') return body;

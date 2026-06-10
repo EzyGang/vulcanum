@@ -8,6 +8,7 @@ use crate::services::auth::model::AuthTokenResponse;
 use crate::services::auth::service::AuthService;
 
 const USER_ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
+const USER_CALLBACK_TOKEN_TTL_MINUTES: i64 = 5;
 const USER_REFRESH_TOKEN_TTL_DAYS: i64 = 30;
 const USER_REFRESH_TOKEN_LENGTH: usize = 64;
 
@@ -71,6 +72,26 @@ impl AuthService {
         self.repo
             .revoke_refresh_token(&self.db, &refresh_token_hash)
             .await
+    }
+
+    pub fn create_user_callback_code(
+        &self,
+        token_pair: &AuthTokenResponse,
+    ) -> Result<String, AuthError> {
+        let code = generate_random_token(USER_REFRESH_TOKEN_LENGTH);
+        let payload = serde_json::to_string(token_pair).map_err(|_| AuthError::InvalidToken)?;
+        self.token_store
+            .insert(&code, &payload, USER_CALLBACK_TOKEN_TTL_MINUTES);
+
+        Ok(code)
+    }
+
+    pub fn exchange_user_callback_code(&self, code: &str) -> Result<AuthTokenResponse, AuthError> {
+        let payload = self
+            .token_store
+            .consume(code)
+            .ok_or(AuthError::InvalidToken)?;
+        serde_json::from_str(&payload).map_err(|_| AuthError::InvalidToken)
     }
 
     pub fn build_user_jwt(&self, user_id: &str) -> Result<String, AuthError> {

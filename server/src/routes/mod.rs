@@ -21,6 +21,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/auth/verify", web::get().to(auth::verify))
             .route("/auth/mode", web::get().to(auth::mode))
             .route("/auth/me", web::get().to(auth::me))
+            .route("/auth/exchange", web::post().to(auth::exchange))
             .route("/auth/refresh", web::post().to(auth::refresh))
             .route("/auth/github/start", web::get().to(auth::github_start))
             .route(
