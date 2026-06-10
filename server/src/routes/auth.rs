@@ -5,7 +5,8 @@ use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::auth::model::{
     AuthModeResponse, GithubCallbackQuery, InstanceLoginRequest, InstanceLoginResponse,
-    LoginRequest, LoginResponse, MeResponse, TeamInfo, UserInfo, VerifyQuery, VerifyResponse,
+    LoginRequest, LoginResponse, LogoutRequest, MeResponse, RefreshRequest, TeamInfo, UserInfo,
+    VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
@@ -58,15 +59,27 @@ pub async fn github_callback(
     state: web::Data<AppState>,
     query: web::Query<GithubCallbackQuery>,
 ) -> Result<HttpResponse, AppError> {
-    let token = state
+    let token_pair = state
         .auth
         .github_callback(&query.code, &query.state)
         .await?;
-    let location = format!("/login?token={token}");
+    let location = format!(
+        "/login?token={}&refresh_token={}",
+        token_pair.access_token, token_pair.refresh_token
+    );
 
     Ok(HttpResponse::Found()
         .append_header(("Location", location))
         .finish())
+}
+
+pub async fn refresh(
+    state: web::Data<AppState>,
+    body: web::Json<RefreshRequest>,
+) -> Result<HttpResponse, AppError> {
+    let response = state.auth.refresh_user_token(&body.refresh_token).await?;
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub async fn me(state: web::Data<AppState>, auth: TeamPrincipal) -> Result<HttpResponse, AppError> {
@@ -82,16 +95,29 @@ pub async fn me(state: web::Data<AppState>, auth: TeamPrincipal) -> Result<HttpR
         .into_iter()
         .map(TeamInfo::from)
         .collect();
+    let identities = state
+        .teams
+        .list_identities_for_user(&user_id)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect();
 
     Ok(HttpResponse::Ok().json(MeResponse {
         user: UserInfo::from(user),
         teams,
+        identities,
     }))
 }
 
 pub async fn logout(
-    _state: web::Data<AppState>,
+    state: web::Data<AppState>,
     _auth: TeamPrincipal,
+    body: Option<web::Json<LogoutRequest>>,
 ) -> Result<HttpResponse, AppError> {
+    if let Some(refresh_token) = body.and_then(|body| body.refresh_token.clone()) {
+        state.auth.revoke_user_refresh_token(&refresh_token).await?;
+    }
+
     Ok(HttpResponse::NoContent().finish())
 }

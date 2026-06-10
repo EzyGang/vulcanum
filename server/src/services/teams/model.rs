@@ -25,3 +25,11 @@ pub struct UserIdentity {
     pub provider_user_id: String,
     pub provider_login: String,
 }
+
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct ProviderIdentity {
+    pub provider: String,
+    pub provider_user_id: String,
+    pub provider_login: String,
+    pub provider_verified_at: Option<DateTime<Utc>>,
+}

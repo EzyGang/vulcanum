@@ -2,7 +2,9 @@ use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::teams::errors::TeamsError;
-use crate::services::teams::model::{Team, TeamMember, UserIdentity};
+use sqlx::Row;
+
+use crate::services::teams::model::{ProviderIdentity, Team, TeamMember, UserIdentity};
 
 #[derive(Clone, Default)]
 pub struct TeamsRepository;
@@ -151,22 +153,54 @@ impl TeamsRepository {
         Q: Queryer<'c>,
     {
         let id = Uuid::new_v4();
-        sqlx::query!(
-            r#"INSERT INTO user_identities (id, user_id, provider, provider_user_id, provider_login)
-             VALUES ($1, $2, $3, $4, $5)
+        sqlx::query(
+            r#"INSERT INTO user_identities (id, user_id, provider, provider_user_id, provider_login, provider_verified_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
              ON CONFLICT (provider, provider_user_id) DO UPDATE SET
-                user_id = EXCLUDED.user_id,
-                provider_login = EXCLUDED.provider_login,
-                updated_at = NOW()"#,
-            id,
-            user_id,
-            provider,
-            provider_user_id,
-            provider_login,
+                 user_id = EXCLUDED.user_id,
+                 provider_login = EXCLUDED.provider_login,
+                 provider_verified_at = NOW(),
+                 updated_at = NOW()"#,
         )
+        .bind(id)
+        .bind(user_id)
+        .bind(provider)
+        .bind(provider_user_id)
+        .bind(provider_login)
         .execute(db)
         .await
         .map(|_| ())
         .map_err(TeamsError::from)
+    }
+
+    pub async fn list_identities_for_user<'c, Q>(
+        &self,
+        db: Q,
+        user_id: &str,
+    ) -> Result<Vec<ProviderIdentity>, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        let rows = sqlx::query(
+            r#"SELECT provider, provider_user_id, provider_login, provider_verified_at
+             FROM user_identities
+             WHERE user_id = $1
+             ORDER BY provider ASC"#,
+        )
+        .bind(user_id)
+        .fetch_all(db)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(ProviderIdentity {
+                    provider: row.try_get("provider")?,
+                    provider_user_id: row.try_get("provider_user_id")?,
+                    provider_login: row.try_get("provider_login")?,
+                    provider_verified_at: row.try_get("provider_verified_at")?,
+                })
+            })
+            .collect::<Result<Vec<_>, sqlx::Error>>()
+            .map_err(TeamsError::from)
     }
 }

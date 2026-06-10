@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::teams::errors::TeamsError;
-use crate::services::teams::model::Team;
+use crate::services::teams::model::{ProviderIdentity, Team};
 use crate::services::teams::repository::TeamsRepository;
 
 #[derive(Clone)]
@@ -19,6 +19,13 @@ impl TeamsService {
 
     pub async fn list_for_user(&self, user_id: &str) -> Result<Vec<Team>, TeamsError> {
         self.repo.list_for_user(&self.db, user_id).await
+    }
+
+    pub async fn list_identities_for_user(
+        &self,
+        user_id: &str,
+    ) -> Result<Vec<ProviderIdentity>, TeamsError> {
+        self.repo.list_identities_for_user(&self.db, user_id).await
     }
 
     pub async fn resolve_team(

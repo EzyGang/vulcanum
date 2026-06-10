@@ -1,11 +1,9 @@
-use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, EncodingKey, Header};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::services::auth::errors::AuthError;
+use crate::services::auth::model::AuthTokenResponse;
 use crate::services::auth::service::AuthService;
 const GITHUB_OAUTH_STATE_TTL_MINUTES: i64 = 10;
-const USER_TOKEN_TTL_HOURS: i64 = 24;
 
 #[derive(Deserialize)]
 struct GithubTokenResponse {
@@ -17,14 +15,6 @@ struct GithubUserResponse {
     id: u64,
     login: String,
     email: Option<String>,
-}
-
-#[derive(Serialize)]
-struct UserClaims {
-    sub: String,
-    typ: String,
-    exp: usize,
-    iat: usize,
 }
 
 impl AuthService {
@@ -58,7 +48,11 @@ impl AuthService {
         Ok(url.to_string())
     }
 
-    pub async fn github_callback(&self, code: &str, state: &str) -> Result<String, AuthError> {
+    pub async fn github_callback(
+        &self,
+        code: &str,
+        state: &str,
+    ) -> Result<AuthTokenResponse, AuthError> {
         if self.is_single_user {
             return Err(AuthError::InvalidToken);
         }
@@ -107,24 +101,7 @@ impl AuthService {
             .map_err(|_| AuthError::InvalidToken)?;
         self.users.update_last_login(&user.id).await?;
 
-        self.build_user_jwt(&user.id)
-    }
-
-    pub fn build_user_jwt(&self, user_id: &str) -> Result<String, AuthError> {
-        let now = Utc::now();
-        let claims = UserClaims {
-            sub: user_id.to_owned(),
-            typ: "user".to_owned(),
-            iat: now.timestamp() as usize,
-            exp: (now + Duration::hours(USER_TOKEN_TTL_HOURS)).timestamp() as usize,
-        };
-
-        encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(self.jwt_secret.as_bytes()),
-        )
-        .map_err(|_| AuthError::InvalidToken)
+        self.issue_user_token_pair(&user.id).await
     }
 
     async fn exchange_github_code(&self, code: &str) -> Result<String, AuthError> {

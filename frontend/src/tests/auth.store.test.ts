@@ -10,14 +10,22 @@ vi.mock('../utils/api/client', () => ({
 }));
 
 import { instanceLogin } from '../services/auth/auth.service';
-import { accessToken, login, logout } from '../stores/auth.store';
+import {
+  accessToken,
+  login,
+  logout,
+  REFRESH_STORAGE_KEY,
+  refreshToken
+} from '../stores/auth.store';
 
 const TEST_KEY = 'vulcanum-auth-token';
 
 describe('auth.store', () => {
   beforeEach(() => {
     localStorage.removeItem(TEST_KEY);
+    localStorage.removeItem(REFRESH_STORAGE_KEY);
     accessToken.value = null;
+    refreshToken.value = null;
     vi.clearAllMocks();
   });
 
@@ -27,12 +35,16 @@ describe('auth.store', () => {
 
   it('logout clears the token signal and localStorage', async () => {
     accessToken.value = 'test-token';
+    refreshToken.value = 'test-refresh-token';
     localStorage.setItem(TEST_KEY, 'test-token');
+    localStorage.setItem(REFRESH_STORAGE_KEY, 'test-refresh-token');
 
     await logout();
 
     expect(accessToken.value).toBeNull();
+    expect(refreshToken.value).toBeNull();
     expect(localStorage.getItem(TEST_KEY)).toBeNull();
+    expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBeNull();
   });
 
   it('login sets token in signal and localStorage on success', async () => {

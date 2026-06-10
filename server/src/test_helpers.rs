@@ -3,6 +3,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::services::auth::repository::AuthRepository;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
@@ -183,6 +184,8 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
     .expect("build github manager for tests");
 
     let auth = AuthService::new(
+        AuthRepository::new(),
+        pool.clone(),
         UsersService::new(UsersRepository::new(), pool.clone()),
         teams.clone(),
         "test-password".to_owned(),

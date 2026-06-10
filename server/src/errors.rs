@@ -136,7 +136,12 @@ impl From<AuthError> for AppError {
     fn from(err: AuthError) -> Self {
         match err {
             AuthError::InvalidToken => Self::InvalidToken,
+            AuthError::InvalidRefreshToken => Self::InvalidRefreshToken,
             AuthError::InvalidPassword => Self::InvalidPassword,
+            AuthError::Database(e) => {
+                tracing::error!(error = %e, operation = "auth", "database error");
+                Self::Internal
+            }
             AuthError::Users(u) => u.into(),
         }
     }

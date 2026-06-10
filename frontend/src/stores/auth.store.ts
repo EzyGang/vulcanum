@@ -4,11 +4,14 @@ import type { AuthTeam, AuthUser } from '../types/auth';
 import { fetchApi } from '../utils/api/client';
 
 export const STORAGE_KEY = 'vulcanum-auth-token';
+export const REFRESH_STORAGE_KEY = 'vulcanum-refresh-token';
 export const TEAM_STORAGE_KEY = 'vulcanum-team-id';
 
 const loadToken = (): string | null => localStorage.getItem(STORAGE_KEY);
+const loadRefreshToken = (): string | null => localStorage.getItem(REFRESH_STORAGE_KEY);
 
 export const accessToken = signal<string | null>(loadToken());
+export const refreshToken = signal<string | null>(loadRefreshToken());
 export const currentUser = signal<AuthUser | null>(null);
 export const teams = signal<AuthTeam[]>([]);
 export const selectedTeamId = signal<string | null>(localStorage.getItem(TEAM_STORAGE_KEY));
@@ -18,9 +21,17 @@ export const setSelectedTeamId = (teamId: string): void => {
   localStorage.setItem(TEAM_STORAGE_KEY, teamId);
 };
 
-export const acceptToken = async (token: string, loadUser = true): Promise<void> => {
+export const acceptToken = async (
+  token: string,
+  loadUser = true,
+  newRefreshToken?: string
+): Promise<void> => {
   accessToken.value = token;
   localStorage.setItem(STORAGE_KEY, token);
+  if (newRefreshToken) {
+    refreshToken.value = newRefreshToken;
+    localStorage.setItem(REFRESH_STORAGE_KEY, newRefreshToken);
+  }
   if (loadUser) {
     await loadSession();
   }
@@ -48,15 +59,22 @@ export const logout = async (): Promise<void> => {
   const token = accessToken.value;
   if (token) {
     try {
-      await fetchApi('/auth/logout', { method: 'POST' });
+      await fetchApi('/auth/logout', {
+        method: 'POST',
+        body: {
+          refreshToken: refreshToken.value
+        }
+      });
     } catch {
-      // Token expires server-side in 15 minutes regardless
+      // Local cleanup still removes the refresh token if the access token already expired.
     }
   }
   accessToken.value = null;
+  refreshToken.value = null;
   currentUser.value = null;
   teams.value = [];
   selectedTeamId.value = null;
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(REFRESH_STORAGE_KEY);
   localStorage.removeItem(TEAM_STORAGE_KEY);
 };

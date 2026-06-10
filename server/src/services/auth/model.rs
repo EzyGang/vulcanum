@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::services::teams::model::ProviderIdentity;
 use crate::services::teams::model::Team;
 use crate::services::users::model::User;
 
@@ -42,6 +43,23 @@ pub struct InstanceLoginResponse {
 }
 
 #[derive(Deserialize)]
+pub struct RefreshRequest {
+    pub refresh_token: String,
+}
+
+#[derive(Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct AuthTokenResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub refresh_expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Deserialize)]
 pub struct GithubCallbackQuery {
     pub code: String,
     pub state: String,
@@ -56,12 +74,21 @@ pub struct AuthModeResponse {
 pub struct MeResponse {
     pub user: UserInfo,
     pub teams: Vec<TeamInfo>,
+    pub identities: Vec<IdentityInfo>,
 }
 
 #[derive(Serialize)]
 pub struct TeamInfo {
     pub id: Uuid,
     pub name: String,
+}
+
+#[derive(Serialize)]
+pub struct IdentityInfo {
+    pub provider: String,
+    pub provider_user_id: String,
+    pub login: String,
+    pub verified_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 impl From<User> for UserInfo {
@@ -78,6 +105,17 @@ impl From<Team> for TeamInfo {
         Self {
             id: team.id,
             name: team.name,
+        }
+    }
+}
+
+impl From<ProviderIdentity> for IdentityInfo {
+    fn from(identity: ProviderIdentity) -> Self {
+        Self {
+            provider: identity.provider,
+            provider_user_id: identity.provider_user_id,
+            login: identity.provider_login,
+            verified_at: identity.provider_verified_at,
         }
     }
 }

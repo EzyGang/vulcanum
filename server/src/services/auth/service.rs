@@ -1,3 +1,6 @@
+use sqlx::PgPool;
+
+use crate::services::auth::repository::AuthRepository;
 use crate::services::auth::token_store::TokenStore;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::service::UsersService;
@@ -5,10 +8,13 @@ use crate::services::users::service::UsersService;
 pub mod github_oauth;
 pub mod instance_login;
 pub mod login;
+pub mod refresh;
 pub mod verify;
 
 #[derive(Clone)]
 pub struct AuthService {
+    pub repo: AuthRepository,
+    pub db: PgPool,
     pub users: UsersService,
     pub teams: TeamsService,
     pub token_store: TokenStore,
@@ -22,6 +28,8 @@ pub struct AuthService {
 
 impl AuthService {
     pub fn new(
+        repo: AuthRepository,
+        db: PgPool,
         users: UsersService,
         teams: TeamsService,
         instance_password: String,
@@ -29,6 +37,8 @@ impl AuthService {
         cfg: &crate::config::AppConfig,
     ) -> Self {
         Self {
+            repo,
+            db,
             users,
             teams,
             token_store: TokenStore::new(),

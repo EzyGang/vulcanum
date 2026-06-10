@@ -1,4 +1,10 @@
-import { accessToken, STORAGE_KEY, selectedTeamId } from '../../stores/auth.store';
+import {
+  accessToken,
+  REFRESH_STORAGE_KEY,
+  refreshToken,
+  STORAGE_KEY,
+  selectedTeamId
+} from '../../stores/auth.store';
 import { camelKeys, snakeKeys } from './snake-camel';
 
 const isDevelopment = import.meta.env.DEV;
@@ -33,7 +39,54 @@ const buildUrl = (path: string, params?: Record<string, string | number | boolea
   return `${url}?${search.toString()}`;
 };
 
-const SENSITIVE_FIELDS = new Set(['password', 'token', 'secret', 'api_key']);
+const SENSITIVE_FIELDS = new Set([
+  'password',
+  'token',
+  'accessToken',
+  'access_token',
+  'refreshToken',
+  'refresh_token',
+  'secret',
+  'api_key'
+]);
+
+const clearStoredTokens = (): void => {
+  accessToken.value = null;
+  refreshToken.value = null;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(REFRESH_STORAGE_KEY);
+};
+
+const refreshAccessToken = async (): Promise<boolean> => {
+  if (!refreshToken.value) return false;
+
+  const response = await fetch(buildUrl('/auth/refresh'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ refresh_token: refreshToken.value })
+  });
+
+  if (!response.ok) {
+    clearStoredTokens();
+    return false;
+  }
+
+  const data = camelKeys(await response.json()) as {
+    accessToken: string;
+    refreshToken: string;
+  };
+  accessToken.value = data.accessToken;
+  refreshToken.value = data.refreshToken;
+  localStorage.setItem(STORAGE_KEY, data.accessToken);
+  localStorage.setItem(REFRESH_STORAGE_KEY, data.refreshToken);
+
+  return true;
+};
+
+const shouldRefreshRequest = (path: string): boolean =>
+  !['/auth/refresh', '/auth/instance-login', '/auth/login', '/auth/verify'].includes(path);
 
 const sanitizeLogBody = (body: unknown): unknown => {
   if (body == null || typeof body !== 'object') return body;
@@ -73,39 +126,44 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
   const { body, params, ...init } = options;
   const method = (init.method || 'GET').toUpperCase();
   const url = buildUrl(path, method === 'GET' ? params : undefined);
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(init.headers as Record<string, string> | undefined)
-  };
-
-  const token = accessToken.value;
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  if (selectedTeamId.value) {
-    headers['X-Team-Id'] = selectedTeamId.value;
-  }
-
   const requestBody = body != null ? JSON.stringify(snakeKeys(body)) : undefined;
+
+  const sendRequest = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init.headers as Record<string, string> | undefined)
+    };
+
+    const token = accessToken.value;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (selectedTeamId.value) {
+      headers['X-Team-Id'] = selectedTeamId.value;
+    }
+
+    return fetch(url, {
+      ...init,
+      method,
+      headers,
+      body: requestBody
+    });
+  };
 
   logRequest(method, url, body);
 
-  const response = await fetch(url, {
-    ...init,
-    method,
-    headers,
-    body: requestBody
-  });
+  let response = await sendRequest();
+  if (response.status === 401 && shouldRefreshRequest(path) && (await refreshAccessToken())) {
+    response = await sendRequest();
+  }
 
   const isJson = response.headers.get('content-type')?.includes('application/json');
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
     if (response.status === 401) {
-      accessToken.value = null;
-      localStorage.removeItem(STORAGE_KEY);
+      clearStoredTokens();
     }
 
     const errorMessage =

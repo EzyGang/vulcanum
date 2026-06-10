@@ -39,9 +39,10 @@ export const useLogin = (): LoginViewProps => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
+    const refreshToken = params.get('refresh_token');
     if (token) {
       loading.value = true;
-      acceptToken(token)
+      acceptToken(token, true, refreshToken ?? undefined)
         .then(() => setLocation('/'))
         .catch(() => {
           error.value = 'GitHub login failed';

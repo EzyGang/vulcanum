@@ -3,6 +3,7 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::config::AppConfig;
+use crate::services::auth::repository::AuthRepository;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::{
     CancelStore, InMemoryCancelStore, RedisCancelStore,
@@ -57,6 +58,8 @@ impl AppState {
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
         let auth = AuthService::new(
+            AuthRepository::new(),
+            db_pool.clone(),
             users,
             teams.clone(),
             cfg.instance_password.clone(),
