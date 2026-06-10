@@ -16,7 +16,7 @@ use crate::providers::opencode::runner::SessionConfig;
 use crate::providers::opencode::OpenCodeClient;
 use crate::recovery::cleanup::kill_host_process_group;
 use crate::recovery::cleanup::remove_container;
-use crate::state::journal::{Journal, JournalEntry, JournalStatus};
+use crate::state::journal::{Journal, JournalEntry, JournalResultUpdate, JournalStatus};
 
 pub(crate) async fn recover_session_task(
     entry: JournalEntry,
@@ -120,7 +120,18 @@ pub(crate) async fn mark_lost_and_submit(
     worker_state: &Arc<RwLock<WorkerState>>,
     entry: &JournalEntry,
 ) {
-    let _ = journal.update_result(entry.job_id, 1, 0, None, 0, JournalStatus::Lost);
+    let _ = journal.update_result(JournalResultUpdate {
+        job_id: entry.job_id,
+        exit_code: 1,
+        tokens_used: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        pr_url: None,
+        duration_ms: 0,
+        status: JournalStatus::Lost,
+    });
 
     let result = SubmitResultRequest {
         pr_url: String::new(),

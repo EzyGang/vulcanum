@@ -1,7 +1,7 @@
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::state::journal::{Journal, JournalStatus};
+use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
 
 fn open_journal() -> Journal {
     let tmp = std::env::temp_dir().join(format!("vulcanum-journal-test-{}", Uuid::new_v4()));
@@ -45,7 +45,18 @@ fn update_result_transitions_status() {
         .expect("should insert");
 
     journal
-        .update_result(job_id, 0, 100, None, 5_000, JournalStatus::Completed)
+        .update_result(JournalResultUpdate {
+            job_id,
+            exit_code: 0,
+            tokens_used: 100,
+            input_tokens: 60,
+            output_tokens: 30,
+            cache_read_tokens: 8,
+            cache_write_tokens: 2,
+            pr_url: None,
+            duration_ms: 5_000,
+            status: JournalStatus::Completed,
+        })
         .expect("should update");
 
     let running = journal.list_running().expect("should list");
@@ -79,7 +90,18 @@ fn mark_submitted_transitions() {
         .expect("should insert");
 
     journal
-        .update_result(job_id, 0, 100, None, 5_000, JournalStatus::Completed)
+        .update_result(JournalResultUpdate {
+            job_id,
+            exit_code: 0,
+            tokens_used: 100,
+            input_tokens: 60,
+            output_tokens: 30,
+            cache_read_tokens: 8,
+            cache_write_tokens: 2,
+            pr_url: None,
+            duration_ms: 5_000,
+            status: JournalStatus::Completed,
+        })
         .expect("should update");
 
     journal
@@ -95,6 +117,43 @@ fn list_running_returns_empty_when_no_running_jobs() {
     let journal = open_journal();
     let running = journal.list_running().expect("should list");
     assert!(running.is_empty());
+}
+
+#[test]
+fn update_result_persists_granular_tokens() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+
+    journal
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .expect("should insert");
+
+    journal
+        .update_result(JournalResultUpdate {
+            job_id,
+            exit_code: 0,
+            tokens_used: 1_200,
+            input_tokens: 700,
+            output_tokens: 300,
+            cache_read_tokens: 150,
+            cache_write_tokens: 50,
+            pr_url: Some("https://github.com/EzyGang/vulcanum/pull/1"),
+            duration_ms: 12_345,
+            status: JournalStatus::Running,
+        })
+        .expect("should update");
+
+    let running = journal.list_running().expect("should list");
+    let entry = running
+        .into_iter()
+        .find(|e| e.job_id == job_id)
+        .expect("entry found");
+
+    assert_eq!(entry.tokens_used, Some(1_200));
+    assert_eq!(entry.input_tokens, Some(700));
+    assert_eq!(entry.output_tokens, Some(300));
+    assert_eq!(entry.cache_read_tokens, Some(150));
+    assert_eq!(entry.cache_write_tokens, Some(50));
 }
 
 #[test]
@@ -115,7 +174,18 @@ fn multiple_jobs_with_mixed_statuses() {
         .expect("insert 3");
 
     journal
-        .update_result(id1, 0, 500, None, 10_000, JournalStatus::Completed)
+        .update_result(JournalResultUpdate {
+            job_id: id1,
+            exit_code: 0,
+            tokens_used: 500,
+            input_tokens: 250,
+            output_tokens: 150,
+            cache_read_tokens: 75,
+            cache_write_tokens: 25,
+            pr_url: None,
+            duration_ms: 10_000,
+            status: JournalStatus::Completed,
+        })
         .expect("complete 1");
 
     let running = journal.list_running().expect("should list");

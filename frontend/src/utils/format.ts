@@ -1,3 +1,8 @@
+const COMPACT_NUMBER_FORMATTER = new Intl.NumberFormat('en', {
+  maximumFractionDigits: 1,
+  notation: 'compact'
+});
+
 export const formatRelativeTime = (dateStr: string | null): string => {
   if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -30,4 +35,10 @@ export const formatDuration = (ms: number): string => {
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   return `${h}h ${m}m`;
+};
+
+export const formatTokenCount = (tokens: number | null | undefined): string => {
+  if (tokens === null || tokens === undefined) return '—';
+
+  return COMPACT_NUMBER_FORMATTER.format(tokens);
 };

@@ -2,7 +2,7 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../../types/runs';
 import { CANCELLABLE_STATUSES } from '../../../../types/runs';
-import { formatDuration, formatRelativeTime } from '../../../../utils/format';
+import { formatDuration, formatRelativeTime, formatTokenCount } from '../../../../utils/format';
 import { Button } from '../../../shared/ui/Button.view';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
 import { ConfirmDelete } from '../../../shared/ui/ConfirmDelete.view';
@@ -10,7 +10,7 @@ import { StatusBadge } from '../../../shared/ui/StatusBadge.view';
 import { Table } from '../../../shared/ui/Table.view';
 import { RunEventTimelineContainer } from '../../containers/run-events/RunEventTimeline.container';
 
-const COL_SPAN = 9;
+const COL_SPAN = 10;
 
 interface RunsTableProps {
   runs: WorkRunListItem[];
@@ -59,6 +59,7 @@ export const RunsTable = ({
       <Table.HeadCell>Status</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Worker</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Duration</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Tokens</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>PR</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Created</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Actions</Table.HeadCell>
@@ -108,6 +109,27 @@ export const RunsTable = ({
                 <span class='text-text-secondary text-sm font-mono'>
                   {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
                 </span>
+              </Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
+                {(run.inputTokens !== null && run.inputTokens !== undefined) ||
+                (run.outputTokens !== null && run.outputTokens !== undefined) ||
+                (run.cacheReadTokens !== null && run.cacheReadTokens !== undefined) ||
+                (run.cacheWriteTokens !== null && run.cacheWriteTokens !== undefined) ? (
+                  <div class='flex flex-col gap-1 font-mono text-xs'>
+                    <span class='text-text-secondary whitespace-nowrap'>
+                      {formatTokenCount(run.inputTokens)} → {formatTokenCount(run.outputTokens)}{' '}
+                      <span class='text-text-muted'>
+                        (↻{formatTokenCount(run.cacheReadTokens)} / ↻
+                        {formatTokenCount(run.cacheWriteTokens)})
+                      </span>
+                    </span>
+                    {run.modelUsed && (
+                      <span class='text-text-muted max-w-36 truncate'>{run.modelUsed}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span class='text-text-muted text-sm'>—</span>
+                )}
               </Table.Cell>
               <Table.Cell class='hidden md:table-cell'>
                 {run.resultPrUrl ? (
