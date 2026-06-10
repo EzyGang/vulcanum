@@ -27,7 +27,7 @@ const POPUP_CLASS =
   'min-w-44 max-h-72 overflow-y-auto bg-bg-input border border-border-base py-1 text-text-primary shadow-[0_8px_24px_oklch(0%_0_0_/_0.45)]';
 
 const ITEM_CLASS =
-  'flex w-full items-center whitespace-nowrap px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary outline-none data-highlighted:bg-bg-hover data-highlighted:text-text-primary data-selected:text-text-primary';
+  'flex w-full items-center whitespace-nowrap bg-bg-input px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary outline-none data-highlighted:bg-bg-hover data-highlighted:text-text-primary data-selected:bg-bg-active data-selected:text-text-primary';
 
 export const Select = ({
   items,
