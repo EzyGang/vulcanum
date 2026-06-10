@@ -119,6 +119,12 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     }
   }, [providerId.value]);
 
+  useEffect(() => {
+    if (projectId && providerId.value && workspaceId.value) {
+      lookup.fetchProjects(workspaceId.value);
+    }
+  }, [projectId, providerId.value, workspaceId.value]);
+
   const hasProjectSelection = !!workspaceId.value && !!externalProjectId.value;
   const hasColumns = lookup.lookedUp.value && lookup.columns.value.length > 0;
 
@@ -131,7 +137,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       canShowLookup: !!projectId || !!providerId.value,
       canShowFields: hasProjectSelection && hasColumns,
       onSubmit: handleSubmit,
-      onCancel: () => setLocation('/projects')
+      onCancel: () => setLocation('/settings?tab=projects')
     },
     provider: {
       providers,
@@ -192,7 +198,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onProjectSelectById: (id: string) => {
         lookup.handleProjectSelectById(id);
         name.value = lookup.lookupProjectName.value;
-      }
+      },
+      fetchProjects: lookup.fetchProjects
     },
     fields: {
       enabled,

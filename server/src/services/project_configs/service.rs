@@ -96,6 +96,7 @@ impl ProjectConfigsService {
                 &self.db,
                 id,
                 &UpdateProjectConfigParams {
+                    name: params.name.as_deref(),
                     pickup_column: params.pickup_column.as_deref(),
                     target_column: params.target_column.as_deref(),
                     progress_column: params.progress_column.as_deref(),

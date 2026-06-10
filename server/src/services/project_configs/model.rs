@@ -63,6 +63,8 @@ pub struct CreateProjectConfigRequest {
 #[derive(Debug, Deserialize)]
 pub struct UpdateProjectConfigRequest {
     #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
     pub pickup_column: Option<String>,
     #[serde(default)]
     pub progress_column: Option<String>,

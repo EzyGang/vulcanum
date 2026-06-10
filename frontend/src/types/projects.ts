@@ -33,6 +33,7 @@ export interface CreateProjectRequest {
 export interface UpdateProjectRequest {
   enabled?: boolean;
   externalWorkspaceId?: string;
+  name?: string;
   pickupColumn?: string;
   progressColumn?: string;
   targetColumn?: string;

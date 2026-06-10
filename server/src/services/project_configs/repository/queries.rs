@@ -99,27 +99,28 @@ impl ProjectConfigsRepository {
         id: Uuid,
         params: &UpdateProjectConfigParams<'_>,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
-        // Project names are captured from provider lookup during creation and are immutable here.
         sqlx::query_as!(
             ProjectConfig,
             r#"UPDATE project_configs SET
-             pickup_column = COALESCE($2, pickup_column),
-             target_column = COALESCE($3, target_column),
-             progress_column = COALESCE($4, progress_column),
-             blocked_column = COALESCE($5, blocked_column),
-             max_turns = COALESCE($6, max_turns),
-             prompt_template = COALESCE($7, prompt_template),
-             repo_url = COALESCE($8, repo_url),
-             agents_md = COALESCE($9, agents_md),
-             enabled = COALESCE($10, enabled),
-             external_workspace_id = COALESCE($11, external_workspace_id),
-             integration_type = COALESCE($12, integration_type),
-             provider_id = COALESCE($13, provider_id),
-             opencode_config = COALESCE($14, opencode_config)
+             name = COALESCE($2, name),
+             pickup_column = COALESCE($3, pickup_column),
+             target_column = COALESCE($4, target_column),
+             progress_column = COALESCE($5, progress_column),
+             blocked_column = COALESCE($6, blocked_column),
+             max_turns = COALESCE($7, max_turns),
+             prompt_template = COALESCE($8, prompt_template),
+             repo_url = COALESCE($9, repo_url),
+             agents_md = COALESCE($10, agents_md),
+             enabled = COALESCE($11, enabled),
+             external_workspace_id = COALESCE($12, external_workspace_id),
+             integration_type = COALESCE($13, integration_type),
+             provider_id = COALESCE($14, provider_id),
+             opencode_config = COALESCE($15, opencode_config)
              WHERE id = $1
               RETURNING id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
               progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
             id,
+            params.name,
             params.pickup_column,
             params.target_column,
             params.progress_column,

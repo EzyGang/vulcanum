@@ -1,4 +1,6 @@
 import { useSignal } from '@preact/signals';
+import { useEffect } from 'preact/hooks';
+import { useLocation } from 'wouter-preact';
 
 const TABS = [
   { value: 'providers', label: 'Providers' },
@@ -7,7 +9,12 @@ const TABS = [
 ];
 
 export const useSettings = () => {
-  const activeTab = useSignal('providers');
+  const [location] = useLocation();
+  const activeTab = useSignal(getTabFromLocation(location));
+
+  useEffect(() => {
+    activeTab.value = getTabFromLocation(location);
+  }, [location]);
 
   return {
     tabs: TABS,
@@ -16,4 +23,9 @@ export const useSettings = () => {
       activeTab.value = value;
     }
   };
+};
+
+const getTabFromLocation = (location: string): string => {
+  const [, query = ''] = location.split('?');
+  return new URLSearchParams(query).get('tab') ?? 'providers';
 };

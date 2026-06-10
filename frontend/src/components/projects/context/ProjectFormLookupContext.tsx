@@ -23,6 +23,7 @@ export interface ProjectFormLookupContextValue {
   onProjectIdChange: (value: string) => void;
   onWorkspaceChange: (value: string) => void;
   onProjectSelectById: (id: string) => void;
+  fetchProjects: (workspaceId: string) => void;
 }
 
 const ProjectFormLookupContext = createContext<ProjectFormLookupContextValue | null>(null);

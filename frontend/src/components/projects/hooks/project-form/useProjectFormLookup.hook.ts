@@ -79,6 +79,22 @@ export const useProjectFormLookup = (
     }
   }, []);
 
+  const fetchProjects = useCallback(async (id: string) => {
+    if (!id || !providerId.value) {
+      projects.value = [];
+      return;
+    }
+
+    projectsLoading.value = true;
+    try {
+      projects.value = await listProjects(providerId.value, id);
+    } catch {
+      projects.value = [];
+    } finally {
+      projectsLoading.value = false;
+    }
+  }, []);
+
   const handleProjectSelect = useCallback(
     (project: ProjectInfo) => {
       externalProjectId.value = project.id;
@@ -147,6 +163,7 @@ export const useProjectFormLookup = (
     handleWorkspaceChange,
     handleProjectSelect,
     handleProjectSelectById,
+    fetchProjects,
     fetchWorkspaces
   };
 };

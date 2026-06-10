@@ -48,7 +48,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     {
       onSuccess: () => {
         invalidate('projects');
-        setLocation('/projects');
+        setLocation('/settings?tab=projects');
       }
     }
   );
@@ -59,7 +59,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     {
       onSuccess: () => {
         invalidate('projects');
-        setLocation('/projects');
+        setLocation('/settings?tab=projects');
       }
     }
   );
@@ -89,6 +89,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               repoUrl: repoUrl.value || undefined,
               agentsMd: agentsMd.value || undefined,
               opencodeConfig: opencodeConfig.value || undefined,
+              name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
             }

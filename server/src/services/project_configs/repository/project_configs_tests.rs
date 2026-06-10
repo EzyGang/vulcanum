@@ -47,6 +47,7 @@ fn test_params(external_project_id: &str, provider_id: Uuid) -> CreateProjectCon
 
 fn test_update_params() -> UpdateProjectConfigParams<'static> {
     UpdateProjectConfigParams {
+        name: None,
         pickup_column: None,
         target_column: None,
         progress_column: None,
@@ -183,6 +184,29 @@ async fn update_partial_fields(pool: PgPool) {
     assert_eq!(updated.prompt_template, "Updated template");
     assert!(!updated.enabled);
     assert_eq!(updated.pickup_column, "to-do");
+}
+
+#[sqlx::test]
+async fn update_name_persists(pool: PgPool) {
+    let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
+    let params = test_params("kaneo-proj-update-name", provider_id);
+    let updated_name = "Updated Project Name";
+
+    let created = repo.create(&pool, &params).await.expect("Should create");
+    let updated = repo
+        .update(
+            &pool,
+            created.id,
+            &UpdateProjectConfigParams {
+                name: Some(updated_name),
+                ..test_update_params()
+            },
+        )
+        .await
+        .expect("Should update name");
+
+    assert_eq!(updated.name, updated_name);
 }
 
 #[sqlx::test]
