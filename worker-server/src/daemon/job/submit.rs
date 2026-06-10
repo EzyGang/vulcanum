@@ -95,13 +95,13 @@ pub(crate) async fn submit_turn_result(
     let _ = journal.update_result(JournalResultUpdate {
         job_id,
         exit_code: session_export.exit_code,
-        tokens_used: session_export.tokens_used as i64,
-        input_tokens: session_export.input_tokens as i64,
-        output_tokens: session_export.output_tokens as i64,
-        cache_read_tokens: session_export.cache_read_tokens as i64,
-        cache_write_tokens: session_export.cache_write_tokens as i64,
+        tokens_used: to_i64_saturating(session_export.tokens_used),
+        input_tokens: to_i64_saturating(session_export.input_tokens),
+        output_tokens: to_i64_saturating(session_export.output_tokens),
+        cache_read_tokens: to_i64_saturating(session_export.cache_read_tokens),
+        cache_write_tokens: to_i64_saturating(session_export.cache_write_tokens),
         pr_url,
-        duration_ms: session_export.duration_ms as i64,
+        duration_ms: to_i64_saturating(session_export.duration_ms),
         status: journal_status,
     });
 
@@ -110,12 +110,12 @@ pub(crate) async fn submit_turn_result(
             .and_then(|a| a.pr_url.clone())
             .unwrap_or_default(),
         exit_code: session_export.exit_code,
-        tokens_used: session_export.tokens_used as i64,
-        duration_ms: session_export.duration_ms as i64,
-        input_tokens: session_export.input_tokens as i64,
-        output_tokens: session_export.output_tokens as i64,
-        cache_read_tokens: session_export.cache_read_tokens as i64,
-        cache_write_tokens: session_export.cache_write_tokens as i64,
+        tokens_used: to_i64_saturating(session_export.tokens_used),
+        duration_ms: to_i64_saturating(session_export.duration_ms),
+        input_tokens: to_i64_saturating(session_export.input_tokens),
+        output_tokens: to_i64_saturating(session_export.output_tokens),
+        cache_read_tokens: to_i64_saturating(session_export.cache_read_tokens),
+        cache_write_tokens: to_i64_saturating(session_export.cache_write_tokens),
         model_used: session_export.model_used.clone(),
         finish_status: finish_artifact.map(|a| a.status),
         finish_summary: finish_artifact.and_then(|a| a.summary.clone()),
@@ -132,4 +132,8 @@ pub(crate) async fn submit_turn_result(
         );
     }
     let _ = journal.mark_submitted(job_id);
+}
+
+fn to_i64_saturating(value: u64) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
 }

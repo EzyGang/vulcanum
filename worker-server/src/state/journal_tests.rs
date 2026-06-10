@@ -120,6 +120,43 @@ fn list_running_returns_empty_when_no_running_jobs() {
 }
 
 #[test]
+fn update_result_persists_granular_tokens() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+
+    journal
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .expect("should insert");
+
+    journal
+        .update_result(JournalResultUpdate {
+            job_id,
+            exit_code: 0,
+            tokens_used: 1_200,
+            input_tokens: 700,
+            output_tokens: 300,
+            cache_read_tokens: 150,
+            cache_write_tokens: 50,
+            pr_url: Some("https://github.com/EzyGang/vulcanum/pull/1"),
+            duration_ms: 12_345,
+            status: JournalStatus::Running,
+        })
+        .expect("should update");
+
+    let running = journal.list_running().expect("should list");
+    let entry = running
+        .into_iter()
+        .find(|e| e.job_id == job_id)
+        .expect("entry found");
+
+    assert_eq!(entry.tokens_used, Some(1_200));
+    assert_eq!(entry.input_tokens, Some(700));
+    assert_eq!(entry.output_tokens, Some(300));
+    assert_eq!(entry.cache_read_tokens, Some(150));
+    assert_eq!(entry.cache_write_tokens, Some(50));
+}
+
+#[test]
 fn multiple_jobs_with_mixed_statuses() {
     let journal = open_journal();
     let id1 = Uuid::new_v4();
