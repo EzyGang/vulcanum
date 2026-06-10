@@ -106,6 +106,7 @@ async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
             worker_name: "rt-handler".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .unwrap();
@@ -166,6 +167,7 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
             worker_name: "delete-me".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .unwrap();

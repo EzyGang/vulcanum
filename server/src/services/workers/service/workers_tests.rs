@@ -51,6 +51,7 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
             worker_name: "test-runner".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .expect("Should connect");
@@ -65,12 +66,29 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn connect_with_capacity_creates_worker_with_capacity(pool: sqlx::PgPool) {
+    let svc = svc(pool);
+    let code = svc.generate_code().await.expect("should generate");
+    let resp = svc
+        .connect(crate::services::workers::model::ConnectRequest {
+            code: code.code,
+            worker_name: "capacity-runner".to_owned(),
+            max_concurrent_jobs: Some(2),
+        })
+        .await
+        .expect("Should connect");
+
+    assert_eq!(resp.max_concurrent_jobs, 2);
+}
+
+#[sqlx::test]
 async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
     let svc = svc(pool);
     let err = svc
         .connect(crate::services::workers::model::ConnectRequest {
             code: "badcode".to_owned(),
             worker_name: "x".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .expect_err("Should fail");
@@ -91,6 +109,7 @@ async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
         .connect(crate::services::workers::model::ConnectRequest {
             code: "expired".to_owned(),
             worker_name: "x".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .expect_err("Should fail");
@@ -106,6 +125,7 @@ async fn refresh_rotates_token(pool: sqlx::PgPool) {
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
             worker_name: "refresh-test".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .unwrap();
@@ -133,6 +153,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
         .connect(crate::services::workers::model::ConnectRequest {
             code: code.code,
             worker_name: "rotation-test".to_owned(),
+            max_concurrent_jobs: None,
         })
         .await
         .unwrap();
@@ -174,11 +195,25 @@ async fn list_all_returns_workers(pool: sqlx::PgPool) {
     let expiry = Utc::now() + Duration::days(30);
 
     svc.repo
-        .create(&pool, "l1", "h1", expiry, &serde_json::json!({}))
+        .create(
+            &pool,
+            "l1",
+            "h1",
+            expiry,
+            &serde_json::json!({}),
+            crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS,
+        )
         .await
         .unwrap();
     svc.repo
-        .create(&pool, "l2", "h2", expiry, &serde_json::json!({}))
+        .create(
+            &pool,
+            "l2",
+            "h2",
+            expiry,
+            &serde_json::json!({}),
+            crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS,
+        )
         .await
         .unwrap();
 

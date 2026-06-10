@@ -8,6 +8,7 @@ use crate::runtime::types::FinishStatus;
 pub struct ConnectRequest {
     pub code: String,
     pub worker_name: String,
+    pub max_concurrent_jobs: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

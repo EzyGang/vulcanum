@@ -13,6 +13,7 @@ impl WorkersRepository {
         refresh_token_hash: &str,
         refresh_expires_at: DateTime<Utc>,
         capabilities: &serde_json::Value,
+        max_concurrent_jobs: i32,
     ) -> Result<Worker, WorkersError> {
         let id = Uuid::new_v4();
 
@@ -29,7 +30,7 @@ impl WorkersRepository {
             refresh_expires_at,
             WorkerStatus::Idle as WorkerStatus,
             capabilities,
-            crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS,
+            max_concurrent_jobs,
         )
         .fetch_one(db)
         .await

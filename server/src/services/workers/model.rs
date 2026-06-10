@@ -12,7 +12,7 @@ pub const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
 pub const TOKEN_LENGTH: usize = 64;
 pub const CODE_LENGTH: usize = 16;
-pub const DEFAULT_MAX_CONCURRENT_JOBS: i32 = 3;
+pub const DEFAULT_MAX_CONCURRENT_JOBS: i32 = vulcanum_shared::constants::MAX_WORKER_CAPACITY;
 pub const DEFAULT_UNHEALTHY_THRESHOLD: i32 = 3;
 
 #[derive(Debug, Clone, sqlx::Type, Serialize, Deserialize)]
