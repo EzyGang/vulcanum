@@ -52,6 +52,11 @@ impl FromRequest for WorkerAuth {
             }
         };
 
+        let token_type = token_data.claims.get("typ").and_then(|s| s.as_str());
+        if !matches!(token_type, None | Some("worker")) {
+            return std::future::ready(Err(AppError::InvalidToken.into()));
+        }
+
         std::future::ready(Ok(WorkerAuth { worker_id: sub }))
     }
 }

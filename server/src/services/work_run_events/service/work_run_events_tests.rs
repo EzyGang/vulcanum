@@ -192,7 +192,10 @@ async fn list_recent_returns_last_n_ascending(pool: sqlx::PgPool) {
             .expect("append");
     }
 
-    let recent = svc.list_recent(wr_id).await.expect("list");
+    let recent = svc
+        .list_recent(wr_id, test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("list");
     let sequences: Vec<i64> = recent.iter().map(|e| e.sequence).collect();
     assert_eq!(sequences.len(), 20);
     assert_eq!(sequences[0], 6);

@@ -8,6 +8,7 @@ use crate::services::providers::model::IntegrationType;
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct IntegrationProvider {
     pub id: Uuid,
+    pub team_id: Uuid,
     pub name: String,
     pub provider_type: IntegrationType,
     pub instance_url: String,

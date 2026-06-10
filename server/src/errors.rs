@@ -5,6 +5,7 @@ use crate::services::auth::errors::AuthError;
 use crate::services::github_app::errors::GithubAppError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::provider_configs::errors::IntegrationProvidersError;
+use crate::services::teams::errors::TeamsError;
 use crate::services::users::errors::UsersError;
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -54,6 +55,8 @@ pub enum AppError {
     NoProvider,
     #[error("internal server error")]
     Internal,
+    #[error("forbidden")]
+    Forbidden,
 }
 
 impl ResponseError for AppError {
@@ -122,6 +125,9 @@ impl ResponseError for AppError {
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
             }),
+            Self::Forbidden => HttpResponse::Forbidden().json(ErrorBody {
+                error: "Forbidden".to_owned(),
+            }),
         }
     }
 }
@@ -142,6 +148,19 @@ impl From<UsersError> for AppError {
             UsersError::UserNotFound => Self::UserNotFound,
             UsersError::Database(e) => {
                 tracing::error!(error = %e, operation = "users", "database error");
+                Self::Internal
+            }
+        }
+    }
+}
+
+impl From<TeamsError> for AppError {
+    fn from(err: TeamsError) -> Self {
+        match err {
+            TeamsError::NotFound => Self::Forbidden,
+            TeamsError::AccessDenied => Self::Forbidden,
+            TeamsError::Database(e) => {
+                tracing::error!(error = %e, operation = "teams", "database error");
                 Self::Internal
             }
         }

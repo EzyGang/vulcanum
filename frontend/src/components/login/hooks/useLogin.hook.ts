@@ -1,16 +1,47 @@
 import { useSignal } from '@preact/signals';
-import { useCallback } from 'preact/hooks';
+import { useCallback, useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 
-import { login } from '../../../stores/auth.store';
+import { getAuthMode, getGithubLoginUrl } from '../../../services/auth/auth.service';
+import { acceptToken, login } from '../../../stores/auth.store';
 import { ApiError } from '../../../utils/api/client';
 
 export const useLogin = () => {
   const password = useSignal('');
   const error = useSignal<string | null>(null);
   const loading = useSignal(false);
+  const modeLoading = useSignal(true);
+  const isSingleUser = useSignal(true);
 
   const [_, setLocation] = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      loading.value = true;
+      acceptToken(token)
+        .then(() => setLocation('/'))
+        .catch(() => {
+          error.value = 'GitHub login failed';
+        })
+        .finally(() => {
+          loading.value = false;
+        });
+      return;
+    }
+
+    getAuthMode()
+      .then((mode) => {
+        isSingleUser.value = mode.isSingleUser;
+      })
+      .catch(() => {
+        error.value = 'Connection failed. Is the server running?';
+      })
+      .finally(() => {
+        modeLoading.value = false;
+      });
+  }, []);
 
   const handlePasswordChange = useCallback((e: Event) => {
     const target = e.target as HTMLInputElement;
@@ -44,5 +75,18 @@ export const useLogin = () => {
     }
   }, []);
 
-  return { password, error, loading, handlePasswordChange, handleSubmit };
+  const handleGithubLogin = useCallback(() => {
+    window.location.href = getGithubLoginUrl();
+  }, []);
+
+  return {
+    password,
+    error,
+    loading,
+    modeLoading,
+    isSingleUser,
+    handlePasswordChange,
+    handleSubmit,
+    handleGithubLogin
+  };
 };

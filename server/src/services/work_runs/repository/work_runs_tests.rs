@@ -5,13 +5,15 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::test_helpers::DEFAULT_TEAM_ID;
 
 async fn insert_project_config(pool: &PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'kaneo')",
+        "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, $4, 'kaneo')",
         id,
+        DEFAULT_TEAM_ID,
         external_project_id,
         "Review {{task_title}}",
     )
@@ -28,6 +30,7 @@ fn insert_params(
     status: WorkRunStatus,
 ) -> InsertWorkRunParams {
     InsertWorkRunParams {
+        team_id: DEFAULT_TEAM_ID,
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),

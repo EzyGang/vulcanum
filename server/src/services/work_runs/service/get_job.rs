@@ -6,8 +6,11 @@ use crate::services::work_runs::service::WorkRunsService;
 use vulcanum_shared::api_types::JobResponse;
 
 impl WorkRunsService {
-    pub async fn get_job(&self, id: Uuid) -> Result<JobResponse, WorkRunsError> {
+    pub async fn get_job(&self, id: Uuid, worker_id: Uuid) -> Result<JobResponse, WorkRunsError> {
         let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
+        if run.worker_id != Some(worker_id) {
+            return Err(WorkRunsError::NotOwned);
+        }
 
         let config = self
             .project_configs_repo
@@ -27,7 +30,11 @@ impl WorkRunsService {
         };
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
-            Some(pid) => match self.providers_repo.find_by_id(&self.db, pid).await {
+            Some(pid) => match self
+                .providers_repo
+                .find_by_id(&self.db, pid, cfg.team_id)
+                .await
+            {
                 Ok(provider) => (provider.instance_url, provider.api_key),
                 Err(_) => (String::new(), String::new()),
             },
@@ -36,7 +43,11 @@ impl WorkRunsService {
 
         let github_token = match cfg.repo_url.is_empty() {
             true => None,
-            false => match self.github.generate_installation_token(&cfg.repo_url).await {
+            false => match self
+                .github
+                .generate_installation_token(cfg.team_id, &cfg.repo_url)
+                .await
+            {
                 Ok(token) => Some(token.token),
                 Err(e) => {
                     tracing::error!(

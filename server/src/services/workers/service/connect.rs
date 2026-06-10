@@ -6,17 +6,18 @@ use uuid::Uuid;
 use crate::services::workers::errors::WorkersError;
 use crate::services::workers::model;
 use crate::services::workers::model::{ConnectRequest, ConnectResponse};
+use crate::services::workers::repository::queries::CreateWorkerParams;
 use crate::services::workers::service::WorkersService;
 
 impl WorkersService {
     pub async fn connect(&self, req: ConnectRequest) -> Result<ConnectResponse, WorkersError> {
-        let expiry = self
+        let registration = self
             .code_store
             .consume(&req.code)
             .await?
             .ok_or(WorkersError::CodeNotFound)?;
 
-        if Utc::now() > expiry {
+        if Utc::now() > registration.expires_at {
             return Err(WorkersError::CodeExpired);
         }
 
@@ -26,16 +27,20 @@ impl WorkersService {
         let max_concurrent_jobs = req
             .max_concurrent_jobs
             .unwrap_or(model::DEFAULT_MAX_CONCURRENT_JOBS);
+        let capabilities = json!({});
 
         let worker = self
             .repo
             .create(
                 &self.db,
-                &req.worker_name,
-                &refresh_hash,
-                refresh_expires_at,
-                &json!({}),
-                max_concurrent_jobs,
+                CreateWorkerParams {
+                    team_id: registration.team_id,
+                    name: &req.worker_name,
+                    refresh_token_hash: &refresh_hash,
+                    refresh_expires_at,
+                    capabilities: &capabilities,
+                    max_concurrent_jobs,
+                },
             )
             .await?;
 
@@ -77,7 +82,7 @@ fn build_jwt(
     let exp = Utc::now() + Duration::minutes(model::ACCESS_TOKEN_TTL_MINUTES);
     let claims = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
-        &serde_json::json!({"sub": worker_id.to_string(), "exp": exp.timestamp()}),
+        &serde_json::json!({"sub": worker_id.to_string(), "typ": "worker", "exp": exp.timestamp()}),
         &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
     )?;
     Ok((claims, exp))

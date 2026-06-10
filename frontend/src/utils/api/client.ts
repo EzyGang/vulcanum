@@ -1,4 +1,4 @@
-import { accessToken, STORAGE_KEY } from '../../stores/auth.store';
+import { accessToken, STORAGE_KEY, selectedTeamId } from '../../stores/auth.store';
 import { camelKeys, snakeKeys } from './snake-camel';
 
 const isDevelopment = import.meta.env.DEV;
@@ -82,6 +82,10 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
   const token = accessToken.value;
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (selectedTeamId.value) {
+    headers['X-Team-Id'] = selectedTeamId.value;
   }
 
   const requestBody = body != null ? JSON.stringify(snakeKeys(body)) : undefined;

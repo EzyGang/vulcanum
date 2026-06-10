@@ -201,7 +201,11 @@ impl WorkRunsService {
             }
         };
 
-        let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
+        let provider = match self
+            .providers_repo
+            .find_by_id(&self.db, provider_id, run.team_id)
+            .await
+        {
             Ok(p) => p,
             Err(e) => {
                 tracing::warn!(

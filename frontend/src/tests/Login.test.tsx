@@ -8,7 +8,10 @@ describe('Login.view', () => {
   const password = signal('');
   const error = signal<string | null>(null);
   const loading = signal(false);
+  const modeLoading = signal(false);
+  const isSingleUser = signal(true);
   const onPasswordChange = vi.fn();
+  const onGithubLogin = vi.fn();
   const onSubmit = vi.fn((e: Event) => {
     e.preventDefault();
   });
@@ -17,6 +20,8 @@ describe('Login.view', () => {
     password.value = '';
     error.value = null;
     loading.value = false;
+    modeLoading.value = false;
+    isSingleUser.value = true;
     vi.clearAllMocks();
   });
 
@@ -24,8 +29,8 @@ describe('Login.view', () => {
     render(
       <LoginView
         data={{ password }}
-        status={{ error, loading }}
-        actions={{ onPasswordChange, onSubmit }}
+        status={{ error, loading, modeLoading, isSingleUser }}
+        actions={{ onPasswordChange, onSubmit, onGithubLogin }}
       />
     );
 
@@ -69,5 +74,13 @@ describe('Login.view', () => {
 
     const input = getByPlaceholderText('Instance password') as HTMLInputElement;
     expect(input.disabled).toBe(true);
+  });
+
+  it('renders GitHub login in multi-user mode', () => {
+    isSingleUser.value = false;
+
+    const { getByText } = renderView();
+
+    expect(getByText('Sign in with GitHub')).toBeDefined();
   });
 });

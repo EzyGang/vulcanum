@@ -1,17 +1,33 @@
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::instance_auth::InstanceAuth;
+use crate::routes::team_auth::TeamPrincipal;
+use crate::services::github_app::service::GithubInstallState;
 
-pub async fn auth_redirect(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
+pub async fn auth_redirect(
+    state: web::Data<AppState>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
     let nonce = Uuid::new_v4().to_string();
-    state.github.save_state_nonce(&nonce).await.map_err(|e| {
-        tracing::warn!(error = %e, "failed to save github oauth state");
-        AppError::Internal
-    })?;
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let user_id = match auth {
+        TeamPrincipal::User { user_id, .. } => user_id,
+        TeamPrincipal::Instance => "instance".to_owned(),
+    };
+    state
+        .github
+        .save_state_nonce(&nonce, &GithubInstallState { user_id, team_id })
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "failed to save github oauth state");
+            AppError::Internal
+        })?;
 
     let url = state.github.install_url(&nonce).await.map_err(|e| {
         tracing::warn!(error = %e, "failed to build install url");
@@ -21,6 +37,26 @@ pub async fn auth_redirect(state: web::Data<AppState>) -> Result<HttpResponse, A
     Ok(HttpResponse::Found()
         .append_header(("Location", url))
         .finish())
+}
+
+#[derive(Serialize)]
+pub struct AuthUrlResponse {
+    pub url: String,
+}
+
+pub async fn auth_url(
+    state: web::Data<AppState>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let response = auth_redirect(state, auth).await?;
+    let location = response
+        .headers()
+        .get("Location")
+        .and_then(|value| value.to_str().ok())
+        .ok_or(AppError::Internal)?
+        .to_owned();
+
+    Ok(HttpResponse::Ok().json(AuthUrlResponse { url: location }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -40,7 +76,7 @@ pub async fn callback(
             .finish();
     }
 
-    let valid = match state
+    let install_state = match state
         .github
         .verify_and_consume_state_nonce(&query.state)
         .await
@@ -54,16 +90,23 @@ pub async fn callback(
         }
     };
 
-    if !valid {
-        tracing::warn!(state = %query.state, "github state nonce not found or expired");
-        return HttpResponse::Found()
-            .append_header(("Location", "/"))
-            .finish();
-    }
+    let install_state = match install_state {
+        Some(install_state) => install_state,
+        None => {
+            tracing::warn!(state = %query.state, "github state nonce not found or expired");
+            return HttpResponse::Found()
+                .append_header(("Location", "/"))
+                .finish();
+        }
+    };
 
     if let Err(e) = state
         .github
-        .create_installation(query.installation_id)
+        .create_installation(
+            install_state.team_id,
+            Some(&install_state.user_id),
+            query.installation_id,
+        )
         .await
     {
         tracing::error!(
@@ -80,9 +123,13 @@ pub async fn callback(
 
 pub async fn list_repos(
     state: web::Data<AppState>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let repos = state.github.list_repos().await.map_err(|e| {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let repos = state.github.list_repos(team_id).await.map_err(|e| {
         tracing::warn!(error = %e, "list_repos failed");
         AppError::Internal
     })?;
@@ -92,9 +139,13 @@ pub async fn list_repos(
 
 pub async fn get_installation(
     state: web::Data<AppState>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let inst = state.github.get_installation().await.map_err(|e| {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let inst = state.github.get_installation(team_id).await.map_err(|e| {
         tracing::warn!(error = %e, "get_installation failed");
         AppError::Internal
     })?;
@@ -105,11 +156,15 @@ pub async fn get_installation(
 pub async fn delete_installation(
     state: web::Data<AppState>,
     path: web::Path<i64>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
     state
         .github
-        .delete_installation(path.into_inner())
+        .delete_installation(path.into_inner(), team_id)
         .await
         .map_err(|e| {
             tracing::warn!(error = %e, "delete_installation failed");

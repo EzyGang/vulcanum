@@ -1,4 +1,3 @@
-use chrono::Utc;
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -25,8 +24,8 @@ impl DispatchRepository {
     ) -> Result<Vec<Worker>, DispatchError> {
         sqlx::query_as!(
             Worker,
-            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: chrono::DateTime<Utc>",
+            r#"SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: chrono::DateTime<chrono::Utc>",
              active_jobs, max_concurrent_jobs, consecutive_errors
              FROM workers WHERE active_jobs < max_concurrent_jobs AND status IN ('idle'::worker_status, 'busy'::worker_status)
              ORDER BY last_seen DESC NULLS LAST"#,
@@ -42,14 +41,14 @@ impl DispatchRepository {
     ) -> Result<Vec<WorkRun>, DispatchError> {
         sqlx::query_as!(
             WorkRun,
-            r#"SELECT id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+            r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, task_title, task_slug,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
              finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-             created_at as "created_at!: chrono::DateTime<Utc>", updated_at as "updated_at!: chrono::DateTime<Utc>"
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL AND finish_blocked_reason IS NULL
              ORDER BY created_at ASC"#,
         )
@@ -68,14 +67,15 @@ impl DispatchRepository {
             WorkRun,
             r#"UPDATE work_runs SET worker_id = $2, status = 'dispatched'::work_run_status
              WHERE id = $1 AND status = 'pending'::work_run_status
-             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             AND team_id = (SELECT team_id FROM workers WHERE id = $2)
+             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, task_title, task_slug,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
              finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-             created_at as "created_at!: chrono::DateTime<Utc>", updated_at as "updated_at!: chrono::DateTime<Utc>""#,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             work_run_id,
             worker_id,
         )

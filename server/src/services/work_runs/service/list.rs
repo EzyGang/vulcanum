@@ -5,12 +5,13 @@ use crate::services::work_runs::service::WorkRunsService;
 impl WorkRunsService {
     pub async fn list_all(
         &self,
+        team_id: uuid::Uuid,
         status: Option<WorkRunStatus>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
         self.work_runs_repo
-            .list_all(&self.db, status, limit, offset)
+            .list_all(&self.db, team_id, status, limit, offset)
             .await
     }
 }

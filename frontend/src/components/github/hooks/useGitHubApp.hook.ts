@@ -32,8 +32,9 @@ export const useGitHubApp = () => {
     }
   });
 
-  const onConnect = () => {
-    window.open(getAuthUrl(), '_blank');
+  const onConnect = async () => {
+    const { url } = await getAuthUrl();
+    window.open(url, '_blank');
   };
 
   return {

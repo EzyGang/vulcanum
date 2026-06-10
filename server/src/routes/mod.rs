@@ -6,6 +6,7 @@ pub mod jobs;
 pub mod project_configs;
 pub mod providers;
 pub mod status;
+pub mod team_auth;
 pub mod work_runs;
 pub mod worker_auth;
 pub mod worker_or_instance_auth;
@@ -18,11 +19,19 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         web::scope("/api/v1")
             .route("/auth/login", web::post().to(auth::login))
             .route("/auth/verify", web::get().to(auth::verify))
+            .route("/auth/mode", web::get().to(auth::mode))
+            .route("/auth/me", web::get().to(auth::me))
+            .route("/auth/github/start", web::get().to(auth::github_start))
+            .route(
+                "/auth/github/callback",
+                web::get().to(auth::github_callback),
+            )
             .route("/auth/instance-login", web::post().to(auth::instance_login))
             .route("/auth/logout", web::post().to(auth::logout))
             .service(
                 web::scope("/github")
                     .route("/auth", web::get().to(github::auth_redirect))
+                    .route("/auth-url", web::get().to(github::auth_url))
                     .route("/callback", web::get().to(github::callback))
                     .route("/repos", web::get().to(github::list_repos))
                     .route("/installation", web::get().to(github::get_installation))

@@ -44,7 +44,7 @@ async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool);
     let code = state
         .workers
-        .generate_code()
+        .generate_code(test_helpers::DEFAULT_TEAM_ID)
         .await
         .expect("should generate");
 
@@ -98,7 +98,7 @@ async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool);
     let code = state
         .workers
-        .generate_code()
+        .generate_code(test_helpers::DEFAULT_TEAM_ID)
         .await
         .expect("should generate");
     let connect = state
@@ -159,7 +159,7 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
     let state = build_state(pool);
     let code = state
         .workers
-        .generate_code()
+        .generate_code(test_helpers::DEFAULT_TEAM_ID)
         .await
         .expect("should generate");
     let connect = state

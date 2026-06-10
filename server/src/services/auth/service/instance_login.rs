@@ -10,12 +10,17 @@ const INSTANCE_TOKEN_TTL_HOURS: i64 = 24;
 #[derive(Serialize)]
 struct InstanceClaims {
     sub: String,
+    typ: String,
     exp: usize,
     iat: usize,
 }
 
 impl AuthService {
     pub fn instance_login(&self, password: &str) -> Result<String, AuthError> {
+        if !self.is_single_user {
+            return Err(AuthError::InvalidPassword);
+        }
+
         if password != self.instance_password {
             return Err(AuthError::InvalidPassword);
         }
@@ -23,6 +28,7 @@ impl AuthService {
         let now = Utc::now();
         let claims = InstanceClaims {
             sub: "instance".to_owned(),
+            typ: "instance".to_owned(),
             iat: now.timestamp() as usize,
             exp: (now + Duration::hours(INSTANCE_TOKEN_TTL_HOURS)).timestamp() as usize,
         };

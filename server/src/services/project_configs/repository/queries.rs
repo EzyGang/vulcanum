@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -7,18 +6,19 @@ use crate::services::project_configs::model::{CreateProjectConfigRequest, Projec
 use crate::services::project_configs::repository::{
     map_sqlx_error, ProjectConfigsRepository, UpdateProjectConfigParams,
 };
-use crate::services::providers::model::IntegrationType;
 
 impl ProjectConfigsRepository {
     pub async fn list_all<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
+        team_id: Uuid,
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
-             FROM project_configs ORDER BY created_at DESC"#,
+            r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: chrono::DateTime<chrono::Utc>", provider_id
+             FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC"#,
+            team_id,
         )
         .fetch_all(db)
         .await
@@ -32,8 +32,8 @@ impl ProjectConfigsRepository {
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
+            r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: chrono::DateTime<chrono::Utc>", provider_id
              FROM project_configs WHERE id = $1"#,
             id,
         )
@@ -48,8 +48,8 @@ impl ProjectConfigsRepository {
     ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id
+            r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: chrono::DateTime<chrono::Utc>", provider_id
              FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
         )
         .fetch_all(db)
@@ -60,22 +60,24 @@ impl ProjectConfigsRepository {
     pub async fn create<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
+        team_id: Uuid,
         params: &CreateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         let id = Uuid::new_v4();
 
         sqlx::query_as!(
             ProjectConfig,
-            r#"INSERT INTO project_configs (id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
+            r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-             RETURNING id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: chrono::DateTime<chrono::Utc>", provider_id"#,
             id,
+            team_id,
             &params.external_project_id,
             &params.name,
             &params.external_workspace_id,
-            &params.integration_type as &IntegrationType,
+            &params.integration_type as &crate::services::providers::model::IntegrationType,
             params.enabled,
             &params.pickup_column,
             &params.target_column,
@@ -117,8 +119,8 @@ impl ProjectConfigsRepository {
              provider_id = COALESCE($14, provider_id),
              opencode_config = COALESCE($15, opencode_config)
              WHERE id = $1
-              RETURNING id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-              progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: DateTime<Utc>", provider_id"#,
+              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+                progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as "created_at!: chrono::DateTime<chrono::Utc>", provider_id"#,
             id,
             params.name,
             params.pickup_column,
@@ -131,7 +133,8 @@ impl ProjectConfigsRepository {
             params.agents_md,
             params.enabled,
             params.external_workspace_id,
-            params.integration_type.as_ref() as Option<&IntegrationType>,
+            params.integration_type.as_ref()
+                as Option<&crate::services::providers::model::IntegrationType>,
             params.provider_id,
             params.opencode_config,
         )
@@ -160,9 +163,11 @@ impl ProjectConfigsRepository {
     pub async fn count_enabled<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
+        team_id: Uuid,
     ) -> Result<i64, ProjectConfigsError> {
         sqlx::query_scalar!(
-            "SELECT COUNT(*) as \"count!: i64\" FROM project_configs WHERE enabled = true"
+            "SELECT COUNT(*) as \"count!: i64\" FROM project_configs WHERE enabled = true AND team_id = $1",
+            team_id,
         )
         .fetch_one(db)
         .await

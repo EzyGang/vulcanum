@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -7,6 +6,7 @@ use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus}
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 pub struct InsertWorkRunParams {
+    pub team_id: Uuid,
     pub external_task_ref: String,
     pub project_config_id: Uuid,
     pub prompt_text: String,
@@ -27,17 +27,18 @@ impl WorkRunsRepository {
 
         sqlx::query_as!(
             WorkRun,
-            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
+            r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
                         repo_url, agents_md, task_title, task_slug,
                         result_pr_url, result_exit_code, tokens_used, duration_ms,
                         input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
                         cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
                         model_used,
                         finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-                        created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+                        created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
+            params.team_id,
             &params.external_task_ref,
             params.project_config_id,
             &params.status as &WorkRunStatus,
@@ -60,10 +61,11 @@ impl WorkRunsRepository {
         let id = Uuid::new_v4();
 
         sqlx::query!(
-            r#"INSERT INTO work_runs (id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT DO NOTHING"#,
+            r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+              ON CONFLICT DO NOTHING"#,
             id,
+            params.team_id,
             &params.external_task_ref,
             params.project_config_id,
             &params.status as &WorkRunStatus,
@@ -86,14 +88,14 @@ impl WorkRunsRepository {
     ) -> Result<WorkRun, WorkRunsError> {
         sqlx::query_as!(
             WorkRun,
-            r#"SELECT id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+            r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, task_title, task_slug,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
              finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-             created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs WHERE id = $1"#,
             id,
         )
@@ -120,13 +122,14 @@ impl WorkRunsRepository {
     pub async fn list_all<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
+        team_id: Uuid,
         status: Option<WorkRunStatus>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
         sqlx::query_as!(
             WorkRunListItem,
-            r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
+            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
              wr.task_title, wr.task_slug,
@@ -135,10 +138,11 @@ impl WorkRunsRepository {
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
              wr.model_used,
              wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,
-             wr.created_at as "created_at!: DateTime<Utc>"
+             wr.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
-             WHERE ($1::work_run_status IS NULL OR wr.status = $1)
-             ORDER BY wr.created_at DESC LIMIT $2 OFFSET $3"#,
+              WHERE wr.team_id = $1 AND ($2::work_run_status IS NULL OR wr.status = $2)
+              ORDER BY wr.created_at DESC LIMIT $3 OFFSET $4"#,
+            team_id,
             status as Option<WorkRunStatus>,
             limit,
             offset,
@@ -274,14 +278,14 @@ impl WorkRunsRepository {
             WorkRun,
             r#"UPDATE work_runs SET status = 'running'::work_run_status
              WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
-             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, task_title, task_slug,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
              finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-             created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             worker_id,
         )
@@ -301,14 +305,14 @@ impl WorkRunsRepository {
             r#"UPDATE work_runs SET status = 'failed'::work_run_status, result_exit_code = 1, tokens_used = 0, duration_ms = 0,
              input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0
              WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
-             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, task_title, task_slug,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
              finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-             created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
         )
         .fetch_optional(db)
@@ -330,14 +334,14 @@ impl WorkRunsRepository {
              finish_status = $12, finish_summary = $13, finish_blocked_reason = $14,
              finish_next_column = $15
              WHERE id = $1 AND status = 'running'::work_run_status
-             RETURNING id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              prompt_text, repo_url, agents_md, task_title, task_slug,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
              finish_status, finish_summary, finish_blocked_reason, finish_next_column,
-             created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             params.pr_url,
             params.exit_code,
@@ -367,7 +371,7 @@ impl WorkRunsRepository {
     ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
         sqlx::query_as!(
             WorkRunListItem,
-            r#"SELECT wr.id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
+            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
              wr.task_title, wr.task_slug,
@@ -376,7 +380,7 @@ impl WorkRunsRepository {
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
              wr.model_used,
              wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,
-             wr.created_at as "created_at!: DateTime<Utc>"
+             wr.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
              WHERE wr.project_config_id = $1 AND wr.status = 'failed'::work_run_status AND wr.finish_blocked_reason IS NOT NULL
              ORDER BY wr.created_at DESC"#,

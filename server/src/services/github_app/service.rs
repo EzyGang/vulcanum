@@ -1,5 +1,7 @@
 use octocrab::models::InstallationId;
 use octocrab::Octocrab;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use base64::Engine;
 
@@ -41,6 +43,12 @@ pub struct RepoInfo {
     pub owner: String,
     pub name: String,
     pub full_name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GithubInstallState {
+    pub user_id: String,
+    pub team_id: Uuid,
 }
 
 impl GithubAppManager {
@@ -88,17 +96,23 @@ impl GithubAppManager {
         Ok(url)
     }
 
-    pub async fn save_state_nonce(&self, state: &str) -> Result<(), GithubAppError> {
+    pub async fn save_state_nonce(
+        &self,
+        state: &str,
+        install_state: &GithubInstallState,
+    ) -> Result<(), GithubAppError> {
         let mut conn = self
             .redis_client
             .get_multiplexed_async_connection()
             .await
             .map_err(|e| GithubAppError::Redis(e.to_string()))?;
         let key = format!("vulcanum:github_state:{state}");
+        let value = serde_json::to_string(install_state)
+            .map_err(|e| GithubAppError::Api(format!("serialize install state: {e}")))?;
         redis::cmd("SETEX")
             .arg(&key)
             .arg(600u64)
-            .arg("1")
+            .arg(value)
             .query_async::<()>(&mut conn)
             .await
             .map_err(|e| GithubAppError::Redis(e.to_string()))?;
@@ -108,7 +122,7 @@ impl GithubAppManager {
     pub async fn verify_and_consume_state_nonce(
         &self,
         state: &str,
-    ) -> Result<bool, GithubAppError> {
+    ) -> Result<Option<GithubInstallState>, GithubAppError> {
         let mut conn = self
             .redis_client
             .get_multiplexed_async_connection()
@@ -121,22 +135,29 @@ impl GithubAppManager {
             local v = redis.call("GET", KEYS[1])
             if v then
                 redis.call("DEL", KEYS[1])
-                return 1
+                return v
             end
-            return 0
+            return nil
         "#,
         );
-        let existed: i64 = script
+        let value: Option<String> = script
             .key(&key)
             .invoke_async(&mut conn)
             .await
             .map_err(|e| GithubAppError::Redis(e.to_string()))?;
 
-        Ok(existed == 1)
+        match value {
+            Some(value) => serde_json::from_str(&value)
+                .map(Some)
+                .map_err(|e| GithubAppError::Api(format!("parse install state: {e}"))),
+            None => Ok(None),
+        }
     }
 
     pub async fn create_installation(
         &self,
+        team_id: Uuid,
+        installed_by_user_id: Option<&str>,
         github_installation_id: i64,
     ) -> Result<GithubInstallation, GithubAppError> {
         let octo = self.app_octocrab()?;
@@ -146,81 +167,52 @@ impl GithubAppManager {
             .await
             .map_err(|e| GithubAppError::Api(format!("get_installation from GitHub: {e}")))?;
 
-        self.upsert_installation(github_installation_id, installation.account.login)
-            .await
+        self.upsert_installation(
+            team_id,
+            installed_by_user_id,
+            github_installation_id,
+            installation.account.login,
+        )
+        .await
     }
 
-    pub async fn delete_installation(&self, id: i64) -> Result<(), GithubAppError> {
-        self.repo.delete_installation(&self.db, id).await
+    pub async fn delete_installation(&self, id: i64, team_id: Uuid) -> Result<(), GithubAppError> {
+        self.repo.delete_installation(&self.db, id, team_id).await
     }
 
-    pub async fn get_installation(&self) -> Result<Option<GithubInstallation>, GithubAppError> {
-        if let Some(inst) = self.repo.get_installation(&self.db).await? {
+    pub async fn get_installation(
+        &self,
+        team_id: Uuid,
+    ) -> Result<Option<GithubInstallation>, GithubAppError> {
+        if let Some(inst) = self.repo.get_installation(&self.db, team_id).await? {
             return Ok(Some(inst));
         }
-        match self.sync_installation_from_github().await {
-            Ok(inst) => {
-                tracing::info!(
-                    github_installation_id = inst.github_installation_id,
-                    account_login = inst.account_login,
-                    "discovered installation from GitHub API"
-                );
-                Ok(Some(inst))
-            }
-            Err(GithubAppError::NoInstallation) => {
-                tracing::warn!("no installations found for this GitHub App");
-                Ok(None)
-            }
-            Err(GithubAppError::NotConfigured) => {
-                tracing::warn!(
-                    "github app not configured — set GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_SLUG"
-                );
-                Ok(None)
-            }
-            Err(e) => {
-                tracing::error!(error = %e, "failed to sync installation from GitHub");
-                Err(e)
-            }
-        }
-    }
 
-    pub async fn sync_installation_from_github(
-        &self,
-    ) -> Result<GithubInstallation, GithubAppError> {
-        let octo = self.app_octocrab()?;
-        let page = octo
-            .apps()
-            .installations()
-            .send()
-            .await
-            .map_err(|e| GithubAppError::Api(format!("list installations: {e}")))?;
-
-        let first = page
-            .items
-            .into_iter()
-            .next()
-            .ok_or(GithubAppError::NoInstallation)?;
-
-        let gh_installation_id: i64 = first.id.0 as i64;
-
-        self.upsert_installation(gh_installation_id, first.account.login)
-            .await
+        Ok(None)
     }
 
     async fn upsert_installation(
         &self,
+        team_id: Uuid,
+        installed_by_user_id: Option<&str>,
         github_installation_id: i64,
         account_login: String,
     ) -> Result<GithubInstallation, GithubAppError> {
         self.repo
-            .insert_installation(&self.db, github_installation_id, &account_login)
+            .insert_installation(
+                &self.db,
+                team_id,
+                installed_by_user_id,
+                github_installation_id,
+                &account_login,
+            )
             .await
     }
 
-    pub async fn list_repos(&self) -> Result<Vec<RepoInfo>, GithubAppError> {
+    pub async fn list_repos(&self, team_id: Uuid) -> Result<Vec<RepoInfo>, GithubAppError> {
         let installation = self
             .repo
-            .get_installation(&self.db)
+            .get_installation(&self.db, team_id)
             .await?
             .ok_or(GithubAppError::NoInstallation)?;
 
@@ -256,11 +248,12 @@ impl GithubAppManager {
 
     pub async fn generate_installation_token(
         &self,
+        team_id: Uuid,
         repo_url: &str,
     ) -> Result<InstallationToken, GithubAppError> {
         let installation = self
             .repo
-            .get_installation(&self.db)
+            .get_installation(&self.db, team_id)
             .await?
             .ok_or(GithubAppError::NoInstallation)?;
 

@@ -4052,6 +4052,7 @@ dependencies = [
  "octocrab",
  "rand 0.8.6",
  "redis",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2",
@@ -4063,6 +4064,7 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tracing-test",
+ "url",
  "uuid",
  "vulcanum-shared",
 ]
