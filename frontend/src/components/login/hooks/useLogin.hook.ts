@@ -1,4 +1,4 @@
-import { useSignal } from '@preact/signals';
+import { type Signal, useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 
@@ -6,7 +6,28 @@ import { getAuthMode, getGithubLoginUrl } from '../../../services/auth/auth.serv
 import { acceptToken, login } from '../../../stores/auth.store';
 import { ApiError } from '../../../utils/api/client';
 
-export const useLogin = () => {
+type LoginMode = 'loading' | 'single-user' | 'github';
+
+export interface LoginViewProps {
+  data: {
+    password: Signal<string>;
+  };
+  status: {
+    error: Signal<string | null>;
+    loading: Signal<boolean>;
+  };
+  actions: {
+    onPasswordChange: (e: Event) => void;
+    onSubmit: (e: Event) => void;
+    onGithubLogin: () => void;
+  };
+  view: {
+    description: string;
+    mode: LoginMode;
+  };
+}
+
+export const useLogin = (): LoginViewProps => {
   const password = useSignal('');
   const error = useSignal<string | null>(null);
   const loading = useSignal(false);
@@ -80,14 +101,31 @@ export const useLogin = () => {
     window.location.href = getGithubLoginUrl();
   }, []);
 
+  const mode: LoginMode = modeLoading.value
+    ? 'loading'
+    : isSingleUser.value
+      ? 'single-user'
+      : 'github';
+  const description = isSingleUser.value
+    ? 'Enter the instance password to continue.'
+    : 'Sign in with GitHub to create or access your team.';
+
   return {
-    password,
-    error,
-    loading,
-    modeLoading,
-    isSingleUser,
-    handlePasswordChange,
-    handleSubmit,
-    handleGithubLogin
+    data: {
+      password
+    },
+    status: {
+      error,
+      loading
+    },
+    actions: {
+      onPasswordChange: handlePasswordChange,
+      onSubmit: handleSubmit,
+      onGithubLogin: handleGithubLogin
+    },
+    view: {
+      description,
+      mode
+    }
   };
 };

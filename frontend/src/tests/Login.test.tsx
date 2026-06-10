@@ -13,31 +13,44 @@ describe('Login.container', () => {
   const password = signal('');
   const error = signal<string | null>(null);
   const loading = signal(false);
-  const modeLoading = signal(false);
-  const isSingleUser = signal(true);
+  let mode: 'loading' | 'single-user' | 'github' = 'single-user';
   const onPasswordChange = vi.fn();
   const onGithubLogin = vi.fn();
   const onSubmit = vi.fn(async (e: Event) => {
     e.preventDefault();
   });
 
+  const mockUseLogin = () => {
+    vi.mocked(useLogin).mockReturnValue({
+      data: {
+        password
+      },
+      status: {
+        error,
+        loading
+      },
+      actions: {
+        onPasswordChange,
+        onSubmit,
+        onGithubLogin
+      },
+      view: {
+        description:
+          mode === 'github'
+            ? 'Sign in with GitHub to create or access your team.'
+            : 'Enter the instance password to continue.',
+        mode
+      }
+    });
+  };
+
   beforeEach(() => {
     password.value = '';
     error.value = null;
     loading.value = false;
-    modeLoading.value = false;
-    isSingleUser.value = true;
+    mode = 'single-user';
     vi.clearAllMocks();
-    vi.mocked(useLogin).mockReturnValue({
-      password,
-      error,
-      loading,
-      modeLoading,
-      isSingleUser,
-      handlePasswordChange: onPasswordChange,
-      handleSubmit: onSubmit,
-      handleGithubLogin: onGithubLogin
-    });
+    mockUseLogin();
   });
 
   const renderContainer = () => render(<LoginContainer />);
@@ -85,7 +98,8 @@ describe('Login.container', () => {
   });
 
   it('renders GitHub login in multi-user mode', () => {
-    isSingleUser.value = false;
+    mode = 'github';
+    mockUseLogin();
 
     const { getByText } = renderContainer();
 
@@ -93,7 +107,8 @@ describe('Login.container', () => {
   });
 
   it('renders auth mode loading state', () => {
-    modeLoading.value = true;
+    mode = 'loading';
+    mockUseLogin();
 
     const { getByText } = renderContainer();
 
