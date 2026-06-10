@@ -8,7 +8,7 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::state::journal::{Journal, JournalStatus};
+use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
 
 pub(crate) struct FailedResult {
     pub(crate) exit_code: i32,
@@ -43,14 +43,18 @@ pub(crate) async fn submit_failed_result(
     job_id: Uuid,
     result: &FailedResult,
 ) {
-    let _ = journal.update_result(
+    let _ = journal.update_result(JournalResultUpdate {
         job_id,
-        result.exit_code,
-        result.tokens_used,
-        result.pr_url.as_deref(),
-        result.duration_ms,
-        JournalStatus::Failed,
-    );
+        exit_code: result.exit_code,
+        tokens_used: result.tokens_used,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        pr_url: result.pr_url.as_deref(),
+        duration_ms: result.duration_ms,
+        status: JournalStatus::Failed,
+    });
     let submit = SubmitResultRequest {
         pr_url: result.pr_url.clone().unwrap_or_default(),
         exit_code: result.exit_code,
@@ -88,14 +92,18 @@ pub(crate) async fn submit_turn_result(
 
     let pr_url = finish_artifact.and_then(|a| a.pr_url.as_deref());
 
-    let _ = journal.update_result(
+    let _ = journal.update_result(JournalResultUpdate {
         job_id,
-        session_export.exit_code,
-        session_export.tokens_used as i64,
+        exit_code: session_export.exit_code,
+        tokens_used: session_export.tokens_used as i64,
+        input_tokens: session_export.input_tokens as i64,
+        output_tokens: session_export.output_tokens as i64,
+        cache_read_tokens: session_export.cache_read_tokens as i64,
+        cache_write_tokens: session_export.cache_write_tokens as i64,
         pr_url,
-        session_export.duration_ms as i64,
-        journal_status,
-    );
+        duration_ms: session_export.duration_ms as i64,
+        status: journal_status,
+    });
 
     let result = SubmitResultRequest {
         pr_url: finish_artifact

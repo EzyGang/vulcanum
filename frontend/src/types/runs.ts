@@ -22,6 +22,11 @@ export interface WorkRunListItem {
   resultPrUrl: string | null;
   resultExitCode: number | null;
   tokensUsed: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  cacheReadTokens?: number | null;
+  cacheWriteTokens?: number | null;
+  modelUsed?: string | null;
   durationMs: number | null;
   createdAt: string;
 }

@@ -50,6 +50,10 @@ pub struct JournalEntry {
     pub finished_at: Option<DateTime<Utc>>,
     pub exit_code: Option<i32>,
     pub tokens_used: Option<i64>,
+    pub input_tokens: Option<i64>,
+    pub output_tokens: Option<i64>,
+    pub cache_read_tokens: Option<i64>,
+    pub cache_write_tokens: Option<i64>,
     pub pr_url: Option<String>,
     pub duration_ms: Option<i64>,
     pub error_message: Option<String>,
@@ -58,6 +62,19 @@ pub struct JournalEntry {
     pub max_turns: Option<i32>,
     pub host_pid: Option<i64>,
     pub host_port: Option<i64>,
+}
+
+pub struct JournalResultUpdate<'a> {
+    pub job_id: Uuid,
+    pub exit_code: i32,
+    pub tokens_used: i64,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub pr_url: Option<&'a str>,
+    pub duration_ms: i64,
+    pub status: JournalStatus,
 }
 
 pub struct Journal {
@@ -80,6 +97,10 @@ impl Journal {
                 finished_at TEXT,
                 exit_code INTEGER,
                 tokens_used INTEGER,
+                input_tokens INTEGER,
+                output_tokens INTEGER,
+                cache_read_tokens INTEGER,
+                cache_write_tokens INTEGER,
                 pr_url TEXT,
                 duration_ms INTEGER,
                 error_message TEXT,
@@ -98,6 +119,10 @@ impl Journal {
         );
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN host_pid INTEGER");
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN host_port INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN input_tokens INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN output_tokens INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN cache_read_tokens INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN cache_write_tokens INTEGER");
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -130,28 +155,26 @@ impl Journal {
         Ok(())
     }
 
-    pub fn update_result(
-        &self,
-        job_id: Uuid,
-        exit_code: i32,
-        tokens_used: i64,
-        pr_url: Option<&str>,
-        duration_ms: i64,
-        status: JournalStatus,
-    ) -> anyhow::Result<()> {
+    pub fn update_result(&self, result: JournalResultUpdate<'_>) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
-            "UPDATE job_journal SET status = ?1, finished_at = ?2, exit_code = ?3, tokens_used = ?4, pr_url = ?5, duration_ms = ?6
-             WHERE job_id = ?7",
+            "UPDATE job_journal SET status = ?1, finished_at = ?2, exit_code = ?3, tokens_used = ?4,
+             input_tokens = ?5, output_tokens = ?6, cache_read_tokens = ?7, cache_write_tokens = ?8,
+             pr_url = ?9, duration_ms = ?10
+             WHERE job_id = ?11",
             rusqlite::params![
-                status.as_str(),
+                result.status.as_str(),
                 now,
-                exit_code,
-                tokens_used,
-                pr_url.unwrap_or(""),
-                duration_ms,
-                job_id.to_string(),
+                result.exit_code,
+                result.tokens_used,
+                result.input_tokens,
+                result.output_tokens,
+                result.cache_read_tokens,
+                result.cache_write_tokens,
+                result.pr_url.unwrap_or(""),
+                result.duration_ms,
+                result.job_id.to_string(),
             ],
         )?;
         Ok(())
@@ -214,8 +237,9 @@ impl Journal {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare(
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
-                    finished_at, exit_code, tokens_used, pr_url, duration_ms, error_message, turn_count,
-                    session_id, max_turns, host_pid, host_port
+                    finished_at, exit_code, tokens_used, input_tokens, output_tokens,
+                    cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
+                    error_message, turn_count, session_id, max_turns, host_pid, host_port
              FROM job_journal WHERE status = 'running'",
         )?;
 
@@ -237,14 +261,18 @@ impl Journal {
                         .and_then(|s| DateTime::parse_from_rfc3339(&s).map(|d| d.to_utc()).ok()),
                     exit_code: row.get(7)?,
                     tokens_used: row.get(8)?,
-                    pr_url: row.get(9)?,
-                    duration_ms: row.get(10)?,
-                    error_message: row.get(11)?,
-                    turn_count: row.get(12)?,
-                    session_id: row.get(13)?,
-                    max_turns: row.get(14)?,
-                    host_pid: row.get(15)?,
-                    host_port: row.get(16)?,
+                    input_tokens: row.get(9)?,
+                    output_tokens: row.get(10)?,
+                    cache_read_tokens: row.get(11)?,
+                    cache_write_tokens: row.get(12)?,
+                    pr_url: row.get(13)?,
+                    duration_ms: row.get(14)?,
+                    error_message: row.get(15)?,
+                    turn_count: row.get(16)?,
+                    session_id: row.get(17)?,
+                    max_turns: row.get(18)?,
+                    host_pid: row.get(19)?,
+                    host_port: row.get(20)?,
                 })
             })?
             .filter_map(|r| r.ok())
