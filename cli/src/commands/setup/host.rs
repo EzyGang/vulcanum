@@ -1,8 +1,8 @@
 use std::process::Command;
 
 use anyhow::Context;
+use vulcanum_shared::constants::MAX_WORKER_CAPACITY;
 
-const MAX_WORKER_CAPACITY: i32 = 3;
 const MIN_WORKER_CAPACITY: i32 = 1;
 const KB_PER_GB: u64 = 1024 * 1024;
 
@@ -59,8 +59,8 @@ pub fn calculate_worker_capacity() -> i32 {
 #[must_use]
 pub(crate) fn capacity_from_resources(cpu_count: u32, total_ram_kb: u64) -> i32 {
     let ram_gb = total_ram_kb / KB_PER_GB;
-    let cpu_jobs = i32::try_from(cpu_count / 2).unwrap_or(i32::MAX);
-    let mem_jobs = i32::try_from(ram_gb / 4).unwrap_or(i32::MAX);
+    let cpu_jobs = (cpu_count / 2).min(i32::MAX as u32) as i32;
+    let mem_jobs = (ram_gb / 4).min(i32::MAX as u64) as i32;
 
     cpu_jobs
         .min(mem_jobs)
