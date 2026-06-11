@@ -104,16 +104,29 @@ const sanitizeLogBody = (body: unknown): unknown => {
   return sanitized;
 };
 
+const sanitizeLogUrl = (url: string): string => {
+  const parsed = new URL(url, window.location.origin);
+  for (const key of parsed.searchParams.keys()) {
+    if (SENSITIVE_FIELDS.has(key)) {
+      parsed.searchParams.set(key, '***');
+    }
+  }
+
+  return parsed.origin === window.location.origin
+    ? `${parsed.pathname}${parsed.search}`
+    : parsed.toString();
+};
+
 const logRequest = (method: string, url: string, body?: unknown) => {
   if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
-  console.group(`API Request: ${method} ${url}`);
+  console.group(`API Request: ${method} ${sanitizeLogUrl(url)}`);
   if (body) console.log('Request Body:', sanitizeLogBody(body));
   console.groupEnd();
 };
 
 const logResponse = (method: string, url: string, status: number, data: unknown) => {
   if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
-  console.group(`API Response: ${method} ${url}`);
+  console.group(`API Response: ${method} ${sanitizeLogUrl(url)}`);
   console.log('Status:', status);
   console.log('Response:', sanitizeLogBody(data));
   console.groupEnd();
@@ -121,7 +134,7 @@ const logResponse = (method: string, url: string, status: number, data: unknown)
 
 const logError = (method: string, url: string, status: number, error: unknown) => {
   if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
-  console.group(`API Error: ${method} ${url}`);
+  console.group(`API Error: ${method} ${sanitizeLogUrl(url)}`);
   console.log('Status:', status);
   console.log('Error:', error);
   console.groupEnd();

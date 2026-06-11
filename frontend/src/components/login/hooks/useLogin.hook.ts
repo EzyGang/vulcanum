@@ -12,7 +12,7 @@ import { ApiError } from '../../../utils/api/client';
 import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
 
-type LoginMode = 'loading' | 'single-user' | 'github';
+type LoginMode = 'loading' | 'single-user' | 'github' | 'unavailable';
 
 export interface LoginViewProps {
   data: {
@@ -37,8 +37,7 @@ export const useLogin = (): LoginViewProps => {
   const password = useSignal('');
   const error = useSignal<string | null>(null);
   const loading = useSignal(false);
-  const modeLoading = useSignal(true);
-  const isSingleUser = useSignal(true);
+  const authMode = useSignal<LoginMode>('loading');
 
   const [_, setLocation] = useLocation();
 
@@ -48,13 +47,11 @@ export const useLogin = (): LoginViewProps => {
 
     getAuthMode()
       .then((mode) => {
-        isSingleUser.value = mode.isSingleUser;
+        authMode.value = mode.isSingleUser ? 'single-user' : 'github';
       })
       .catch(() => {
         error.value = 'Connection failed. Is the server running?';
-      })
-      .finally(() => {
-        modeLoading.value = false;
+        authMode.value = 'unavailable';
       });
 
     if (code) {
@@ -107,16 +104,9 @@ export const useLogin = (): LoginViewProps => {
     window.location.href = getGithubLoginUrl();
   }, []);
 
-  const mode: LoginMode = modeLoading.value
-    ? 'loading'
-    : isSingleUser.value
-      ? 'single-user'
-      : 'github';
-  const description = isSingleUser.value
-    ? 'Enter the instance password to continue.'
-    : 'Sign in with GitHub to create or access your team.';
+  const description = getLoginDescription(authMode.value);
   const content = getLoginContent({
-    mode,
+    mode: authMode.value,
     password,
     error,
     loading,
@@ -145,6 +135,18 @@ export const useLogin = (): LoginViewProps => {
   };
 };
 
+const getLoginDescription = (mode: LoginMode): string => {
+  switch (mode) {
+    case 'single-user':
+      return 'Enter the instance password to continue.';
+    case 'github':
+      return 'Sign in with GitHub to create or access your team.';
+    case 'loading':
+    case 'unavailable':
+      return 'Checking the configured login method.';
+  }
+};
+
 interface LoginContentOptions {
   mode: LoginMode;
   password: Signal<string>;
@@ -167,6 +169,8 @@ const getLoginContent = ({
   switch (mode) {
     case 'loading':
       return h('div', { class: 'text-text-muted text-sm' }, 'Loading auth mode...');
+    case 'unavailable':
+      return h('div', { class: 'text-error text-sm' }, error.value || 'Unable to load auth mode.');
     case 'single-user':
       return h(
         'form',
