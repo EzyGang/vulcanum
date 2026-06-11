@@ -40,6 +40,7 @@ const buildUrl = (path: string, params?: Record<string, string | number | boolea
 };
 
 const SENSITIVE_FIELDS = new Set([
+  'code',
   'password',
   'token',
   'accessToken',
