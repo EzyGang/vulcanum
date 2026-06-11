@@ -11,11 +11,16 @@ vi.mock('../utils/api/client', () => ({
 
 import { instanceLogin } from '../services/auth/auth.service';
 import {
+  acceptToken,
   accessToken,
+  currentUser,
   login,
   logout,
   REFRESH_STORAGE_KEY,
-  refreshToken
+  refreshToken,
+  selectedTeamId,
+  TEAM_STORAGE_KEY,
+  teams
 } from '../stores/auth.store';
 
 const TEST_KEY = 'vulcanum-auth-token';
@@ -24,8 +29,12 @@ describe('auth.store', () => {
   beforeEach(() => {
     localStorage.removeItem(TEST_KEY);
     localStorage.removeItem(REFRESH_STORAGE_KEY);
+    localStorage.removeItem(TEAM_STORAGE_KEY);
     accessToken.value = null;
     refreshToken.value = null;
+    currentUser.value = null;
+    teams.value = [];
+    selectedTeamId.value = null;
     vi.clearAllMocks();
   });
 
@@ -36,15 +45,43 @@ describe('auth.store', () => {
   it('logout clears the token signal and localStorage', async () => {
     accessToken.value = 'test-token';
     refreshToken.value = 'test-refresh-token';
+    currentUser.value = { id: 'user-1', email: 'user@example.com' };
+    teams.value = [{ id: 'team-1', name: 'Team 1' }];
+    selectedTeamId.value = 'team-1';
     localStorage.setItem(TEST_KEY, 'test-token');
     localStorage.setItem(REFRESH_STORAGE_KEY, 'test-refresh-token');
+    localStorage.setItem(TEAM_STORAGE_KEY, 'team-1');
 
     await logout();
 
     expect(accessToken.value).toBeNull();
     expect(refreshToken.value).toBeNull();
+    expect(currentUser.value).toBeNull();
+    expect(teams.value).toEqual([]);
+    expect(selectedTeamId.value).toBeNull();
     expect(localStorage.getItem(TEST_KEY)).toBeNull();
     expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(TEAM_STORAGE_KEY)).toBeNull();
+  });
+
+  it('acceptToken without refresh support clears stale session and team state', async () => {
+    refreshToken.value = 'old-refresh-token';
+    currentUser.value = { id: 'old-user', email: 'old@example.com' };
+    teams.value = [{ id: 'old-team', name: 'Old Team' }];
+    selectedTeamId.value = 'old-team';
+    localStorage.setItem(REFRESH_STORAGE_KEY, 'old-refresh-token');
+    localStorage.setItem(TEAM_STORAGE_KEY, 'old-team');
+
+    await acceptToken('instance-token', false);
+
+    expect(accessToken.value).toBe('instance-token');
+    expect(refreshToken.value).toBeNull();
+    expect(currentUser.value).toBeNull();
+    expect(teams.value).toEqual([]);
+    expect(selectedTeamId.value).toBeNull();
+    expect(localStorage.getItem(TEST_KEY)).toBe('instance-token');
+    expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(TEAM_STORAGE_KEY)).toBeNull();
   });
 
   it('login sets token in signal and localStorage on success', async () => {

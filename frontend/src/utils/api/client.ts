@@ -1,5 +1,6 @@
 import {
   accessToken,
+  clearAuthState,
   REFRESH_STORAGE_KEY,
   refreshToken,
   STORAGE_KEY,
@@ -52,10 +53,7 @@ const SENSITIVE_FIELDS = new Set([
 ]);
 
 const clearStoredTokens = (): void => {
-  accessToken.value = null;
-  refreshToken.value = null;
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(REFRESH_STORAGE_KEY);
+  clearAuthState();
 };
 
 const refreshAccessToken = async (): Promise<boolean> => {

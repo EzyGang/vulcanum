@@ -21,6 +21,21 @@ export const setSelectedTeamId = (teamId: string): void => {
   localStorage.setItem(TEAM_STORAGE_KEY, teamId);
 };
 
+const clearSessionState = (): void => {
+  currentUser.value = null;
+  teams.value = [];
+  selectedTeamId.value = null;
+  localStorage.removeItem(TEAM_STORAGE_KEY);
+};
+
+export const clearAuthState = (): void => {
+  accessToken.value = null;
+  refreshToken.value = null;
+  clearSessionState();
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(REFRESH_STORAGE_KEY);
+};
+
 export const acceptToken = async (
   token: string,
   loadUser = true,
@@ -31,6 +46,10 @@ export const acceptToken = async (
   if (newRefreshToken) {
     refreshToken.value = newRefreshToken;
     localStorage.setItem(REFRESH_STORAGE_KEY, newRefreshToken);
+  } else {
+    refreshToken.value = null;
+    clearSessionState();
+    localStorage.removeItem(REFRESH_STORAGE_KEY);
   }
   if (loadUser) {
     await loadSession();
@@ -69,12 +88,5 @@ export const logout = async (): Promise<void> => {
       // Local cleanup still removes the refresh token if the access token already expired.
     }
   }
-  accessToken.value = null;
-  refreshToken.value = null;
-  currentUser.value = null;
-  teams.value = [];
-  selectedTeamId.value = null;
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(REFRESH_STORAGE_KEY);
-  localStorage.removeItem(TEAM_STORAGE_KEY);
+  clearAuthState();
 };
