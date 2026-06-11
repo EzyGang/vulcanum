@@ -85,15 +85,14 @@ describe('auth.store', () => {
     expect(localStorage.getItem(TEAM_STORAGE_KEY)).toBeNull();
   });
 
-  it('logout reads the current refresh token when the request is sent', async () => {
+  it('logout revokes the captured refresh token', async () => {
     accessToken.value = 'test-token';
     refreshToken.value = 'old-refresh-token';
     vi.mocked(fetchApi).mockImplementationOnce(async (_path, options) => {
       if (!options) return undefined;
 
       refreshToken.value = 'new-refresh-token';
-      const body = typeof options.body === 'function' ? options.body() : options.body;
-      expect(body).toEqual({ refreshToken: 'new-refresh-token' });
+      expect(options.body).toEqual({ refreshToken: 'old-refresh-token' });
       return undefined;
     });
 
@@ -101,7 +100,9 @@ describe('auth.store', () => {
 
     expect(fetchApi).toHaveBeenCalledWith('/auth/logout', {
       method: 'POST',
-      body: expect.any(Function)
+      body: {
+        refreshToken: 'old-refresh-token'
+      }
     });
   });
 

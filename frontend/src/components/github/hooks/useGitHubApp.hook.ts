@@ -4,6 +4,7 @@ import {
   getInstallation,
   listRepos
 } from '../../../services/github/github.service';
+import { queryClient } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
 export const useGitHubApp = () => {
@@ -28,6 +29,7 @@ export const useGitHubApp = () => {
 
   const disconnectMutation = useApiMutation((id: number) => disconnectInstallation(id), {
     onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['github-repos'] });
       refetch();
     }
   });

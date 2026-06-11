@@ -39,6 +39,43 @@ impl TeamsRepository {
         .map_err(TeamsError::from)
     }
 
+    pub async fn lock_personal_team_creation<'c, Q>(
+        &self,
+        db: Q,
+        user_id: &str,
+    ) -> Result<(), TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query!(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+            user_id
+        )
+        .execute(db)
+        .await
+        .map(|_| ())
+        .map_err(TeamsError::from)
+    }
+
+    pub async fn get_personal_team<'c, Q>(
+        &self,
+        db: Q,
+        user_id: &str,
+    ) -> Result<Option<Team>, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            Team,
+            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+             FROM teams WHERE personal_user_id = $1"#,
+            user_id,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(TeamsError::from)
+    }
+
     pub async fn add_member<'c, Q>(
         &self,
         db: Q,

@@ -1,7 +1,7 @@
 CREATE TABLE teams (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
-    personal_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    personal_user_id TEXT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

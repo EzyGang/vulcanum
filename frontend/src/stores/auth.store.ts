@@ -76,13 +76,14 @@ export const login = async (password: string): Promise<void> => {
 
 export const logout = async (): Promise<void> => {
   const token = accessToken.value;
+  const tokenToRevoke = refreshToken.value;
   if (token) {
     try {
       await fetchApi('/auth/logout', {
         method: 'POST',
-        body: () => ({
-          refreshToken: refreshToken.value
-        })
+        body: {
+          refreshToken: tokenToRevoke
+        }
       });
     } catch {
       // Local cleanup still removes the refresh token if the access token already expired.

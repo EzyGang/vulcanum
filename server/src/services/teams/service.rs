@@ -64,22 +64,26 @@ impl TeamsService {
         user_id: &str,
         login: &str,
     ) -> Result<Team, TeamsError> {
-        let teams = self.repo.list_for_user(&self.db, user_id).await?;
-        match teams
-            .into_iter()
-            .find(|team| team.personal_user_id.as_deref() == Some(user_id))
-        {
-            Some(team) => Ok(team),
+        let mut tx = self.db.begin().await?;
+
+        self.repo
+            .lock_personal_team_creation(&mut *tx, user_id)
+            .await?;
+
+        let team = match self.repo.get_personal_team(&mut *tx, user_id).await? {
+            Some(team) => team,
             None => {
-                let team = self
-                    .repo
-                    .create_personal_team(&self.db, user_id, &format!("{login}'s team"))
-                    .await?;
                 self.repo
-                    .add_member(&self.db, team.id, user_id, "owner")
-                    .await?;
-                Ok(team)
+                    .create_personal_team(&mut *tx, user_id, &format!("{login}'s team"))
+                    .await?
             }
-        }
+        };
+
+        self.repo
+            .add_member(&mut *tx, team.id, user_id, "owner")
+            .await?;
+        tx.commit().await?;
+
+        Ok(team)
     }
 }
