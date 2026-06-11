@@ -80,9 +80,9 @@ export const logout = async (): Promise<void> => {
     try {
       await fetchApi('/auth/logout', {
         method: 'POST',
-        body: {
+        body: () => ({
           refreshToken: refreshToken.value
-        }
+        })
       });
     } catch {
       // Local cleanup still removes the refresh token if the access token already expired.

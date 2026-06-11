@@ -117,6 +117,9 @@ const sanitizeLogUrl = (url: string): string => {
     : parsed.toString();
 };
 
+const resolveBody = (body: unknown): unknown =>
+  typeof body === 'function' ? (body as () => unknown)() : body;
+
 const logRequest = (method: string, url: string, body?: unknown) => {
   if (!isDevelopment || import.meta.env.VITE_DISABLE_DEV_LOGGING) return;
   console.group(`API Request: ${method} ${sanitizeLogUrl(url)}`);
@@ -144,9 +147,10 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
   const { body, params, ...init } = options;
   const method = (init.method || 'GET').toUpperCase();
   const url = buildUrl(path, method === 'GET' ? params : undefined);
-  const requestBody = body != null ? JSON.stringify(snakeKeys(body)) : undefined;
 
   const sendRequest = () => {
+    const resolvedBody = resolveBody(body);
+    const requestBody = resolvedBody != null ? JSON.stringify(snakeKeys(resolvedBody)) : undefined;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(init.headers as Record<string, string> | undefined)
@@ -169,7 +173,7 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
     });
   };
 
-  logRequest(method, url, body);
+  logRequest(method, url, resolveBody(body));
 
   let response = await sendRequest();
   if (response.status === 401 && shouldRefreshRequest(path) && (await refreshAccessToken())) {

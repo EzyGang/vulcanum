@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
+use crate::routes::parse_team_header;
 
 #[derive(Clone)]
 pub enum TeamPrincipal {
@@ -55,11 +56,10 @@ impl FromRequest for TeamPrincipal {
             return std::future::ready(Err(AppError::InvalidToken.into()));
         }
 
-        let team_id = req
-            .headers()
-            .get("X-Team-Id")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| Uuid::parse_str(v).ok());
+        let team_id = match parse_team_header(req) {
+            Ok(team_id) => team_id,
+            Err(err) => return std::future::ready(Err(err.into())),
+        };
 
         std::future::ready(Ok(Self::User {
             user_id: claims.sub,

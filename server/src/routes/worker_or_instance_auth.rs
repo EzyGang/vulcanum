@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
+use crate::routes::parse_team_header;
 
 /// Authenticated principal that may be either a worker or an instance admin.
 /// Used for endpoints that both workers (their own jobs) and admins (any job)
@@ -51,11 +52,10 @@ impl FromRequest for WorkerOrInstanceAuth {
                         return std::future::ready(Ok(Self::Instance));
                     }
                     if token_type == Some("user") {
-                        let team_id = req
-                            .headers()
-                            .get("X-Team-Id")
-                            .and_then(|v| v.to_str().ok())
-                            .and_then(|v| Uuid::parse_str(v).ok());
+                        let team_id = match parse_team_header(req) {
+                            Ok(team_id) => team_id,
+                            Err(err) => return std::future::ready(Err(err.into())),
+                        };
                         return std::future::ready(Ok(Self::User {
                             user_id: sub.to_owned(),
                             team_id,

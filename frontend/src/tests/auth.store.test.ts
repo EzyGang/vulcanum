@@ -22,6 +22,7 @@ import {
   TEAM_STORAGE_KEY,
   teams
 } from '../stores/auth.store';
+import { fetchApi } from '../utils/api/client';
 
 const TEST_KEY = 'vulcanum-auth-token';
 
@@ -82,6 +83,26 @@ describe('auth.store', () => {
     expect(localStorage.getItem(TEST_KEY)).toBe('instance-token');
     expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBeNull();
     expect(localStorage.getItem(TEAM_STORAGE_KEY)).toBeNull();
+  });
+
+  it('logout reads the current refresh token when the request is sent', async () => {
+    accessToken.value = 'test-token';
+    refreshToken.value = 'old-refresh-token';
+    vi.mocked(fetchApi).mockImplementationOnce(async (_path, options) => {
+      if (!options) return undefined;
+
+      refreshToken.value = 'new-refresh-token';
+      const body = typeof options.body === 'function' ? options.body() : options.body;
+      expect(body).toEqual({ refreshToken: 'new-refresh-token' });
+      return undefined;
+    });
+
+    await logout();
+
+    expect(fetchApi).toHaveBeenCalledWith('/auth/logout', {
+      method: 'POST',
+      body: expect.any(Function)
+    });
   });
 
   it('login sets token in signal and localStorage on success', async () => {

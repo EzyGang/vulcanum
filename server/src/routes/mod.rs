@@ -13,6 +13,10 @@ pub mod worker_or_instance_auth;
 pub mod workers;
 
 use actix_web::web;
+use actix_web::HttpRequest;
+use uuid::Uuid;
+
+use crate::errors::AppError;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
@@ -101,6 +105,20 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     ),
             ),
     );
+}
+
+fn parse_team_header(req: &HttpRequest) -> Result<Option<Uuid>, AppError> {
+    let header = match req.headers().get("X-Team-Id") {
+        Some(header) => header,
+        None => return Ok(None),
+    };
+
+    let value = header
+        .to_str()
+        .map_err(|_| AppError::BadRequest("Invalid X-Team-Id header".to_owned()))?;
+    Uuid::parse_str(value)
+        .map(Some)
+        .map_err(|_| AppError::BadRequest("Invalid X-Team-Id header".to_owned()))
 }
 
 #[cfg(test)]
