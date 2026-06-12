@@ -179,5 +179,10 @@ pub(crate) fn validate_return_to(return_to: Option<&str>) -> Option<&str> {
         return None;
     }
 
+    let path = return_to.split('?').next().unwrap_or(return_to);
+    if path.split('/').any(|segment| segment == "..") {
+        return None;
+    }
+
     Some(return_to)
 }

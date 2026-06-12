@@ -21,6 +21,7 @@ impl TeamsService {
         principal: &TeamPrincipal,
         single_user: bool,
     ) -> Result<CreateTeamInviteResponse, TeamsError> {
+        // Invites are disabled for all single-user deployments, including user principals in tests.
         if single_user {
             return Err(TeamsError::AccessDenied);
         }

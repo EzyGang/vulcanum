@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use chrono::{DateTime, Duration, Utc};
 
 struct TokenEntry {
-    user_id: String,
+    payload: String,
     expires_at: DateTime<Utc>,
 }
 
@@ -26,9 +26,9 @@ impl TokenStore {
         }
     }
 
-    pub fn insert(&self, token: &str, user_id: &str, ttl_minutes: i64) {
+    pub fn insert(&self, token: &str, payload: &str, ttl_minutes: i64) {
         let entry = TokenEntry {
-            user_id: user_id.to_owned(),
+            payload: payload.to_owned(),
             expires_at: Utc::now() + Duration::minutes(ttl_minutes),
         };
         let mut map = self.inner.write().unwrap_or_else(|e| e.into_inner());
@@ -46,6 +46,6 @@ impl TokenStore {
             return None;
         }
 
-        Some(entry.user_id)
+        Some(entry.payload)
     }
 }
