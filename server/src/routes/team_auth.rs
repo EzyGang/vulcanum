@@ -2,9 +2,8 @@ use actix_web::{dev::Payload, Error, FromRequest, HttpRequest};
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::parse_team_header;
+use crate::routes::{decode_jwt, parse_team_header};
 
 #[derive(Clone)]
 pub enum TeamPrincipal {
@@ -26,26 +25,9 @@ impl FromRequest for TeamPrincipal {
     type Future = std::future::Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let token = match req
-            .headers()
-            .get("Authorization")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.strip_prefix("Bearer "))
-        {
-            Some(token) => token,
-            None => return std::future::ready(Err(AppError::AuthHeaderMissing.into())),
-        };
-
-        let state = match req.app_data::<actix_web::web::Data<AppState>>() {
-            Some(state) => state,
-            None => return std::future::ready(Err(AppError::Internal.into())),
-        };
-
-        let decoding_key = jsonwebtoken::DecodingKey::from_secret(state.jwt_secret.as_bytes());
-        let validation = jsonwebtoken::Validation::default();
-        let claims = match jsonwebtoken::decode::<Claims>(token, &decoding_key, &validation) {
-            Ok(data) => data.claims,
-            Err(_) => return std::future::ready(Err(AppError::InvalidToken.into())),
+        let claims = match decode_jwt::<Claims>(req, AppError::AuthHeaderMissing) {
+            Ok(claims) => claims,
+            Err(err) => return std::future::ready(Err(err.into())),
         };
 
         if claims.sub == "instance" && claims.typ.as_deref().unwrap_or("instance") == "instance" {

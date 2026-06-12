@@ -18,7 +18,7 @@ struct InstanceClaims {
 impl AuthService {
     pub fn instance_login(&self, password: &str) -> Result<String, AuthError> {
         if !self.is_single_user {
-            return Err(AuthError::InvalidPassword);
+            return Err(AuthError::InstanceLoginDisabled);
         }
 
         if password != self.instance_password {

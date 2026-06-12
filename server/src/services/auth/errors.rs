@@ -10,6 +10,8 @@ pub enum AuthError {
     InvalidRefreshToken,
     #[error("invalid password")]
     InvalidPassword,
+    #[error("instance login is disabled")]
+    InstanceLoginDisabled,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
