@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::services::teams::errors::TeamsError;
 use crate::services::users::errors::UsersError;
 
 #[derive(Debug, Error)]
@@ -16,4 +17,6 @@ pub enum AuthError {
     Database(#[from] sqlx::Error),
     #[error(transparent)]
     Users(#[from] UsersError),
+    #[error(transparent)]
+    Teams(#[from] TeamsError),
 }

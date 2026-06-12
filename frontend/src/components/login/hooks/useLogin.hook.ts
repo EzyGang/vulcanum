@@ -1,5 +1,4 @@
 import { type Signal, useSignal } from '@preact/signals';
-import { h, type JSX } from 'preact';
 import { useCallback, useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 import {
@@ -9,10 +8,8 @@ import {
 } from '../../../services/auth/auth.service';
 import { acceptToken, login } from '../../../stores/auth.store';
 import { ApiError } from '../../../utils/api/client';
-import { Button } from '../../shared/ui/Button.view';
-import { Input } from '../../shared/ui/Input.view';
 
-type LoginMode = 'loading' | 'single-user' | 'github' | 'unavailable';
+export type LoginMode = 'loading' | 'single-user' | 'github' | 'unavailable';
 
 export interface LoginViewProps {
   data: {
@@ -28,7 +25,7 @@ export interface LoginViewProps {
     onGithubLogin: () => void;
   };
   view: {
-    content: JSX.Element;
+    mode: LoginMode;
     description: string;
   };
 }
@@ -105,16 +102,6 @@ export const useLogin = (): LoginViewProps => {
   }, []);
 
   const description = getLoginDescription(authMode.value);
-  const content = getLoginContent({
-    mode: authMode.value,
-    password,
-    error,
-    loading,
-    onPasswordChange: handlePasswordChange,
-    onSubmit: handleSubmit,
-    onGithubLogin: handleGithubLogin
-  });
-
   return {
     data: {
       password
@@ -129,7 +116,7 @@ export const useLogin = (): LoginViewProps => {
       onGithubLogin: handleGithubLogin
     },
     view: {
-      content,
+      mode: authMode.value,
       description
     }
   };
@@ -144,62 +131,5 @@ const getLoginDescription = (mode: LoginMode): string => {
     case 'loading':
     case 'unavailable':
       return 'Checking the configured login method.';
-  }
-};
-
-interface LoginContentOptions {
-  mode: LoginMode;
-  password: Signal<string>;
-  error: Signal<string | null>;
-  loading: Signal<boolean>;
-  onPasswordChange: (e: Event) => void;
-  onSubmit: (e: Event) => void;
-  onGithubLogin: () => void;
-}
-
-const getLoginContent = ({
-  mode,
-  password,
-  error,
-  loading,
-  onPasswordChange,
-  onSubmit,
-  onGithubLogin
-}: LoginContentOptions): JSX.Element => {
-  switch (mode) {
-    case 'loading':
-      return h('div', { class: 'text-text-muted text-sm' }, 'Loading auth mode...');
-    case 'unavailable':
-      return h('div', { class: 'text-error text-sm' }, error.value || 'Unable to load auth mode.');
-    case 'single-user':
-      return h(
-        'form',
-        { onSubmit, class: 'flex flex-col gap-4' },
-        h(Input, {
-          type: 'password',
-          value: password.value,
-          onInput: onPasswordChange,
-          placeholder: 'Instance password',
-          autofocus: true,
-          disabled: loading.value
-        }),
-        error.value ? h('div', { class: 'text-error text-sm' }, error.value) : null,
-        h(
-          Button,
-          { type: 'submit', variant: 'primary', disabled: loading.value },
-          loading.value ? 'Signing in...' : 'Sign in'
-        )
-      );
-    case 'github':
-      return h(
-        'div',
-        { class: 'flex flex-col gap-4' },
-        error.value ? h('div', { class: 'text-error text-sm' }, error.value) : null,
-        h(
-          Button,
-          { type: 'button', variant: 'primary', disabled: loading.value, onClick: onGithubLogin },
-          loading.value ? 'Signing in...' : 'Sign in with GitHub'
-        )
-      );
   }
 };

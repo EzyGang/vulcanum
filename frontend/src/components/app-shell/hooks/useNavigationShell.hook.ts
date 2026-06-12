@@ -49,7 +49,7 @@ export const useNavigationShell = () => {
 
   const selectTeam = (teamId: string) => {
     setSelectedTeamId(teamId);
-    queryClient.invalidateQueries({ refetchType: 'all' });
+    queryClient.invalidateQueries({ refetchType: 'active' });
   };
 
   return {

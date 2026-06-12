@@ -75,10 +75,24 @@ export const useTeams = () => {
     formError.value = null;
   }, []);
 
+  const handleNameInput = useCallback(
+    (event: Event) => {
+      handleNameChange((event.target as HTMLInputElement).value);
+    },
+    [handleNameChange]
+  );
+
   const handleEditNameChange = useCallback((value: string) => {
     editName.value = value;
     formError.value = null;
   }, []);
+
+  const handleEditNameInput = useCallback(
+    (event: Event) => {
+      handleEditNameChange((event.target as HTMLInputElement).value);
+    },
+    [handleEditNameChange]
+  );
 
   const handleSelectTeam = useCallback((teamId: string) => {
     selectedManageTeamId.value = teamId;
@@ -171,6 +185,8 @@ export const useTeams = () => {
     actions: {
       onNameChange: handleNameChange,
       onEditNameChange: handleEditNameChange,
+      onNameInput: handleNameInput,
+      onEditNameInput: handleEditNameInput,
       onSelectTeam: handleSelectTeam,
       onUseTeam: handleUseTeam,
       onStartEdit: handleStartEdit,

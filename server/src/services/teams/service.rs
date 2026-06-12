@@ -17,14 +17,17 @@ impl TeamsService {
         Self { repo, db }
     }
 
+    #[must_use = "team list results should be handled"]
     pub async fn list_for_user(&self, user_id: &str) -> Result<Vec<Team>, TeamsError> {
         self.repo.list_for_user(&self.db, user_id).await
     }
 
+    #[must_use = "team list results should be handled"]
     pub async fn list_all(&self) -> Result<Vec<Team>, TeamsError> {
         self.repo.list_all(&self.db).await
     }
 
+    #[must_use = "team list results should be handled"]
     pub async fn list_for_principal(
         &self,
         principal: &TeamPrincipal,
@@ -39,6 +42,7 @@ impl TeamsService {
         }
     }
 
+    #[must_use = "team lookup results should be handled"]
     pub async fn get_for_principal(
         &self,
         team_id: Uuid,
@@ -127,6 +131,7 @@ impl TeamsService {
         self.repo.delete(&self.db, team_id).await
     }
 
+    #[must_use = "member list results should be handled"]
     pub async fn list_members_for_principal(
         &self,
         team_id: Uuid,
@@ -138,6 +143,7 @@ impl TeamsService {
         self.repo.list_members(&self.db, team_id).await
     }
 
+    #[must_use = "identity list results should be handled"]
     pub async fn list_identities_for_user(
         &self,
         user_id: &str,
@@ -145,6 +151,7 @@ impl TeamsService {
         self.repo.list_identities_for_user(&self.db, user_id).await
     }
 
+    #[must_use = "resolved team id should be used"]
     pub async fn resolve_team(
         &self,
         principal: &TeamPrincipal,

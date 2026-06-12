@@ -69,8 +69,7 @@ impl AuthService {
             .teams
             .repo
             .find_identity(&self.teams.db, "github", &provider_user_id)
-            .await
-            .map_err(|_| AuthError::InvalidToken)?
+            .await?
         {
             Some(identity) => self.users.find_user_by_id(&identity.user_id).await?,
             None => {
@@ -93,12 +92,10 @@ impl AuthService {
                 &provider_user_id,
                 &github_user.login,
             )
-            .await
-            .map_err(|_| AuthError::InvalidToken)?;
+            .await?;
         self.teams
             .ensure_personal_team(&user.id, &github_user.login)
-            .await
-            .map_err(|_| AuthError::InvalidToken)?;
+            .await?;
         self.users.update_last_login(&user.id).await?;
 
         self.issue_user_token_pair(&user.id).await

@@ -149,6 +149,7 @@ impl From<AuthError> for AppError {
                 Self::Internal
             }
             AuthError::Users(u) => u.into(),
+            AuthError::Teams(t) => t.into(),
         }
     }
 }

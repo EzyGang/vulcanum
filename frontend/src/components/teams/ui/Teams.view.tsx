@@ -31,6 +31,8 @@ interface TeamsViewProps {
   actions: {
     onNameChange: (value: string) => void;
     onEditNameChange: (value: string) => void;
+    onNameInput: (event: Event) => void;
+    onEditNameInput: (event: Event) => void;
     onSelectTeam: (teamId: string) => void;
     onUseTeam: (teamId: string) => void;
     onStartEdit: (team: Team) => void;
@@ -57,7 +59,7 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
     >
       <Input
         value={data.name}
-        onInput={(event) => actions.onNameChange((event.target as HTMLInputElement).value)}
+        onInput={actions.onNameInput}
         placeholder='New team name'
         disabled={status.creating}
       />
@@ -147,9 +149,7 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
           <form onSubmit={actions.onUpdate} class='flex flex-col gap-3 sm:flex-row'>
             <Input
               value={data.editName}
-              onInput={(event) =>
-                actions.onEditNameChange((event.target as HTMLInputElement).value)
-              }
+              onInput={actions.onEditNameInput}
               disabled={status.updating}
             />
             <Button type='submit' variant='primary' disabled={status.updating}>

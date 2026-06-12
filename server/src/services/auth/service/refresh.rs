@@ -21,6 +21,7 @@ struct UserClaims {
 }
 
 impl AuthService {
+    #[must_use = "issued token pair should be returned to the caller"]
     pub async fn issue_user_token_pair(
         &self,
         user_id: &str,
@@ -41,6 +42,7 @@ impl AuthService {
         })
     }
 
+    #[must_use = "refreshed token pair should be returned to the caller"]
     pub async fn refresh_user_token(
         &self,
         refresh_token: &str,
