@@ -173,10 +173,10 @@ pub struct JobConfigFields {
     pub repo_url: String,
 }
 
-impl Default for JobConfigFields {
-    fn default() -> Self {
+impl JobConfigFields {
+    pub fn empty_for_team(team_id: Uuid) -> Self {
         Self {
-            team_id: Uuid::nil(),
+            team_id,
             external_project_id: String::new(),
             external_workspace_id: String::new(),
             opencode_config: String::new(),

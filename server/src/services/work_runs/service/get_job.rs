@@ -25,7 +25,7 @@ impl WorkRunsService {
                     work_run_id = %id,
                     "project config not found for work run"
                 );
-                JobConfigFields::default()
+                JobConfigFields::empty_for_team(run.team_id)
             }
         };
 

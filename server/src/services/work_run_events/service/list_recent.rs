@@ -14,17 +14,8 @@ impl WorkRunEventsService {
         work_run_id: Uuid,
         team_id: Uuid,
     ) -> Result<Vec<WorkRunEvent>, WorkRunEventsError> {
-        let run = self
-            .work_runs_repo
-            .find_by_id(&self.db, work_run_id)
-            .await
-            .map_err(|_| WorkRunEventsError::NotFound)?;
-        if run.team_id != team_id {
-            return Err(WorkRunEventsError::NotFound);
-        }
-
         self.repo
-            .find_last_n(&self.db, work_run_id, RECENT_LIMIT)
+            .find_last_n(&self.db, work_run_id, team_id, RECENT_LIMIT)
             .await
     }
 }
