@@ -88,6 +88,21 @@ async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn list_all_rejects_cross_team_runs(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let team_b = test_helpers::insert_team(&pool, "runs-team-b").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-cross-team-list").await;
+    test_helpers::insert_pending_work_run(&pool, project_id, "task-cross-team-list").await;
+
+    let runs = svc
+        .list_all(team_b, None, 20, 0)
+        .await
+        .expect("Should list team B runs");
+
+    assert!(runs.is_empty());
+}
+
+#[sqlx::test]
 async fn poll_consumes_dispatch_flag(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "consume-worker").await;

@@ -201,3 +201,27 @@ async fn list_recent_returns_last_n_ascending(pool: sqlx::PgPool) {
     assert_eq!(sequences[0], 6);
     assert_eq!(sequences[19], 25);
 }
+
+#[sqlx::test]
+async fn list_recent_rejects_cross_team_run(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let team_b = test_helpers::insert_team(&pool, "events-team-b").await;
+    let project_id = test_helpers::insert_project_config(&pool, "evt-cross-team").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-cross-team-worker").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-cross-team-task", worker_id)
+            .await;
+
+    let mut event = make_wire_event(1, "cross-team-event");
+    event.occurred_at = chrono::Utc::now();
+    svc.append_events(wr_id, worker_id, vec![event])
+        .await
+        .expect("append event");
+
+    let recent = svc
+        .list_recent(wr_id, team_b)
+        .await
+        .expect("cross-team recent list should not expose events");
+
+    assert!(recent.is_empty());
+}

@@ -28,14 +28,38 @@ use crate::services::workers::service::WorkersService;
 
 pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
 
+pub async fn insert_team(pool: &sqlx::PgPool, name: &str) -> Uuid {
+    let id = Uuid::new_v4();
+
+    sqlx::query!("INSERT INTO teams (id, name) VALUES ($1, $2)", id, name)
+        .execute(pool)
+        .await
+        .expect("Should insert team");
+
+    id
+}
+
+pub async fn insert_user(pool: &sqlx::PgPool, id: &str) {
+    let email = format!("{id}@example.com");
+
+    sqlx::query!("INSERT INTO users (id, email) VALUES ($1, $2)", id, email)
+        .execute(pool)
+        .await
+        .expect("Should insert user");
+}
+
 pub async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
+    insert_worker_for_team(pool, DEFAULT_TEAM_ID, name).await
+}
+
+pub async fn insert_worker_for_team(pool: &sqlx::PgPool, team_id: Uuid, name: &str) -> Uuid {
     let id = Uuid::new_v4();
     let hash = hex::encode([0u8; 32]);
 
     sqlx::query!(
         "INSERT INTO workers (id, team_id, name, refresh_token_hash, refresh_expires_at, status) VALUES ($1, $2, $3, $4, NOW() + INTERVAL '30 days', 'idle'::worker_status)",
         id,
-        DEFAULT_TEAM_ID,
+        team_id,
         name,
         hash,
     )
@@ -47,12 +71,20 @@ pub async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
 }
 
 pub async fn insert_project_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
+    insert_project_config_for_team(pool, DEFAULT_TEAM_ID, external_project_id).await
+}
+
+pub async fn insert_project_config_for_team(
+    pool: &sqlx::PgPool,
+    team_id: Uuid,
+    external_project_id: &str,
+) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
         "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'Review {{task_title}}', 'kaneo')",
         id,
-        DEFAULT_TEAM_ID,
+        team_id,
         external_project_id,
     )
     .execute(pool)
@@ -88,9 +120,18 @@ pub async fn insert_pending_work_run(
     project_config_id: Uuid,
     task_ref: &str,
 ) -> Uuid {
+    insert_pending_work_run_for_team(pool, DEFAULT_TEAM_ID, project_config_id, task_ref).await
+}
+
+pub async fn insert_pending_work_run_for_team(
+    pool: &sqlx::PgPool,
+    team_id: Uuid,
+    project_config_id: Uuid,
+    task_ref: &str,
+) -> Uuid {
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
-        team_id: DEFAULT_TEAM_ID,
+        team_id,
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
@@ -113,9 +154,26 @@ pub async fn insert_running_work_run(
     task_ref: &str,
     worker_id: Uuid,
 ) -> Uuid {
+    insert_running_work_run_for_team(
+        pool,
+        DEFAULT_TEAM_ID,
+        project_config_id,
+        task_ref,
+        worker_id,
+    )
+    .await
+}
+
+pub async fn insert_running_work_run_for_team(
+    pool: &sqlx::PgPool,
+    team_id: Uuid,
+    project_config_id: Uuid,
+    task_ref: &str,
+    worker_id: Uuid,
+) -> Uuid {
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
-        team_id: DEFAULT_TEAM_ID,
+        team_id,
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),

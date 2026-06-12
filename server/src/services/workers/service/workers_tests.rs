@@ -252,3 +252,17 @@ async fn list_all_returns_workers(pool: sqlx::PgPool) {
     let workers = svc.list_all(DEFAULT_TEAM_ID).await.expect("Should list");
     assert_eq!(workers.len(), 2);
 }
+
+#[sqlx::test]
+async fn delete_worker_rejects_cross_team_worker(pool: sqlx::PgPool) {
+    let svc = svc(pool.clone());
+    let team_b = crate::test_helpers::insert_team(&pool, "workers-team-b").await;
+    let worker_id = crate::test_helpers::insert_worker(&pool, "team-a-worker").await;
+
+    let err = svc
+        .delete_worker(worker_id, team_b)
+        .await
+        .expect_err("team B must not delete team A worker");
+
+    assert!(matches!(err, WorkersError::WorkerNotFound));
+}
