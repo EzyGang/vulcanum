@@ -3,14 +3,18 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::instance_auth::InstanceAuth;
+use crate::routes::team_auth::TeamPrincipal;
 use crate::services::workers::model::{ConnectRequest, RefreshRequest, UpdateWorkerStatusRequest};
 
 pub async fn generate_code(
     state: web::Data<AppState>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let resp = state.workers.generate_code().await?;
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let resp = state.workers.generate_code(team_id).await?;
     Ok(HttpResponse::Created().json(resp))
 }
 
@@ -32,9 +36,13 @@ pub async fn refresh(
 
 pub async fn list(
     state: web::Data<AppState>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let workers = state.workers.list_all().await?;
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let workers = state.workers.list_all(team_id).await?;
     Ok(HttpResponse::Ok().json(workers))
 }
 
@@ -42,11 +50,15 @@ pub async fn update_status(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
     body: web::Json<UpdateWorkerStatusRequest>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
     let worker = state
         .workers
-        .set_worker_status(path.into_inner(), body.into_inner())
+        .set_worker_status(path.into_inner(), team_id, body.into_inner())
         .await?;
     Ok(HttpResponse::Ok().json(worker))
 }
@@ -54,8 +66,15 @@ pub async fn update_status(
 pub async fn delete(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    _auth: InstanceAuth,
+    auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    state.workers.delete_worker(path.into_inner()).await?;
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    state
+        .workers
+        .delete_worker(path.into_inner(), team_id)
+        .await?;
     Ok(HttpResponse::NoContent().finish())
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 use crate::services::workers::errors::WorkersError;
 
@@ -11,13 +12,24 @@ pub trait CodeStore: Send + Sync {
     /// Save a code with its absolute expiration time.
     ///
     /// Codes are short-lived (minutes) and should auto-expire after `expires_at`.
-    async fn save(&self, code: &str, expires_at: DateTime<Utc>) -> Result<(), WorkersError>;
+    async fn save(
+        &self,
+        code: &str,
+        expires_at: DateTime<Utc>,
+        team_id: Uuid,
+    ) -> Result<(), WorkersError>;
 
     /// Consume a code atomically, returning its expiration time if it existed.
     ///
     /// The operation must be atomic (get + delete in one step) so that the same
     /// code cannot be used twice.
-    async fn consume(&self, code: &str) -> Result<Option<DateTime<Utc>>, WorkersError>;
+    async fn consume(&self, code: &str) -> Result<Option<RegistrationCode>, WorkersError>;
+}
+
+#[derive(Clone, Copy)]
+pub struct RegistrationCode {
+    pub expires_at: DateTime<Utc>,
+    pub team_id: Uuid,
 }
 
 /// Redis-backed implementation.
@@ -38,7 +50,12 @@ impl RedisCodeStore {
 
 #[async_trait]
 impl CodeStore for RedisCodeStore {
-    async fn save(&self, code: &str, expires_at: DateTime<Utc>) -> Result<(), WorkersError> {
+    async fn save(
+        &self,
+        code: &str,
+        expires_at: DateTime<Utc>,
+        team_id: Uuid,
+    ) -> Result<(), WorkersError> {
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let key = code_redis_key(code);
         let ttl_secs = (expires_at - Utc::now()).num_seconds().max(1) as u64;
@@ -46,14 +63,14 @@ impl CodeStore for RedisCodeStore {
         redis::cmd("SETEX")
             .arg(&key)
             .arg(ttl_secs)
-            .arg(expires_at.timestamp())
+            .arg(format!("{}:{}", expires_at.timestamp(), team_id))
             .query_async::<()>(&mut conn)
             .await?;
 
         Ok(())
     }
 
-    async fn consume(&self, code: &str) -> Result<Option<DateTime<Utc>>, WorkersError> {
+    async fn consume(&self, code: &str) -> Result<Option<RegistrationCode>, WorkersError> {
         let mut conn = self.client.get_multiplexed_async_connection().await?;
         let key = code_redis_key(code);
 
@@ -68,13 +85,11 @@ impl CodeStore for RedisCodeStore {
         "#,
         );
 
-        let value: Option<i64> = script.key(&key).invoke_async(&mut conn).await?;
+        let value: Option<String> = script.key(&key).invoke_async(&mut conn).await?;
 
         match value {
             None => Ok(None),
-            Some(ts) => Ok(Some(
-                DateTime::from_timestamp(ts, 0).unwrap_or(DateTime::UNIX_EPOCH),
-            )),
+            Some(value) => parse_registration_code(&value),
         }
     }
 }
@@ -87,7 +102,7 @@ fn code_redis_key(code: &str) -> String {
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct InMemoryCodeStore {
-    inner: Arc<tokio::sync::RwLock<std::collections::HashMap<String, DateTime<Utc>>>>,
+    inner: Arc<tokio::sync::RwLock<std::collections::HashMap<String, RegistrationCode>>>,
 }
 
 #[allow(dead_code)]
@@ -107,14 +122,44 @@ impl InMemoryCodeStore {
 
 #[async_trait]
 impl CodeStore for InMemoryCodeStore {
-    async fn save(&self, code: &str, expires_at: DateTime<Utc>) -> Result<(), WorkersError> {
+    async fn save(
+        &self,
+        code: &str,
+        expires_at: DateTime<Utc>,
+        team_id: Uuid,
+    ) -> Result<(), WorkersError> {
         let mut guard = self.inner.write().await;
-        guard.insert(code.to_owned(), expires_at);
+        guard.insert(
+            code.to_owned(),
+            RegistrationCode {
+                expires_at,
+                team_id,
+            },
+        );
         Ok(())
     }
 
-    async fn consume(&self, code: &str) -> Result<Option<DateTime<Utc>>, WorkersError> {
+    async fn consume(&self, code: &str) -> Result<Option<RegistrationCode>, WorkersError> {
         let mut guard = self.inner.write().await;
         Ok(guard.remove(code))
     }
+}
+
+fn parse_registration_code(value: &str) -> Result<Option<RegistrationCode>, WorkersError> {
+    let Some((ts, team_id)) = value.split_once(':') else {
+        return Ok(None);
+    };
+    let ts = match ts.parse::<i64>() {
+        Ok(ts) => ts,
+        Err(_) => return Ok(None),
+    };
+    let team_id = match Uuid::parse_str(team_id) {
+        Ok(team_id) => team_id,
+        Err(_) => return Ok(None),
+    };
+
+    Ok(Some(RegistrationCode {
+        expires_at: DateTime::from_timestamp(ts, 0).unwrap_or(DateTime::UNIX_EPOCH),
+        team_id,
+    }))
 }

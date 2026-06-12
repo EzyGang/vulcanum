@@ -33,23 +33,32 @@ impl ProjectConfigsService {
         }
     }
 
-    pub async fn list_all(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
-        self.repo.list_all(&self.db).await
+    pub async fn list_all(&self, team_id: Uuid) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
+        self.repo.list_all(&self.db, team_id).await
     }
 
-    pub async fn count_enabled(&self) -> Result<i64, ProjectConfigsError> {
-        self.repo.count_enabled(&self.db).await
+    pub async fn count_enabled(&self, team_id: Uuid) -> Result<i64, ProjectConfigsError> {
+        self.repo.count_enabled(&self.db, team_id).await
     }
 
-    pub async fn get_by_id(&self, id: Uuid) -> Result<ProjectConfig, ProjectConfigsError> {
-        self.repo.find_by_id(&self.db, id).await
+    pub async fn get_by_id(
+        &self,
+        id: Uuid,
+        team_id: Uuid,
+    ) -> Result<ProjectConfig, ProjectConfigsError> {
+        let config = self.repo.find_by_id(&self.db, id).await?;
+        if config.team_id != team_id {
+            return Err(ProjectConfigsError::NotFound);
+        }
+        Ok(config)
     }
 
     pub async fn create(
         &self,
+        team_id: Uuid,
         mut params: CreateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
-        let client = self.resolve_client(&params.provider_id).await?;
+        let client = self.resolve_client(&params.provider_id, team_id).await?;
         let all_columns = client
             .fetch_columns(&params.external_project_id)
             .await
@@ -60,15 +69,19 @@ impl ProjectConfigsService {
         params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
         params.blocked_column = resolve_column_slug(&all_columns, &params.blocked_column)?;
 
-        self.repo.create(&self.db, &params).await
+        self.repo.create(&self.db, team_id, &params).await
     }
 
     pub async fn update(
         &self,
         id: Uuid,
+        team_id: Uuid,
         mut params: UpdateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
         let existing = self.repo.find_by_id(&self.db, id).await?;
+        if existing.team_id != team_id {
+            return Err(ProjectConfigsError::NotFound);
+        }
 
         let provider_id = match params.provider_id {
             Some(pid) => pid,
@@ -79,7 +92,7 @@ impl ProjectConfigsService {
         };
 
         if has_column_changes(&params) {
-            let client = self.resolve_client(&provider_id).await?;
+            let client = self.resolve_client(&provider_id, team_id).await?;
             let all_columns = client
                 .fetch_columns(&existing.external_project_id)
                 .await
@@ -115,16 +128,21 @@ impl ProjectConfigsService {
             .await
     }
 
-    pub async fn delete(&self, id: Uuid) -> Result<(), ProjectConfigsError> {
+    pub async fn delete(&self, id: Uuid, team_id: Uuid) -> Result<(), ProjectConfigsError> {
+        let existing = self.repo.find_by_id(&self.db, id).await?;
+        if existing.team_id != team_id {
+            return Err(ProjectConfigsError::NotFound);
+        }
         self.repo.delete(&self.db, id).await
     }
 
     pub async fn lookup_project(
         &self,
         provider_id: &Uuid,
+        team_id: Uuid,
         external_project_id: &str,
     ) -> Result<LookupProjectResult, ProjectConfigsError> {
-        let client = self.resolve_client(provider_id).await?;
+        let client = self.resolve_client(provider_id, team_id).await?;
 
         let project = client
             .lookup_project(external_project_id)
@@ -147,8 +165,9 @@ impl ProjectConfigsService {
     pub async fn fetch_workspaces(
         &self,
         provider_id: &Uuid,
+        team_id: Uuid,
     ) -> Result<Vec<WorkspaceInfo>, ProjectConfigsError> {
-        let client = self.resolve_client(provider_id).await?;
+        let client = self.resolve_client(provider_id, team_id).await?;
         let workspaces = client
             .fetch_workspaces()
             .await
@@ -160,9 +179,10 @@ impl ProjectConfigsService {
     pub async fn fetch_projects(
         &self,
         provider_id: &Uuid,
+        team_id: Uuid,
         workspace_id: &str,
     ) -> Result<Vec<ProjectInfo>, ProjectConfigsError> {
-        let client = self.resolve_client(provider_id).await?;
+        let client = self.resolve_client(provider_id, team_id).await?;
         let projects = client
             .fetch_projects(workspace_id)
             .await
@@ -174,10 +194,11 @@ impl ProjectConfigsService {
     async fn resolve_client(
         &self,
         provider_id: &Uuid,
+        team_id: Uuid,
     ) -> Result<IntegrationClient, ProjectConfigsError> {
         let provider = self
             .providers_repo
-            .find_by_id(&self.db, *provider_id)
+            .find_by_id(&self.db, *provider_id, team_id)
             .await
             .map_err(|_| ProjectConfigsError::NoProvider)?;
 

@@ -12,6 +12,7 @@ use crate::services::providers::client::TaskFetcher;
 use crate::services::providers::errors::IntegrationError;
 use crate::services::providers::model::IntegrationTask;
 use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::test_helpers::DEFAULT_TEAM_ID;
 
 struct MockTaskFetcher {
     responses: RwLock<HashMap<String, Result<Vec<IntegrationTask>, IntegrationError>>>,
@@ -66,9 +67,10 @@ async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO integration_providers (id, name, instance_url, api_key) \
-         VALUES ($1, 'Test Provider', 'http://test', 'key')",
+        "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) \
+         VALUES ($1, $2, 'Test Provider', 'http://test', 'key')",
         id,
+        DEFAULT_TEAM_ID,
     )
     .execute(pool)
     .await
@@ -86,11 +88,12 @@ async fn insert_project_config(
 
     sqlx::query!(
         "INSERT INTO project_configs \
-         (id, external_project_id, enabled, pickup_column, target_column, progress_column, \
-          prompt_template, repo_url, provider_id) \
-         VALUES ($1, $2, true, 'to-do', 'in-review', 'in-progress', \
-          'Review {{task_title}}', '', $3)",
+         (id, team_id, external_project_id, enabled, pickup_column, target_column, progress_column, \
+           prompt_template, repo_url, provider_id) \
+         VALUES ($1, $2, $3, true, 'to-do', 'in-review', 'in-progress', \
+          'Review {{task_title}}', '', $4)",
         id,
+        DEFAULT_TEAM_ID,
         external_project_id,
         provider_id,
     )

@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, work_run_id, sequence, event_type, payload,\n               created_at as \"created_at!: DateTime<Utc>\",\n               occurred_at as \"occurred_at!: DateTime<Utc>\"\n               FROM (\n                  SELECT e.* FROM work_run_events e\n                  INNER JOIN work_runs wr ON wr.id = e.work_run_id\n                  WHERE e.work_run_id = $1 AND wr.team_id = $2\n                  ORDER BY e.occurred_at DESC, e.sequence DESC\n                  LIMIT $3\n                ) sub\n               ORDER BY occurred_at ASC, sequence ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "work_run_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "sequence",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "event_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "occurred_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a9f5830a2ab3dfdeda47d782b9e79ad816a6c79270e861726d4b1f4fa681d2b5"
+}

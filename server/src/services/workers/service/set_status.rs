@@ -9,8 +9,14 @@ impl WorkersService {
     pub async fn set_worker_status(
         &self,
         worker_id: Uuid,
+        team_id: Uuid,
         req: UpdateWorkerStatusRequest,
     ) -> Result<WorkerResponse, WorkersError> {
+        let existing = self.repo.find_by_id(&self.db, worker_id).await?;
+        if existing.team_id != team_id {
+            return Err(WorkersError::WorkerNotFound);
+        }
+
         match req.status {
             WorkerStatusOverride::Unhealthy => {
                 let mut tx = self.db.begin().await.map_err(WorkersError::Database)?;

@@ -7,13 +7,15 @@ use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
 };
 use crate::services::providers::model::IntegrationType;
+use crate::test_helpers::DEFAULT_TEAM_ID;
 
 async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO integration_providers (id, name, instance_url, api_key) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
         id,
+        DEFAULT_TEAM_ID,
         "test-provider",
         "cloud.kaneo.app",
         "test-key",
@@ -71,7 +73,7 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
     let params = test_params("kaneo-proj-test-create", provider_id);
 
     let created = repo
-        .create(&pool, &params)
+        .create(&pool, DEFAULT_TEAM_ID, &params)
         .await
         .expect("Should create config");
 
@@ -106,10 +108,17 @@ async fn list_all_returns_configs(pool: PgPool) {
         ..test_params("kaneo-proj-list-b", provider_id)
     };
 
-    repo.create(&pool, &p1).await.expect("Should create p1");
-    repo.create(&pool, &p2).await.expect("Should create p2");
+    repo.create(&pool, DEFAULT_TEAM_ID, &p1)
+        .await
+        .expect("Should create p1");
+    repo.create(&pool, DEFAULT_TEAM_ID, &p2)
+        .await
+        .expect("Should create p2");
 
-    let all = repo.list_all(&pool).await.expect("Should list all");
+    let all = repo
+        .list_all(&pool, DEFAULT_TEAM_ID)
+        .await
+        .expect("Should list all");
     assert!(all.len() >= 2);
 }
 
@@ -124,7 +133,7 @@ async fn name_round_trips_through_create_find_and_list(pool: PgPool) {
     };
 
     let created = repo
-        .create(&pool, &params)
+        .create(&pool, DEFAULT_TEAM_ID, &params)
         .await
         .expect("Should create config with name");
     assert_eq!(created.name, expected_name);
@@ -135,7 +144,10 @@ async fn name_round_trips_through_create_find_and_list(pool: PgPool) {
         .expect("Should find config by id");
     assert_eq!(found.name, expected_name);
 
-    let all = repo.list_all(&pool).await.expect("Should list configs");
+    let all = repo
+        .list_all(&pool, DEFAULT_TEAM_ID)
+        .await
+        .expect("Should list configs");
     assert!(
         all.iter()
             .any(|config| config.id == created.id && config.name == expected_name),
@@ -149,11 +161,11 @@ async fn duplicate_external_project_id_fails(pool: PgPool) {
     let provider_id = insert_provider(&pool).await;
     let params = test_params("kaneo-proj-dup", provider_id);
 
-    repo.create(&pool, &params)
+    repo.create(&pool, DEFAULT_TEAM_ID, &params)
         .await
         .expect("First create should succeed");
 
-    let result = repo.create(&pool, &params).await;
+    let result = repo.create(&pool, DEFAULT_TEAM_ID, &params).await;
     assert!(
         matches!(result, Err(ProjectConfigsError::DuplicateExternalProjectId)),
         "Second create with same external_project_id should fail with DuplicateExternalProjectId"
@@ -166,7 +178,10 @@ async fn update_partial_fields(pool: PgPool) {
     let provider_id = insert_provider(&pool).await;
     let params = test_params("kaneo-proj-update", provider_id);
 
-    let created = repo.create(&pool, &params).await.expect("Should create");
+    let created = repo
+        .create(&pool, DEFAULT_TEAM_ID, &params)
+        .await
+        .expect("Should create");
 
     let updated = repo
         .update(
@@ -193,7 +208,10 @@ async fn update_name_persists(pool: PgPool) {
     let params = test_params("kaneo-proj-update-name", provider_id);
     let updated_name = "Updated Project Name";
 
-    let created = repo.create(&pool, &params).await.expect("Should create");
+    let created = repo
+        .create(&pool, DEFAULT_TEAM_ID, &params)
+        .await
+        .expect("Should create");
     let updated = repo
         .update(
             &pool,
@@ -240,7 +258,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
     let disabled_params = test_params("kaneo-proj-disabled", provider_id);
 
     let created = repo
-        .create(&pool, &disabled_params)
+        .create(&pool, DEFAULT_TEAM_ID, &disabled_params)
         .await
         .expect("Should create disabled");
 
@@ -255,7 +273,7 @@ async fn list_enabled_only_returns_enabled(pool: PgPool) {
     .await
     .expect("Should disable");
 
-    repo.create(&pool, &enabled_params)
+    repo.create(&pool, DEFAULT_TEAM_ID, &enabled_params)
         .await
         .expect("Should create enabled");
 

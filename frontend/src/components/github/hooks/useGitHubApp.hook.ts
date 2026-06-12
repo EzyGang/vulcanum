@@ -4,6 +4,7 @@ import {
   getInstallation,
   listRepos
 } from '../../../services/github/github.service';
+import { queryClient } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
 export const useGitHubApp = () => {
@@ -28,12 +29,25 @@ export const useGitHubApp = () => {
 
   const disconnectMutation = useApiMutation((id: number) => disconnectInstallation(id), {
     onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['github-repos'] });
       refetch();
     }
   });
 
-  const onConnect = () => {
-    window.open(getAuthUrl(), '_blank');
+  const onConnect = async () => {
+    const installWindow = window.open('', '_blank');
+
+    try {
+      const { url } = await getAuthUrl();
+      if (installWindow) {
+        installWindow.location.href = url;
+        return;
+      }
+      window.location.href = url;
+    } catch (error) {
+      installWindow?.close();
+      throw error;
+    }
   };
 
   return {

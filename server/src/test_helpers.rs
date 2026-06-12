@@ -3,6 +3,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::services::auth::repository::AuthRepository;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
@@ -12,6 +13,8 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::teams::repository::TeamsRepository;
+use crate::services::teams::service::TeamsService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
@@ -23,13 +26,40 @@ use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 
+pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
+
+pub async fn insert_team(pool: &sqlx::PgPool, name: &str) -> Uuid {
+    let id = Uuid::new_v4();
+
+    sqlx::query!("INSERT INTO teams (id, name) VALUES ($1, $2)", id, name)
+        .execute(pool)
+        .await
+        .expect("Should insert team");
+
+    id
+}
+
+pub async fn insert_user(pool: &sqlx::PgPool, id: &str) {
+    let email = format!("{id}@example.com");
+
+    sqlx::query!("INSERT INTO users (id, email) VALUES ($1, $2)", id, email)
+        .execute(pool)
+        .await
+        .expect("Should insert user");
+}
+
 pub async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
+    insert_worker_for_team(pool, DEFAULT_TEAM_ID, name).await
+}
+
+pub async fn insert_worker_for_team(pool: &sqlx::PgPool, team_id: Uuid, name: &str) -> Uuid {
     let id = Uuid::new_v4();
     let hash = hex::encode([0u8; 32]);
 
     sqlx::query!(
-        "INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status) VALUES ($1, $2, $3, NOW() + INTERVAL '30 days', 'idle'::worker_status)",
+        "INSERT INTO workers (id, team_id, name, refresh_token_hash, refresh_expires_at, status) VALUES ($1, $2, $3, $4, NOW() + INTERVAL '30 days', 'idle'::worker_status)",
         id,
+        team_id,
         name,
         hash,
     )
@@ -41,11 +71,20 @@ pub async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
 }
 
 pub async fn insert_project_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
+    insert_project_config_for_team(pool, DEFAULT_TEAM_ID, external_project_id).await
+}
+
+pub async fn insert_project_config_for_team(
+    pool: &sqlx::PgPool,
+    team_id: Uuid,
+    external_project_id: &str,
+) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo')",
+        "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'Review {{task_title}}', 'kaneo')",
         id,
+        team_id,
         external_project_id,
     )
     .execute(pool)
@@ -63,8 +102,9 @@ pub async fn insert_project_config_with_provider(
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, external_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, 'Review {{task_title}}', 'kaneo', $3)",
+        "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, $3, 'Review {{task_title}}', 'kaneo', $4)",
         id,
+        DEFAULT_TEAM_ID,
         external_project_id,
         provider_id,
     )
@@ -80,8 +120,18 @@ pub async fn insert_pending_work_run(
     project_config_id: Uuid,
     task_ref: &str,
 ) -> Uuid {
+    insert_pending_work_run_for_team(pool, DEFAULT_TEAM_ID, project_config_id, task_ref).await
+}
+
+pub async fn insert_pending_work_run_for_team(
+    pool: &sqlx::PgPool,
+    team_id: Uuid,
+    project_config_id: Uuid,
+    task_ref: &str,
+) -> Uuid {
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
+        team_id,
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
@@ -104,8 +154,26 @@ pub async fn insert_running_work_run(
     task_ref: &str,
     worker_id: Uuid,
 ) -> Uuid {
+    insert_running_work_run_for_team(
+        pool,
+        DEFAULT_TEAM_ID,
+        project_config_id,
+        task_ref,
+        worker_id,
+    )
+    .await
+}
+
+pub async fn insert_running_work_run_for_team(
+    pool: &sqlx::PgPool,
+    team_id: Uuid,
+    project_config_id: Uuid,
+    task_ref: &str,
+    worker_id: Uuid,
+) -> Uuid {
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
+        team_id,
         external_task_ref: task_ref.to_owned(),
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
@@ -147,9 +215,13 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         stalled_running_threshold_secs: 1800,
         instance_password: "test-password".to_owned(),
         redis_url: "redis://127.0.0.1:6379".to_owned(),
+        is_single_user: true,
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
+        github_oauth_client_id: None,
+        github_oauth_client_secret: None,
+        github_oauth_redirect_url: None,
     };
 
     let workers_repo = WorkersRepository::new();
@@ -159,6 +231,7 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();
+    let teams = TeamsService::new(TeamsRepository::new(), pool.clone());
 
     let github = GithubAppManager::new(
         GithubAppRepository::new(),
@@ -169,9 +242,13 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
     .expect("build github manager for tests");
 
     let auth = AuthService::new(
+        AuthRepository::new(),
+        pool.clone(),
         UsersService::new(UsersRepository::new(), pool.clone()),
+        teams.clone(),
         "test-password".to_owned(),
         "test-secret".to_owned(),
+        &cfg,
     );
 
     let jobs = crate::services::work_runs::service::WorkRunsService::new(
@@ -210,17 +287,20 @@ pub fn build_state(pool: sqlx::PgPool) -> AppState {
         jobs,
         events,
         github,
+        teams,
         db_pool: pool,
         work_runs: work_runs_repo,
         dispatch_store,
         cancel_store,
         jwt_secret: cfg.jwt_secret.clone(),
+        is_single_user: cfg.is_single_user,
     }
 }
 
 pub fn build_worker_token(worker_id: Uuid) -> String {
     let exp = chrono::Utc::now() + chrono::Duration::minutes(15);
-    let claims = serde_json::json!({"sub": worker_id.to_string(), "exp": exp.timestamp()});
+    let claims =
+        serde_json::json!({"sub": worker_id.to_string(), "typ": "worker", "exp": exp.timestamp()});
     let token = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &claims,

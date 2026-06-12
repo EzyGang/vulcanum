@@ -9,10 +9,14 @@ pub struct AppConfig {
     pub unhealthy_threshold: i32,
     pub stalled_running_threshold_secs: u64,
     pub instance_password: String,
+    pub is_single_user: bool,
     pub redis_url: String,
     pub github_app_id: Option<u64>,
     pub github_app_private_key: Option<String>,
     pub github_app_slug: Option<String>,
+    pub github_oauth_client_id: Option<String>,
+    pub github_oauth_client_secret: Option<String>,
+    pub github_oauth_redirect_url: Option<String>,
 }
 
 impl AppConfig {
@@ -35,6 +39,8 @@ impl AppConfig {
             .unwrap_or_else(|_| "1800".to_owned())
             .parse::<u64>()?;
         let instance_password = std::env::var("INSTANCE_PASSWORD")?;
+        let is_single_user =
+            std::env::var("IS_SINGLE_USER").unwrap_or_else(|_| "true".to_owned()) == "true";
         let redis_url =
             std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
         let github_app_id = std::env::var("GITHUB_APP_ID")
@@ -42,6 +48,9 @@ impl AppConfig {
             .and_then(|v| v.parse::<u64>().ok());
         let github_app_private_key = std::env::var("GITHUB_APP_PRIVATE_KEY").ok();
         let github_app_slug = std::env::var("GITHUB_APP_SLUG").ok();
+        let github_oauth_client_id = std::env::var("GITHUB_OAUTH_CLIENT_ID").ok();
+        let github_oauth_client_secret = std::env::var("GITHUB_OAUTH_CLIENT_SECRET").ok();
+        let github_oauth_redirect_url = std::env::var("GITHUB_OAUTH_REDIRECT_URL").ok();
 
         Ok(Self {
             db_url,
@@ -52,10 +61,14 @@ impl AppConfig {
             unhealthy_threshold,
             stalled_running_threshold_secs,
             instance_password,
+            is_single_user,
             redis_url,
             github_app_id,
             github_app_private_key,
             github_app_slug,
+            github_oauth_client_id,
+            github_oauth_client_secret,
+            github_oauth_redirect_url,
         })
     }
 }

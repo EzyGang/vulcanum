@@ -5,32 +5,38 @@ use crate::services::workers::errors::WorkersError;
 use crate::services::workers::model::{Worker, WorkerStatus};
 use crate::services::workers::repository::{map_sqlx_error, Queryer, WorkersRepository};
 
+pub struct CreateWorkerParams<'a> {
+    pub team_id: Uuid,
+    pub name: &'a str,
+    pub refresh_token_hash: &'a str,
+    pub refresh_expires_at: DateTime<Utc>,
+    pub capabilities: &'a serde_json::Value,
+    pub max_concurrent_jobs: i32,
+}
+
 impl WorkersRepository {
     pub async fn create<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
-        name: &str,
-        refresh_token_hash: &str,
-        refresh_expires_at: DateTime<Utc>,
-        capabilities: &serde_json::Value,
-        max_concurrent_jobs: i32,
+        params: CreateWorkerParams<'_>,
     ) -> Result<Worker, WorkersError> {
         let id = Uuid::new_v4();
 
         sqlx::query_as!(
             Worker,
-            r#"INSERT INTO workers (id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs, consecutive_errors)
-             VALUES ($1, $2, $3, $4, $5::worker_status, $6, 0, $7, 0)
-             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
+            r#"INSERT INTO workers (id, team_id, name, refresh_token_hash, refresh_expires_at, status, capabilities, active_jobs, max_concurrent_jobs, consecutive_errors)
+             VALUES ($1, $2, $3, $4, $5, $6::worker_status, $7, 0, $8, 0)
+             RETURNING id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
-             active_jobs, max_concurrent_jobs, consecutive_errors"#,
+            active_jobs, max_concurrent_jobs, consecutive_errors"#,
             id,
-            name,
-            refresh_token_hash,
-            refresh_expires_at,
+            params.team_id,
+            params.name,
+            params.refresh_token_hash,
+            params.refresh_expires_at,
             WorkerStatus::Idle as WorkerStatus,
-            capabilities,
-            max_concurrent_jobs,
+            params.capabilities,
+            params.max_concurrent_jobs,
         )
         .fetch_one(db)
         .await
@@ -44,7 +50,7 @@ impl WorkersRepository {
     ) -> Result<Worker, WorkersError> {
         sqlx::query_as!(
             Worker,
-            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
+            r#"SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
              active_jobs, max_concurrent_jobs, consecutive_errors
              FROM workers WHERE id = $1"#,
@@ -62,7 +68,7 @@ impl WorkersRepository {
     ) -> Result<Worker, WorkersError> {
         sqlx::query_as!(
             Worker,
-            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
+            r#"SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
              active_jobs, max_concurrent_jobs, consecutive_errors
              FROM workers WHERE refresh_token_hash = $1"#,
@@ -84,7 +90,7 @@ impl WorkersRepository {
             Worker,
             r#"UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2
              WHERE id = $3
-             RETURNING id, name, refresh_token_hash, refresh_expires_at, last_seen,
+              RETURNING id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
              active_jobs, max_concurrent_jobs, consecutive_errors"#,
             new_hash,
@@ -109,13 +115,18 @@ impl WorkersRepository {
         Ok(())
     }
 
-    pub async fn list_all<'c, Q: Queryer<'c>>(&self, db: Q) -> Result<Vec<Worker>, WorkersError> {
+    pub async fn list_all<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+    ) -> Result<Vec<Worker>, WorkersError> {
         sqlx::query_as!(
             Worker,
-            r#"SELECT id, name, refresh_token_hash, refresh_expires_at, last_seen,
+            r#"SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
              status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
              active_jobs, max_concurrent_jobs, consecutive_errors
-             FROM workers ORDER BY created_at DESC"#,
+              FROM workers WHERE team_id = $1 ORDER BY created_at DESC"#,
+            team_id,
         )
         .fetch_all(db)
         .await

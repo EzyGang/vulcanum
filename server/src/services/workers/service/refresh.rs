@@ -55,7 +55,7 @@ fn build_jwt(
     let exp = Utc::now() + Duration::minutes(model::ACCESS_TOKEN_TTL_MINUTES);
     let claims = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
-        &serde_json::json!({"sub": worker_id.to_string(), "exp": exp.timestamp()}),
+        &serde_json::json!({"sub": worker_id.to_string(), "typ": "worker", "exp": exp.timestamp()}),
         &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
     )?;
     Ok((claims, exp))

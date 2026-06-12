@@ -3,6 +3,7 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::config::AppConfig;
+use crate::services::auth::repository::AuthRepository;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::{
     CancelStore, InMemoryCancelStore, RedisCancelStore,
@@ -14,6 +15,8 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::teams::repository::TeamsRepository;
+use crate::services::teams::service::TeamsService;
 use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
@@ -33,11 +36,13 @@ pub struct AppState {
     pub jobs: WorkRunsService,
     pub events: WorkRunEventsService,
     pub github: GithubAppManager,
+    pub teams: TeamsService,
     pub db_pool: PgPool,
     pub work_runs: WorkRunsRepository,
     pub dispatch_store: Arc<dyn DispatchStore>,
     pub cancel_store: Arc<dyn CancelStore>,
     pub jwt_secret: String,
+    pub is_single_user: bool,
 }
 
 impl AppState {
@@ -49,9 +54,18 @@ impl AppState {
 
         let providers_repo = IntegrationProvidersRepository::new();
         let providers = IntegrationProvidersService::new(providers_repo.clone(), db_pool.clone());
+        let teams = TeamsService::new(TeamsRepository::new(), db_pool.clone());
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
-        let auth = AuthService::new(users, cfg.instance_password.clone(), cfg.jwt_secret.clone());
+        let auth = AuthService::new(
+            AuthRepository::new(),
+            db_pool.clone(),
+            users,
+            teams.clone(),
+            cfg.instance_password.clone(),
+            cfg.jwt_secret.clone(),
+            cfg,
+        );
         let project_configs_repo = ProjectConfigsRepository::new();
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),
@@ -107,11 +121,13 @@ impl AppState {
             jobs,
             events,
             github,
+            teams,
             db_pool,
             work_runs,
             dispatch_store,
             cancel_store,
             jwt_secret,
+            is_single_user: cfg.is_single_user,
         })
     }
 

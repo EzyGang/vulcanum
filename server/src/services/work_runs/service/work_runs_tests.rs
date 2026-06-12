@@ -25,10 +25,14 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
         unhealthy_threshold: 3,
         stalled_running_threshold_secs: 1800,
         instance_password: String::new(),
+        is_single_user: true,
         redis_url: "redis://127.0.0.1:6379".to_owned(),
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
+        github_oauth_client_id: None,
+        github_oauth_client_secret: None,
+        github_oauth_redirect_url: None,
     };
     GithubAppManager::new(
         GithubAppRepository::new(),
@@ -81,6 +85,21 @@ async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
     let result = svc.poll(worker_id).await.expect("Should succeed");
 
     assert_eq!(result, Some(wr_id));
+}
+
+#[sqlx::test]
+async fn list_all_rejects_cross_team_runs(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let team_b = test_helpers::insert_team(&pool, "runs-team-b").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-cross-team-list").await;
+    test_helpers::insert_pending_work_run(&pool, project_id, "task-cross-team-list").await;
+
+    let runs = svc
+        .list_all(team_b, None, 20, 0)
+        .await
+        .expect("Should list team B runs");
+
+    assert!(runs.is_empty());
 }
 
 #[sqlx::test]
@@ -309,10 +328,19 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "get-job-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get").await;
+    sqlx::query!(
+        "UPDATE work_runs SET worker_id = $1 WHERE id = $2",
+        worker_id,
+        wr_id
+    )
+    .execute(&pool)
+    .await
+    .expect("Should assign worker");
 
-    let job = svc.get_job(wr_id).await.expect("Should get job");
+    let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
 
     assert_eq!(job.external_task_ref, "task-get");
     assert_eq!(job.prompt_text, "Review the PR");
@@ -321,9 +349,13 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn get_job_returns_not_found(pool: sqlx::PgPool) {
-    let svc = build_service(pool);
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "missing-job-worker").await;
 
-    let err = svc.get_job(Uuid::new_v4()).await.expect_err("Should fail");
+    let err = svc
+        .get_job(Uuid::new_v4(), worker_id)
+        .await
+        .expect_err("Should fail");
 
     assert!(matches!(err, WorkRunsError::NotFound));
 }
@@ -331,6 +363,7 @@ async fn get_job_returns_not_found(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "github-job-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-2").await;
 
     sqlx::query!(
@@ -343,9 +376,17 @@ async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
     .expect("Should update repo_url");
 
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-2").await;
+    sqlx::query!(
+        "UPDATE work_runs SET worker_id = $1 WHERE id = $2",
+        worker_id,
+        wr_id
+    )
+    .execute(&pool)
+    .await
+    .expect("Should assign worker");
 
     let err = svc
-        .get_job(wr_id)
+        .get_job(wr_id, worker_id)
         .await
         .expect_err("Should fail without GitHub installation");
 

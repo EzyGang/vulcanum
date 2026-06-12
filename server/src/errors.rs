@@ -5,6 +5,7 @@ use crate::services::auth::errors::AuthError;
 use crate::services::github_app::errors::GithubAppError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::provider_configs::errors::IntegrationProvidersError;
+use crate::services::teams::errors::TeamsError;
 use crate::services::users::errors::UsersError;
 use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -22,6 +23,8 @@ pub enum AppError {
     AuthHeaderMissing,
     #[error("invalid password")]
     InvalidPassword,
+    #[error("instance login is disabled")]
+    InstanceLoginDisabled,
     #[error("registration code not found")]
     CodeNotFound,
     #[error("registration code expired")]
@@ -54,6 +57,8 @@ pub enum AppError {
     NoProvider,
     #[error("internal server error")]
     Internal,
+    #[error("forbidden")]
+    Forbidden,
 }
 
 impl ResponseError for AppError {
@@ -73,6 +78,9 @@ impl ResponseError for AppError {
             }),
             Self::InvalidPassword => HttpResponse::Unauthorized().json(ErrorBody {
                 error: "Invalid password".to_owned(),
+            }),
+            Self::InstanceLoginDisabled => HttpResponse::Forbidden().json(ErrorBody {
+                error: "Instance login is disabled".to_owned(),
             }),
             Self::CodeNotFound => HttpResponse::BadRequest().json(ErrorBody {
                 error: "Registration code not found".to_owned(),
@@ -122,6 +130,9 @@ impl ResponseError for AppError {
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
             }),
+            Self::Forbidden => HttpResponse::Forbidden().json(ErrorBody {
+                error: "Forbidden".to_owned(),
+            }),
         }
     }
 }
@@ -130,7 +141,13 @@ impl From<AuthError> for AppError {
     fn from(err: AuthError) -> Self {
         match err {
             AuthError::InvalidToken => Self::InvalidToken,
+            AuthError::InvalidRefreshToken => Self::InvalidRefreshToken,
             AuthError::InvalidPassword => Self::InvalidPassword,
+            AuthError::InstanceLoginDisabled => Self::InstanceLoginDisabled,
+            AuthError::Database(e) => {
+                tracing::error!(error = %e, operation = "auth", "database error");
+                Self::Internal
+            }
             AuthError::Users(u) => u.into(),
         }
     }
@@ -142,6 +159,19 @@ impl From<UsersError> for AppError {
             UsersError::UserNotFound => Self::UserNotFound,
             UsersError::Database(e) => {
                 tracing::error!(error = %e, operation = "users", "database error");
+                Self::Internal
+            }
+        }
+    }
+}
+
+impl From<TeamsError> for AppError {
+    fn from(err: TeamsError) -> Self {
+        match err {
+            TeamsError::NotFound => Self::Forbidden,
+            TeamsError::AccessDenied => Self::Forbidden,
+            TeamsError::Database(e) => {
+                tracing::error!(error = %e, operation = "teams", "database error");
                 Self::Internal
             }
         }

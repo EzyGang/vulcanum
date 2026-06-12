@@ -84,6 +84,7 @@ impl WorkRunEventsRepository {
         &self,
         db: Q,
         work_run_id: Uuid,
+        team_id: Uuid,
         limit: i64,
     ) -> Result<Vec<WorkRunEvent>, WorkRunEventsError> {
         sqlx::query_as!(
@@ -92,13 +93,15 @@ impl WorkRunEventsRepository {
                created_at as "created_at!: DateTime<Utc>",
                occurred_at as "occurred_at!: DateTime<Utc>"
                FROM (
-                 SELECT * FROM work_run_events
-                 WHERE work_run_id = $1
-                 ORDER BY occurred_at DESC, sequence DESC
-                 LIMIT $2
-               ) sub
+                  SELECT e.* FROM work_run_events e
+                  INNER JOIN work_runs wr ON wr.id = e.work_run_id
+                  WHERE e.work_run_id = $1 AND wr.team_id = $2
+                  ORDER BY e.occurred_at DESC, e.sequence DESC
+                  LIMIT $3
+                ) sub
                ORDER BY occurred_at ASC, sequence ASC"#,
             work_run_id,
+            team_id,
             limit,
         )
         .fetch_all(db)

@@ -18,6 +18,7 @@ pub enum WorkRunStatus {
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct WorkRun {
     pub id: Uuid,
+    pub team_id: Uuid,
     pub external_task_ref: String,
     pub project_config_id: Uuid,
     pub worker_id: Option<Uuid>,
@@ -47,6 +48,7 @@ pub struct WorkRun {
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct WorkRunListItem {
     pub id: Uuid,
+    pub team_id: Uuid,
     pub external_task_ref: String,
     pub project_config_id: Uuid,
     pub worker_id: Option<Uuid>,

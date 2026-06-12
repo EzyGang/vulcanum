@@ -81,7 +81,16 @@ impl DispatcherService {
 
         let mut dispatched = 0usize;
 
-        for (worker, work_run) in workers.iter().zip(pending.iter()) {
+        let mut used_workers: std::collections::HashSet<uuid::Uuid> =
+            std::collections::HashSet::new();
+
+        for work_run in &pending {
+            let worker = match workers.iter().find(|worker| {
+                worker.team_id == work_run.team_id && !used_workers.contains(&worker.id)
+            }) {
+                Some(worker) => worker,
+                None => continue,
+            };
             let mut tx = self.db.begin().await.map_err(DispatchError::Database)?;
 
             match self
@@ -126,6 +135,7 @@ impl DispatcherService {
                     }
 
                     dispatched += 1;
+                    used_workers.insert(worker.id);
                 }
                 Ok(None) => {
                     let _ = tx.rollback().await;

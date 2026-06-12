@@ -1,7 +1,11 @@
 import type { GithubInstallation, RepoInfo } from '../../types/github';
 import { del, get } from '../../utils/api/request';
 
-export const getAuthUrl = () => '/api/v1/github/auth';
+interface GithubAuthUrlResponse {
+  url: string;
+}
+
+export const getAuthUrl = () => get<GithubAuthUrlResponse>('/github/auth-url');
 
 export const getInstallation = () => get<GithubInstallation | null>('/github/installation');
 

@@ -10,6 +10,7 @@ use crate::services::providers::model::{
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct ProjectConfig {
     pub id: Uuid,
+    pub team_id: Uuid,
     pub external_project_id: String,
     #[serde(default)]
     pub name: String,
@@ -151,6 +152,7 @@ impl From<&IntegrationColumn> for ColumnInfo {
 impl ProjectConfig {
     pub fn job_fields(&self) -> JobConfigFields {
         JobConfigFields {
+            team_id: self.team_id,
             external_project_id: self.external_project_id.clone(),
             external_workspace_id: self.external_workspace_id.clone(),
             opencode_config: self.opencode_config.clone(),
@@ -161,14 +163,28 @@ impl ProjectConfig {
     }
 }
 
-#[derive(Default)]
 pub struct JobConfigFields {
+    pub team_id: Uuid,
     pub external_project_id: String,
     pub external_workspace_id: String,
     pub opencode_config: String,
     pub max_turns: i32,
     pub provider_id: Option<Uuid>,
     pub repo_url: String,
+}
+
+impl JobConfigFields {
+    pub fn empty_for_team(team_id: Uuid) -> Self {
+        Self {
+            team_id,
+            external_project_id: String::new(),
+            external_workspace_id: String::new(),
+            opencode_config: String::new(),
+            max_turns: 0,
+            provider_id: None,
+            repo_url: String::new(),
+        }
+    }
 }
 
 fn default_enabled() -> bool {

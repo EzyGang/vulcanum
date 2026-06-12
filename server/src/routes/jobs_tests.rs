@@ -74,6 +74,11 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
     let worker_id = test_helpers::insert_worker(&pool, "test-getter").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-test").await;
+    let dispatch_repo = DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should assign worker");
 
     let app = test::init_service(
         App::new()

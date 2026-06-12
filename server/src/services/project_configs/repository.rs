@@ -7,7 +7,7 @@ use crate::services::providers::model::IntegrationType;
 
 fn is_unique_violation(err: &sqlx::Error) -> bool {
     err.as_database_error()
-        .map(|db_err| db_err.constraint() == Some("project_configs_provider_external_key"))
+        .map(|db_err| db_err.constraint() == Some("project_configs_team_provider_external_key"))
         .unwrap_or(false)
 }
 

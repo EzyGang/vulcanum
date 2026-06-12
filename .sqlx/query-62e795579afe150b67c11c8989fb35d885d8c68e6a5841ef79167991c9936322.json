@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,\n             status as \"status: WorkerStatus\", capabilities, created_at as \"created_at!: chrono::DateTime<chrono::Utc>\",\n             active_jobs, max_concurrent_jobs, consecutive_errors\n             FROM workers WHERE active_jobs < max_concurrent_jobs AND status IN ('idle'::worker_status, 'busy'::worker_status)\n             ORDER BY last_seen DESC NULLS LAST",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "refresh_token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "refresh_expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_seen",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "status: WorkerStatus",
+        "type_info": {
+          "Custom": {
+            "name": "worker_status",
+            "kind": {
+              "Enum": [
+                "idle",
+                "busy",
+                "disconnected",
+                "unhealthy"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "capabilities",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "active_jobs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "max_concurrent_jobs",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "consecutive_errors",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "62e795579afe150b67c11c8989fb35d885d8c68e6a5841ef79167991c9936322"
+}

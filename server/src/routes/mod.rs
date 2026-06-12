@@ -6,23 +6,40 @@ pub mod jobs;
 pub mod project_configs;
 pub mod providers;
 pub mod status;
+pub mod team_auth;
 pub mod work_runs;
 pub mod worker_auth;
 pub mod worker_or_instance_auth;
 pub mod workers;
 
 use actix_web::web;
+use actix_web::HttpRequest;
+use serde::de::DeserializeOwned;
+use uuid::Uuid;
+
+use crate::app_state::AppState;
+use crate::errors::AppError;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1")
             .route("/auth/login", web::post().to(auth::login))
             .route("/auth/verify", web::get().to(auth::verify))
+            .route("/auth/mode", web::get().to(auth::mode))
+            .route("/auth/me", web::get().to(auth::me))
+            .route("/auth/exchange", web::post().to(auth::exchange))
+            .route("/auth/refresh", web::post().to(auth::refresh))
+            .route("/auth/github/start", web::get().to(auth::github_start))
+            .route(
+                "/auth/github/callback",
+                web::get().to(auth::github_callback),
+            )
             .route("/auth/instance-login", web::post().to(auth::instance_login))
             .route("/auth/logout", web::post().to(auth::logout))
             .service(
                 web::scope("/github")
                     .route("/auth", web::get().to(github::auth_redirect))
+                    .route("/auth-url", web::get().to(github::auth_url))
                     .route("/callback", web::get().to(github::callback))
                     .route("/repos", web::get().to(github::list_repos))
                     .route("/installation", web::get().to(github::get_installation))
@@ -90,6 +107,42 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     ),
             ),
     );
+}
+
+fn parse_team_header(req: &HttpRequest) -> Result<Option<Uuid>, AppError> {
+    let header = match req.headers().get("X-Team-Id") {
+        Some(header) => header,
+        None => return Ok(None),
+    };
+
+    let value = header
+        .to_str()
+        .map_err(|_| AppError::BadRequest("Invalid X-Team-Id header".to_owned()))?;
+    Uuid::parse_str(value)
+        .map(Some)
+        .map_err(|_| AppError::BadRequest("Invalid X-Team-Id header".to_owned()))
+}
+
+fn decode_jwt<T>(req: &HttpRequest, missing_header_error: AppError) -> Result<T, AppError>
+where
+    T: DeserializeOwned,
+{
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .ok_or(missing_header_error)?;
+
+    let state = req
+        .app_data::<web::Data<AppState>>()
+        .ok_or(AppError::Internal)?;
+    let decoding_key = jsonwebtoken::DecodingKey::from_secret(state.jwt_secret.as_bytes());
+    let validation = jsonwebtoken::Validation::default();
+
+    jsonwebtoken::decode::<T>(token, &decoding_key, &validation)
+        .map(|data| data.claims)
+        .map_err(|_| AppError::InvalidToken)
 }
 
 #[cfg(test)]

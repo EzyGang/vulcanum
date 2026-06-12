@@ -144,7 +144,11 @@ impl PollerService {
             }
         };
 
-        let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
+        let provider = match self
+            .providers_repo
+            .find_by_id(&self.db, provider_id, config.team_id)
+            .await
+        {
             Ok(p) => p,
             Err(e) => {
                 tracing::warn!(
@@ -193,6 +197,7 @@ impl PollerService {
             }
             let task_slug = build_task_slug(task);
             let params = InsertWorkRunParams {
+                team_id: config.team_id,
                 external_task_ref: task.id.clone(),
                 project_config_id: config.id,
                 prompt_text,
@@ -225,7 +230,11 @@ impl PollerService {
             None => return Ok(()),
         };
 
-        let provider = match self.providers_repo.find_by_id(&self.db, provider_id).await {
+        let provider = match self
+            .providers_repo
+            .find_by_id(&self.db, provider_id, config.team_id)
+            .await
+        {
             Ok(p) => p,
             Err(_) => return Ok(()),
         };

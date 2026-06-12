@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
+use crate::routes::team_auth::TeamPrincipal;
 use crate::routes::worker_auth::WorkerAuth;
 use crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth;
 use vulcanum_shared::api_types::{
@@ -21,9 +22,12 @@ pub async fn poll(state: web::Data<AppState>, auth: WorkerAuth) -> Result<HttpRe
 pub async fn get_job(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    _auth: WorkerAuth,
+    auth: WorkerAuth,
 ) -> Result<HttpResponse, AppError> {
-    let job = state.jobs.get_job(path.into_inner()).await?;
+    let job = state
+        .jobs
+        .get_job(path.into_inner(), auth.worker_id)
+        .await?;
 
     Ok(HttpResponse::Ok().json(job))
 }
@@ -85,7 +89,7 @@ pub async fn list_events(
     let work_run_id = path.into_inner();
     let after_occurred_at = query
         .after_occurred_at
-        .unwrap_or_else(|| chrono::DateTime::from_timestamp(0, 0).unwrap());
+        .unwrap_or_else(|| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH));
     let after_sequence = query.after_sequence.unwrap_or(0) as i64;
     let limit = query.limit.unwrap_or(100);
 
@@ -106,6 +110,25 @@ pub async fn list_events(
             state
                 .events
                 .list_events_admin(work_run_id, after_occurred_at, after_sequence, limit)
+                .await?
+        }
+        WorkerOrInstanceAuth::User { user_id, team_id } => {
+            let team_id = state
+                .teams
+                .resolve_team(
+                    &TeamPrincipal::User { user_id, team_id },
+                    state.is_single_user,
+                )
+                .await?;
+            state
+                .events
+                .list_events_admin_for_team(
+                    work_run_id,
+                    team_id,
+                    after_occurred_at,
+                    after_sequence,
+                    limit,
+                )
                 .await?
         }
     };

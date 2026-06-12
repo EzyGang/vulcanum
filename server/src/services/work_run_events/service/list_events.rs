@@ -43,6 +43,19 @@ impl WorkRunEventsService {
             .await
     }
 
+    pub async fn list_events_admin_for_team(
+        &self,
+        work_run_id: Uuid,
+        team_id: Uuid,
+        after_occurred_at: DateTime<Utc>,
+        after_sequence: i64,
+        limit: i64,
+    ) -> Result<ListResult, WorkRunEventsError> {
+        self.verify_work_run_team(work_run_id, team_id).await?;
+        self.fetch_page(work_run_id, after_occurred_at, after_sequence, limit)
+            .await
+    }
+
     async fn verify_work_run_owned(
         &self,
         work_run_id: Uuid,
@@ -61,6 +74,23 @@ impl WorkRunEventsService {
         }
 
         Ok(())
+    }
+
+    async fn verify_work_run_team(
+        &self,
+        work_run_id: Uuid,
+        team_id: Uuid,
+    ) -> Result<(), WorkRunEventsError> {
+        let run = self
+            .work_runs_repo
+            .find_by_id(&self.db, work_run_id)
+            .await
+            .map_err(map_work_runs_error)?;
+
+        match run.team_id == team_id {
+            true => Ok(()),
+            false => Err(WorkRunEventsError::NotFound),
+        }
     }
 
     /// Uses a composite (occurred_at, sequence) cursor for pagination.

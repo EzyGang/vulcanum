@@ -28,6 +28,7 @@ pub enum WorkerStatus {
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Worker {
     pub id: Uuid,
+    pub team_id: Uuid,
     pub name: String,
     pub refresh_token_hash: String,
     pub refresh_expires_at: DateTime<Utc>,
@@ -43,6 +44,7 @@ pub struct Worker {
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkerResponse {
     pub id: Uuid,
+    pub team_id: Uuid,
     pub name: String,
     pub last_seen: Option<DateTime<Utc>>,
     pub status: WorkerStatus,
@@ -57,6 +59,7 @@ impl From<Worker> for WorkerResponse {
     fn from(w: Worker) -> Self {
         Self {
             id: w.id,
+            team_id: w.team_id,
             name: w.name,
             last_seen: w.last_seen,
             status: w.status,

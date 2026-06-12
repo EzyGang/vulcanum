@@ -1,15 +1,21 @@
 use actix_web::{dev::Payload, Error, FromRequest, HttpRequest};
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::errors::AppError;
+use crate::routes::{decode_jwt, parse_team_header};
 
 /// Authenticated principal that may be either a worker or an instance admin.
 /// Used for endpoints that both workers (their own jobs) and admins (any job)
 /// need to read from.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum WorkerOrInstanceAuth {
-    Worker { worker_id: Uuid },
+    Worker {
+        worker_id: Uuid,
+    },
+    User {
+        user_id: String,
+        team_id: Option<Uuid>,
+    },
     Instance,
 }
 
@@ -18,38 +24,35 @@ impl FromRequest for WorkerOrInstanceAuth {
     type Future = std::future::Ready<Result<Self, Self::Error>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let header = req
-            .headers()
-            .get("Authorization")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.strip_prefix("Bearer "));
-
-        let token = match header {
-            Some(t) => t,
-            None => return std::future::ready(Err(AppError::AuthHeaderMissing.into())),
+        let claims = match decode_jwt::<serde_json::Value>(req, AppError::AuthHeaderMissing) {
+            Ok(claims) => claims,
+            Err(err) => return std::future::ready(Err(err.into())),
         };
 
-        let state = match req.app_data::<actix_web::web::Data<AppState>>() {
-            Some(s) => s,
-            None => return std::future::ready(Err(AppError::Internal.into())),
-        };
-
-        let decoding = jsonwebtoken::DecodingKey::from_secret(state.jwt_secret.as_bytes());
-        let validation = jsonwebtoken::Validation::default();
-
-        match jsonwebtoken::decode::<serde_json::Value>(token, &decoding, &validation) {
-            Ok(data) => {
-                if let Some(sub) = data.claims.get("sub").and_then(|s| s.as_str()) {
-                    if sub == "instance" {
-                        return std::future::ready(Ok(Self::Instance));
-                    }
-                    if let Ok(worker_id) = Uuid::parse_str(sub) {
-                        return std::future::ready(Ok(Self::Worker { worker_id }));
-                    }
+        match claims.get("sub").and_then(|s| s.as_str()) {
+            Some(sub) => {
+                let token_type = claims.get("typ").and_then(|s| s.as_str());
+                if sub == "instance" && matches!(token_type, None | Some("instance")) {
+                    return std::future::ready(Ok(Self::Instance));
                 }
-                std::future::ready(Err(AppError::InvalidToken.into()))
+                if token_type == Some("user") {
+                    let team_id = match parse_team_header(req) {
+                        Ok(team_id) => team_id,
+                        Err(err) => return std::future::ready(Err(err.into())),
+                    };
+                    return std::future::ready(Ok(Self::User {
+                        user_id: sub.to_owned(),
+                        team_id,
+                    }));
+                }
+                match Uuid::parse_str(sub) {
+                    Ok(worker_id) if matches!(token_type, None | Some("worker")) => {
+                        std::future::ready(Ok(Self::Worker { worker_id }))
+                    }
+                    _ => std::future::ready(Err(AppError::InvalidToken.into())),
+                }
             }
-            Err(_) => std::future::ready(Err(AppError::InvalidToken.into())),
+            None => std::future::ready(Err(AppError::InvalidToken.into())),
         }
     }
 }

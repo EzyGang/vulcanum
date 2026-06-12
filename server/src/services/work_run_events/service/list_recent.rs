@@ -12,9 +12,10 @@ impl WorkRunEventsService {
     pub async fn list_recent(
         &self,
         work_run_id: Uuid,
+        team_id: Uuid,
     ) -> Result<Vec<WorkRunEvent>, WorkRunEventsError> {
         self.repo
-            .find_last_n(&self.db, work_run_id, RECENT_LIMIT)
+            .find_last_n(&self.db, work_run_id, team_id, RECENT_LIMIT)
             .await
     }
 }

@@ -134,7 +134,10 @@ async fn find_last_n_returns_ascending(pool: sqlx::PgPool) {
         .await
         .expect("insert");
 
-    let last = repo.find_last_n(&pool, wr_id, 3).await.expect("last");
+    let last = repo
+        .find_last_n(&pool, wr_id, test_helpers::DEFAULT_TEAM_ID, 3)
+        .await
+        .expect("last");
     let sequences: Vec<i64> = last.iter().map(|e: &WorkRunEvent| e.sequence).collect();
     assert_eq!(sequences, vec![8, 9, 10]);
 }
