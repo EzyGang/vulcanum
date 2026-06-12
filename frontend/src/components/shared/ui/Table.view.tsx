@@ -44,10 +44,14 @@ const Body = ({ children }: BodyProps): JSX.Element => <tbody>{children}</tbody>
 interface RowProps {
   children: ComponentChildren;
   class?: string;
+  onClick?: JSX.MouseEventHandler<HTMLTableRowElement>;
 }
 
-const Row = ({ children, class: classProp }: RowProps): JSX.Element => (
-  <tr class={clsx('border-b border-border-base transition-colors hover:bg-bg-hover', classProp)}>
+const Row = ({ children, class: classProp, onClick }: RowProps): JSX.Element => (
+  <tr
+    class={clsx('border-b border-border-base transition-colors hover:bg-bg-hover', classProp)}
+    onClick={onClick}
+  >
     {children}
   </tr>
 );
@@ -55,10 +59,13 @@ const Row = ({ children, class: classProp }: RowProps): JSX.Element => (
 interface CellProps {
   children: ComponentChildren;
   class?: string;
+  onClick?: JSX.MouseEventHandler<HTMLTableCellElement>;
 }
 
-const Cell = ({ children, class: classProp }: CellProps): JSX.Element => (
-  <td class={clsx('px-5 py-3', classProp)}>{children}</td>
+const Cell = ({ children, class: classProp, onClick }: CellProps): JSX.Element => (
+  <td class={clsx('px-5 py-3', classProp)} onClick={onClick}>
+    {children}
+  </td>
 );
 
 export const Table = Object.assign(TableRoot, { Head, HeadCell, Body, Row, Cell });

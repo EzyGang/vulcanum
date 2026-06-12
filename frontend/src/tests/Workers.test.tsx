@@ -134,7 +134,7 @@ describe('Workers.view', () => {
 
     const workers = [makeWorker({ id: '1', name: 'runner-1' })];
 
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
         status={baseStatus}
@@ -142,7 +142,7 @@ describe('Workers.view', () => {
       />
     );
 
-    expect(getByText('Confirm?')).toBeDefined();
+    expect(getByLabelText('Confirm delete')).toBeDefined();
   });
 
   it('calls onDeleteWorker when confirm delete is clicked', () => {
@@ -150,7 +150,7 @@ describe('Workers.view', () => {
 
     const workers = [makeWorker({ id: '1', name: 'runner-1' })];
 
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
         status={baseStatus}
@@ -158,7 +158,7 @@ describe('Workers.view', () => {
       />
     );
 
-    fireEvent.click(getByText('Delete'));
+    fireEvent.click(getByLabelText('Confirm delete'));
     expect(onDeleteWorker).toHaveBeenCalledWith('1');
   });
 
