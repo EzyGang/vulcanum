@@ -11,7 +11,9 @@ pub enum TeamPrincipal {
         user_id: String,
         team_id: Option<Uuid>,
     },
-    Instance,
+    Instance {
+        team_id: Option<Uuid>,
+    },
 }
 
 #[derive(Deserialize)]
@@ -29,19 +31,18 @@ impl FromRequest for TeamPrincipal {
             Ok(claims) => claims,
             Err(err) => return std::future::ready(Err(err.into())),
         };
+        let team_id = match parse_team_header(req) {
+            Ok(team_id) => team_id,
+            Err(err) => return std::future::ready(Err(err.into())),
+        };
 
         if claims.sub == "instance" && claims.typ.as_deref().unwrap_or("instance") == "instance" {
-            return std::future::ready(Ok(Self::Instance));
+            return std::future::ready(Ok(Self::Instance { team_id }));
         }
 
         if claims.typ.as_deref() != Some("user") {
             return std::future::ready(Err(AppError::InvalidToken.into()));
         }
-
-        let team_id = match parse_team_header(req) {
-            Ok(team_id) => team_id,
-            Err(err) => return std::future::ready(Err(err.into())),
-        };
 
         std::future::ready(Ok(Self::User {
             user_id: claims.sub,

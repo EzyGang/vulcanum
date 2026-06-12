@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
@@ -17,6 +17,25 @@ pub struct TeamMember {
     pub user_id: String,
     pub role: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, FromRow, Serialize)]
+pub struct TeamMemberInfo {
+    pub team_id: Uuid,
+    pub user_id: String,
+    pub email: String,
+    pub role: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CreateTeamRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UpdateTeamRequest {
+    pub name: String,
 }
 
 #[derive(Debug, Clone, FromRow)]

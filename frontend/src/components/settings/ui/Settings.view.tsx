@@ -3,6 +3,7 @@ import { GitHubAppCardContainer } from '../../github/containers/GitHubAppCard.co
 import { ProjectsContainer } from '../../projects/containers/Projects.container';
 import { ProvidersContainer } from '../../providers/containers/Providers.container';
 import { Tabs } from '../../shared/ui/Tabs.view';
+import { TeamsContainer } from '../../teams/containers/Teams.container';
 
 interface SettingsViewProps {
   tabs: { value: string; label: string }[];
@@ -20,6 +21,9 @@ export const SettingsView = ({ tabs, activeTab, onTabChange }: SettingsViewProps
       </Tabs.Panel>
       <Tabs.Panel value='projects'>
         <ProjectsContainer />
+      </Tabs.Panel>
+      <Tabs.Panel value='teams'>
+        <TeamsContainer />
       </Tabs.Panel>
       <Tabs.Panel value='github'>
         <GitHubAppCardContainer />

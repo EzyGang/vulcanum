@@ -18,7 +18,7 @@ pub async fn auth_redirect(
         .await?;
     let user_id = match auth {
         TeamPrincipal::User { user_id, .. } => Some(user_id),
-        TeamPrincipal::Instance => None,
+        TeamPrincipal::Instance { .. } => None,
     };
     state
         .github

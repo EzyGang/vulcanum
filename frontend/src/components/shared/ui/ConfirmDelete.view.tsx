@@ -26,10 +26,7 @@ export const ConfirmDelete = ({
           variant='danger'
           class='h-6 w-6 text-sm'
           aria-label='Confirm delete'
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete(itemId);
-          }}
+          onClick={() => onDelete(itemId)}
         >
           ✓
         </Button>
@@ -37,10 +34,7 @@ export const ConfirmDelete = ({
           variant='ghost'
           class='h-6 w-6 text-sm'
           aria-label='Cancel delete'
-          onClick={(event) => {
-            event.stopPropagation();
-            onCancel();
-          }}
+          onClick={onCancel}
         >
           ×
         </Button>
@@ -52,10 +46,7 @@ export const ConfirmDelete = ({
           variant='ghost-danger'
           class='h-6 w-6 text-base'
           aria-label='Delete'
-          onClick={(event) => {
-            event.stopPropagation();
-            onConfirm(itemId);
-          }}
+          onClick={() => onConfirm(itemId)}
         >
           ×
         </Button>

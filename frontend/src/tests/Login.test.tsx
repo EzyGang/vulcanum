@@ -20,36 +20,6 @@ describe('Login.container', () => {
     e.preventDefault();
   });
 
-  const getContent = () => {
-    if (mode === 'loading') {
-      return <div>Loading auth mode...</div>;
-    }
-
-    if (mode === 'github') {
-      return (
-        <button type='button' disabled={loading.value} onClick={onGithubLogin}>
-          {loading.value ? 'Signing in...' : 'Sign in with GitHub'}
-        </button>
-      );
-    }
-
-    return (
-      <form onSubmit={onSubmit}>
-        <input
-          type='password'
-          value={password.value}
-          onInput={onPasswordChange}
-          placeholder='Instance password'
-          disabled={loading.value}
-        />
-        {error.value && <div>{error.value}</div>}
-        <button type='submit' disabled={loading.value}>
-          {loading.value ? 'Signing in...' : 'Sign in'}
-        </button>
-      </form>
-    );
-  };
-
   const mockUseLogin = () => {
     vi.mocked(useLogin).mockReturnValue({
       data: {
@@ -65,7 +35,7 @@ describe('Login.container', () => {
         onGithubLogin
       },
       view: {
-        content: getContent(),
+        mode,
         description:
           mode === 'github'
             ? 'Sign in with GitHub to create or access your team.'
