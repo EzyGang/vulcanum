@@ -1,9 +1,15 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::services::auth::errors::AuthError;
-use crate::services::auth::model::AuthTokenResponse;
+use crate::services::auth::model::GithubCallbackResult;
 use crate::services::auth::service::AuthService;
 const GITHUB_OAUTH_STATE_TTL_MINUTES: i64 = 10;
+const DEFAULT_GITHUB_RETURN_TO: &str = "/login";
+
+#[derive(Deserialize, Serialize)]
+struct GithubOAuthState {
+    return_to: String,
+}
 
 #[derive(Deserialize)]
 struct GithubTokenResponse {
@@ -18,7 +24,7 @@ struct GithubUserResponse {
 }
 
 impl AuthService {
-    pub async fn github_authorize_url(&self) -> Result<String, AuthError> {
+    pub async fn github_authorize_url(&self, return_to: Option<&str>) -> Result<String, AuthError> {
         if self.is_single_user {
             return Err(AuthError::InvalidToken);
         }
@@ -32,8 +38,13 @@ impl AuthService {
             .as_ref()
             .ok_or(AuthError::InvalidToken)?;
         let state = vulcanum_shared::crypto::generate_alphanumeric_string(32);
+        let return_to = validate_return_to(return_to).unwrap_or(DEFAULT_GITHUB_RETURN_TO);
+        let oauth_state = GithubOAuthState {
+            return_to: return_to.to_owned(),
+        };
+        let payload = serde_json::to_string(&oauth_state).map_err(|_| AuthError::InvalidToken)?;
         self.token_store
-            .insert(&state, "github_oauth", GITHUB_OAUTH_STATE_TTL_MINUTES);
+            .insert(&state, &payload, GITHUB_OAUTH_STATE_TTL_MINUTES);
 
         let mut url = url::Url::parse("https://github.com/login/oauth/authorize")
             .map_err(|_| AuthError::InvalidToken)?;
@@ -52,13 +63,15 @@ impl AuthService {
         &self,
         code: &str,
         state: &str,
-    ) -> Result<AuthTokenResponse, AuthError> {
+    ) -> Result<GithubCallbackResult, AuthError> {
         if self.is_single_user {
             return Err(AuthError::InvalidToken);
         }
 
-        self.token_store
+        let oauth_state = self
+            .token_store
             .consume(state)
+            .and_then(|payload| serde_json::from_str::<GithubOAuthState>(&payload).ok())
             .ok_or(AuthError::InvalidToken)?;
 
         let token = self.exchange_github_code(code).await?;
@@ -98,7 +111,12 @@ impl AuthService {
             .await?;
         self.users.update_last_login(&user.id).await?;
 
-        self.issue_user_token_pair(&user.id).await
+        let token_pair = self.issue_user_token_pair(&user.id).await?;
+
+        Ok(GithubCallbackResult {
+            token_pair,
+            return_to: oauth_state.return_to,
+        })
     }
 
     async fn exchange_github_code(&self, code: &str) -> Result<String, AuthError> {
@@ -146,4 +164,20 @@ impl AuthService {
             .await
             .map_err(|_| AuthError::InvalidToken)
     }
+}
+
+#[must_use]
+pub(crate) fn validate_return_to(return_to: Option<&str>) -> Option<&str> {
+    let return_to = return_to?;
+    if !return_to.starts_with('/') || return_to.starts_with("//") {
+        return None;
+    }
+    if return_to.contains('\\') || return_to.contains('#') {
+        return None;
+    }
+    if return_to.chars().any(char::is_control) {
+        return None;
+    }
+
+    Some(return_to)
 }

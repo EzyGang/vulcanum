@@ -38,6 +38,22 @@ pub struct UpdateTeamRequest {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateTeamInviteResponse {
+    pub token: String,
+    pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TeamInvitePreviewResponse {
+    pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AcceptTeamInviteResponse {
+    pub team_id: Uuid,
+}
+
 #[derive(Debug, Clone, FromRow)]
 pub struct UserIdentity {
     pub user_id: String,

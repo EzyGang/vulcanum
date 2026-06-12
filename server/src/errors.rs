@@ -172,8 +172,17 @@ impl From<TeamsError> for AppError {
             TeamsError::NotFound => Self::Forbidden,
             TeamsError::AccessDenied => Self::Forbidden,
             TeamsError::InvalidOperation(message) => Self::BadRequest(message),
+            TeamsError::InviteInvalid => Self::BadRequest("Invalid or expired invite".to_owned()),
+            TeamsError::InviteStore(e) => {
+                tracing::error!(error = %e, operation = "teams", "invite store error");
+                Self::Internal
+            }
             TeamsError::Database(e) => {
                 tracing::error!(error = %e, operation = "teams", "database error");
+                Self::Internal
+            }
+            TeamsError::Redis(e) => {
+                tracing::error!(error = %e, operation = "teams", "redis error");
                 Self::Internal
             }
         }

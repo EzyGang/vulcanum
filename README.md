@@ -232,6 +232,28 @@ To revoke access, delete the installation from the dashboard (Projects page) or 
 
 </details>
 
+<details>
+<summary>GitHub OAuth and team invites</summary>
+
+### GitHub OAuth Setup
+
+Link-based team invites require multiuser mode and GitHub OAuth. They are disabled when
+`IS_SINGLE_USER=true` because instance-password deployments do not authenticate GitHub users.
+
+Set the server to multiuser mode and configure a GitHub OAuth app:
+
+```bash
+IS_SINGLE_USER=false
+GITHUB_OAUTH_CLIENT_ID=your_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_client_secret
+GITHUB_OAUTH_REDIRECT_URL=http://localhost:8000/api/v1/auth/github/callback
+```
+
+Team owners can then generate short-lived invite links from the Teams page. Invite links are
+single-use, expire after 30 minutes, and can be accepted only by GitHub-authenticated users.
+
+</details>
+
 ### Worker
 
 ```bash

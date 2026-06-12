@@ -4,9 +4,9 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::auth::model::{
-    AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, InstanceLoginRequest,
-    InstanceLoginResponse, LoginRequest, LoginResponse, LogoutRequest, MeResponse, RefreshRequest,
-    TeamInfo, UserInfo, VerifyQuery, VerifyResponse,
+    AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, GithubStartQuery,
+    InstanceLoginRequest, InstanceLoginResponse, LoginRequest, LoginResponse, LogoutRequest,
+    MeResponse, RefreshRequest, TeamInfo, UserInfo, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
@@ -47,8 +47,14 @@ pub async fn mode(state: web::Data<AppState>) -> Result<HttpResponse, AppError> 
     }))
 }
 
-pub async fn github_start(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
-    let url = state.auth.github_authorize_url().await?;
+pub async fn github_start(
+    state: web::Data<AppState>,
+    query: web::Query<GithubStartQuery>,
+) -> Result<HttpResponse, AppError> {
+    let url = state
+        .auth
+        .github_authorize_url(query.return_to.as_deref())
+        .await?;
 
     Ok(HttpResponse::Found()
         .append_header(("Location", url))
@@ -59,16 +65,24 @@ pub async fn github_callback(
     state: web::Data<AppState>,
     query: web::Query<GithubCallbackQuery>,
 ) -> Result<HttpResponse, AppError> {
-    let token_pair = state
+    let result = state
         .auth
         .github_callback(&query.code, &query.state)
         .await?;
-    let code = state.auth.create_user_callback_code(&token_pair)?;
-    let location = format!("/login?code={code}");
+    let code = state.auth.create_user_callback_code(&result.token_pair)?;
+    let location = append_code_to_return_path(&result.return_to, &code);
 
     Ok(HttpResponse::Found()
         .append_header(("Location", location))
         .finish())
+}
+
+pub(crate) fn append_code_to_return_path(return_to: &str, code: &str) -> String {
+    let separator = match return_to.contains('?') {
+        true => '&',
+        false => '?',
+    };
+    format!("{return_to}{separator}code={code}")
 }
 
 pub async fn exchange(

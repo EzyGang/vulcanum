@@ -83,3 +83,41 @@ pub async fn list_members(
 
     Ok(HttpResponse::Ok().json(members))
 }
+
+pub async fn create_invite(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let invite = state
+        .teams
+        .create_invite_for_principal(path.into_inner(), &auth, state.is_single_user)
+        .await?;
+
+    Ok(HttpResponse::Created().json(invite))
+}
+
+pub async fn preview_invite(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+) -> Result<HttpResponse, AppError> {
+    let invite = state
+        .teams
+        .preview_invite(&path.into_inner(), state.is_single_user)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(invite))
+}
+
+pub async fn accept_invite(
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let invite = state
+        .teams
+        .accept_invite_for_principal(&path.into_inner(), &auth, state.is_single_user)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(invite))
+}

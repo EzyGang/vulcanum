@@ -1,4 +1,12 @@
-import type { CreateTeamRequest, Team, TeamMember, UpdateTeamRequest } from '../../types/teams';
+import type {
+  AcceptTeamInviteResponse,
+  CreateTeamInviteResponse,
+  CreateTeamRequest,
+  Team,
+  TeamInvitePreviewResponse,
+  TeamMember,
+  UpdateTeamRequest
+} from '../../types/teams';
 import { del, get, post, put } from '../../utils/api/request';
 
 export const listTeams = () => get<Team[]>('/teams');
@@ -13,3 +21,12 @@ export const updateTeam = (id: string, input: UpdateTeamRequest) =>
 export const deleteTeam = (id: string) => del<void>(`/teams/${id}`);
 
 export const listTeamMembers = (teamId: string) => get<TeamMember[]>(`/teams/${teamId}/members`);
+
+export const createTeamInvite = (teamId: string) =>
+  post<CreateTeamInviteResponse>(`/teams/${teamId}/invites`);
+
+export const previewTeamInvite = (token: string) =>
+  get<TeamInvitePreviewResponse>(`/team-invites/${token}`);
+
+export const acceptTeamInvite = (token: string) =>
+  post<AcceptTeamInviteResponse>(`/team-invites/${token}/accept`);

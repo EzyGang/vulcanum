@@ -44,7 +44,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}", web::get().to(teams::get))
                     .route("/{id}", web::put().to(teams::update))
                     .route("/{id}", web::delete().to(teams::delete))
+                    .route("/{id}/invites", web::post().to(teams::create_invite))
                     .route("/{id}/members", web::get().to(teams::list_members)),
+            )
+            .service(
+                web::scope("/team-invites")
+                    .route("/{token}", web::get().to(teams::preview_invite))
+                    .route("/{token}/accept", web::post().to(teams::accept_invite)),
             )
             .service(
                 web::scope("/github")
@@ -154,6 +160,9 @@ where
         .map(|data| data.claims)
         .map_err(|_| AppError::InvalidToken)
 }
+
+#[cfg(test)]
+mod auth_tests;
 
 #[cfg(test)]
 mod project_configs_tests;

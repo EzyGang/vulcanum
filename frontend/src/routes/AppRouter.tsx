@@ -2,6 +2,7 @@ import type { ComponentChildren, JSX } from 'preact';
 import { Route, Switch, useParams } from 'wouter-preact';
 import { NavigationShellContainer } from '../components/app-shell/containers/NavigationShell.container';
 import { Dashboard } from '../pages/Dashboard';
+import { InviteAccept } from '../pages/InviteAccept';
 import { Login } from '../pages/Login';
 import { ProjectsFormPage } from '../pages/ProjectsForm';
 import { Runs } from '../pages/Runs';
@@ -21,9 +22,15 @@ const ProjectsEditRoute = () => {
   return <ProjectsFormPage projectId={params.id} />;
 };
 
+const InviteAcceptRoute = () => {
+  const params = useParams<{ token: string }>();
+  return <InviteAccept token={params.token} />;
+};
+
 export const AppRouter = () => (
   <Switch>
     <Route path='/login' component={Login} />
+    <Route path='/invites/:token' component={InviteAcceptRoute} />
     <Route path='/workers'>
       <AuthenticatedLayout>
         <Workers />

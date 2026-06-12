@@ -20,3 +20,16 @@ export interface CreateTeamRequest {
 export interface UpdateTeamRequest {
   name: string;
 }
+
+export interface CreateTeamInviteResponse {
+  token: string;
+  expiresAt: string;
+}
+
+export interface TeamInvitePreviewResponse {
+  expiresAt: string;
+}
+
+export interface AcceptTeamInviteResponse {
+  teamId: string;
+}

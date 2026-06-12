@@ -18,6 +18,8 @@ interface TeamsViewProps {
     editName: string;
     editingTeamId: string | null;
     isSingleUser: boolean;
+    inviteLink: string | null;
+    inviteExpiresAt: string | null;
   };
   status: {
     loading: boolean;
@@ -27,6 +29,7 @@ interface TeamsViewProps {
     creating: boolean;
     updating: boolean;
     deleting: boolean;
+    creatingInvite: boolean;
   };
   actions: {
     onNameChange: (value: string) => void;
@@ -40,6 +43,7 @@ interface TeamsViewProps {
     onCreate: (event: Event) => void;
     onUpdate: (event: Event) => void;
     onDelete: (teamId: string) => void;
+    onCreateInvite: () => void;
   };
 }
 
@@ -206,11 +210,25 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
         <div class='flex flex-col gap-3'>
           <h4 class='text-sm font-semibold uppercase tracking-wide text-text-primary'>Invites</h4>
           <div class='border border-border-base bg-bg-panel p-4 text-sm text-text-muted'>
-            Invites are not implemented yet. Future options are GitHub identity invites or generated
-            invite links.
+            Generate a single-use invite link for this team. Links expire after 30 minutes and can
+            be used by GitHub-authenticated users only.
           </div>
-          <Button type='button' variant='secondary' disabled>
-            Create Invite
+          {data.inviteLink && (
+            <div class='flex flex-col gap-2 border border-border-base bg-bg-panel p-4'>
+              <span class='text-xs uppercase tracking-wide text-text-muted'>Generated Link</span>
+              <span class='break-all font-mono text-xs text-text-primary'>{data.inviteLink}</span>
+              {data.inviteExpiresAt && (
+                <span class='text-xs text-text-muted'>Expires at {data.inviteExpiresAt}</span>
+              )}
+            </div>
+          )}
+          <Button
+            type='button'
+            variant='secondary'
+            onClick={actions.onCreateInvite}
+            disabled={data.isSingleUser || status.creatingInvite}
+          >
+            {status.creatingInvite ? 'Creating Invite...' : 'Create Invite'}
           </Button>
         </div>
       </div>

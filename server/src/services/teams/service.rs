@@ -1,8 +1,13 @@
+pub mod invites;
+
+use std::sync::Arc;
+
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::teams::errors::TeamsError;
+use crate::services::teams::invite_store::{InMemoryTeamInviteStore, TeamInviteStore};
 use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo};
 use crate::services::teams::repository::TeamsRepository;
 
@@ -10,11 +15,24 @@ use crate::services::teams::repository::TeamsRepository;
 pub struct TeamsService {
     pub repo: TeamsRepository,
     pub db: PgPool,
+    pub invite_store: Arc<dyn TeamInviteStore>,
 }
 
 impl TeamsService {
     pub fn new(repo: TeamsRepository, db: PgPool) -> Self {
-        Self { repo, db }
+        Self::new_with_invite_store(repo, db, Arc::new(InMemoryTeamInviteStore::new()))
+    }
+
+    pub fn new_with_invite_store(
+        repo: TeamsRepository,
+        db: PgPool,
+        invite_store: Arc<dyn TeamInviteStore>,
+    ) -> Self {
+        Self {
+            repo,
+            db,
+            invite_store,
+        }
     }
 
     #[must_use = "team list results should be handled"]
