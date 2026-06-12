@@ -13,6 +13,7 @@ import type { NavLink } from '../types';
 
 const NAV_LINKS: NavLink[] = [
   { href: '/', label: 'Dashboard' },
+  { href: '/teams', label: 'Teams' },
   { href: '/workers', label: 'Workers' },
   { href: '/runs', label: 'Runs' },
   { href: '/settings', label: 'Settings' }

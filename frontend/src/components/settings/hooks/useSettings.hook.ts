@@ -5,9 +5,10 @@ import { useLocation } from 'wouter-preact';
 const TABS = [
   { value: 'providers', label: 'Providers' },
   { value: 'projects', label: 'Projects' },
-  { value: 'teams', label: 'Teams' },
   { value: 'github', label: 'GitHub App' }
 ];
+
+const DEFAULT_TAB = 'providers';
 
 export const useSettings = () => {
   const [location] = useLocation();
@@ -28,5 +29,11 @@ export const useSettings = () => {
 
 const getTabFromLocation = (location: string): string => {
   const [, query = ''] = location.split('?');
-  return new URLSearchParams(query).get('tab') ?? 'providers';
+  const tab = new URLSearchParams(query).get('tab');
+
+  if (tab && TABS.some((item) => item.value === tab)) {
+    return tab;
+  }
+
+  return DEFAULT_TAB;
 };

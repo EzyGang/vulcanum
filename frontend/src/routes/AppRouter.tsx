@@ -6,6 +6,7 @@ import { Login } from '../pages/Login';
 import { ProjectsFormPage } from '../pages/ProjectsForm';
 import { Runs } from '../pages/Runs';
 import { Settings } from '../pages/Settings';
+import { Teams } from '../pages/Teams';
 import { Workers } from '../pages/Workers';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -31,6 +32,11 @@ export const AppRouter = () => (
     <Route path='/settings'>
       <AuthenticatedLayout>
         <Settings />
+      </AuthenticatedLayout>
+    </Route>
+    <Route path='/teams'>
+      <AuthenticatedLayout>
+        <Teams />
       </AuthenticatedLayout>
     </Route>
     <Route path='/projects/connect'>
