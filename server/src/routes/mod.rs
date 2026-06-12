@@ -7,6 +7,7 @@ pub mod project_configs;
 pub mod providers;
 pub mod status;
 pub mod team_auth;
+pub mod teams;
 pub mod work_runs;
 pub mod worker_auth;
 pub mod worker_or_instance_auth;
@@ -36,6 +37,15 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             )
             .route("/auth/instance-login", web::post().to(auth::instance_login))
             .route("/auth/logout", web::post().to(auth::logout))
+            .service(
+                web::scope("/teams")
+                    .route("", web::get().to(teams::list))
+                    .route("", web::post().to(teams::create))
+                    .route("/{id}", web::get().to(teams::get))
+                    .route("/{id}", web::put().to(teams::update))
+                    .route("/{id}", web::delete().to(teams::delete))
+                    .route("/{id}/members", web::get().to(teams::list_members)),
+            )
             .service(
                 web::scope("/github")
                     .route("/auth", web::get().to(github::auth_redirect))

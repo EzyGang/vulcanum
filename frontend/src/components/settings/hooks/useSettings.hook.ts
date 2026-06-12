@@ -5,6 +5,7 @@ import { useLocation } from 'wouter-preact';
 const TABS = [
   { value: 'providers', label: 'Providers' },
   { value: 'projects', label: 'Projects' },
+  { value: 'teams', label: 'Teams' },
   { value: 'github', label: 'GitHub App' }
 ];
 

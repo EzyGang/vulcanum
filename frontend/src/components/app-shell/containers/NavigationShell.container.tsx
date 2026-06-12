@@ -10,12 +10,32 @@ interface NavigationShellContainerProps {
 export const NavigationShellContainer = ({
   children
 }: NavigationShellContainerProps): JSX.Element => {
-  const { navLinks, isActive, navigate, mobileMenuOpen, toggleMobileMenu } = useNavigationShell();
+  const {
+    navLinks,
+    isActive,
+    navigate,
+    mobileMenuOpen,
+    selectedTeamId,
+    teamOptions,
+    toggleMobileMenu,
+    selectTeam
+  } = useNavigationShell();
 
   return (
     <NavigationShellView
-      data={{ navLinks, isActive, mobileMenuOpen: mobileMenuOpen.value }}
-      actions={{ onLogout: logout, onNavigate: navigate, onToggleMobileMenu: toggleMobileMenu }}
+      data={{
+        navLinks,
+        isActive,
+        mobileMenuOpen: mobileMenuOpen.value,
+        selectedTeamId,
+        teamOptions
+      }}
+      actions={{
+        onLogout: logout,
+        onNavigate: navigate,
+        onToggleMobileMenu: toggleMobileMenu,
+        onSelectTeam: selectTeam
+      }}
     >
       {children}
     </NavigationShellView>

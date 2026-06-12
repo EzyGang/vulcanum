@@ -170,6 +170,7 @@ impl From<TeamsError> for AppError {
         match err {
             TeamsError::NotFound => Self::Forbidden,
             TeamsError::AccessDenied => Self::Forbidden,
+            TeamsError::InvalidOperation(message) => Self::BadRequest(message),
             TeamsError::Database(e) => {
                 tracing::error!(error = %e, operation = "teams", "database error");
                 Self::Internal

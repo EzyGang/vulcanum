@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::teams::errors::TeamsError;
-use crate::services::teams::model::{ProviderIdentity, Team};
+use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo};
 use crate::services::teams::repository::TeamsRepository;
 
 #[derive(Clone)]
@@ -21,6 +21,123 @@ impl TeamsService {
         self.repo.list_for_user(&self.db, user_id).await
     }
 
+    pub async fn list_all(&self) -> Result<Vec<Team>, TeamsError> {
+        self.repo.list_all(&self.db).await
+    }
+
+    pub async fn list_for_principal(
+        &self,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<Vec<Team>, TeamsError> {
+        match principal {
+            TeamPrincipal::Instance { .. } => match single_user {
+                true => self.list_all().await,
+                false => Err(TeamsError::AccessDenied),
+            },
+            TeamPrincipal::User { user_id, .. } => self.list_for_user(user_id).await,
+        }
+    }
+
+    pub async fn get_for_principal(
+        &self,
+        team_id: Uuid,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<Team, TeamsError> {
+        self.authorize_team_read(team_id, principal, single_user)
+            .await?;
+        self.repo.get_by_id(&self.db, team_id).await
+    }
+
+    pub async fn create_for_principal(
+        &self,
+        name: &str,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<Team, TeamsError> {
+        let name = validate_team_name(name)?;
+        let mut tx = self.db.begin().await?;
+        let team = self.repo.create_team(&mut *tx, name).await?;
+
+        match principal {
+            TeamPrincipal::Instance { .. } => {
+                if !single_user {
+                    return Err(TeamsError::AccessDenied);
+                }
+            }
+            TeamPrincipal::User { user_id, .. } => {
+                self.repo
+                    .add_member(&mut *tx, team.id, user_id, "owner")
+                    .await?;
+            }
+        }
+
+        tx.commit().await?;
+        Ok(team)
+    }
+
+    pub async fn update_for_principal(
+        &self,
+        team_id: Uuid,
+        name: &str,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<Team, TeamsError> {
+        let name = validate_team_name(name)?;
+        self.authorize_owner(team_id, principal, single_user)
+            .await?;
+        self.repo.update_name(&self.db, team_id, name).await
+    }
+
+    pub async fn delete_for_principal(
+        &self,
+        team_id: Uuid,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<(), TeamsError> {
+        self.authorize_owner(team_id, principal, single_user)
+            .await?;
+        let team = self.repo.get_by_id(&self.db, team_id).await?;
+        if team.personal_user_id.is_some() {
+            return Err(TeamsError::InvalidOperation(
+                "Personal teams cannot be deleted".to_owned(),
+            ));
+        }
+
+        match principal {
+            TeamPrincipal::Instance { .. } => {
+                let count = self.repo.count_all(&self.db).await?;
+                if count <= 1 {
+                    return Err(TeamsError::InvalidOperation(
+                        "Cannot delete the last team".to_owned(),
+                    ));
+                }
+            }
+            TeamPrincipal::User { user_id, .. } => {
+                let count = self.repo.count_for_user(&self.db, user_id).await?;
+                if count <= 1 {
+                    return Err(TeamsError::InvalidOperation(
+                        "Cannot delete your last team".to_owned(),
+                    ));
+                }
+            }
+        }
+
+        self.repo.delete(&self.db, team_id).await
+    }
+
+    pub async fn list_members_for_principal(
+        &self,
+        team_id: Uuid,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<Vec<TeamMemberInfo>, TeamsError> {
+        self.authorize_team_read(team_id, principal, single_user)
+            .await?;
+        self.repo.list_members(&self.db, team_id).await
+    }
+
     pub async fn list_identities_for_user(
         &self,
         user_id: &str,
@@ -34,11 +151,14 @@ impl TeamsService {
         single_user: bool,
     ) -> Result<Uuid, TeamsError> {
         match principal {
-            TeamPrincipal::Instance => {
+            TeamPrincipal::Instance { team_id } => {
                 if !single_user {
                     return Err(TeamsError::AccessDenied);
                 }
-                Ok(self.repo.get_default_team(&self.db).await?.id)
+                match team_id {
+                    Some(team_id) => Ok(self.repo.get_by_id(&self.db, *team_id).await?.id),
+                    None => Ok(self.repo.get_default_team(&self.db).await?.id),
+                }
             }
             TeamPrincipal::User { user_id, team_id } => match team_id {
                 Some(team_id) => {
@@ -86,4 +206,57 @@ impl TeamsService {
 
         Ok(team)
     }
+
+    async fn authorize_team_read(
+        &self,
+        team_id: Uuid,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<(), TeamsError> {
+        match principal {
+            TeamPrincipal::Instance { .. } => match single_user {
+                true => self.repo.get_by_id(&self.db, team_id).await.map(|_| ()),
+                false => Err(TeamsError::AccessDenied),
+            },
+            TeamPrincipal::User { user_id, .. } => {
+                self.repo
+                    .verify_membership(&self.db, team_id, user_id)
+                    .await
+            }
+        }
+    }
+
+    async fn authorize_owner(
+        &self,
+        team_id: Uuid,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<(), TeamsError> {
+        match principal {
+            TeamPrincipal::Instance { .. } => match single_user {
+                true => self.repo.get_by_id(&self.db, team_id).await.map(|_| ()),
+                false => Err(TeamsError::AccessDenied),
+            },
+            TeamPrincipal::User { user_id, .. } => {
+                let role = self
+                    .repo
+                    .get_member_role(&self.db, team_id, user_id)
+                    .await?;
+                match role.as_str() {
+                    "owner" => Ok(()),
+                    _ => Err(TeamsError::AccessDenied),
+                }
+            }
+        }
+    }
+}
+
+fn validate_team_name(name: &str) -> Result<&str, TeamsError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(TeamsError::InvalidOperation(
+            "Team name is required".to_owned(),
+        ));
+    }
+    Ok(trimmed)
 }

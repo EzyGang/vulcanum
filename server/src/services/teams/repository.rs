@@ -4,7 +4,9 @@ use crate::queryer::Queryer;
 use crate::services::teams::errors::TeamsError;
 use sqlx::Row;
 
-use crate::services::teams::model::{ProviderIdentity, Team, TeamMember, UserIdentity};
+use crate::services::teams::model::{
+    ProviderIdentity, Team, TeamMember, TeamMemberInfo, UserIdentity,
+};
 
 #[derive(Clone, Default)]
 pub struct TeamsRepository;
@@ -37,6 +39,39 @@ impl TeamsRepository {
         .fetch_one(db)
         .await
         .map_err(TeamsError::from)
+    }
+
+    pub async fn create_team<'c, Q>(&self, db: Q, name: &str) -> Result<Team, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        let id = Uuid::new_v4();
+        sqlx::query_as!(
+            Team,
+            r#"INSERT INTO teams (id, name)
+             VALUES ($1, $2)
+             RETURNING id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+            id,
+            name,
+        )
+        .fetch_one(db)
+        .await
+        .map_err(TeamsError::from)
+    }
+
+    pub async fn get_by_id<'c, Q>(&self, db: Q, team_id: Uuid) -> Result<Team, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            Team,
+            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+             FROM teams WHERE id = $1"#,
+            team_id,
+        )
+        .fetch_optional(db)
+        .await?
+        .ok_or(TeamsError::NotFound)
     }
 
     pub async fn lock_personal_team_creation<'c, Q>(
@@ -119,6 +154,21 @@ impl TeamsRepository {
         .map_err(TeamsError::from)
     }
 
+    pub async fn list_all<'c, Q>(&self, db: Q) -> Result<Vec<Team>, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            Team,
+            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+             FROM teams
+             ORDER BY created_at ASC"#,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(TeamsError::from)
+    }
+
     pub async fn get_default_team<'c, Q>(&self, db: Q) -> Result<Team, TeamsError>
     where
         Q: Queryer<'c>,
@@ -155,6 +205,110 @@ impl TeamsRepository {
             true => Ok(()),
             false => Err(TeamsError::AccessDenied),
         }
+    }
+
+    pub async fn get_member_role<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        user_id: &str,
+    ) -> Result<String, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            "SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2",
+            team_id,
+            user_id,
+        )
+        .fetch_optional(db)
+        .await?
+        .ok_or(TeamsError::AccessDenied)
+    }
+
+    pub async fn list_members<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+    ) -> Result<Vec<TeamMemberInfo>, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            TeamMemberInfo,
+            r#"SELECT tm.team_id, tm.user_id, u.email, tm.role, tm.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+             FROM team_members tm
+             INNER JOIN users u ON u.id = tm.user_id
+             WHERE tm.team_id = $1
+             ORDER BY tm.created_at ASC"#,
+            team_id,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(TeamsError::from)
+    }
+
+    pub async fn update_name<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        name: &str,
+    ) -> Result<Team, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            Team,
+            r#"UPDATE teams SET name = $2
+             WHERE id = $1
+             RETURNING id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+            team_id,
+            name,
+        )
+        .fetch_optional(db)
+        .await?
+        .ok_or(TeamsError::NotFound)
+    }
+
+    pub async fn delete<'c, Q>(&self, db: Q, team_id: Uuid) -> Result<(), TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        let rows = sqlx::query!("DELETE FROM teams WHERE id = $1", team_id)
+            .execute(db)
+            .await?
+            .rows_affected();
+
+        match rows {
+            0 => Err(TeamsError::NotFound),
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn count_all<'c, Q>(&self, db: Q) -> Result<i64, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!("SELECT COUNT(*) as \"count!: i64\" FROM teams")
+            .fetch_one(db)
+            .await
+            .map_err(TeamsError::from)
+    }
+
+    pub async fn count_for_user<'c, Q>(&self, db: Q, user_id: &str) -> Result<i64, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64"
+             FROM teams t
+             INNER JOIN team_members tm ON tm.team_id = t.id
+             WHERE tm.user_id = $1"#,
+            user_id,
+        )
+        .fetch_one(db)
+        .await
+        .map_err(TeamsError::from)
     }
 
     pub async fn find_identity<'c, Q>(

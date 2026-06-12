@@ -92,7 +92,7 @@ pub async fn refresh(
 pub async fn me(state: web::Data<AppState>, auth: TeamPrincipal) -> Result<HttpResponse, AppError> {
     let user_id = match auth {
         TeamPrincipal::User { user_id, .. } => user_id,
-        TeamPrincipal::Instance => return Err(AppError::Forbidden),
+        TeamPrincipal::Instance { .. } => return Err(AppError::Forbidden),
     };
     let user = state.auth.users.find_user_by_id(&user_id).await?;
     let teams = state

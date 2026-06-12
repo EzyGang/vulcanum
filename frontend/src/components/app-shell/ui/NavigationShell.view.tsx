@@ -2,6 +2,7 @@ import { clsx } from 'clsx';
 import type { ComponentChildren, JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { HamburgerIcon } from '../../shared/ui/HamburgerIcon.view';
+import { Select } from '../../shared/ui/Select.view';
 import { ThemeToggleContainer } from '../containers/ThemeToggle.container';
 import type { NavLink } from '../types';
 
@@ -13,10 +14,13 @@ interface NavigationShellProps {
     navLinks: NavLink[];
     isActive: (href: string) => boolean;
     mobileMenuOpen: boolean;
+    selectedTeamId: string | null;
+    teamOptions: { value: string; label: string }[];
   };
   actions: {
     onLogout: () => void;
     onNavigate: (href: string) => void;
+    onSelectTeam: (teamId: string) => void;
     onToggleMobileMenu: () => void;
   };
 }
@@ -69,8 +73,8 @@ const DesktopNavButton = ({
 
 export const NavigationShellView = ({
   children,
-  data: { navLinks, isActive, mobileMenuOpen },
-  actions: { onLogout, onNavigate, onToggleMobileMenu }
+  data: { navLinks, isActive, mobileMenuOpen, selectedTeamId, teamOptions },
+  actions: { onLogout, onNavigate, onSelectTeam, onToggleMobileMenu }
 }: NavigationShellProps): JSX.Element => (
   <div class='flex flex-col min-h-screen bg-bg-page'>
     <header class='sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border-base bg-bg-page'>
@@ -102,6 +106,16 @@ export const NavigationShellView = ({
       </div>
 
       <div class='flex items-center gap-2 sm:gap-4'>
+        {teamOptions.length > 0 && (
+          <div class='hidden min-w-44 sm:block'>
+            <Select
+              items={teamOptions}
+              value={selectedTeamId ?? ''}
+              onValueChange={onSelectTeam}
+              placeholder='Select team'
+            />
+          </div>
+        )}
         <ThemeToggleContainer />
         <Button variant='ghost' onClick={onLogout}>
           Logout
@@ -110,6 +124,16 @@ export const NavigationShellView = ({
 
       {mobileMenuOpen && (
         <nav class='absolute top-full left-0 right-0 bg-bg-card border-b border-border-base shadow-modal flex flex-col sm:hidden z-50 animate-slide-up'>
+          {teamOptions.length > 0 && (
+            <div class='border-b border-border-base p-4'>
+              <Select
+                items={teamOptions}
+                value={selectedTeamId ?? ''}
+                onValueChange={onSelectTeam}
+                placeholder='Select team'
+              />
+            </div>
+          )}
           {navLinks.map((link) => (
             <MobileNavButton
               key={link.href}
