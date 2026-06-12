@@ -126,7 +126,7 @@ describe('Projects.view', () => {
     deleteConfirmId.value = '1';
     const projects = [makeProject({ id: '1' })];
 
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
@@ -135,14 +135,14 @@ describe('Projects.view', () => {
       />
     );
 
-    expect(getByText('Confirm?')).toBeDefined();
+    expect(getByLabelText('Confirm delete')).toBeDefined();
   });
 
   it('calls onDelete when confirm delete is clicked', () => {
     deleteConfirmId.value = '1';
     const projects = [makeProject({ id: '1' })];
 
-    const { getByText } = render(
+    const { getByLabelText } = render(
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
@@ -151,8 +151,8 @@ describe('Projects.view', () => {
       />
     );
 
-    expect(getByText('Confirm?')).toBeDefined();
-    fireEvent.click(getByText('Delete'));
+    expect(getByLabelText('Confirm delete')).toBeDefined();
+    fireEvent.click(getByLabelText('Confirm delete'));
     expect(onDelete).toHaveBeenCalledWith('1');
   });
 });

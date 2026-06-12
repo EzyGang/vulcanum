@@ -22,19 +22,42 @@ export const ConfirmDelete = ({
   <div class='flex items-center gap-3'>
     {deletingId.value === itemId ? (
       <div class='flex items-center gap-2'>
-        <span class='text-text-muted text-xs'>Confirm?</span>
-        <Button variant='danger' onClick={() => onDelete(itemId)}>
-          Delete
+        <Button
+          variant='danger'
+          class='h-6 w-6 text-sm'
+          aria-label='Confirm delete'
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(itemId);
+          }}
+        >
+          ✓
         </Button>
-        <Button variant='ghost' onClick={onCancel}>
-          Cancel
+        <Button
+          variant='ghost'
+          class='h-6 w-6 text-sm'
+          aria-label='Cancel delete'
+          onClick={(event) => {
+            event.stopPropagation();
+            onCancel();
+          }}
+        >
+          ×
         </Button>
       </div>
     ) : (
       <div class='flex items-center gap-3'>
         {editActions}
-        <Button variant='ghost-danger' onClick={() => onConfirm(itemId)}>
-          Delete
+        <Button
+          variant='ghost-danger'
+          class='h-6 w-6 text-base'
+          aria-label='Delete'
+          onClick={(event) => {
+            event.stopPropagation();
+            onConfirm(itemId);
+          }}
+        >
+          ×
         </Button>
       </div>
     )}
