@@ -13,6 +13,7 @@ pub trait IsolationProvider {
         env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
         agents_md: &str,
+        generated_opencode_config: &str,
         opencode_config: &str,
         repo_url: &str,
     ) -> impl std::future::Future<Output = Result<IsolatedEnvironment, HarnessError>> + Send;

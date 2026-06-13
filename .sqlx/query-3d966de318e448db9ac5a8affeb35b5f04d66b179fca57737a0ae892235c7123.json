@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", provider_id\n             FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
+  "query": "INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)\n             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"",
   "describe": {
     "columns": [
       {
@@ -94,17 +94,68 @@
       },
       {
         "ordinal": 16,
-        "name": "created_at!: chrono::DateTime<chrono::Utc>",
-        "type_info": "Timestamptz"
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 17,
-        "name": "provider_id",
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 21,
+        "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -123,9 +174,13 @@
       false,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "aa813d41922f49742d51d77263d716d1a70df6c137f6899550e5c0e7312c88cf"
+  "hash": "3d966de318e448db9ac5a8affeb35b5f04d66b179fca57737a0ae892235c7123"
 }

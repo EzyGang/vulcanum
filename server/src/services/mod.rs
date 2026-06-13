@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod dispatcher;
 pub mod github_app;
+pub mod model_providers;
 pub mod poller;
 pub mod project_configs;
 pub mod provider_configs;

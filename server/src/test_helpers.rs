@@ -9,6 +9,9 @@ use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
@@ -238,6 +241,13 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let providers_repo = IntegrationProvidersRepository::new();
     let providers = IntegrationProvidersService::new(providers_repo.clone(), pool.clone());
+    let model_catalog = ModelCatalogClient::new();
+    let model_providers_repo = ModelProvidersRepository::new();
+    let model_providers = ModelProvidersService::new(
+        model_providers_repo.clone(),
+        pool.clone(),
+        model_catalog.clone(),
+    );
 
     let cfg = crate::config::AppConfig {
         db_url: String::new(),
@@ -293,6 +303,8 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         pool.clone(),
         dispatch_store.clone(),
         providers_repo_clone,
+        model_providers_repo,
+        model_catalog,
         cancel_store.clone(),
         cfg.unhealthy_threshold,
     );
@@ -309,8 +321,10 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
             project_configs_repo,
             pool.clone(),
             crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
+            model_providers.clone(),
         ),
         providers: providers.clone(),
+        model_providers,
         workers: WorkersService::new(
             crate::services::workers::repository::WorkersRepository::new(),
             work_runs_repo_for_workers,

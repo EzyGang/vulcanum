@@ -126,6 +126,9 @@ pub(crate) async fn handle_job(
     if let Some(ref token) = job.github_token {
         secrets.insert("GITHUB_TOKEN".to_owned(), token.clone());
     }
+    for (key, value) in &job.model_provider_env {
+        secrets.insert(key.clone(), value.clone());
+    }
     let env_vars = HashMap::new();
 
     let isolated_env = match provider
@@ -135,6 +138,7 @@ pub(crate) async fn handle_job(
             &env_vars,
             &limits,
             &job.agents_md,
+            &job.generated_opencode_config,
             &job.opencode_config,
             &job.repo_url,
         )

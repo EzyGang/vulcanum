@@ -11,6 +11,9 @@ use crate::services::dispatcher::cancel_store::{
 use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
@@ -33,6 +36,7 @@ pub struct AppState {
     pub auth: AuthService,
     pub project_configs: ProjectConfigsService,
     pub providers: IntegrationProvidersService,
+    pub model_providers: ModelProvidersService,
     pub workers: WorkersService,
     pub jobs: WorkRunsService,
     pub events: WorkRunEventsService,
@@ -55,6 +59,13 @@ impl AppState {
 
         let providers_repo = IntegrationProvidersRepository::new();
         let providers = IntegrationProvidersService::new(providers_repo.clone(), db_pool.clone());
+        let model_catalog = ModelCatalogClient::new();
+        let model_providers_repo = ModelProvidersRepository::new();
+        let model_providers = ModelProvidersService::new(
+            model_providers_repo.clone(),
+            db_pool.clone(),
+            model_catalog.clone(),
+        );
         let invite_store = RedisTeamInviteStore::new(&cfg.redis_url)?;
         let teams = TeamsService::new_with_invite_store(
             TeamsRepository::new(),
@@ -77,6 +88,7 @@ impl AppState {
             project_configs_repo.clone(),
             db_pool.clone(),
             providers_repo.clone(),
+            model_providers.clone(),
         );
         let workers_repo = WorkersRepository::new();
         let code_store = RedisCodeStore::new(&cfg.redis_url)?;
@@ -107,6 +119,8 @@ impl AppState {
             db_pool.clone(),
             dispatch_store.clone(),
             providers_repo.clone(),
+            model_providers_repo,
+            model_catalog,
             cancel_store.clone(),
             cfg.unhealthy_threshold,
         );
@@ -123,6 +137,7 @@ impl AppState {
             auth,
             project_configs,
             providers,
+            model_providers,
             workers,
             jobs,
             events,

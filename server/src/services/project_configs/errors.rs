@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::providers::errors::IntegrationError;
 
 #[derive(Debug, Error)]
@@ -16,4 +17,6 @@ pub enum ProjectConfigsError {
     ColumnNotFound(String),
     #[error("no provider configured for this project")]
     NoProvider,
+    #[error("model provider error: {0}")]
+    ModelProvider(#[from] ModelProvidersError),
 }

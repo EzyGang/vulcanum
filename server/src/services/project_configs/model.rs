@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
@@ -26,6 +26,10 @@ pub struct ProjectConfig {
     pub repo_url: String,
     pub agents_md: String,
     pub opencode_config: String,
+    pub primary_model_provider_key: Option<String>,
+    pub primary_model_id: Option<String>,
+    pub small_model_provider_key: Option<String>,
+    pub small_model_id: Option<String>,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
 }
@@ -57,6 +61,14 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub opencode_config: String,
     #[serde(default)]
+    pub primary_model_provider_key: Option<String>,
+    #[serde(default)]
+    pub primary_model_id: Option<String>,
+    #[serde(default)]
+    pub small_model_provider_key: Option<String>,
+    #[serde(default)]
+    pub small_model_id: Option<String>,
+    #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
 }
@@ -82,6 +94,14 @@ pub struct UpdateProjectConfigRequest {
     pub agents_md: Option<String>,
     #[serde(default)]
     pub opencode_config: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub primary_model_provider_key: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub primary_model_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub small_model_provider_key: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub small_model_id: Option<Option<String>>,
     #[serde(default)]
     pub external_workspace_id: Option<String>,
     #[serde(default)]
@@ -156,6 +176,10 @@ impl ProjectConfig {
             external_project_id: self.external_project_id.clone(),
             external_workspace_id: self.external_workspace_id.clone(),
             opencode_config: self.opencode_config.clone(),
+            primary_model_provider_key: self.primary_model_provider_key.clone(),
+            primary_model_id: self.primary_model_id.clone(),
+            small_model_provider_key: self.small_model_provider_key.clone(),
+            small_model_id: self.small_model_id.clone(),
             max_turns: self.max_turns,
             provider_id: self.provider_id,
             repo_url: self.repo_url.clone(),
@@ -168,6 +192,10 @@ pub struct JobConfigFields {
     pub external_project_id: String,
     pub external_workspace_id: String,
     pub opencode_config: String,
+    pub primary_model_provider_key: Option<String>,
+    pub primary_model_id: Option<String>,
+    pub small_model_provider_key: Option<String>,
+    pub small_model_id: Option<String>,
     pub max_turns: i32,
     pub provider_id: Option<Uuid>,
     pub repo_url: String,
@@ -180,6 +208,10 @@ impl JobConfigFields {
             external_project_id: String::new(),
             external_workspace_id: String::new(),
             opencode_config: String::new(),
+            primary_model_provider_key: None,
+            primary_model_id: None,
+            small_model_provider_key: None,
+            small_model_id: None,
             max_turns: 0,
             provider_id: None,
             repo_url: String::new(),
@@ -209,4 +241,11 @@ fn default_blocked_column() -> String {
 
 fn default_max_turns() -> i32 {
     3
+}
+
+fn deserialize_nullable_string<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(Some)
 }

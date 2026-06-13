@@ -54,6 +54,8 @@ pub struct JobResponse {
     pub repo_url: String,
     pub agents_md: String,
     pub opencode_config: String,
+    pub generated_opencode_config: String,
+    pub model_provider_env: std::collections::HashMap<String, String>,
     pub external_task_ref: String,
     pub provider_instance_url: String,
     pub provider_api_key: String,

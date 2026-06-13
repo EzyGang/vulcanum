@@ -19,6 +19,7 @@ pub fn container_name(workdir: &Path) -> String {
 pub async fn write_env_files(
     workdir: &Path,
     agents_md: &str,
+    generated_opencode_config: &str,
     opencode_config: &str,
 ) -> Result<(), HarnessError> {
     let config_dir = workdir.join("home").join(".config").join("opencode");
@@ -32,10 +33,16 @@ pub async fn write_env_files(
             .map_err(|e| HarnessError::Crash(format!("failed to write AGENTS.md: {e}")))?;
     }
 
-    if !opencode_config.is_empty() {
-        fs::write(config_dir.join("opencode.json"), opencode_config)
+    if !generated_opencode_config.is_empty() {
+        fs::write(config_dir.join("opencode.json"), generated_opencode_config)
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to write opencode.json: {e}")))?;
+    }
+
+    if !opencode_config.is_empty() {
+        fs::write(config_dir.join("opencode.user.json"), opencode_config)
+            .await
+            .map_err(|e| HarnessError::Crash(format!("failed to write opencode.user.json: {e}")))?;
     }
 
     Ok(())

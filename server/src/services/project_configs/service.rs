@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
     ColumnInfo, CreateProjectConfigRequest, LookupProjectResult, ProjectConfig, ProjectInfo,
@@ -18,6 +19,7 @@ pub struct ProjectConfigsService {
     pub repo: ProjectConfigsRepository,
     pub db: PgPool,
     pub providers_repo: IntegrationProvidersRepository,
+    pub model_providers: ModelProvidersService,
 }
 
 impl ProjectConfigsService {
@@ -25,11 +27,13 @@ impl ProjectConfigsService {
         repo: ProjectConfigsRepository,
         db: PgPool,
         providers_repo: IntegrationProvidersRepository,
+        model_providers: ModelProvidersService,
     ) -> Self {
         Self {
             repo,
             db,
             providers_repo,
+            model_providers,
         }
     }
 
@@ -69,6 +73,19 @@ impl ProjectConfigsService {
         params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
         params.blocked_column = resolve_column_slug(&all_columns, &params.blocked_column)?;
 
+        self.validate_model_selection(
+            team_id,
+            params.primary_model_provider_key.as_deref(),
+            params.primary_model_id.as_deref(),
+        )
+        .await?;
+        self.validate_model_selection(
+            team_id,
+            params.small_model_provider_key.as_deref(),
+            params.small_model_id.as_deref(),
+        )
+        .await?;
+
         self.repo.create(&self.db, team_id, &params).await
     }
 
@@ -104,6 +121,26 @@ impl ProjectConfigsService {
             resolve_column_if_set(&all_columns, &mut params.blocked_column)?;
         }
 
+        let primary_provider_key = resolve_model_field(
+            &params.primary_model_provider_key,
+            existing.primary_model_provider_key.as_deref(),
+        );
+        let primary_model_id = resolve_model_field(
+            &params.primary_model_id,
+            existing.primary_model_id.as_deref(),
+        );
+        let small_provider_key = resolve_model_field(
+            &params.small_model_provider_key,
+            existing.small_model_provider_key.as_deref(),
+        );
+        let small_model_id =
+            resolve_model_field(&params.small_model_id, existing.small_model_id.as_deref());
+
+        self.validate_model_selection(team_id, primary_provider_key, primary_model_id)
+            .await?;
+        self.validate_model_selection(team_id, small_provider_key, small_model_id)
+            .await?;
+
         self.repo
             .update(
                 &self.db,
@@ -119,6 +156,19 @@ impl ProjectConfigsService {
                     repo_url: params.repo_url.as_deref(),
                     agents_md: params.agents_md.as_deref(),
                     opencode_config: params.opencode_config.as_deref(),
+                    primary_model_provider_key: params
+                        .primary_model_provider_key
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    primary_model_id: params
+                        .primary_model_id
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    small_model_provider_key: params
+                        .small_model_provider_key
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    small_model_id: params.small_model_id.as_ref().map(|value| value.as_deref()),
                     external_workspace_id: params.external_workspace_id.as_deref(),
                     enabled: params.enabled,
                     integration_type: params.integration_type,
@@ -209,6 +259,18 @@ impl ProjectConfigsService {
         };
         Ok(client)
     }
+
+    async fn validate_model_selection(
+        &self,
+        team_id: Uuid,
+        provider_key: Option<&str>,
+        model_id: Option<&str>,
+    ) -> Result<(), ProjectConfigsError> {
+        self.model_providers
+            .validate_model_selection(team_id, provider_key, model_id)
+            .await
+            .map_err(ProjectConfigsError::ModelProvider)
+    }
 }
 
 fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
@@ -216,6 +278,16 @@ fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
         || params.progress_column.is_some()
         || params.target_column.is_some()
         || params.blocked_column.is_some()
+}
+
+fn resolve_model_field<'a>(
+    field: &'a Option<Option<String>>,
+    existing: Option<&'a str>,
+) -> Option<&'a str> {
+    match field {
+        Some(value) => value.as_deref(),
+        None => existing,
+    }
 }
 
 fn resolve_column_slug(

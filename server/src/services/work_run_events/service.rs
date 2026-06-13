@@ -49,6 +49,7 @@ pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
         | WorkRunsError::NotOwned
         | WorkRunsError::DeleteRunning
         | WorkRunsError::GithubApp(_)
+        | WorkRunsError::ModelProvider(_)
         | WorkRunsError::Dispatch(_) => WorkRunEventsError::Internal(e.to_string()),
     }
 }

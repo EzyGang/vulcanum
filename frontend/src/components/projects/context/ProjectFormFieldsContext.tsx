@@ -1,7 +1,13 @@
 import type { Signal } from '@preact/signals';
 import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
+import type { CatalogProvider, ModelProviderConfig } from '../../../types/modelProviders';
 import type { ColumnInfo } from '../../../types/projects';
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
 
 export interface ProjectFormFieldsContextValue {
   enabled: Signal<boolean>;
@@ -14,6 +20,15 @@ export interface ProjectFormFieldsContextValue {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
+  primaryModelProviderKey: Signal<string>;
+  primaryModelId: Signal<string>;
+  smallModelProviderKey: Signal<string>;
+  smallModelId: Signal<string>;
+  modelProviders: ModelProviderConfig[];
+  catalogProviders: CatalogProvider[];
+  connectedProviderItems: SelectOption[];
+  primaryModelItems: SelectOption[];
+  smallModelItems: SelectOption[];
   repos: string[];
   reposLoading: boolean;
   onEnabledChange: (checked: boolean) => void;
@@ -24,6 +39,10 @@ export interface ProjectFormFieldsContextValue {
   onRepoUrlChange: (value: string) => void;
   onAgentsMdChange: (value: string) => void;
   onOpencodeConfigChange: (value: string) => void;
+  onPrimaryModelProviderChange: (value: string) => void;
+  onPrimaryModelChange: (value: string) => void;
+  onSmallModelProviderChange: (value: string) => void;
+  onSmallModelChange: (value: string) => void;
 }
 
 const ProjectFormFieldsContext = createContext<ProjectFormFieldsContextValue | null>(null);

@@ -3,6 +3,7 @@ pub mod github;
 pub mod health;
 pub mod instance_auth;
 pub mod jobs;
+pub mod model_providers;
 pub mod project_configs;
 pub mod providers;
 pub mod status;
@@ -83,6 +84,14 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/{id}", web::get().to(project_configs::get))
                     .route("/{id}", web::put().to(project_configs::update))
                     .route("/{id}", web::delete().to(project_configs::delete)),
+            )
+            .service(
+                web::scope("/model-providers")
+                    .route("/catalog", web::get().to(model_providers::catalog))
+                    .route("", web::get().to(model_providers::list))
+                    .route("", web::post().to(model_providers::create))
+                    .route("/{id}", web::put().to(model_providers::update))
+                    .route("/{id}", web::delete().to(model_providers::delete)),
             )
             .service(
                 web::scope("/providers")

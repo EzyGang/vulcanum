@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", provider_id",
+  "query": "UPDATE project_configs SET\n             name = COALESCE($2, name),\n             pickup_column = COALESCE($3, pickup_column),\n             target_column = COALESCE($4, target_column),\n             progress_column = COALESCE($5, progress_column),\n             blocked_column = COALESCE($6, blocked_column),\n             max_turns = COALESCE($7, max_turns),\n             prompt_template = COALESCE($8, prompt_template),\n             repo_url = COALESCE($9, repo_url),\n             agents_md = COALESCE($10, agents_md),\n             enabled = COALESCE($11, enabled),\n             external_workspace_id = COALESCE($12, external_workspace_id),\n             integration_type = COALESCE($13, integration_type),\n             provider_id = COALESCE($14, provider_id),\n             opencode_config = COALESCE($15, opencode_config),\n             primary_model_provider_key = CASE WHEN $16 THEN $17 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $18 THEN $19 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,\n             small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END\n             WHERE id = $1\n             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"",
   "describe": {
     "columns": [
       {
@@ -94,21 +94,48 @@
       },
       {
         "ordinal": 16,
-        "name": "created_at!: chrono::DateTime<chrono::Utc>",
-        "type_info": "Timestamptz"
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 17,
-        "name": "provider_id",
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 21,
+        "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
         "Text",
         "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
         "Text",
         {
           "Custom": {
@@ -120,17 +147,16 @@
             }
           }
         },
+        "Uuid",
+        "Text",
         "Bool",
         "Text",
+        "Bool",
         "Text",
+        "Bool",
         "Text",
-        "Text",
-        "Int4",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Uuid"
+        "Bool",
+        "Text"
       ]
     },
     "nullable": [
@@ -150,9 +176,13 @@
       false,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "3487907d27f757ffadabb54ef1bc429a9018f20a75222058a76b57f347772e72"
+  "hash": "026100f71119b9f47821f18c44bd873abcb4705b016ae396869a2c5993621c92"
 }

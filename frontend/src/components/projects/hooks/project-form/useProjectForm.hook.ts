@@ -1,6 +1,10 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
+import {
+  getModelProviderCatalog,
+  listModelProviders
+} from '../../../../services/model-providers/model-providers.service';
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
@@ -29,6 +33,12 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const { data: providers = [] } = useApiQuery(['providers'], () => listProviders());
   const { repos, reposLoading } = useGitHubApp();
+  const { data: modelProviders = [] } = useApiQuery(['model-providers'], () =>
+    listModelProviders()
+  );
+  const { data: modelCatalog } = useApiQuery(['model-provider-catalog'], () =>
+    getModelProviderCatalog()
+  );
 
   const providerId = useSignal('');
   const externalProjectId = useSignal(projectId ? '' : '');
@@ -42,6 +52,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const repoUrl = useSignal('');
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
+  const primaryModelProviderKey = useSignal('');
+  const primaryModelId = useSignal('');
+  const smallModelProviderKey = useSignal('');
+  const smallModelId = useSignal('');
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
@@ -54,6 +68,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     repoUrl,
     agentsMd,
     opencodeConfig,
+    primaryModelProviderKey,
+    primaryModelId,
+    smallModelProviderKey,
+    smallModelId,
     providerId,
     externalProjectId,
     workspaceId
@@ -81,6 +99,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       repoUrl.value = p.repoUrl;
       agentsMd.value = p.agentsMd;
       opencodeConfig.value = p.opencodeConfig;
+      primaryModelProviderKey.value = p.primaryModelProviderKey ?? '';
+      primaryModelId.value = p.primaryModelId ?? '';
+      smallModelProviderKey.value = p.smallModelProviderKey ?? '';
+      smallModelId.value = p.smallModelId ?? '';
     }
   }, [projectId, existingProject]);
 
@@ -127,6 +149,19 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const hasProjectSelection = !!workspaceId.value && !!externalProjectId.value;
   const hasColumns = lookup.lookedUp.value && lookup.columns.value.length > 0;
+  const catalogProviders = modelCatalog?.providers ?? [];
+  const connectedProviderItems = modelProviders.map((provider) => ({
+    value: provider.providerKey,
+    label: provider.displayName || provider.providerKey
+  }));
+  const primaryModelItems =
+    catalogProviders
+      .find((provider) => provider.id === primaryModelProviderKey.value)
+      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
+  const smallModelItems =
+    catalogProviders
+      .find((provider) => provider.id === smallModelProviderKey.value)
+      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
 
   return {
     meta: {
@@ -212,6 +247,15 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       repoUrl,
       agentsMd,
       opencodeConfig,
+      primaryModelProviderKey,
+      primaryModelId,
+      smallModelProviderKey,
+      smallModelId,
+      modelProviders,
+      catalogProviders,
+      connectedProviderItems,
+      primaryModelItems,
+      smallModelItems,
       repos,
       reposLoading,
       onEnabledChange: (checked: boolean) => {
@@ -237,6 +281,20 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onOpencodeConfigChange: (value: string) => {
         opencodeConfig.value = value;
+      },
+      onPrimaryModelProviderChange: (value: string) => {
+        primaryModelProviderKey.value = value;
+        primaryModelId.value = '';
+      },
+      onPrimaryModelChange: (value: string) => {
+        primaryModelId.value = value;
+      },
+      onSmallModelProviderChange: (value: string) => {
+        smallModelProviderKey.value = value;
+        smallModelId.value = '';
+      },
+      onSmallModelChange: (value: string) => {
+        smallModelId.value = value;
       }
     }
   };

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", provider_id\n             FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC",
+  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"\n             FROM project_configs WHERE enabled = true ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -94,19 +94,37 @@
       },
       {
         "ordinal": 16,
-        "name": "created_at!: chrono::DateTime<chrono::Utc>",
-        "type_info": "Timestamptz"
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 17,
-        "name": "provider_id",
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 21,
+        "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -125,9 +143,13 @@
       false,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "55469858fa721f78a8512eb8a49a83258a2564a8621a401b4ade6d5a5b41d3e4"
+  "hash": "6b885f84b32c26aca6926525d5aa3c069c82c4b919f3176a115331398d5ef5d1"
 }

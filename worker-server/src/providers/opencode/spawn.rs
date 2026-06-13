@@ -85,7 +85,6 @@ pub(super) async fn launch_container_server(
         .as_deref()
         .ok_or_else(|| HarnessError::ServerLaunch("image missing".to_owned()))?;
 
-    let config_env = "OPENCODE_CONFIG=/workdir/home/.config/opencode/opencode.json".to_owned();
     let home_env = "HOME=/workdir".to_owned();
     let artifact_env = "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json".to_owned();
     let workdir_str = env.workdir.to_string_lossy().to_string();
@@ -100,9 +99,6 @@ pub(super) async fn launch_container_server(
         "-p".to_owned(),
         format!("127.0.0.1::{OPENCODE_DEFAULT_PORT}"),
         "--security-opt=no-new-privileges".to_owned(),
-        "-e".to_owned(),
-        config_env,
-        "-e".to_owned(),
         home_env,
         "-e".to_owned(),
         artifact_env,

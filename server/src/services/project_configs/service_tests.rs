@@ -1,3 +1,6 @@
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
@@ -10,6 +13,11 @@ async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
+        ModelProvidersService::new(
+            ModelProvidersRepository::new(),
+            pool.clone(),
+            ModelCatalogClient::new(),
+        ),
     );
     let team_b = test_helpers::insert_team(&pool, "team-b").await;
     let config_id = test_helpers::insert_project_config(&pool, "cross-team-project").await;

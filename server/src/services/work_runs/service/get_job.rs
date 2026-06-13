@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
 use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::WorkRunsService;
@@ -61,11 +62,28 @@ impl WorkRunsService {
             },
         };
 
+        let connected_model_providers = self
+            .model_providers_repo
+            .list_all(&self.db, cfg.team_id)
+            .await
+            .map_err(WorkRunsError::ModelProvider)?;
+        let rendered = render_opencode_config(
+            &connected_model_providers,
+            ModelSelection {
+                primary_provider_key: cfg.primary_model_provider_key.as_deref(),
+                primary_model_id: cfg.primary_model_id.as_deref(),
+                small_provider_key: cfg.small_model_provider_key.as_deref(),
+                small_model_id: cfg.small_model_id.as_deref(),
+            },
+        );
+
         Ok(JobResponse {
             prompt_text: run.prompt_text,
             repo_url: run.repo_url,
             agents_md: run.agents_md,
             opencode_config: cfg.opencode_config,
+            generated_opencode_config: rendered.opencode_config,
+            model_provider_env: rendered.env,
             external_task_ref: run.external_task_ref,
             provider_instance_url,
             provider_api_key,

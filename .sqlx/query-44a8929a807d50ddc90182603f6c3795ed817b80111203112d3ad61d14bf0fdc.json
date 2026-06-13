@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", provider_id\n             FROM project_configs WHERE id = $1",
+  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"\n             FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -94,12 +94,32 @@
       },
       {
         "ordinal": 16,
-        "name": "created_at!: chrono::DateTime<chrono::Utc>",
-        "type_info": "Timestamptz"
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 17,
-        "name": "provider_id",
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 21,
+        "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
@@ -125,9 +145,13 @@
       false,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "38df1db9b227e2f0698295967851d96c7742885e7328636463088b62c6912575"
+  "hash": "44a8929a807d50ddc90182603f6c3795ed817b80111203112d3ad61d14bf0fdc"
 }

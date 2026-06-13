@@ -35,6 +35,7 @@ impl IsolationProvider for HostIsolation {
         env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
         agents_md: &str,
+        generated_opencode_config: &str,
         opencode_config: &str,
         repo_url: &str,
     ) -> Result<IsolatedEnvironment, HarnessError> {
@@ -42,7 +43,13 @@ impl IsolationProvider for HostIsolation {
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        workspace::write_env_files(workdir, agents_md, opencode_config).await?;
+        workspace::write_env_files(
+            workdir,
+            agents_md,
+            generated_opencode_config,
+            opencode_config,
+        )
+        .await?;
         workspace::write_finish_run_tool(workdir).await?;
 
         if !repo_url.is_empty() {
@@ -59,6 +66,18 @@ impl IsolationProvider for HostIsolation {
             "HOME".to_owned(),
             workdir.join("home").to_string_lossy().to_string(),
         );
+        if !opencode_config.is_empty() {
+            combined_env.insert(
+                "OPENCODE_CONFIG".to_owned(),
+                workdir
+                    .join("home")
+                    .join(".config")
+                    .join("opencode")
+                    .join("opencode.user.json")
+                    .to_string_lossy()
+                    .to_string(),
+            );
+        }
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),
