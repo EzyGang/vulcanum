@@ -67,6 +67,55 @@ async fn invite_store_hides_expired_payloads() {
 }
 
 #[sqlx::test]
+async fn migrations_create_default_team(pool: sqlx::PgPool) {
+    let team = TeamsRepository::new()
+        .get_default_team(&pool)
+        .await
+        .expect("default team should exist after migrations");
+
+    assert_eq!(team.id, test_helpers::DEFAULT_TEAM_ID);
+    assert_eq!(team.name, "Default team");
+    assert_eq!(team.personal_user_id, None);
+}
+
+#[sqlx::test]
+async fn resolve_team_uses_default_team_in_single_user_mode(pool: sqlx::PgPool) {
+    let svc = TeamsService::new(TeamsRepository::new(), pool);
+
+    let resolved = svc
+        .resolve_team(&TeamPrincipal::Instance { team_id: None }, true)
+        .await
+        .expect("instance without team header should resolve default team");
+
+    assert_eq!(resolved, test_helpers::DEFAULT_TEAM_ID);
+}
+
+#[sqlx::test]
+async fn multi_user_mode_resolves_user_personal_team(pool: sqlx::PgPool) {
+    let user_id = "multi-user-after-single-user";
+    test_helpers::insert_user(&pool, user_id).await;
+    let svc = TeamsService::new(TeamsRepository::new(), pool.clone());
+    let personal_team = svc
+        .ensure_personal_team(user_id, "octo")
+        .await
+        .expect("multi-user login should create personal team");
+
+    let resolved = svc
+        .resolve_team(
+            &TeamPrincipal::User {
+                user_id: user_id.to_owned(),
+                team_id: None,
+            },
+            false,
+        )
+        .await
+        .expect("user without team header should resolve first membership");
+
+    assert_eq!(resolved, personal_team.id);
+    assert_ne!(resolved, test_helpers::DEFAULT_TEAM_ID);
+}
+
+#[sqlx::test]
 async fn ensure_personal_team_is_idempotent(pool: sqlx::PgPool) {
     test_helpers::insert_user(&pool, "personal-idempotent").await;
     let svc = TeamsService::new(TeamsRepository::new(), pool.clone());

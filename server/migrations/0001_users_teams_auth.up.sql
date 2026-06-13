@@ -14,6 +14,9 @@ CREATE TABLE teams (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+INSERT INTO teams (id, name)
+VALUES ('00000000-0000-0000-0000-000000000001', 'Default team');
+
 CREATE TABLE team_members (
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
