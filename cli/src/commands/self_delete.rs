@@ -76,7 +76,7 @@ fn cleanup_local_environment() {
     }
 }
 
-fn remove_directory_best_effort(path: &Path) {
+pub(crate) fn remove_directory_best_effort(path: &Path) {
     if !path.exists() {
         return;
     }

@@ -233,6 +233,16 @@ impl WorkRunsRepository {
         db: Q,
         worker_id: Uuid,
     ) -> Result<u64, WorkRunsError> {
+        self.reset_worker_active_jobs_raw(db, worker_id)
+            .await
+            .map_err(WorkRunsError::Database)
+    }
+
+    pub async fn reset_worker_active_jobs_raw<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        worker_id: Uuid,
+    ) -> Result<u64, sqlx::Error> {
         let rows = sqlx::query!(
             r#"UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
              WHERE worker_id = $1
@@ -240,8 +250,7 @@ impl WorkRunsRepository {
             worker_id,
         )
         .execute(db)
-        .await
-        .map_err(WorkRunsError::from)?
+        .await?
         .rows_affected();
 
         Ok(rows)

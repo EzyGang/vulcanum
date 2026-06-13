@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use super::remove_directory_best_effort;
+use crate::commands::self_delete::remove_directory_best_effort;
 
 fn temp_dir_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
