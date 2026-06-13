@@ -128,6 +128,34 @@ impl TeamsRepository {
         .map_err(TeamsError::from)
     }
 
+    pub async fn add_member_preserving_owner<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        user_id: &str,
+        role: &str,
+    ) -> Result<TeamMember, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            TeamMember,
+            r#"INSERT INTO team_members (team_id, user_id, role)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (team_id, user_id) DO UPDATE SET role = CASE
+                 WHEN team_members.role = 'owner' THEN team_members.role
+                 ELSE EXCLUDED.role
+             END
+             RETURNING team_id, user_id, role, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+            team_id,
+            user_id,
+            role,
+        )
+        .fetch_one(db)
+        .await
+        .map_err(TeamsError::from)
+    }
+
     pub async fn list_for_user<'c, Q>(&self, db: Q, user_id: &str) -> Result<Vec<Team>, TeamsError>
     where
         Q: Queryer<'c>,
@@ -385,5 +413,27 @@ impl TeamsRepository {
             })
             .collect::<Result<Vec<_>, sqlx::Error>>()
             .map_err(TeamsError::from)
+    }
+
+    pub async fn user_has_identity<'c, Q>(
+        &self,
+        db: Q,
+        user_id: &str,
+        provider: &str,
+    ) -> Result<bool, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM user_identities WHERE user_id = $1 AND provider = $2
+            )"#,
+            user_id,
+            provider,
+        )
+        .fetch_one(db)
+        .await
+        .map(|exists| exists.unwrap_or(false))
+        .map_err(TeamsError::from)
     }
 }

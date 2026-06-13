@@ -15,6 +15,7 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::teams::invite_store::RedisTeamInviteStore;
 use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::repository::UsersRepository;
@@ -54,7 +55,12 @@ impl AppState {
 
         let providers_repo = IntegrationProvidersRepository::new();
         let providers = IntegrationProvidersService::new(providers_repo.clone(), db_pool.clone());
-        let teams = TeamsService::new(TeamsRepository::new(), db_pool.clone());
+        let invite_store = RedisTeamInviteStore::new(&cfg.redis_url)?;
+        let teams = TeamsService::new_with_invite_store(
+            TeamsRepository::new(),
+            db_pool.clone(),
+            Arc::new(invite_store),
+        );
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
         let auth = AuthService::new(

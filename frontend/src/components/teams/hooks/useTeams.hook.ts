@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'preact/hooks';
 import { getAuthMode } from '../../../services/auth/auth.service';
 import {
   createTeam,
+  createTeamInvite,
   deleteTeam,
   listTeamMembers,
   listTeams,
@@ -23,6 +24,8 @@ export const useTeams = () => {
   const editName = useSignal('');
   const editingTeamId = useSignal<string | null>(null);
   const formError = useSignal<string | null>(null);
+  const inviteLink = useSignal<string | null>(null);
+  const inviteExpiresAt = useSignal<string | null>(null);
 
   const { data: authMode } = useApiQuery(['auth-mode'], getAuthMode);
   const { data: teamList = [], isLoading: loading, error } = useApiQuery(['teams'], listTeams);
@@ -70,6 +73,8 @@ export const useTeams = () => {
     }
   });
 
+  const inviteMutation = useApiMutation((teamId: string) => createTeamInvite(teamId));
+
   const handleNameChange = useCallback((value: string) => {
     name.value = value;
     formError.value = null;
@@ -97,6 +102,8 @@ export const useTeams = () => {
   const handleSelectTeam = useCallback((teamId: string) => {
     selectedManageTeamId.value = teamId;
     editingTeamId.value = null;
+    inviteLink.value = null;
+    inviteExpiresAt.value = null;
     formError.value = null;
   }, []);
 
@@ -161,6 +168,21 @@ export const useTeams = () => {
     [deleteMutation]
   );
 
+  const handleCreateInvite = useCallback(async () => {
+    if (!selectedManageTeamId.value) return;
+
+    formError.value = null;
+    inviteLink.value = null;
+    inviteExpiresAt.value = null;
+    try {
+      const invite = await inviteMutation.mutateAsync(selectedManageTeamId.value);
+      inviteLink.value = `${window.location.origin}/invites/${invite.token}`;
+      inviteExpiresAt.value = invite.expiresAt;
+    } catch (err) {
+      formError.value = err instanceof Error ? err.message : 'Failed to create invite';
+    }
+  }, [selectedManageTeamId.value, inviteMutation]);
+
   return {
     data: {
       teams: teamList,
@@ -171,7 +193,9 @@ export const useTeams = () => {
       name: name.value,
       editName: editName.value,
       editingTeamId: editingTeamId.value,
-      isSingleUser: authMode?.isSingleUser ?? false
+      isSingleUser: authMode?.isSingleUser ?? false,
+      inviteLink: inviteLink.value,
+      inviteExpiresAt: inviteExpiresAt.value
     },
     status: {
       loading,
@@ -180,7 +204,8 @@ export const useTeams = () => {
       formError: formError.value,
       creating: createMutation.isPending,
       updating: updateMutation.isPending,
-      deleting: deleteMutation.isPending
+      deleting: deleteMutation.isPending,
+      creatingInvite: inviteMutation.isPending
     },
     actions: {
       onNameChange: handleNameChange,
@@ -193,7 +218,8 @@ export const useTeams = () => {
       onCancelEdit: handleCancelEdit,
       onCreate: handleCreate,
       onUpdate: handleUpdate,
-      onDelete: handleDelete
+      onDelete: handleDelete,
+      onCreateInvite: handleCreateInvite
     }
   };
 };

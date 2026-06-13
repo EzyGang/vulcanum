@@ -65,9 +65,19 @@ pub struct AuthTokenResponse {
 }
 
 #[derive(Deserialize)]
+pub struct GithubStartQuery {
+    pub return_to: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub struct GithubCallbackQuery {
     pub code: String,
     pub state: String,
+}
+
+pub struct GithubCallbackResult {
+    pub token_pair: AuthTokenResponse,
+    pub return_to: String,
 }
 
 #[derive(Serialize)]

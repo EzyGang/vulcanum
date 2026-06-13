@@ -28,4 +28,9 @@ export const refreshAuth = (refreshToken: string) =>
     refreshToken
   } as RefreshRequest);
 
-export const getGithubLoginUrl = () => '/api/v1/auth/github/start';
+export const getGithubLoginUrl = (returnTo?: string) => {
+  if (!returnTo) return '/api/v1/auth/github/start';
+
+  const params = new URLSearchParams({ return_to: returnTo });
+  return `/api/v1/auth/github/start?${params.toString()}`;
+};

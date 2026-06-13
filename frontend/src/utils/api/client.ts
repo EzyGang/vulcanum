@@ -48,6 +48,8 @@ const SENSITIVE_FIELDS = new Set([
   'access_token',
   'refreshToken',
   'refresh_token',
+  'return_to',
+  'returnTo',
   'secret',
   'api_key'
 ]);
@@ -107,6 +109,7 @@ const sanitizeLogBody = (body: unknown): unknown => {
 
 const sanitizeLogUrl = (url: string): string => {
   const parsed = new URL(url, window.location.origin);
+  parsed.pathname = parsed.pathname.replace(/\/team-invites\/[^/]+/g, '/team-invites/***');
   for (const key of parsed.searchParams.keys()) {
     if (SENSITIVE_FIELDS.has(key)) {
       parsed.searchParams.set(key, '***');
