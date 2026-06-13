@@ -121,30 +121,25 @@ impl ProjectConfigsService {
             resolve_column_if_set(&all_columns, &mut params.blocked_column)?;
         }
 
-        self.validate_model_selection(
-            team_id,
-            params
-                .primary_model_provider_key
-                .as_deref()
-                .or(existing.primary_model_provider_key.as_deref()),
-            params
-                .primary_model_id
-                .as_deref()
-                .or(existing.primary_model_id.as_deref()),
-        )
-        .await?;
-        self.validate_model_selection(
-            team_id,
-            params
-                .small_model_provider_key
-                .as_deref()
-                .or(existing.small_model_provider_key.as_deref()),
-            params
-                .small_model_id
-                .as_deref()
-                .or(existing.small_model_id.as_deref()),
-        )
-        .await?;
+        let primary_provider_key = resolve_model_field(
+            &params.primary_model_provider_key,
+            existing.primary_model_provider_key.as_deref(),
+        );
+        let primary_model_id = resolve_model_field(
+            &params.primary_model_id,
+            existing.primary_model_id.as_deref(),
+        );
+        let small_provider_key = resolve_model_field(
+            &params.small_model_provider_key,
+            existing.small_model_provider_key.as_deref(),
+        );
+        let small_model_id =
+            resolve_model_field(&params.small_model_id, existing.small_model_id.as_deref());
+
+        self.validate_model_selection(team_id, primary_provider_key, primary_model_id)
+            .await?;
+        self.validate_model_selection(team_id, small_provider_key, small_model_id)
+            .await?;
 
         self.repo
             .update(
@@ -161,10 +156,19 @@ impl ProjectConfigsService {
                     repo_url: params.repo_url.as_deref(),
                     agents_md: params.agents_md.as_deref(),
                     opencode_config: params.opencode_config.as_deref(),
-                    primary_model_provider_key: params.primary_model_provider_key.as_deref(),
-                    primary_model_id: params.primary_model_id.as_deref(),
-                    small_model_provider_key: params.small_model_provider_key.as_deref(),
-                    small_model_id: params.small_model_id.as_deref(),
+                    primary_model_provider_key: params
+                        .primary_model_provider_key
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    primary_model_id: params
+                        .primary_model_id
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    small_model_provider_key: params
+                        .small_model_provider_key
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    small_model_id: params.small_model_id.as_ref().map(|value| value.as_deref()),
                     external_workspace_id: params.external_workspace_id.as_deref(),
                     enabled: params.enabled,
                     integration_type: params.integration_type,
@@ -274,6 +278,16 @@ fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
         || params.progress_column.is_some()
         || params.target_column.is_some()
         || params.blocked_column.is_some()
+}
+
+fn resolve_model_field<'a>(
+    field: &'a Option<Option<String>>,
+    existing: Option<&'a str>,
+) -> Option<&'a str> {
+    match field {
+        Some(value) => value.as_deref(),
+        None => existing,
+    }
 }
 
 fn resolve_column_slug(

@@ -11,10 +11,10 @@ export interface ProjectConfig {
   repoUrl: string;
   agentsMd: string;
   opencodeConfig: string;
-  primaryModelProviderKey?: string;
-  primaryModelId?: string;
-  smallModelProviderKey?: string;
-  smallModelId?: string;
+  primaryModelProviderKey?: string | null;
+  primaryModelId?: string | null;
+  smallModelProviderKey?: string | null;
+  smallModelId?: string | null;
   createdAt: string;
   providerId?: string;
 }
@@ -32,10 +32,10 @@ export interface CreateProjectRequest {
   repoUrl?: string;
   agentsMd?: string;
   opencodeConfig?: string;
-  primaryModelProviderKey?: string;
-  primaryModelId?: string;
-  smallModelProviderKey?: string;
-  smallModelId?: string;
+  primaryModelProviderKey?: string | null;
+  primaryModelId?: string | null;
+  smallModelProviderKey?: string | null;
+  smallModelId?: string | null;
 }
 
 export interface UpdateProjectRequest {
@@ -49,10 +49,10 @@ export interface UpdateProjectRequest {
   repoUrl?: string;
   agentsMd?: string;
   opencodeConfig?: string;
-  primaryModelProviderKey?: string;
-  primaryModelId?: string;
-  smallModelProviderKey?: string;
-  smallModelId?: string;
+  primaryModelProviderKey?: string | null;
+  primaryModelId?: string | null;
+  smallModelProviderKey?: string | null;
+  smallModelId?: string | null;
   providerId?: string;
 }
 

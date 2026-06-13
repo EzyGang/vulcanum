@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
@@ -94,14 +94,14 @@ pub struct UpdateProjectConfigRequest {
     pub agents_md: Option<String>,
     #[serde(default)]
     pub opencode_config: Option<String>,
-    #[serde(default)]
-    pub primary_model_provider_key: Option<String>,
-    #[serde(default)]
-    pub primary_model_id: Option<String>,
-    #[serde(default)]
-    pub small_model_provider_key: Option<String>,
-    #[serde(default)]
-    pub small_model_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub primary_model_provider_key: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub primary_model_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub small_model_provider_key: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub small_model_id: Option<Option<String>>,
     #[serde(default)]
     pub external_workspace_id: Option<String>,
     #[serde(default)]
@@ -241,4 +241,11 @@ fn default_blocked_column() -> String {
 
 fn default_max_turns() -> i32 {
     3
+}
+
+fn deserialize_nullable_string<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(Some)
 }

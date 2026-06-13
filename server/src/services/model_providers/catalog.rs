@@ -87,17 +87,22 @@ impl ModelCatalogClient {
             }
         }
 
-        let raw = self
-            .client
-            .get(MODELS_DEV_URL)
-            .send()
-            .await
-            .map_err(|e| ModelProvidersError::Catalog(e.to_string()))?
-            .error_for_status()
-            .map_err(|e| ModelProvidersError::Catalog(e.to_string()))?
+        let response = self.client.get(MODELS_DEV_URL).send().await.map_err(|e| {
+            ModelProvidersError::Catalog(format!("fetching models.dev catalog: {e}"))
+        })?;
+        if !response.status().is_success() {
+            return Err(ModelProvidersError::Catalog(format!(
+                "fetching models.dev catalog returned HTTP {}",
+                response.status()
+            )));
+        }
+
+        let raw = response
             .json::<HashMap<String, RawProvider>>()
             .await
-            .map_err(|e| ModelProvidersError::Catalog(e.to_string()))?;
+            .map_err(|e| {
+                ModelProvidersError::Catalog(format!("parsing models.dev catalog: {e}"))
+            })?;
 
         let catalog = parse_catalog(raw);
         let mut guard = self.cache.write().await;
@@ -106,6 +111,17 @@ impl ModelCatalogClient {
             catalog: catalog.clone(),
         });
         Ok(catalog)
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn from_catalog(catalog: CatalogResponse) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            cache: Arc::new(RwLock::new(Some(CachedCatalog {
+                fetched_at: Instant::now(),
+                catalog,
+            }))),
+        }
     }
 
     pub async fn validate_provider(&self, provider_key: &str) -> Result<(), ModelProvidersError> {

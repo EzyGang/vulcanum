@@ -32,11 +32,17 @@ pub fn render_opencode_config(
         };
         if let Some(credentials) = provider.credentials.as_object() {
             for (key, value) in credentials {
-                if let Some(secret) = value.as_str() {
-                    if !secret.is_empty() {
+                match value.as_str() {
+                    Some(secret) if !secret.is_empty() => {
                         env.insert(key.clone(), secret.to_owned());
                         options.insert("apiKey".to_owned(), json!(format!("{{env:{key}}}")));
                     }
+                    Some(_) => (),
+                    None => tracing::warn!(
+                        provider_key = %provider.provider_key,
+                        credential_key = %key,
+                        "Skipping non-string model provider credential"
+                    ),
                 }
             }
         }

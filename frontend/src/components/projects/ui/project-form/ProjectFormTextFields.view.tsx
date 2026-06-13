@@ -9,16 +9,6 @@ import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext'
 export const ProjectFormTextFields = (): JSX.Element => {
   const m = useProjectFormMetaContext();
   const f = useProjectFormFieldsContext();
-  const connectedProviderItems = f.modelProviders.map((provider) => ({
-    value: provider.providerKey,
-    label: provider.displayName || provider.providerKey
-  }));
-  const primaryCatalogProvider = f.catalogProviders.find(
-    (provider) => provider.id === f.primaryModelProviderKey.value
-  );
-  const smallCatalogProvider = f.catalogProviders.find(
-    (provider) => provider.id === f.smallModelProviderKey.value
-  );
 
   return (
     <>
@@ -73,7 +63,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
           onValueChange={f.onPrimaryModelProviderChange}
           disabled={m.submitting.value}
           placeholder='Select a connected model provider...'
-          items={connectedProviderItems}
+          items={f.connectedProviderItems}
         />
       </div>
 
@@ -83,12 +73,9 @@ export const ProjectFormTextFields = (): JSX.Element => {
           id='field-primary-model'
           value={f.primaryModelId.value}
           onValueChange={f.onPrimaryModelChange}
-          disabled={m.submitting.value || !primaryCatalogProvider}
+          disabled={m.submitting.value || f.primaryModelItems.length === 0}
           placeholder='Select a model...'
-          items={(primaryCatalogProvider?.models ?? []).map((model) => ({
-            value: model.id,
-            label: model.name
-          }))}
+          items={f.primaryModelItems}
         />
       </div>
 
@@ -101,7 +88,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
             onValueChange={f.onSmallModelProviderChange}
             disabled={m.submitting.value}
             placeholder='Optional provider...'
-            items={connectedProviderItems}
+            items={f.connectedProviderItems}
           />
         </div>
         <div class='flex flex-col gap-2'>
@@ -110,12 +97,9 @@ export const ProjectFormTextFields = (): JSX.Element => {
             id='field-small-model'
             value={f.smallModelId.value}
             onValueChange={f.onSmallModelChange}
-            disabled={m.submitting.value || !smallCatalogProvider}
+            disabled={m.submitting.value || f.smallModelItems.length === 0}
             placeholder='Optional model...'
-            items={(smallCatalogProvider?.models ?? []).map((model) => ({
-              value: model.id,
-              label: model.name
-            }))}
+            items={f.smallModelItems}
           />
         </div>
       </div>

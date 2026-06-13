@@ -1,0 +1,188 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE project_configs SET\n             name = COALESCE($2, name),\n             pickup_column = COALESCE($3, pickup_column),\n             target_column = COALESCE($4, target_column),\n             progress_column = COALESCE($5, progress_column),\n             blocked_column = COALESCE($6, blocked_column),\n             max_turns = COALESCE($7, max_turns),\n             prompt_template = COALESCE($8, prompt_template),\n             repo_url = COALESCE($9, repo_url),\n             agents_md = COALESCE($10, agents_md),\n             enabled = COALESCE($11, enabled),\n             external_workspace_id = COALESCE($12, external_workspace_id),\n             integration_type = COALESCE($13, integration_type),\n             provider_id = COALESCE($14, provider_id),\n             opencode_config = COALESCE($15, opencode_config),\n             primary_model_provider_key = CASE WHEN $16 THEN $17 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $18 THEN $19 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,\n             small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END\n             WHERE id = $1\n             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "external_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "external_workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "integration_type!: _",
+        "type_info": {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "target_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "blocked_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "opencode_config",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 21,
+        "name": "provider_id?",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "026100f71119b9f47821f18c44bd873abcb4705b016ae396869a2c5993621c92"
+}

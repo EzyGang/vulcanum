@@ -8,115 +8,140 @@ use crate::services::model_providers::model::{
 use crate::services::model_providers::repository::ModelProvidersRepository;
 
 impl ModelProvidersRepository {
-    pub async fn list_all<'c, Q: Queryer<'c>>(
+    pub async fn list_all<'c, Q>(
         &self,
         db: Q,
         team_id: Uuid,
-    ) -> Result<Vec<ModelProviderConfig>, ModelProvidersError> {
-        sqlx::query_as::<_, ModelProviderConfig>(
+    ) -> Result<Vec<ModelProviderConfig>, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ModelProviderConfig,
             "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at
              FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC",
+            team_id,
         )
-        .bind(team_id)
         .fetch_all(db)
         .await
         .map_err(ModelProvidersError::from)
     }
 
-    pub async fn find_by_id<'c, Q: Queryer<'c>>(
+    pub async fn find_by_id<'c, Q>(
         &self,
         db: Q,
         id: Uuid,
         team_id: Uuid,
-    ) -> Result<ModelProviderConfig, ModelProvidersError> {
-        sqlx::query_as::<_, ModelProviderConfig>(
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ModelProviderConfig,
             "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at
              FROM model_provider_configs WHERE id = $1 AND team_id = $2",
+            id,
+            team_id,
         )
-        .bind(id)
-        .bind(team_id)
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
     }
 
-    pub async fn find_by_provider_key<'c, Q: Queryer<'c>>(
+    pub async fn find_by_provider_key<'c, Q>(
         &self,
         db: Q,
         team_id: Uuid,
         provider_key: &str,
-    ) -> Result<ModelProviderConfig, ModelProvidersError> {
-        sqlx::query_as::<_, ModelProviderConfig>(
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ModelProviderConfig,
             "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at
              FROM model_provider_configs WHERE team_id = $1 AND provider_key = $2",
+            team_id,
+            provider_key,
         )
-        .bind(team_id)
-        .bind(provider_key)
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
     }
 
-    pub async fn create<'c, Q: Queryer<'c>>(
+    pub async fn create<'c, Q>(
         &self,
         db: Q,
         team_id: Uuid,
         params: &CreateModelProviderRequest,
-    ) -> Result<ModelProviderConfig, ModelProvidersError> {
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
         let id = Uuid::new_v4();
-        sqlx::query_as::<_, ModelProviderConfig>(
+        sqlx::query_as!(
+            ModelProviderConfig,
             r#"INSERT INTO model_provider_configs (id, team_id, provider_key, display_name, credentials, advanced_options)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at"#,
+            id,
+            team_id,
+            params.provider_key,
+            params.display_name,
+            params.credentials,
+            params.advanced_options,
         )
-        .bind(id)
-        .bind(team_id)
-        .bind(&params.provider_key)
-        .bind(&params.display_name)
-        .bind(&params.credentials)
-        .bind(&params.advanced_options)
         .fetch_one(db)
         .await
         .map_err(map_sqlx_error)
     }
 
-    pub async fn update<'c, Q: Queryer<'c>>(
+    pub async fn update<'c, Q>(
         &self,
         db: Q,
         id: Uuid,
         team_id: Uuid,
         params: &UpdateModelProviderRequest,
-    ) -> Result<ModelProviderConfig, ModelProvidersError> {
-        sqlx::query_as::<_, ModelProviderConfig>(
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ModelProviderConfig,
             r#"UPDATE model_provider_configs SET
              display_name = COALESCE($3, display_name),
              credentials = COALESCE($4, credentials),
              advanced_options = COALESCE($5, advanced_options)
              WHERE id = $1 AND team_id = $2
              RETURNING id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at"#,
+            id,
+            team_id,
+            params.display_name.as_deref(),
+            params.credentials.as_ref(),
+            params.advanced_options.as_ref(),
         )
-        .bind(id)
-        .bind(team_id)
-        .bind(params.display_name.as_deref())
-        .bind(params.credentials.as_ref())
-        .bind(params.advanced_options.as_ref())
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
     }
 
-    pub async fn delete<'c, Q: Queryer<'c>>(
+    pub async fn delete<'c, Q>(
         &self,
         db: Q,
         id: Uuid,
         team_id: Uuid,
-    ) -> Result<(), ModelProvidersError> {
-        let rows = sqlx::query("DELETE FROM model_provider_configs WHERE id = $1 AND team_id = $2")
-            .bind(id)
-            .bind(team_id)
-            .execute(db)
-            .await?
-            .rows_affected();
+    ) -> Result<(), ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        let rows = sqlx::query!(
+            "DELETE FROM model_provider_configs WHERE id = $1 AND team_id = $2",
+            id,
+            team_id,
+        )
+        .execute(db)
+        .await?
+        .rows_affected();
         if rows == 0 {
             return Err(ModelProvidersError::NotFound);
         }

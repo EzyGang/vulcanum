@@ -149,6 +149,19 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const hasProjectSelection = !!workspaceId.value && !!externalProjectId.value;
   const hasColumns = lookup.lookedUp.value && lookup.columns.value.length > 0;
+  const catalogProviders = modelCatalog?.providers ?? [];
+  const connectedProviderItems = modelProviders.map((provider) => ({
+    value: provider.providerKey,
+    label: provider.displayName || provider.providerKey
+  }));
+  const primaryModelItems =
+    catalogProviders
+      .find((provider) => provider.id === primaryModelProviderKey.value)
+      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
+  const smallModelItems =
+    catalogProviders
+      .find((provider) => provider.id === smallModelProviderKey.value)
+      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
 
   return {
     meta: {
@@ -239,7 +252,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       smallModelProviderKey,
       smallModelId,
       modelProviders,
-      catalogProviders: modelCatalog?.providers ?? [],
+      catalogProviders,
+      connectedProviderItems,
+      primaryModelItems,
+      smallModelItems,
       repos,
       reposLoading,
       onEnabledChange: (checked: boolean) => {
