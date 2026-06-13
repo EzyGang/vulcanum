@@ -20,6 +20,7 @@ async fn host_isolation_creates_workdir_and_config() {
             "# AGENTS.md",
             "{}",
             "",
+            "",
         )
         .await;
 
@@ -61,6 +62,7 @@ async fn host_isolation_writes_agents_md() {
             agents_content,
             "",
             "",
+            "",
         )
         .await;
 
@@ -95,7 +97,7 @@ async fn host_isolation_skips_agents_md_when_empty() {
 
     let _ = std::fs::create_dir_all(&workdir);
     let result = isolation
-        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", "")
+        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", "", "")
         .await;
 
     let agents_path = workdir
@@ -118,7 +120,7 @@ async fn host_isolation_skips_agents_md_when_empty() {
 }
 
 #[tokio::test]
-async fn host_isolation_writes_opencode_config() {
+async fn host_isolation_writes_raw_opencode_config() {
     let isolation = HostIsolation::new();
     let limits = ResourceLimits::default();
     let secrets = std::collections::HashMap::new();
@@ -134,6 +136,7 @@ async fn host_isolation_writes_opencode_config() {
             &env_vars,
             &limits,
             "",
+            "",
             config_content,
             "",
         )
@@ -143,7 +146,7 @@ async fn host_isolation_writes_opencode_config() {
         .join("home")
         .join(".config")
         .join("opencode")
-        .join("opencode.json");
+        .join("opencode.user.json");
     let contents = std::fs::read_to_string(&config_path);
     let _ = std::fs::remove_dir_all(&workdir);
 
@@ -151,7 +154,7 @@ async fn host_isolation_writes_opencode_config() {
         Ok(env) => {
             isolation.cleanup(&env).await;
             assert_eq!(
-                contents.expect("opencode.json should exist"),
+                contents.expect("opencode.user.json should exist"),
                 config_content
             );
         }
@@ -164,6 +167,40 @@ async fn host_isolation_writes_opencode_config() {
 }
 
 #[tokio::test]
+async fn host_isolation_writes_generated_and_raw_config_separately() {
+    let isolation = HostIsolation::new();
+    let limits = ResourceLimits::default();
+    let secrets = std::collections::HashMap::new();
+    let env_vars = std::collections::HashMap::new();
+    let workdir = std::env::temp_dir().join("vulcanum-test-host-generated-raw-config");
+
+    let generated = r#"{"model":"anthropic/claude-sonnet-4-5"}"#;
+    let raw = r#"{"permission":{"bash":"ask"}}"#;
+    let _ = std::fs::create_dir_all(&workdir);
+    let env = isolation
+        .prepare(
+            &workdir, &secrets, &env_vars, &limits, "", generated, raw, "",
+        )
+        .await
+        .expect("prepare should succeed");
+
+    let config_dir = workdir.join("home").join(".config").join("opencode");
+    let generated_contents = std::fs::read_to_string(config_dir.join("opencode.json"));
+    let raw_contents = std::fs::read_to_string(config_dir.join("opencode.user.json"));
+    let opencode_config = env.env_vars.get("OPENCODE_CONFIG").cloned();
+    isolation.cleanup(&env).await;
+
+    assert_eq!(
+        generated_contents.expect("generated config should exist"),
+        generated
+    );
+    assert_eq!(raw_contents.expect("raw config should exist"), raw);
+    assert!(opencode_config
+        .expect("OPENCODE_CONFIG should be set for raw config")
+        .ends_with("opencode.user.json"));
+}
+
+#[tokio::test]
 async fn host_isolation_cleanup_deletes_workdir() {
     let isolation = HostIsolation::new();
     let limits = ResourceLimits::default();
@@ -172,7 +209,7 @@ async fn host_isolation_cleanup_deletes_workdir() {
     let workdir = std::env::temp_dir().join("vulcanum-work-test-host-cleanup");
 
     let env = isolation
-        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", "")
+        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", "", "")
         .await
         .expect("prepare should succeed");
 

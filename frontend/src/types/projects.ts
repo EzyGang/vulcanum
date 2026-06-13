@@ -11,6 +11,10 @@ export interface ProjectConfig {
   repoUrl: string;
   agentsMd: string;
   opencodeConfig: string;
+  primaryModelProviderKey?: string;
+  primaryModelId?: string;
+  smallModelProviderKey?: string;
+  smallModelId?: string;
   createdAt: string;
   providerId?: string;
 }
@@ -28,6 +32,10 @@ export interface CreateProjectRequest {
   repoUrl?: string;
   agentsMd?: string;
   opencodeConfig?: string;
+  primaryModelProviderKey?: string;
+  primaryModelId?: string;
+  smallModelProviderKey?: string;
+  smallModelId?: string;
 }
 
 export interface UpdateProjectRequest {
@@ -41,6 +49,10 @@ export interface UpdateProjectRequest {
   repoUrl?: string;
   agentsMd?: string;
   opencodeConfig?: string;
+  primaryModelProviderKey?: string;
+  primaryModelId?: string;
+  smallModelProviderKey?: string;
+  smallModelId?: string;
   providerId?: string;
 }
 

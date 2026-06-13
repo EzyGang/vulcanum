@@ -1,5 +1,6 @@
 import type { JSX } from 'preact';
 import { GitHubAppCardContainer } from '../../github/containers/GitHubAppCard.container';
+import { ModelProvidersContainer } from '../../model-providers/containers/ModelProviders.container';
 import { ProjectsContainer } from '../../projects/containers/Projects.container';
 import { ProvidersContainer } from '../../providers/containers/Providers.container';
 import { Tabs } from '../../shared/ui/Tabs.view';
@@ -17,6 +18,9 @@ export const SettingsView = ({ tabs, activeTab, onTabChange }: SettingsViewProps
     <Tabs tabs={tabs} value={activeTab} onValueChange={onTabChange}>
       <Tabs.Panel value='providers'>
         <ProvidersContainer />
+      </Tabs.Panel>
+      <Tabs.Panel value='model-providers'>
+        <ModelProvidersContainer />
       </Tabs.Panel>
       <Tabs.Panel value='projects'>
         <ProjectsContainer />

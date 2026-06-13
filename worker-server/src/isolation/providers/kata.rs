@@ -30,6 +30,7 @@ impl IsolationProvider for KataIsolation {
         env_vars: &std::collections::HashMap<String, String>,
         limits: &ResourceLimits,
         agents_md: &str,
+        generated_opencode_config: &str,
         opencode_config: &str,
         repo_url: &str,
     ) -> Result<IsolatedEnvironment, vulcanum_shared::runtime::errors::HarnessError> {
@@ -40,6 +41,7 @@ impl IsolationProvider for KataIsolation {
                 env_vars,
                 limits,
                 agents_md,
+                generated_opencode_config,
                 opencode_config,
                 repo_url,
             )

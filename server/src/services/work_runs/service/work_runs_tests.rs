@@ -5,6 +5,8 @@ use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::work_runs::errors::WorkRunsError;
@@ -52,6 +54,8 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
+        ModelProvidersRepository::new(),
+        ModelCatalogClient::new(),
         Arc::new(InMemoryCancelStore::new()),
         3,
     )

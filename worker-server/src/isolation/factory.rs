@@ -42,6 +42,7 @@ impl IsolationProvider for IsolationKind {
         env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
         agents_md: &str,
+        generated_opencode_config: &str,
         opencode_config: &str,
         repo_url: &str,
     ) -> Result<IsolatedEnvironment, HarnessError> {
@@ -53,6 +54,7 @@ impl IsolationProvider for IsolationKind {
                     env_vars,
                     limits,
                     agents_md,
+                    generated_opencode_config,
                     opencode_config,
                     repo_url,
                 )
@@ -65,6 +67,7 @@ impl IsolationProvider for IsolationKind {
                     env_vars,
                     limits,
                     agents_md,
+                    generated_opencode_config,
                     opencode_config,
                     repo_url,
                 )
@@ -77,6 +80,7 @@ impl IsolationProvider for IsolationKind {
                     env_vars,
                     limits,
                     agents_md,
+                    generated_opencode_config,
                     opencode_config,
                     repo_url,
                 )

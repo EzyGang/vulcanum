@@ -17,6 +17,10 @@ interface UseProjectFormSubmitOptions {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
+  primaryModelProviderKey: Signal<string>;
+  primaryModelId: Signal<string>;
+  smallModelProviderKey: Signal<string>;
+  smallModelId: Signal<string>;
   providerId: Signal<string>;
   externalProjectId: Signal<string>;
   workspaceId: Signal<string>;
@@ -34,6 +38,10 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     repoUrl,
     agentsMd,
     opencodeConfig,
+    primaryModelProviderKey,
+    primaryModelId,
+    smallModelProviderKey,
+    smallModelId,
     providerId,
     externalProjectId,
     workspaceId
@@ -89,6 +97,10 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               repoUrl: repoUrl.value || undefined,
               agentsMd: agentsMd.value || undefined,
               opencodeConfig: opencodeConfig.value || undefined,
+              primaryModelProviderKey: primaryModelProviderKey.value || undefined,
+              primaryModelId: primaryModelId.value || undefined,
+              smallModelProviderKey: smallModelProviderKey.value || undefined,
+              smallModelId: smallModelId.value || undefined,
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -112,7 +124,11 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             promptTemplate: promptTemplate.value,
             repoUrl: repoUrl.value || undefined,
             agentsMd: agentsMd.value || undefined,
-            opencodeConfig: opencodeConfig.value || undefined
+            opencodeConfig: opencodeConfig.value || undefined,
+            primaryModelProviderKey: primaryModelProviderKey.value || undefined,
+            primaryModelId: primaryModelId.value || undefined,
+            smallModelProviderKey: smallModelProviderKey.value || undefined,
+            smallModelId: smallModelId.value || undefined
           });
         }
       } catch (err) {

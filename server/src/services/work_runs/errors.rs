@@ -1,5 +1,6 @@
 use crate::services::dispatcher::errors::DispatchError;
 use crate::services::github_app::errors::GithubAppError;
+use crate::services::model_providers::errors::ModelProvidersError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorkRunsError {
@@ -19,4 +20,6 @@ pub enum WorkRunsError {
     Dispatch(#[from] DispatchError),
     #[error("github app error: {0}")]
     GithubApp(#[from] GithubAppError),
+    #[error("model provider error: {0}")]
+    ModelProvider(#[from] ModelProvidersError),
 }

@@ -9,6 +9,16 @@ import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext'
 export const ProjectFormTextFields = (): JSX.Element => {
   const m = useProjectFormMetaContext();
   const f = useProjectFormFieldsContext();
+  const connectedProviderItems = f.modelProviders.map((provider) => ({
+    value: provider.providerKey,
+    label: provider.displayName || provider.providerKey
+  }));
+  const primaryCatalogProvider = f.catalogProviders.find(
+    (provider) => provider.id === f.primaryModelProviderKey.value
+  );
+  const smallCatalogProvider = f.catalogProviders.find(
+    (provider) => provider.id === f.smallModelProviderKey.value
+  );
 
   return (
     <>
@@ -56,6 +66,61 @@ export const ProjectFormTextFields = (): JSX.Element => {
       </div>
 
       <div class='flex flex-col gap-2'>
+        <Label for='field-primary-model-provider'>Primary Model Provider</Label>
+        <Select
+          id='field-primary-model-provider'
+          value={f.primaryModelProviderKey.value}
+          onValueChange={f.onPrimaryModelProviderChange}
+          disabled={m.submitting.value}
+          placeholder='Select a connected model provider...'
+          items={connectedProviderItems}
+        />
+      </div>
+
+      <div class='flex flex-col gap-2'>
+        <Label for='field-primary-model'>Primary Model</Label>
+        <Select
+          id='field-primary-model'
+          value={f.primaryModelId.value}
+          onValueChange={f.onPrimaryModelChange}
+          disabled={m.submitting.value || !primaryCatalogProvider}
+          placeholder='Select a model...'
+          items={(primaryCatalogProvider?.models ?? []).map((model) => ({
+            value: model.id,
+            label: model.name
+          }))}
+        />
+      </div>
+
+      <div class='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        <div class='flex flex-col gap-2'>
+          <Label for='field-small-model-provider'>Small Model Provider</Label>
+          <Select
+            id='field-small-model-provider'
+            value={f.smallModelProviderKey.value}
+            onValueChange={f.onSmallModelProviderChange}
+            disabled={m.submitting.value}
+            placeholder='Optional provider...'
+            items={connectedProviderItems}
+          />
+        </div>
+        <div class='flex flex-col gap-2'>
+          <Label for='field-small-model'>Small Model</Label>
+          <Select
+            id='field-small-model'
+            value={f.smallModelId.value}
+            onValueChange={f.onSmallModelChange}
+            disabled={m.submitting.value || !smallCatalogProvider}
+            placeholder='Optional model...'
+            items={(smallCatalogProvider?.models ?? []).map((model) => ({
+              value: model.id,
+              label: model.name
+            }))}
+          />
+        </div>
+      </div>
+
+      <div class='flex flex-col gap-2'>
         <Label for='field-agents-md'>Agents.md</Label>
         <span class='text-text-muted text-xs'>
           Global agent guide for this project. Does not overwrite any per-repo AGENTS.md file.
@@ -70,10 +135,10 @@ export const ProjectFormTextFields = (): JSX.Element => {
       </div>
 
       <div class='flex flex-col gap-2'>
-        <Label for='field-opencode-config'>OpenCode Config</Label>
+        <Label for='field-opencode-config'>Advanced OpenCode Config</Label>
         <span class='text-text-muted text-xs'>
-          JSON configuration for opencode. Written to opencode.json. Supports {'{env:VAR}'} syntax
-          for environment variable references.
+          Raw user-managed OpenCode JSON. It is merged after app-managed provider/model config and
+          can override generated values.
         </span>
         <TextArea
           id='field-opencode-config'

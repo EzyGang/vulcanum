@@ -1,6 +1,7 @@
 import type { Signal } from '@preact/signals';
 import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
+import type { CatalogProvider, ModelProviderConfig } from '../../../types/modelProviders';
 import type { ColumnInfo } from '../../../types/projects';
 
 export interface ProjectFormFieldsContextValue {
@@ -14,6 +15,12 @@ export interface ProjectFormFieldsContextValue {
   repoUrl: Signal<string>;
   agentsMd: Signal<string>;
   opencodeConfig: Signal<string>;
+  primaryModelProviderKey: Signal<string>;
+  primaryModelId: Signal<string>;
+  smallModelProviderKey: Signal<string>;
+  smallModelId: Signal<string>;
+  modelProviders: ModelProviderConfig[];
+  catalogProviders: CatalogProvider[];
   repos: string[];
   reposLoading: boolean;
   onEnabledChange: (checked: boolean) => void;
@@ -24,6 +31,10 @@ export interface ProjectFormFieldsContextValue {
   onRepoUrlChange: (value: string) => void;
   onAgentsMdChange: (value: string) => void;
   onOpencodeConfigChange: (value: string) => void;
+  onPrimaryModelProviderChange: (value: string) => void;
+  onPrimaryModelChange: (value: string) => void;
+  onSmallModelProviderChange: (value: string) => void;
+  onSmallModelChange: (value: string) => void;
 }
 
 const ProjectFormFieldsContext = createContext<ProjectFormFieldsContextValue | null>(null);

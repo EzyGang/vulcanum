@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use crate::services::auth::errors::AuthError;
 use crate::services::github_app::errors::GithubAppError;
+use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::provider_configs::errors::IntegrationProvidersError;
 use crate::services::teams::errors::TeamsError;
@@ -51,6 +52,10 @@ pub enum AppError {
     ProviderNotFound,
     #[error("duplicate provider name")]
     DuplicateProviderName,
+    #[error("model provider not found")]
+    ModelProviderNotFound,
+    #[error("duplicate model provider")]
+    DuplicateModelProvider,
     #[error("column not found")]
     ColumnNotFound,
     #[error("no provider configured")]
@@ -120,6 +125,12 @@ impl ResponseError for AppError {
             }),
             Self::DuplicateProviderName => HttpResponse::Conflict().json(ErrorBody {
                 error: "A provider with this name already exists".to_owned(),
+            }),
+            Self::ModelProviderNotFound => HttpResponse::NotFound().json(ErrorBody {
+                error: "Model provider not found".to_owned(),
+            }),
+            Self::DuplicateModelProvider => HttpResponse::Conflict().json(ErrorBody {
+                error: "A model provider for this team is already connected".to_owned(),
             }),
             Self::ColumnNotFound => HttpResponse::BadRequest().json(ErrorBody {
                 error: "Column not found in project".to_owned(),
@@ -204,6 +215,7 @@ impl From<ProjectConfigsError> for AppError {
             }
             ProjectConfigsError::ColumnNotFound(_) => Self::ColumnNotFound,
             ProjectConfigsError::NoProvider => Self::NoProvider,
+            ProjectConfigsError::ModelProvider(e) => e.into(),
         }
     }
 }
@@ -225,6 +237,7 @@ impl From<WorkRunsError> for AppError {
             }
             WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
             WorkRunsError::GithubApp(e) => e.into(),
+            WorkRunsError::ModelProvider(e) => e.into(),
         }
     }
 }
@@ -260,6 +273,30 @@ impl From<IntegrationProvidersError> for AppError {
             IntegrationProvidersError::DuplicateName => Self::DuplicateProviderName,
             IntegrationProvidersError::Database(e) => {
                 tracing::error!(error = %e, operation = "providers", "database error");
+                Self::Internal
+            }
+        }
+    }
+}
+
+impl From<ModelProvidersError> for AppError {
+    fn from(err: ModelProvidersError) -> Self {
+        match err {
+            ModelProvidersError::NotFound => Self::ModelProviderNotFound,
+            ModelProvidersError::DuplicateProvider => Self::DuplicateModelProvider,
+            ModelProvidersError::UnknownProvider(provider) => {
+                Self::BadRequest(format!("Unknown model provider: {provider}"))
+            }
+            ModelProvidersError::UnknownModel {
+                provider_key,
+                model_id,
+            } => Self::BadRequest(format!("Unknown model: {provider_key}/{model_id}")),
+            ModelProvidersError::Catalog(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "catalog error");
+                Self::Internal
+            }
+            ModelProvidersError::Database(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "database error");
                 Self::Internal
             }
         }
