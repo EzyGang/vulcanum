@@ -28,7 +28,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 172.17.0.1:5432:5432
+          - 5432
 
       redis:
         image: redis:7-alpine
@@ -38,7 +38,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 172.17.0.1:6379:6379
+          - 6379
 
     steps:
       - name: Checkout
@@ -68,12 +68,12 @@ jobs:
         run: cargo install sqlx-cli
       - name: Run migrations
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_e2e
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_e2e
         run: sqlx migrate run --source server/migrations
 
       - run: pnpm install
       - name: Run e2e tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_e2e
-          REDIS_URL: redis://172.17.0.1:6379
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_e2e
+          REDIS_URL: redis://127.0.0.1:${{ job.services.redis.ports[6379] }}
         run: pnpm --filter=@repo/server run test -- e2e

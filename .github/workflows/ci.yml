@@ -70,7 +70,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 172.17.0.1:5432:5432
+          - 5432
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -92,10 +92,10 @@ jobs:
         run: cargo install sqlx-cli
       - name: Run migrations
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_db
         run: sqlx migrate run --source server/migrations
       - run: pnpm install
       - name: Run tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:5432/vulcanum_db
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_db
         run: pnpm run test
