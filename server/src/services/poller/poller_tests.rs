@@ -66,14 +66,7 @@ fn make_task(id: &str, title: &str) -> IntegrationTask {
 async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
-    sqlx::query!(
-        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
-        DEFAULT_TEAM_ID,
-        "Default team",
-    )
-    .execute(pool)
-    .await
-    .expect("Should ensure default team");
+    crate::test_helpers::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) \
@@ -95,14 +88,7 @@ async fn insert_project_config(
 ) -> Uuid {
     let id = Uuid::new_v4();
 
-    sqlx::query!(
-        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
-        DEFAULT_TEAM_ID,
-        "Default team",
-    )
-    .execute(pool)
-    .await
-    .expect("Should ensure default team");
+    crate::test_helpers::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO project_configs \
