@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS user_refresh_tokens;
+DROP TABLE IF EXISTS user_identities;
+DROP TABLE IF EXISTS team_members;
+DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS users;
+DROP EXTENSION IF EXISTS pgcrypto;

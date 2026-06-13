@@ -10,6 +10,8 @@ use crate::test_helpers::DEFAULT_TEAM_ID;
 async fn insert_project_config(pool: &PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
+    crate::test_helpers::ensure_default_team(pool).await;
+
     sqlx::query!(
         "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, $4, 'kaneo')",
         id,

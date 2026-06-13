@@ -1,2 +1,0 @@
-ALTER TABLE workers ADD COLUMN access_token_hash TEXT NOT NULL DEFAULT '';
-ALTER TABLE workers ADD COLUMN access_expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW();

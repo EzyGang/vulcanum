@@ -30,7 +30,9 @@ fn cfg() -> AppConfig {
     }
 }
 
-fn svc(pool: sqlx::PgPool) -> WorkersService {
+async fn svc(pool: sqlx::PgPool) -> WorkersService {
+    crate::test_helpers::ensure_default_team(&pool).await;
+
     let c = cfg();
     WorkersService::new(
         WorkersRepository::new(),
@@ -43,7 +45,7 @@ fn svc(pool: sqlx::PgPool) -> WorkersService {
 
 #[sqlx::test]
 async fn generate_code_returns_new_code(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let resp = svc
         .generate_code(DEFAULT_TEAM_ID)
         .await
@@ -54,7 +56,7 @@ async fn generate_code_returns_new_code(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let code = svc
         .generate_code(DEFAULT_TEAM_ID)
         .await
@@ -79,7 +81,7 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn connect_with_capacity_creates_worker_with_capacity(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let code = svc
         .generate_code(DEFAULT_TEAM_ID)
         .await
@@ -98,7 +100,7 @@ async fn connect_with_capacity_creates_worker_with_capacity(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let err = svc
         .connect(crate::services::workers::model::ConnectRequest {
             code: "badcode".to_owned(),
@@ -113,7 +115,7 @@ async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
-    let svc = svc(pool.clone());
+    let svc = svc(pool.clone()).await;
 
     svc.code_store
         .save(
@@ -138,7 +140,7 @@ async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_rotates_token(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let code = svc
         .generate_code(DEFAULT_TEAM_ID)
         .await
@@ -169,7 +171,7 @@ async fn refresh_rotates_token(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let code = svc
         .generate_code(DEFAULT_TEAM_ID)
         .await
@@ -203,7 +205,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_with_invalid_token_fails(pool: sqlx::PgPool) {
-    let svc = svc(pool);
+    let svc = svc(pool).await;
     let err = svc
         .refresh(crate::services::workers::model::RefreshRequest {
             refresh_token: "garbage".to_owned(),
@@ -216,7 +218,7 @@ async fn refresh_with_invalid_token_fails(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_all_returns_workers(pool: sqlx::PgPool) {
-    let svc = svc(pool.clone());
+    let svc = svc(pool.clone()).await;
     let expiry = Utc::now() + Duration::days(30);
     let capabilities = serde_json::json!({});
 
@@ -255,7 +257,7 @@ async fn list_all_returns_workers(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_worker_rejects_cross_team_worker(pool: sqlx::PgPool) {
-    let svc = svc(pool.clone());
+    let svc = svc(pool.clone()).await;
     let team_b = crate::test_helpers::insert_team(&pool, "workers-team-b").await;
     let worker_id = crate::test_helpers::insert_worker(&pool, "team-a-worker").await;
 

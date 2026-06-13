@@ -9,13 +9,13 @@ use crate::services::dispatcher::service::DispatcherService;
 use crate::services::workers::model::WorkerStatus;
 use crate::test_helpers;
 
-fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool)
+async fn build_state(pool: sqlx::PgPool) -> AppState {
+    test_helpers::build_state(pool).await
 }
 
 #[sqlx::test]
 async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -73,7 +73,7 @@ async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn full_job_lifecycle(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -174,7 +174,7 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -238,7 +238,7 @@ async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn double_ack_returns_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -294,7 +294,7 @@ async fn double_ack_returns_409(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn stale_worker_marked_disconnected(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "stale-worker").await;
 
     sqlx::query!(

@@ -1,1 +1,0 @@
-ALTER TABLE project_configs ADD COLUMN name TEXT NOT NULL DEFAULT '';

@@ -28,6 +28,17 @@ use crate::services::workers::service::WorkersService;
 
 pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
 
+pub async fn ensure_default_team(pool: &sqlx::PgPool) {
+    sqlx::query!(
+        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+        DEFAULT_TEAM_ID,
+        "Default team",
+    )
+    .execute(pool)
+    .await
+    .expect("Should ensure default team");
+}
+
 pub async fn insert_team(pool: &sqlx::PgPool, name: &str) -> Uuid {
     let id = Uuid::new_v4();
 
@@ -49,10 +60,15 @@ pub async fn insert_user(pool: &sqlx::PgPool, id: &str) {
 }
 
 pub async fn insert_worker(pool: &sqlx::PgPool, name: &str) -> Uuid {
+    ensure_default_team(pool).await;
     insert_worker_for_team(pool, DEFAULT_TEAM_ID, name).await
 }
 
 pub async fn insert_worker_for_team(pool: &sqlx::PgPool, team_id: Uuid, name: &str) -> Uuid {
+    if team_id == DEFAULT_TEAM_ID {
+        ensure_default_team(pool).await;
+    }
+
     let id = Uuid::new_v4();
     let hash = hex::encode([0u8; 32]);
 
@@ -71,6 +87,7 @@ pub async fn insert_worker_for_team(pool: &sqlx::PgPool, team_id: Uuid, name: &s
 }
 
 pub async fn insert_project_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
+    ensure_default_team(pool).await;
     insert_project_config_for_team(pool, DEFAULT_TEAM_ID, external_project_id).await
 }
 
@@ -79,6 +96,10 @@ pub async fn insert_project_config_for_team(
     team_id: Uuid,
     external_project_id: &str,
 ) -> Uuid {
+    if team_id == DEFAULT_TEAM_ID {
+        ensure_default_team(pool).await;
+    }
+
     let id = Uuid::new_v4();
 
     sqlx::query!(
@@ -99,6 +120,7 @@ pub async fn insert_project_config_with_provider(
     external_project_id: &str,
     provider_id: Uuid,
 ) -> Uuid {
+    ensure_default_team(pool).await;
     let id = Uuid::new_v4();
 
     sqlx::query!(
@@ -120,6 +142,7 @@ pub async fn insert_pending_work_run(
     project_config_id: Uuid,
     task_ref: &str,
 ) -> Uuid {
+    ensure_default_team(pool).await;
     insert_pending_work_run_for_team(pool, DEFAULT_TEAM_ID, project_config_id, task_ref).await
 }
 
@@ -129,6 +152,10 @@ pub async fn insert_pending_work_run_for_team(
     project_config_id: Uuid,
     task_ref: &str,
 ) -> Uuid {
+    if team_id == DEFAULT_TEAM_ID {
+        ensure_default_team(pool).await;
+    }
+
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
         team_id,
@@ -154,6 +181,7 @@ pub async fn insert_running_work_run(
     task_ref: &str,
     worker_id: Uuid,
 ) -> Uuid {
+    ensure_default_team(pool).await;
     insert_running_work_run_for_team(
         pool,
         DEFAULT_TEAM_ID,
@@ -171,6 +199,10 @@ pub async fn insert_running_work_run_for_team(
     task_ref: &str,
     worker_id: Uuid,
 ) -> Uuid {
+    if team_id == DEFAULT_TEAM_ID {
+        ensure_default_team(pool).await;
+    }
+
     let repo = WorkRunsRepository::new();
     let params = InsertWorkRunParams {
         team_id,
@@ -201,7 +233,9 @@ pub async fn insert_running_work_run_for_team(
     id
 }
 
-pub fn build_state(pool: sqlx::PgPool) -> AppState {
+pub async fn build_state(pool: sqlx::PgPool) -> AppState {
+    ensure_default_team(&pool).await;
+
     let providers_repo = IntegrationProvidersRepository::new();
     let providers = IntegrationProvidersService::new(providers_repo.clone(), pool.clone());
 
