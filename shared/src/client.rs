@@ -67,6 +67,23 @@ impl ApiClient {
         map_response(resp).await.map_err(Into::into)
     }
 
+    pub async fn delete_worker_self(&self, access_token: &str) -> anyhow::Result<()> {
+        let url = format!("{}/api/v1/workers/me", self.base_url);
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .context("self-delete request failed")?;
+
+        if resp.status().is_success() {
+            return Ok(());
+        }
+
+        Err(build_error(resp).await.into())
+    }
+
     pub async fn status(&self) -> anyhow::Result<StatusResponse> {
         let url = format!("{}/api/v1/status", self.base_url);
         let resp = self

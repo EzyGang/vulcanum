@@ -192,6 +192,28 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn self_delete_worker_returns_204(pool: sqlx::PgPool) {
+    let worker_id = test_helpers::insert_worker(&pool, "self-delete-me").await;
+    let state = build_state(pool).await;
+    let token = test_helpers::build_worker_token(worker_id);
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::delete()
+        .uri("/api/v1/workers/me")
+        .insert_header(("Authorization", token))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 204);
+}
+
+#[sqlx::test]
 async fn list_workers_returns_200(pool: sqlx::PgPool) {
     test_helpers::insert_worker(&pool, "list-test-1").await;
     test_helpers::insert_worker(&pool, "list-test-2").await;

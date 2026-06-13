@@ -58,3 +58,25 @@ pub fn enable_and_restart_service() -> anyhow::Result<()> {
     run_systemctl(&format!("restart {UNIT_NAME}"))?;
     Ok(())
 }
+
+pub fn remove_worker_service_best_effort() {
+    if is_unit_installed() {
+        if let Err(err) = run_systemctl(&format!("stop {UNIT_NAME}")) {
+            tracing::warn!(error = %err, "failed to stop worker service before uninstall");
+        }
+
+        if let Err(err) = run_systemctl(&format!("disable {UNIT_NAME}")) {
+            tracing::warn!(error = %err, "failed to disable worker service before uninstall");
+        }
+    }
+
+    if let Err(err) = std::fs::remove_file(UNIT_PATH) {
+        if err.kind() != std::io::ErrorKind::NotFound {
+            tracing::warn!(error = %err, path = UNIT_PATH, "failed to remove worker service unit file");
+        }
+    }
+
+    if let Err(err) = run_systemctl("daemon-reload") {
+        tracing::warn!(error = %err, "failed to reload systemd after uninstall");
+    }
+}

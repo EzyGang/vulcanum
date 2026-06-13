@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
+use crate::routes::worker_auth::WorkerAuth;
 use crate::services::workers::model::{ConnectRequest, RefreshRequest, UpdateWorkerStatusRequest};
 
 pub async fn generate_code(
@@ -76,5 +77,13 @@ pub async fn delete(
         .workers
         .delete_worker(path.into_inner(), team_id)
         .await?;
+    Ok(HttpResponse::NoContent().finish())
+}
+
+pub async fn self_delete(
+    state: web::Data<AppState>,
+    auth: WorkerAuth,
+) -> Result<HttpResponse, AppError> {
+    state.workers.delete_self(auth.worker_id).await?;
     Ok(HttpResponse::NoContent().finish())
 }
