@@ -7,8 +7,8 @@ use crate::test_helpers;
 
 const TEST_PASSWORD: &str = "test-password";
 
-fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool)
+async fn build_state(pool: sqlx::PgPool) -> AppState {
+    test_helpers::build_state(pool).await
 }
 
 fn auth_header(token: &str) -> (&str, String) {
@@ -17,6 +17,15 @@ fn auth_header(token: &str) -> (&str, String) {
 
 async fn insert_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
+
+    sqlx::query!(
+        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+        test_helpers::DEFAULT_TEAM_ID,
+        "Default team",
+    )
+    .execute(pool)
+    .await
+    .expect("Should ensure default team");
 
     sqlx::query!(
         "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, $4, 'kaneo')",
@@ -37,7 +46,7 @@ async fn list_returns_configs(pool: sqlx::PgPool) {
     insert_config(&pool, "test-list-1").await;
     insert_config(&pool, "test-list-2").await;
 
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(
@@ -63,7 +72,7 @@ async fn list_returns_configs(pool: sqlx::PgPool) {
 async fn get_returns_config(pool: sqlx::PgPool) {
     let id = insert_config(&pool, "test-get").await;
 
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(
@@ -89,7 +98,7 @@ async fn get_returns_config(pool: sqlx::PgPool) {
 async fn get_nonexistent_returns_404(pool: sqlx::PgPool) {
     let nonexistent = Uuid::new_v4();
 
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(
@@ -112,7 +121,7 @@ async fn get_nonexistent_returns_404(pool: sqlx::PgPool) {
 async fn delete_removes_config(pool: sqlx::PgPool) {
     let id = insert_config(&pool, "test-delete").await;
 
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(
@@ -144,7 +153,7 @@ async fn delete_removes_config(pool: sqlx::PgPool) {
 async fn delete_nonexistent_returns_404(pool: sqlx::PgPool) {
     let nonexistent = Uuid::new_v4();
 
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(

@@ -11,6 +11,15 @@ async fn insert_project_config(pool: &PgPool, external_project_id: &str) -> Uuid
     let id = Uuid::new_v4();
 
     sqlx::query!(
+        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+        DEFAULT_TEAM_ID,
+        "Default team",
+    )
+    .execute(pool)
+    .await
+    .expect("Should ensure default team");
+
+    sqlx::query!(
         "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, $4, 'kaneo')",
         id,
         DEFAULT_TEAM_ID,

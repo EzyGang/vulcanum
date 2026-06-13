@@ -19,6 +19,7 @@ async fn create_worker(
     refresh_expires_at: chrono::DateTime<Utc>,
 ) -> Worker {
     let capabilities = serde_json::json!({});
+    crate::test_helpers::ensure_default_team(pool).await;
     repo.create(
         pool,
         CreateWorkerParams {

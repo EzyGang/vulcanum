@@ -67,6 +67,15 @@ async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
+        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+        DEFAULT_TEAM_ID,
+        "Default team",
+    )
+    .execute(pool)
+    .await
+    .expect("Should ensure default team");
+
+    sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) \
          VALUES ($1, $2, 'Test Provider', 'http://test', 'key')",
         id,
@@ -85,6 +94,15 @@ async fn insert_project_config(
     provider_id: Uuid,
 ) -> Uuid {
     let id = Uuid::new_v4();
+
+    sqlx::query!(
+        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+        DEFAULT_TEAM_ID,
+        "Default team",
+    )
+    .execute(pool)
+    .await
+    .expect("Should ensure default team");
 
     sqlx::query!(
         "INSERT INTO project_configs \

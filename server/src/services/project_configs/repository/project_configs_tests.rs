@@ -12,6 +12,8 @@ use crate::test_helpers::DEFAULT_TEAM_ID;
 async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
+    crate::test_helpers::ensure_default_team(pool).await;
+
     sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
         id,

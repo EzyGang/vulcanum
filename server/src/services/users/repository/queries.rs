@@ -13,7 +13,10 @@ impl UsersRepository {
 
         let existing = sqlx::query_as!(
             User,
-            "SELECT id, email, created_at, last_login_at FROM users WHERE email = $1",
+            r#"SELECT id, email,
+               created_at as "created_at!: chrono::DateTime<chrono::Utc>",
+               last_login_at as "last_login_at?: chrono::DateTime<chrono::Utc>"
+               FROM users WHERE email = $1"#,
             email,
         )
         .fetch_optional(&mut *tx)
@@ -29,7 +32,10 @@ impl UsersRepository {
 
                 sqlx::query_as!(
                     User,
-                    "SELECT id, email, created_at, last_login_at FROM users WHERE id = $1",
+                    r#"SELECT id, email,
+                       created_at as "created_at!: chrono::DateTime<chrono::Utc>",
+                       last_login_at as "last_login_at?: chrono::DateTime<chrono::Utc>"
+                       FROM users WHERE id = $1"#,
                     &id,
                 )
                 .fetch_one(&mut *tx)
@@ -48,7 +54,10 @@ impl UsersRepository {
     ) -> Result<User, UsersError> {
         sqlx::query_as!(
             User,
-            "SELECT id, email, created_at, last_login_at FROM users WHERE id = $1",
+            r#"SELECT id, email,
+               created_at as "created_at!: chrono::DateTime<chrono::Utc>",
+               last_login_at as "last_login_at?: chrono::DateTime<chrono::Utc>"
+               FROM users WHERE id = $1"#,
             user_id,
         )
         .fetch_optional(db)
@@ -61,10 +70,9 @@ impl UsersRepository {
         db: Q,
         user_id: &str,
     ) -> Result<(), UsersError> {
-        let now = chrono::Utc::now().to_rfc3339();
         sqlx::query!(
             "UPDATE users SET last_login_at = $1 WHERE id = $2",
-            &now,
+            chrono::Utc::now(),
             user_id,
         )
         .execute(db)

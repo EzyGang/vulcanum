@@ -7,8 +7,8 @@ use crate::routes;
 use crate::services::dispatcher::repository::DispatchRepository;
 use crate::test_helpers;
 
-fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool)
+async fn build_state(pool: sqlx::PgPool) -> AppState {
+    test_helpers::build_state(pool).await
 }
 
 fn build_worker_token(worker_id: Uuid) -> String {
@@ -17,7 +17,7 @@ fn build_worker_token(worker_id: Uuid) -> String {
 
 #[sqlx::test]
 async fn poll_returns_204_when_no_dispatch(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-poll-noop").await;
 
     let app = test::init_service(
@@ -38,7 +38,7 @@ async fn poll_returns_204_when_no_dispatch(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-poll-work").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-poll-test").await;
@@ -70,7 +70,7 @@ async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn get_job_returns_200(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-getter").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-test").await;
@@ -103,7 +103,7 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn get_job_returns_404_for_missing(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-missing-getter").await;
 
     let app = test::init_service(
@@ -124,7 +124,7 @@ async fn get_job_returns_404_for_missing(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn ack_job_returns_200(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-acker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack-test").await;
@@ -158,7 +158,7 @@ async fn ack_job_returns_200(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_a = test_helpers::insert_worker(&pool, "test-acker-a").await;
     let worker_b = test_helpers::insert_worker(&pool, "test-acker-b").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-race").await;
@@ -196,7 +196,7 @@ async fn ack_job_returns_409_when_already_claimed(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-result").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-test").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result-test").await;
@@ -250,7 +250,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "test-early-result").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-early-result").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-early-result").await;
@@ -284,7 +284,7 @@ async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn poll_rejects_missing_auth(pool: sqlx::PgPool) {
-    let state = build_state(pool);
+    let state = build_state(pool).await;
 
     let app = test::init_service(
         App::new()
@@ -301,7 +301,7 @@ async fn poll_rejects_missing_auth(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn poll_rejects_invalid_token(pool: sqlx::PgPool) {
-    let state = build_state(pool);
+    let state = build_state(pool).await;
 
     let app = test::init_service(
         App::new()
@@ -333,7 +333,7 @@ fn build_instance_token() -> String {
 
 #[sqlx::test]
 async fn post_events_appends_batch_and_returns_next_expected(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "events-1-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "events-1").await;
     let wr_id =
@@ -367,7 +367,7 @@ async fn post_events_appends_batch_and_returns_next_expected(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn post_events_accepts_out_of_order_sequences(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "events-2-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "events-2").await;
     let wr_id =
@@ -395,7 +395,7 @@ async fn post_events_accepts_out_of_order_sequences(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn post_events_rejects_wrong_owner_with_404(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let owner = test_helpers::insert_worker(&pool, "events-3-owner").await;
     let attacker = test_helpers::insert_worker(&pool, "events-3-attacker").await;
     let project_id = test_helpers::insert_project_config(&pool, "events-3").await;
@@ -421,7 +421,7 @@ async fn post_events_rejects_wrong_owner_with_404(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn get_events_admin_returns_full_list(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "events-4-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "events-4").await;
     let wr_id =
@@ -463,7 +463,7 @@ async fn get_events_admin_returns_full_list(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn post_runs_cancel_returns_204(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "cancel-1-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "cancel-1").await;
     let wr_id =
@@ -492,7 +492,7 @@ async fn post_runs_cancel_returns_204(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn post_runs_cancel_rejects_terminal_status_with_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let project_id = test_helpers::insert_project_config(&pool, "cancel-2").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "cancel-2-task").await;
 
@@ -513,7 +513,7 @@ async fn post_runs_cancel_rejects_terminal_status_with_409(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn get_events_recent_returns_last_n_ascending(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone());
+    let state = build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "recent-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "recent").await;
     let wr_id =

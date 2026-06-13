@@ -6,8 +6,8 @@ use crate::test_helpers;
 
 const TEST_PASSWORD: &str = "test-password";
 
-fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool)
+async fn build_state(pool: sqlx::PgPool) -> AppState {
+    test_helpers::build_state(pool).await
 }
 
 fn auth_header(token: &str) -> (&str, String) {
@@ -16,7 +16,7 @@ fn auth_header(token: &str) -> (&str, String) {
 
 #[sqlx::test]
 async fn generate_code_returns_201(pool: sqlx::PgPool) {
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(
@@ -41,7 +41,7 @@ async fn generate_code_returns_201(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let code = state
         .workers
         .generate_code(test_helpers::DEFAULT_TEAM_ID)
@@ -76,7 +76,7 @@ async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
 async fn connect_with_invalid_code_returns_400(pool: sqlx::PgPool) {
     let app = test::init_service(
         App::new()
-            .app_data(web::Data::new(build_state(pool)))
+            .app_data(web::Data::new(build_state(pool).await))
             .configure(routes::configure),
     )
     .await;
@@ -95,7 +95,7 @@ async fn connect_with_invalid_code_returns_400(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let code = state
         .workers
         .generate_code(test_helpers::DEFAULT_TEAM_ID)
@@ -138,7 +138,7 @@ async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
 async fn refresh_with_invalid_token_returns_401(pool: sqlx::PgPool) {
     let app = test::init_service(
         App::new()
-            .app_data(web::Data::new(build_state(pool)))
+            .app_data(web::Data::new(build_state(pool).await))
             .configure(routes::configure),
     )
     .await;
@@ -156,7 +156,7 @@ async fn refresh_with_invalid_token_returns_401(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn delete_worker_returns_204(pool: sqlx::PgPool) {
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let code = state
         .workers
         .generate_code(test_helpers::DEFAULT_TEAM_ID)
@@ -196,7 +196,7 @@ async fn list_workers_returns_200(pool: sqlx::PgPool) {
     test_helpers::insert_worker(&pool, "list-test-1").await;
     test_helpers::insert_worker(&pool, "list-test-2").await;
 
-    let state = build_state(pool);
+    let state = build_state(pool).await;
     let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
 
     let app = test::init_service(
