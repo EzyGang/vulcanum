@@ -90,6 +90,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             id: projectId,
             input: {
               enabled: enabled.value,
+              // On update, undefined omits COALESCE-preserved fields while null explicitly clears nullable model fields.
               pickupColumn: pickupColumn.value || undefined,
               progressColumn: progressColumn.value || undefined,
               targetColumn: targetColumn.value || undefined,
