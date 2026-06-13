@@ -24,10 +24,10 @@ const TRIGGER_CLASS =
 const POSITIONER_CLASS = 'z-[100]';
 
 const POPUP_CLASS =
-  'min-w-44 max-h-72 overflow-y-auto bg-bg-input border border-border-base py-1 text-text-primary shadow-[0_8px_24px_oklch(0%_0_0_/_0.45)]';
+  'min-w-44 max-h-72 overflow-y-auto bg-bg-active border border-border-base py-1 text-text-primary shadow-modal';
 
 const ITEM_CLASS =
-  'flex w-full items-center whitespace-nowrap bg-bg-input px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary outline-none data-highlighted:bg-bg-hover data-highlighted:text-text-primary data-selected:bg-bg-active data-selected:text-text-primary';
+  'flex w-full items-center whitespace-nowrap bg-transparent px-4 py-2 text-sm cursor-pointer transition-colors text-text-secondary outline-none data-highlighted:bg-bg-hover data-highlighted:text-text-primary data-selected:bg-bg-card data-selected:text-text-primary';
 
 export const Select = ({
   items,
@@ -63,7 +63,12 @@ export const Select = ({
         </span>
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
-        <BaseSelect.Positioner sideOffset={4} class={POSITIONER_CLASS}>
+        <BaseSelect.Positioner
+          align='start'
+          alignItemWithTrigger={false}
+          sideOffset={4}
+          class={POSITIONER_CLASS}
+        >
           <BaseSelect.Popup class={POPUP_CLASS}>
             {items.map((option) => (
               <BaseSelect.Item key={option.value} value={option.value} class={ITEM_CLASS}>
