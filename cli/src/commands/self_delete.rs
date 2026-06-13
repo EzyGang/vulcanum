@@ -17,12 +17,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     match worker_state::load_state() {
         Ok(Some(mut state)) => {
-            if let Err(err) = deregister_worker(&mut state).await {
-                tracing::warn!(error = %err, "worker deregistration failed");
-                console::warn(&format!(
-                    "Failed to deregister worker from server ({err:#})"
-                ));
-            }
+            deregister_worker(&mut state).await;
         }
         Ok(None) => {
             console::warn("No worker state found; skipping server deregistration.");
@@ -39,7 +34,7 @@ pub async fn run() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn deregister_worker(state: &mut WorkerState) -> anyhow::Result<()> {
+async fn deregister_worker(state: &mut WorkerState) {
     let client = ApiClient::new(state.instance_url.clone());
 
     if let Err(err) = ensure_valid_token(&client, state, 0).await {
@@ -58,8 +53,6 @@ async fn deregister_worker(state: &mut WorkerState) -> anyhow::Result<()> {
             ));
         }
     }
-
-    Ok(())
 }
 
 fn cleanup_local_environment() {
