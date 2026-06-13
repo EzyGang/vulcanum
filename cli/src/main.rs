@@ -27,6 +27,9 @@ enum Command {
 enum WorkerCommand {
     /// Run the worker daemon (poll loop, job execution)
     Daemon,
+    /// Unregister this worker and remove local state
+    #[command(name = "self-delete")]
+    SelfDelete,
     /// Install dependencies, configure systemd, and register with an instance
     Setup {
         /// Instance URL (e.g. https://vulcanum.example.com)
@@ -60,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Worker { cmd } => match cmd {
             WorkerCommand::Daemon => run_daemon_subcommand().await,
+            WorkerCommand::SelfDelete => commands::self_delete::run().await,
             WorkerCommand::Setup {
                 instance,
                 code,

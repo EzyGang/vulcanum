@@ -268,3 +268,40 @@ async fn delete_worker_rejects_cross_team_worker(pool: sqlx::PgPool) {
 
     assert!(matches!(err, WorkersError::WorkerNotFound));
 }
+
+#[sqlx::test]
+async fn delete_self_resets_assigned_runs_and_deletes_worker(pool: sqlx::PgPool) {
+    let svc = svc(pool.clone()).await;
+    let project_config_id = crate::test_helpers::insert_project_config(&pool, "ext-project").await;
+    let worker_id = crate::test_helpers::insert_worker(&pool, "self-delete-worker").await;
+    let work_run_id = crate::test_helpers::insert_running_work_run(
+        &pool,
+        project_config_id,
+        "TASK-123",
+        worker_id,
+    )
+    .await;
+
+    svc.delete_self(worker_id)
+        .await
+        .expect("Should delete self");
+
+    let worker = sqlx::query!(
+        "SELECT COUNT(*) AS count FROM workers WHERE id = $1",
+        worker_id
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query worker");
+    assert_eq!(worker.count.unwrap(), 0);
+
+    let run = sqlx::query!(
+        r#"SELECT worker_id, status::text as "status!: String" FROM work_runs WHERE id = $1"#,
+        work_run_id
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query run");
+    assert!(run.worker_id.is_none());
+    assert_eq!(run.status, "pending");
+}
