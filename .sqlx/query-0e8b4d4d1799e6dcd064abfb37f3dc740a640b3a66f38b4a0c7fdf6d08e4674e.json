@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at\n             FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC",
+  "query": "SELECT id, team_id, provider_key, display_name, credentials, created_at, updated_at\n              FROM model_provider_configs WHERE team_id = $1 AND provider_key = $2",
   "describe": {
     "columns": [
       {
@@ -30,23 +30,19 @@
       },
       {
         "ordinal": 5,
-        "name": "advanced_options",
-        "type_info": "Jsonb"
-      },
-      {
-        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
@@ -56,9 +52,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "4fc5a7a26d7c0eb1fbd103a1b98b4de98b83c408ef70dac7c168e528aaa88527"
+  "hash": "0e8b4d4d1799e6dcd064abfb37f3dc740a640b3a66f38b4a0c7fdf6d08e4674e"
 }

@@ -46,7 +46,6 @@ async fn validate_model_selection_accepts_connected_catalog_model(pool: sqlx::Pg
                 provider_key: "anthropic".to_owned(),
                 display_name: "Anthropic".to_owned(),
                 credentials: json!({ "ANTHROPIC_API_KEY": "secret" }),
-                advanced_options: json!({}),
             },
         )
         .await

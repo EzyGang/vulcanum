@@ -29,7 +29,6 @@ export interface ModelProviderConfig {
   providerKey: string;
   displayName: string;
   credentials: Record<string, string>;
-  advancedOptions: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,11 +37,9 @@ export interface CreateModelProviderRequest {
   providerKey: string;
   displayName?: string;
   credentials: Record<string, string>;
-  advancedOptions?: Record<string, unknown>;
 }
 
 export interface UpdateModelProviderRequest {
   displayName?: string;
   credentials?: Record<string, string>;
-  advancedOptions?: Record<string, unknown>;
 }

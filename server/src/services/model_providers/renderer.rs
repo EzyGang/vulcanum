@@ -26,10 +26,7 @@ pub fn render_opencode_config(
     let mut provider_json = serde_json::Map::new();
 
     for provider in connected {
-        let mut options = match provider.advanced_options.as_object() {
-            Some(value) => value.clone(),
-            None => serde_json::Map::new(),
-        };
+        let mut options = serde_json::Map::new();
         if let Some(credentials) = provider.credentials.as_object() {
             for (key, value) in credentials {
                 match value.as_str() {

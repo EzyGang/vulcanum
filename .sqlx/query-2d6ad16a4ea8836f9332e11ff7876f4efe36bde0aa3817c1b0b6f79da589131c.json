@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE model_provider_configs SET\n             display_name = COALESCE($3, display_name),\n             credentials = COALESCE($4, credentials),\n             advanced_options = COALESCE($5, advanced_options)\n             WHERE id = $1 AND team_id = $2\n             RETURNING id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at",
+  "query": "SELECT id, team_id, provider_key, display_name, credentials, created_at, updated_at\n              FROM model_provider_configs WHERE id = $1 AND team_id = $2",
   "describe": {
     "columns": [
       {
@@ -30,16 +30,11 @@
       },
       {
         "ordinal": 5,
-        "name": "advanced_options",
-        "type_info": "Jsonb"
-      },
-      {
-        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
@@ -47,10 +42,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
-        "Text",
-        "Jsonb",
-        "Jsonb"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -60,9 +52,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "c3ae6f927adaaf8d551cf9790e54bb7b9984310255875934520273ef6c81169b"
+  "hash": "2d6ad16a4ea8836f9332e11ff7876f4efe36bde0aa3817c1b0b6f79da589131c"
 }

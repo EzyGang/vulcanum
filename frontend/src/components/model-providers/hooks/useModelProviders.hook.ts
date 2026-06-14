@@ -47,7 +47,6 @@ export const useModelProviders = () => {
   const editId = useSignal<string | null>(null);
   const providerKey = useSignal('');
   const displayName = useSignal('');
-  const advancedOptions = useSignal('{}');
   const credentials = useSignal<Record<string, string>>({});
   const formError = useSignal<string | null>(null);
   const formSubmitting = useSignal(false);
@@ -59,7 +58,6 @@ export const useModelProviders = () => {
     editId.value = null;
     providerKey.value = '';
     displayName.value = '';
-    advancedOptions.value = '{}';
     credentials.value = {};
     formError.value = null;
     formSubmitting.value = false;
@@ -75,7 +73,6 @@ export const useModelProviders = () => {
     providerKey.value = provider.providerKey;
     displayName.value = provider.displayName;
     credentials.value = provider.credentials ?? {};
-    advancedOptions.value = JSON.stringify(provider.advancedOptions ?? {}, null, 2);
     formError.value = null;
     showForm.value = true;
   }, []);
@@ -98,16 +95,6 @@ export const useModelProviders = () => {
         return;
       }
 
-      let parsedAdvanced: Record<string, unknown> = {};
-      try {
-        parsedAdvanced = advancedOptions.value.trim()
-          ? (JSON.parse(advancedOptions.value) as Record<string, unknown>)
-          : {};
-      } catch (_) {
-        formError.value = 'Advanced options must be valid JSON';
-        return;
-      }
-
       formSubmitting.value = true;
       try {
         if (editId.value) {
@@ -115,16 +102,14 @@ export const useModelProviders = () => {
             id: editId.value,
             input: {
               displayName: displayName.value || undefined,
-              credentials: credentials.value,
-              advancedOptions: parsedAdvanced
+              credentials: credentials.value
             }
           });
         } else {
           await createMutation.mutateAsync({
             providerKey: providerKey.value,
             displayName: displayName.value || undefined,
-            credentials: credentials.value,
-            advancedOptions: parsedAdvanced
+            credentials: credentials.value
           });
         }
         resetForm();
@@ -146,7 +131,6 @@ export const useModelProviders = () => {
       editId,
       providerKey,
       displayName,
-      advancedOptions,
       credentials,
       formError,
       formSubmitting,
@@ -161,9 +145,6 @@ export const useModelProviders = () => {
       onProviderChange: handleProviderChange,
       onDisplayNameChange: (value: string) => {
         displayName.value = value;
-      },
-      onAdvancedOptionsChange: (value: string) => {
-        advancedOptions.value = value;
       },
       onCredentialChange: handleCredentialChange,
       onSave: handleSave,

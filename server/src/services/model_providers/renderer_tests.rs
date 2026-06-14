@@ -12,7 +12,6 @@ fn render_opencode_config_extracts_env_and_models() {
         provider_key: "anthropic".to_owned(),
         display_name: "Anthropic".to_owned(),
         credentials: serde_json::json!({"ANTHROPIC_API_KEY": "secret"}),
-        advanced_options: serde_json::json!({"timeout": 600000}),
         created_at: Utc::now(),
         updated_at: Utc::now(),
     };

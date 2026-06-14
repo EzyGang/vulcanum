@@ -18,8 +18,8 @@ impl ModelProvidersRepository {
     {
         sqlx::query_as!(
             ModelProviderConfig,
-            "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at
-             FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC",
+            "SELECT id, team_id, provider_key, display_name, credentials, created_at, updated_at
+              FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC",
             team_id,
         )
         .fetch_all(db)
@@ -38,8 +38,8 @@ impl ModelProvidersRepository {
     {
         sqlx::query_as!(
             ModelProviderConfig,
-            "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at
-             FROM model_provider_configs WHERE id = $1 AND team_id = $2",
+            "SELECT id, team_id, provider_key, display_name, credentials, created_at, updated_at
+              FROM model_provider_configs WHERE id = $1 AND team_id = $2",
             id,
             team_id,
         )
@@ -59,8 +59,8 @@ impl ModelProvidersRepository {
     {
         sqlx::query_as!(
             ModelProviderConfig,
-            "SELECT id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at
-             FROM model_provider_configs WHERE team_id = $1 AND provider_key = $2",
+            "SELECT id, team_id, provider_key, display_name, credentials, created_at, updated_at
+              FROM model_provider_configs WHERE team_id = $1 AND provider_key = $2",
             team_id,
             provider_key,
         )
@@ -81,15 +81,14 @@ impl ModelProvidersRepository {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             ModelProviderConfig,
-            r#"INSERT INTO model_provider_configs (id, team_id, provider_key, display_name, credentials, advanced_options)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at"#,
+            r#"INSERT INTO model_provider_configs (id, team_id, provider_key, display_name, credentials)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, team_id, provider_key, display_name, credentials, created_at, updated_at"#,
             id,
             team_id,
             params.provider_key,
             params.display_name,
             params.credentials,
-            params.advanced_options,
         )
         .fetch_one(db)
         .await
@@ -109,16 +108,14 @@ impl ModelProvidersRepository {
         sqlx::query_as!(
             ModelProviderConfig,
             r#"UPDATE model_provider_configs SET
-             display_name = COALESCE($3, display_name),
-             credentials = COALESCE($4, credentials),
-             advanced_options = COALESCE($5, advanced_options)
-             WHERE id = $1 AND team_id = $2
-             RETURNING id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at"#,
+              display_name = COALESCE($3, display_name),
+              credentials = COALESCE($4, credentials)
+              WHERE id = $1 AND team_id = $2
+              RETURNING id, team_id, provider_key, display_name, credentials, created_at, updated_at"#,
             id,
             team_id,
             params.display_name.as_deref(),
             params.credentials.as_ref(),
-            params.advanced_options.as_ref(),
         )
         .fetch_optional(db)
         .await?

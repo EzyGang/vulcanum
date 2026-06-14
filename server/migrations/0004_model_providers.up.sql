@@ -4,7 +4,6 @@ CREATE TABLE model_provider_configs (
     provider_key TEXT NOT NULL,
     display_name TEXT NOT NULL DEFAULT '',
     credentials JSONB NOT NULL DEFAULT '{}',
-    advanced_options JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
