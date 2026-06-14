@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button.view';
 import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
+import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Table } from '../../shared/ui/Table.view';
 
 interface ProjectsViewProps {
@@ -40,17 +41,20 @@ export const ProjectsView = ({
   actions: { onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }
 }: ProjectsViewProps): JSX.Element => (
   <div class='flex flex-col gap-4'>
-    <div class='flex items-center justify-between'>
-      <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>
-        All Projects
-      </h3>
-      <Button variant='primary' onClick={onConnectProject} disabled={!hasProviders}>
-        Connect Project
-      </Button>
-    </div>
-    {!hasProviders && (
-      <p class='text-text-muted text-xs'>Create a provider in the Settings page first.</p>
-    )}
+    <SectionHeader
+      title='Projects'
+      hint='Connect projects to a task tracker provider and configure run sync.'
+      action={
+        <Button
+          variant='primary'
+          class='shrink-0 whitespace-nowrap px-5'
+          onClick={onConnectProject}
+          disabled={!hasProviders}
+        >
+          Connect Project
+        </Button>
+      }
+    />
 
     {error && <ErrorBanner message={error.message} />}
 

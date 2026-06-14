@@ -8,6 +8,7 @@ import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
+import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Select } from '../../shared/ui/Select.view';
 import { Table } from '../../shared/ui/Table.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
@@ -54,26 +55,22 @@ export const ModelProvidersView = ({
   actions
 }: ModelProvidersViewProps): JSX.Element => (
   <div class='flex flex-col gap-4'>
-    <div class='flex items-center justify-between'>
-      <div class='flex flex-col gap-1'>
-        <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>
-          Model Providers
-        </h3>
-        <p class='text-text-muted text-xs'>
-          Connect LLM providers for app-managed agent runtime config.
-        </p>
-      </div>
-      {!data.showForm.value && (
-        <Button
-          variant='primary'
-          class='shrink-0 whitespace-nowrap px-5'
-          onClick={actions.onShowCreate}
-          disabled={status.catalogLoading}
-        >
-          Add Model Provider
-        </Button>
-      )}
-    </div>
+    <SectionHeader
+      title='Model Providers'
+      hint='Connect LLM providers for app-managed agent runtime config.'
+      action={
+        !data.showForm.value ? (
+          <Button
+            variant='primary'
+            class='shrink-0 whitespace-nowrap px-5'
+            onClick={actions.onShowCreate}
+            disabled={status.catalogLoading}
+          >
+            Add Model Provider
+          </Button>
+        ) : null
+      }
+    />
 
     {status.error && <ErrorBanner message={status.error.message} />}
     {data.deleteError.value && <ErrorBanner message={data.deleteError.value} />}

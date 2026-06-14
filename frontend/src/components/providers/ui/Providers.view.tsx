@@ -6,6 +6,7 @@ import { Button } from '../../shared/ui/Button.view';
 import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
+import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Table } from '../../shared/ui/Table.view';
 import { ProviderFormFields } from './ProviderFormFields.view';
 
@@ -76,16 +77,17 @@ export const ProvidersView = ({
   }
 }: ProvidersViewProps): JSX.Element => (
   <div class='flex flex-col gap-4'>
-    <div class='flex items-center justify-between'>
-      <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>
-        Task Tracker Providers
-      </h3>
-      {!showForm.value && (
-        <Button variant='primary' onClick={onShowCreate}>
-          Add Task Tracker
-        </Button>
-      )}
-    </div>
+    <SectionHeader
+      title='Task Tracker Providers'
+      hint='Connect task tracker providers for project integrations.'
+      action={
+        !showForm.value ? (
+          <Button variant='primary' class='shrink-0 whitespace-nowrap px-5' onClick={onShowCreate}>
+            Add Task Tracker
+          </Button>
+        ) : null
+      }
+    />
 
     {error && <ErrorBanner message={error.message} />}
 
