@@ -64,7 +64,12 @@ export const ModelProvidersView = ({
         </p>
       </div>
       {!data.showForm.value && (
-        <Button variant='primary' onClick={actions.onShowCreate} disabled={status.catalogLoading}>
+        <Button
+          variant='primary'
+          class='shrink-0 whitespace-nowrap px-5'
+          onClick={actions.onShowCreate}
+          disabled={status.catalogLoading}
+        >
           Add Model Provider
         </Button>
       )}
