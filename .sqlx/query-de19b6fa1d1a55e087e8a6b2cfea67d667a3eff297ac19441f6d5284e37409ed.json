@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO model_provider_configs (id, team_id, provider_key, display_name, credentials, advanced_options)\n             VALUES ($1, $2, $3, $4, $5, $6)\n             RETURNING id, team_id, provider_key, display_name, credentials, advanced_options, created_at, updated_at",
+  "query": "SELECT id, team_id, provider_key, display_name, credentials, created_at, updated_at\n              FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -30,28 +30,18 @@
       },
       {
         "ordinal": 5,
-        "name": "advanced_options",
-        "type_info": "Jsonb"
-      },
-      {
-        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "updated_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
-        "Text",
-        "Text",
-        "Jsonb",
-        "Jsonb"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -61,9 +51,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "dc47e67112ac70b65947a808a21fcf3a74af06f6cb447a609af349137f073598"
+  "hash": "de19b6fa1d1a55e087e8a6b2cfea67d667a3eff297ac19441f6d5284e37409ed"
 }

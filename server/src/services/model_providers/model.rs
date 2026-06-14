@@ -10,7 +10,6 @@ pub struct ModelProviderConfig {
     pub provider_key: String,
     pub display_name: String,
     pub credentials: serde_json::Value,
-    pub advanced_options: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -22,8 +21,6 @@ pub struct CreateModelProviderRequest {
     pub display_name: String,
     #[serde(default)]
     pub credentials: serde_json::Value,
-    #[serde(default)]
-    pub advanced_options: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -32,8 +29,6 @@ pub struct UpdateModelProviderRequest {
     pub display_name: Option<String>,
     #[serde(default)]
     pub credentials: Option<serde_json::Value>,
-    #[serde(default)]
-    pub advanced_options: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -11,7 +11,6 @@ import { Label } from '../../shared/ui/Label.view';
 import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Select } from '../../shared/ui/Select.view';
 import { Table } from '../../shared/ui/Table.view';
-import { TextArea } from '../../shared/ui/TextArea.view';
 
 interface ModelProvidersViewProps {
   data: {
@@ -22,7 +21,6 @@ interface ModelProvidersViewProps {
     editId: Signal<string | null>;
     providerKey: Signal<string>;
     displayName: Signal<string>;
-    advancedOptions: Signal<string>;
     credentials: Signal<Record<string, string>>;
     formError: Signal<string | null>;
     formSubmitting: Signal<boolean>;
@@ -40,7 +38,6 @@ interface ModelProvidersViewProps {
     onCancelForm: () => void;
     onProviderChange: (value: string) => void;
     onDisplayNameChange: (value: string) => void;
-    onAdvancedOptionsChange: (value: string) => void;
     onCredentialChange: (key: string, value: string) => void;
     onSave: (e: Event) => void;
     onConfirmDelete: (id: string) => void;
@@ -126,19 +123,6 @@ export const ModelProvidersView = ({
             ))}
           </div>
         )}
-
-        <div class='flex flex-col gap-2'>
-          <Label for='model-provider-options'>Advanced Options JSON</Label>
-          <TextArea
-            id='model-provider-options'
-            value={data.advancedOptions.value}
-            onInput={(e) =>
-              actions.onAdvancedOptionsChange((e.target as HTMLTextAreaElement).value)
-            }
-            disabled={data.formSubmitting.value}
-            rows={5}
-          />
-        </div>
 
         {data.formError.value && <ErrorBanner message={data.formError.value} />}
 
