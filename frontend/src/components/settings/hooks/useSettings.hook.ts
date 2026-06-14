@@ -3,7 +3,7 @@ import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 
 const TABS = [
-  { value: 'providers', label: 'Providers' },
+  { value: 'providers', label: 'Task Tracker Providers' },
   { value: 'model-providers', label: 'Model Providers' },
   { value: 'projects', label: 'Projects' },
   { value: 'github', label: 'GitHub App' }

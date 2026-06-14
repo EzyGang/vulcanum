@@ -78,11 +78,11 @@ export const ProvidersView = ({
   <div class='flex flex-col gap-4'>
     <div class='flex items-center justify-between'>
       <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>
-        All Providers
+        Task Tracker Providers
       </h3>
       {!showForm.value && (
         <Button variant='primary' onClick={onShowCreate}>
-          Add Provider
+          Add Task Tracker
         </Button>
       )}
     </div>
@@ -91,12 +91,12 @@ export const ProvidersView = ({
 
     {deleteError.value && <ErrorBanner message={deleteError.value} />}
 
-    {loading && <div class='text-text-muted text-sm'>Loading providers...</div>}
+    {loading && <div class='text-text-muted text-sm'>Loading task tracker providers...</div>}
 
     {!loading && !error && providers.length === 0 && !showForm.value && (
       <EmptyState
-        title='No providers configured yet.'
-        description='Add a provider to connect to your projects.'
+        title='No task tracker providers configured yet.'
+        description='Add a task tracker provider to connect your projects.'
       />
     )}
 

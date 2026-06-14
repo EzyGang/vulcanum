@@ -19,14 +19,14 @@ const TabsRoot = ({ tabs, value, onValueChange, children, class: classProp }: Ta
   <BaseTabs.Root
     value={value}
     onValueChange={onValueChange}
-    className={clsx('flex flex-col gap-6', classProp)}
+    class={clsx('flex min-w-0 flex-col gap-6', classProp)}
   >
-    <BaseTabs.List className='flex gap-1 border-b border-border-base'>
+    <BaseTabs.List class='grid w-full grid-cols-2 gap-1 border-b border-border-base sm:flex sm:flex-nowrap'>
       {tabs.map((tab) => (
         <BaseTabs.Tab
           key={tab.value}
           value={tab.value}
-          className='px-4 py-2 text-sm uppercase tracking-wider transition-colors border-b-2 border-transparent cursor-pointer bg-transparent text-text-muted hover:text-text-secondary data-[active]:text-text-primary data-[active]:border-accent'
+          class='flex min-w-0 w-full items-center justify-center border-b-2 border-transparent bg-transparent px-2 py-3 text-center text-xs uppercase leading-tight tracking-wider transition-colors cursor-pointer text-text-muted hover:text-text-secondary data-[active]:border-accent data-[active]:text-text-primary sm:w-auto sm:px-4 sm:py-2 sm:text-sm sm:whitespace-nowrap'
         >
           {tab.label}
         </BaseTabs.Tab>
@@ -43,7 +43,7 @@ interface TabsPanelProps {
 }
 
 TabsRoot.Panel = ({ value, children, class: classProp }: TabsPanelProps) => (
-  <BaseTabs.Panel value={value} className={clsx('flex flex-col animate-fade-in', classProp)}>
+  <BaseTabs.Panel value={value} class={clsx('flex flex-col animate-fade-in', classProp)}>
     {children}
   </BaseTabs.Panel>
 );
