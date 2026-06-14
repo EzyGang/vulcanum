@@ -1,9 +1,8 @@
-use octocrab::models::InstallationId;
+use base64::Engine;
+use octocrab::models::{Installation, InstallationId};
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use base64::Engine;
 
 use crate::config::AppConfig;
 use crate::services::github_app::errors::GithubAppError;
@@ -183,12 +182,65 @@ impl GithubAppManager {
     pub async fn get_installation(
         &self,
         team_id: Uuid,
+        discover_remote: bool,
     ) -> Result<Option<GithubInstallation>, GithubAppError> {
         if let Some(inst) = self.repo.get_installation(&self.db, team_id).await? {
             return Ok(Some(inst));
         }
 
-        Ok(None)
+        if !discover_remote || self.app_id.is_none() || self.app_private_key.is_none() {
+            return Ok(None);
+        }
+
+        self.discover_single_installation(team_id).await
+    }
+
+    async fn discover_single_installation(
+        &self,
+        team_id: Uuid,
+    ) -> Result<Option<GithubInstallation>, GithubAppError> {
+        let octo = self.app_octocrab()?;
+        let page = octo
+            .apps()
+            .installations()
+            .per_page(2u8)
+            .send()
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list_installations from GitHub: {e}")))?;
+
+        let mut installations = page.items.into_iter();
+        let installation = match (installations.next(), installations.next()) {
+            (Some(installation), None) => installation,
+            (None, _) => return Ok(None),
+            (Some(_), Some(_)) => {
+                tracing::warn!(
+                    "github app has multiple installations; refusing automatic recovery"
+                );
+                return Ok(None);
+            }
+        };
+
+        self.upsert_remote_installation(team_id, installation)
+            .await
+            .map(Some)
+    }
+
+    async fn upsert_remote_installation(
+        &self,
+        team_id: Uuid,
+        installation: Installation,
+    ) -> Result<GithubInstallation, GithubAppError> {
+        let github_installation_id = i64::try_from(installation.id.into_inner()).map_err(|e| {
+            GithubAppError::Api(format!("installation id does not fit database type: {e}"))
+        })?;
+
+        self.upsert_installation(
+            team_id,
+            None,
+            github_installation_id,
+            installation.account.login,
+        )
+        .await
     }
 
     async fn upsert_installation(

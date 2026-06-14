@@ -70,7 +70,7 @@ pub async fn callback(
     state: web::Data<AppState>,
     query: web::Query<CallbackQuery>,
 ) -> HttpResponse {
-    if query.setup_action != "install" {
+    if !matches!(query.setup_action.as_str(), "install" | "update") {
         return HttpResponse::Found()
             .append_header(("Location", "/"))
             .finish();
@@ -145,10 +145,14 @@ pub async fn get_installation(
         .teams
         .resolve_team(&auth, state.is_single_user)
         .await?;
-    let inst = state.github.get_installation(team_id).await.map_err(|e| {
-        tracing::warn!(error = %e, "get_installation failed");
-        AppError::Internal
-    })?;
+    let inst = state
+        .github
+        .get_installation(team_id, state.is_single_user)
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "get_installation failed");
+            AppError::Internal
+        })?;
 
     Ok(HttpResponse::Ok().json(inst))
 }
