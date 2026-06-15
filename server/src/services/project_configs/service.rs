@@ -71,7 +71,6 @@ impl ProjectConfigsService {
         params.pickup_column = resolve_column_slug(&all_columns, &params.pickup_column)?;
         params.progress_column = resolve_column_slug(&all_columns, &params.progress_column)?;
         params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
-        params.blocked_column = resolve_column_slug(&all_columns, &params.blocked_column)?;
 
         self.validate_model_selection(
             team_id,
@@ -118,7 +117,6 @@ impl ProjectConfigsService {
             resolve_column_if_set(&all_columns, &mut params.pickup_column)?;
             resolve_column_if_set(&all_columns, &mut params.progress_column)?;
             resolve_column_if_set(&all_columns, &mut params.target_column)?;
-            resolve_column_if_set(&all_columns, &mut params.blocked_column)?;
         }
 
         let primary_provider_key = resolve_model_field(
@@ -150,7 +148,6 @@ impl ProjectConfigsService {
                     pickup_column: params.pickup_column.as_deref(),
                     target_column: params.target_column.as_deref(),
                     progress_column: params.progress_column.as_deref(),
-                    blocked_column: params.blocked_column.as_deref(),
                     max_turns: params.max_turns,
                     prompt_template: params.prompt_template.as_deref(),
                     repo_url: params.repo_url.as_deref(),
@@ -277,7 +274,6 @@ fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
     params.pickup_column.is_some()
         || params.progress_column.is_some()
         || params.target_column.is_some()
-        || params.blocked_column.is_some()
 }
 
 fn resolve_model_field<'a>(

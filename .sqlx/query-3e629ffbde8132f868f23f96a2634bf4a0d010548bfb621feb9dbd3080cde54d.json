@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"\n             FROM project_configs WHERE id = $1",
+  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"\n             FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -64,61 +64,56 @@
       },
       {
         "ordinal": 10,
-        "name": "blocked_column",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 11,
         "name": "max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "opencode_config",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "primary_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "primary_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "small_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "small_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 20,
+        "ordinal": 19,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 20,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
@@ -144,7 +139,6 @@
       false,
       false,
       false,
-      false,
       true,
       true,
       true,
@@ -153,5 +147,5 @@
       true
     ]
   },
-  "hash": "e5cde33bf2b1e5fa52241535c1e689d075f14ed3764512d791ff816e0424f607"
+  "hash": "3e629ffbde8132f868f23f96a2634bf4a0d010548bfb621feb9dbd3080cde54d"
 }

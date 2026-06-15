@@ -19,7 +19,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?"
              FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC"#,
             team_id,
@@ -40,7 +40,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?"
              FROM project_configs WHERE id = $1"#,
             id,
@@ -60,7 +60,7 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?"
              FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
         )
@@ -83,11 +83,11 @@ impl ProjectConfigsRepository {
         sqlx::query_as!(
             ProjectConfig,
             r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
             id,
             team_id,
@@ -99,7 +99,6 @@ impl ProjectConfigsRepository {
             params.pickup_column,
             params.target_column,
             params.progress_column,
-            params.blocked_column,
             params.max_turns,
             params.prompt_template,
             params.repo_url,
@@ -132,30 +131,28 @@ impl ProjectConfigsRepository {
              pickup_column = COALESCE($3, pickup_column),
              target_column = COALESCE($4, target_column),
              progress_column = COALESCE($5, progress_column),
-             blocked_column = COALESCE($6, blocked_column),
-             max_turns = COALESCE($7, max_turns),
-             prompt_template = COALESCE($8, prompt_template),
-             repo_url = COALESCE($9, repo_url),
-             agents_md = COALESCE($10, agents_md),
-             enabled = COALESCE($11, enabled),
-             external_workspace_id = COALESCE($12, external_workspace_id),
-             integration_type = COALESCE($13, integration_type),
-             provider_id = COALESCE($14, provider_id),
-             opencode_config = COALESCE($15, opencode_config),
-             primary_model_provider_key = CASE WHEN $16 THEN $17 ELSE primary_model_provider_key END,
-             primary_model_id = CASE WHEN $18 THEN $19 ELSE primary_model_id END,
-             small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,
-             small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END
+             max_turns = COALESCE($6, max_turns),
+             prompt_template = COALESCE($7, prompt_template),
+             repo_url = COALESCE($8, repo_url),
+             agents_md = COALESCE($9, agents_md),
+             enabled = COALESCE($10, enabled),
+             external_workspace_id = COALESCE($11, external_workspace_id),
+             integration_type = COALESCE($12, integration_type),
+             provider_id = COALESCE($13, provider_id),
+             opencode_config = COALESCE($14, opencode_config),
+             primary_model_provider_key = CASE WHEN $15 THEN $16 ELSE primary_model_provider_key END,
+             primary_model_id = CASE WHEN $17 THEN $18 ELSE primary_model_id END,
+             small_model_provider_key = CASE WHEN $19 THEN $20 ELSE small_model_provider_key END,
+             small_model_id = CASE WHEN $21 THEN $22 ELSE small_model_id END
              WHERE id = $1
              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, blocked_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
             id,
             params.name,
             params.pickup_column,
             params.target_column,
             params.progress_column,
-            params.blocked_column,
             params.max_turns,
             params.prompt_template,
             params.repo_url,

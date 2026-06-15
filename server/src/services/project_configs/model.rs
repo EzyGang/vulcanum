@@ -20,7 +20,6 @@ pub struct ProjectConfig {
     pub pickup_column: String,
     pub target_column: String,
     pub progress_column: String,
-    pub blocked_column: String,
     pub max_turns: i32,
     pub prompt_template: String,
     pub repo_url: String,
@@ -49,8 +48,6 @@ pub struct CreateProjectConfigRequest {
     pub progress_column: String,
     #[serde(default = "default_target_column")]
     pub target_column: String,
-    #[serde(default = "default_blocked_column")]
-    pub blocked_column: String,
     #[serde(default = "default_max_turns")]
     pub max_turns: i32,
     pub prompt_template: String,
@@ -83,8 +80,6 @@ pub struct UpdateProjectConfigRequest {
     pub progress_column: Option<String>,
     #[serde(default)]
     pub target_column: Option<String>,
-    #[serde(default)]
-    pub blocked_column: Option<String>,
     #[serde(default)]
     pub max_turns: Option<i32>,
     pub prompt_template: Option<String>,
@@ -233,10 +228,6 @@ fn default_progress_column() -> String {
 
 fn default_target_column() -> String {
     "in-review".to_owned()
-}
-
-fn default_blocked_column() -> String {
-    "Blocked".to_owned()
 }
 
 fn default_max_turns() -> i32 {
