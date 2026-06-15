@@ -235,7 +235,7 @@ impl WorkRunsService {
                     WorkRunStatus::Completed => &project_config.target_column,
                     _ => &project_config.pickup_column,
                 },
-                _ => unreachable!(),
+                Some(FinishStatus::Blocked) => &project_config.pickup_column,
             };
 
             if let Err(e) = client
@@ -271,9 +271,12 @@ impl WorkRunsService {
 }
 
 fn normalized_pr_urls(params: &SubmitResultRequest) -> Vec<String> {
-    let mut urls = params.pr_urls.clone();
-    if urls.is_empty() && !params.pr_url.is_empty() {
-        urls.push(params.pr_url.clone());
+    if !params.pr_urls.is_empty() {
+        return params.pr_urls.clone();
     }
-    urls
+
+    match params.pr_url.is_empty() {
+        true => Vec::new(),
+        false => vec![params.pr_url.clone()],
+    }
 }

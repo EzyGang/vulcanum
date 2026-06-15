@@ -2,9 +2,14 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
+import { Select } from '../../shared/ui/Select.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
 
 interface TeamDefaultsViewProps {
   data: {
@@ -14,6 +19,9 @@ interface TeamDefaultsViewProps {
     primaryModelId: Signal<string>;
     smallModelProviderKey: Signal<string>;
     smallModelId: Signal<string>;
+    connectedProviderItems: SelectOption[];
+    primaryModelItems: SelectOption[];
+    smallModelItems: SelectOption[];
   };
   status: {
     loading: boolean;
@@ -23,10 +31,10 @@ interface TeamDefaultsViewProps {
   actions: {
     onPromptTemplateInput: (event: Event) => void;
     onAgentsMdInput: (event: Event) => void;
-    onPrimaryProviderInput: (event: Event) => void;
-    onPrimaryModelInput: (event: Event) => void;
-    onSmallProviderInput: (event: Event) => void;
-    onSmallModelInput: (event: Event) => void;
+    onPrimaryProviderChange: (value: string) => void;
+    onPrimaryModelChange: (value: string) => void;
+    onSmallProviderChange: (value: string) => void;
+    onSmallModelChange: (value: string) => void;
     onSubmit: (event: Event) => void;
   };
 }
@@ -59,38 +67,46 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
         <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
           <div class='flex flex-col gap-2'>
             <Label for='team-primary-provider'>Primary Model Provider</Label>
-            <Input
+            <Select
               id='team-primary-provider'
               value={data.primaryModelProviderKey.value}
-              onInput={actions.onPrimaryProviderInput}
+              onValueChange={actions.onPrimaryProviderChange}
               disabled={status.saving}
+              placeholder='Select a connected model provider...'
+              items={data.connectedProviderItems}
             />
           </div>
           <div class='flex flex-col gap-2'>
             <Label for='team-primary-model'>Primary Model</Label>
-            <Input
+            <Select
               id='team-primary-model'
               value={data.primaryModelId.value}
-              onInput={actions.onPrimaryModelInput}
-              disabled={status.saving}
+              onValueChange={actions.onPrimaryModelChange}
+              disabled={status.saving || data.primaryModelItems.length === 0}
+              placeholder='Select a model...'
+              items={data.primaryModelItems}
             />
           </div>
           <div class='flex flex-col gap-2'>
             <Label for='team-small-provider'>Small Model Provider</Label>
-            <Input
+            <Select
               id='team-small-provider'
               value={data.smallModelProviderKey.value}
-              onInput={actions.onSmallProviderInput}
+              onValueChange={actions.onSmallProviderChange}
               disabled={status.saving}
+              placeholder='Optional provider...'
+              items={data.connectedProviderItems}
             />
           </div>
           <div class='flex flex-col gap-2'>
             <Label for='team-small-model'>Small Model</Label>
-            <Input
+            <Select
               id='team-small-model'
               value={data.smallModelId.value}
-              onInput={actions.onSmallModelInput}
-              disabled={status.saving}
+              onValueChange={actions.onSmallModelChange}
+              disabled={status.saving || data.smallModelItems.length === 0}
+              placeholder='Optional model...'
+              items={data.smallModelItems}
             />
           </div>
         </div>

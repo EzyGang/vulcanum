@@ -48,7 +48,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
           disabled={m.submitting.value}
         >
           <span>Project Overrides</span>
-          <span class='text-text-muted'>{f.overridesOpen.value ? 'Hide' : 'Show'}</span>
+          <span class='text-text-muted'>{f.overridesToggleLabel}</span>
         </button>
         {!f.overridesOpen.value && (
           <span class='text-xs text-text-muted'>
@@ -68,7 +68,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
               <TextArea
                 id='field-prompt-template'
                 value={f.promptTemplate.value}
-                onInput={(e) => f.onPromptTemplateChange((e.target as HTMLTextAreaElement).value)}
+                onInput={f.onPromptTemplateInput}
                 disabled={m.submitting.value}
                 rows={4}
               />
@@ -131,7 +131,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
               <TextArea
                 id='field-agents-md'
                 value={f.agentsMd.value}
-                onInput={(e) => f.onAgentsMdChange((e.target as HTMLTextAreaElement).value)}
+                onInput={f.onAgentsMdInput}
                 disabled={m.submitting.value}
                 rows={6}
               />

@@ -263,11 +263,21 @@ impl PollerService {
             }
         });
 
-        let blocked_runs = self
+        let blocked_runs = match self
             .work_runs_repo
             .find_blocked_by_project(&self.db, config.id)
             .await
-            .unwrap_or_default();
+        {
+            Ok(runs) => runs,
+            Err(e) => {
+                tracing::warn!(
+                    project_config_id = %config.id,
+                    error = %e,
+                    "failed to load blocked work runs for reconciliation",
+                );
+                Vec::new()
+            }
+        };
 
         for run in &blocked_runs {
             let tasks = client
@@ -292,10 +302,11 @@ impl PollerService {
     }
 }
 
+#[must_use]
 fn repo_layout(repo_full_names: &[String]) -> String {
     repo_full_names
         .iter()
-        .map(|name| format!("{name}: ./{name}"))
+        .map(|name| format!("{name}: ./{}", name.replace('/', "-")))
         .collect::<Vec<String>>()
         .join("\n")
 }

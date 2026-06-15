@@ -131,7 +131,29 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
         submitting.value = false;
       }
     },
-    [projectId, createMutation, updateMutation]
+    [
+      projectId,
+      createMutation,
+      updateMutation,
+      formError.value,
+      submitting.value,
+      enabled.value,
+      pickupColumn.value,
+      progressColumn.value,
+      targetColumn.value,
+      promptTemplate.value,
+      repoFullNames.value,
+      agentsMd.value,
+      overridesOpen.value,
+      primaryModelProviderKey.value,
+      primaryModelId.value,
+      smallModelProviderKey.value,
+      smallModelId.value,
+      name.value,
+      providerId.value,
+      externalProjectId.value,
+      workspaceId.value
+    ]
   );
 
   return {

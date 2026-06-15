@@ -106,6 +106,7 @@ pub async fn prepare_repos(
     Ok(workspace_repos)
 }
 
+#[must_use]
 pub fn workspace_prompt_prefix(repos: &[WorkspaceRepo]) -> String {
     if repos.is_empty() {
         return String::new();

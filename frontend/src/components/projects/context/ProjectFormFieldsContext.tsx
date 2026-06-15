@@ -37,11 +37,14 @@ export interface ProjectFormFieldsContextValue {
   repoItems: RepoItem[];
   reposLoading: boolean;
   overridesOpen: Signal<boolean>;
+  overridesToggleLabel: string;
   onEnabledChange: (checked: boolean) => void;
   onPickupColumnChange: (value: string) => void;
   onProgressColumnChange: (value: string) => void;
   onTargetColumnChange: (value: string) => void;
+  onPromptTemplateInput: (event: Event) => void;
   onPromptTemplateChange: (value: string) => void;
+  onAgentsMdInput: (event: Event) => void;
   onAgentsMdChange: (value: string) => void;
   onToggleOverrides: () => void;
   onPrimaryModelProviderChange: (value: string) => void;

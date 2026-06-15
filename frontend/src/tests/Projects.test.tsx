@@ -13,7 +13,6 @@ const makeProject = (overrides = {}) => ({
   targetColumn: 'in-review',
   progressColumn: 'in-progress',
   promptTemplate: 'Review {{task_title}}',
-  repoUrl: 'https://github.com/test/repo',
   repoFullNames: ['test/repo'],
   repoUrls: ['https://github.com/test/repo'],
   agentsMd: '',

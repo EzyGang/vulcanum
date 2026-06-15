@@ -8,7 +8,6 @@ export interface ProjectConfig {
   targetColumn: string;
   progressColumn: string;
   promptTemplate?: string | null;
-  repoUrl: string;
   repoFullNames?: string[];
   repoUrls?: string[];
   agentsMd?: string | null;

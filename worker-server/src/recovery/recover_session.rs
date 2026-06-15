@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
+use crate::daemon::job::submit::{submit_result_request, SubmitResultParams};
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::providers::host::HostIsolation;
 use crate::providers::opencode::events;
@@ -135,9 +135,8 @@ pub(crate) async fn mark_lost_and_submit(
         status: JournalStatus::Lost,
     });
 
-    let result = SubmitResultRequest {
+    let result = submit_result_request(SubmitResultParams {
         pr_urls: Vec::new(),
-        pr_url: String::new(),
         exit_code: 1,
         tokens_used: 0,
         duration_ms: 0,
@@ -150,7 +149,7 @@ pub(crate) async fn mark_lost_and_submit(
         finish_summary: None,
         finish_blocked_reason: None,
         finish_next_column: None,
-    };
+    });
 
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client

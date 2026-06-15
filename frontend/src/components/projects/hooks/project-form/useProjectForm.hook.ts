@@ -284,6 +284,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         }
       })),
       reposLoading,
+      overridesToggleLabel: overridesOpen.value ? 'Hide' : 'Show',
       onEnabledChange: (checked: boolean) => {
         enabled.value = checked;
       },
@@ -296,8 +297,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onTargetColumnChange: (value: string) => {
         targetColumn.value = value;
       },
+      onPromptTemplateInput: (event: Event) => {
+        promptTemplate.value = (event.target as HTMLTextAreaElement).value;
+      },
       onPromptTemplateChange: (value: string) => {
         promptTemplate.value = value;
+      },
+      onAgentsMdInput: (event: Event) => {
+        agentsMd.value = (event.target as HTMLTextAreaElement).value;
       },
       onAgentsMdChange: (value: string) => {
         agentsMd.value = value;

@@ -1,5 +1,9 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import {
+  getModelProviderCatalog,
+  listModelProviders
+} from '../../../services/model-providers/model-providers.service';
 import { getTeam, updateTeam } from '../../../services/teams/teams.service';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
@@ -18,6 +22,12 @@ export const useTeamDefaults = (teamId: string | null) => {
     () => getTeam(teamId ?? ''),
     { enabled: !!teamId }
   );
+  const { data: modelProviders = [] } = useApiQuery(['model-providers'], () =>
+    listModelProviders()
+  );
+  const { data: modelCatalog } = useApiQuery(['model-provider-catalog'], () =>
+    getModelProviderCatalog()
+  );
 
   useEffect(() => {
     if (!team) {
@@ -29,7 +39,21 @@ export const useTeamDefaults = (teamId: string | null) => {
     primaryModelId.value = team.primaryModelId ?? '';
     smallModelProviderKey.value = team.smallModelProviderKey ?? '';
     smallModelId.value = team.smallModelId ?? '';
-  }, [team]);
+  }, [teamId, team]);
+
+  const catalogProviders = modelCatalog?.providers ?? [];
+  const connectedProviderItems = modelProviders.map((provider) => ({
+    value: provider.providerKey,
+    label: provider.displayName || provider.providerKey
+  }));
+  const primaryModelItems =
+    catalogProviders
+      .find((provider) => provider.id === primaryModelProviderKey.value)
+      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
+  const smallModelItems =
+    catalogProviders
+      .find((provider) => provider.id === smallModelProviderKey.value)
+      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
 
   const mutation = useApiMutation(
     (input: Parameters<typeof updateTeam>[1]) => updateTeam(teamId ?? '', input),
@@ -49,7 +73,10 @@ export const useTeamDefaults = (teamId: string | null) => {
       primaryModelProviderKey,
       primaryModelId,
       smallModelProviderKey,
-      smallModelId
+      smallModelId,
+      connectedProviderItems,
+      primaryModelItems,
+      smallModelItems
     },
     status: {
       loading: isLoading,
@@ -63,17 +90,19 @@ export const useTeamDefaults = (teamId: string | null) => {
       onAgentsMdInput: (event: Event) => {
         agentsMd.value = (event.target as HTMLTextAreaElement).value;
       },
-      onPrimaryProviderInput: (event: Event) => {
-        primaryModelProviderKey.value = (event.target as HTMLInputElement).value;
+      onPrimaryProviderChange: (value: string) => {
+        primaryModelProviderKey.value = value;
+        primaryModelId.value = '';
       },
-      onPrimaryModelInput: (event: Event) => {
-        primaryModelId.value = (event.target as HTMLInputElement).value;
+      onPrimaryModelChange: (value: string) => {
+        primaryModelId.value = value;
       },
-      onSmallProviderInput: (event: Event) => {
-        smallModelProviderKey.value = (event.target as HTMLInputElement).value;
+      onSmallProviderChange: (value: string) => {
+        smallModelProviderKey.value = value;
+        smallModelId.value = '';
       },
-      onSmallModelInput: (event: Event) => {
-        smallModelId.value = (event.target as HTMLInputElement).value;
+      onSmallModelChange: (value: string) => {
+        smallModelId.value = value;
       },
       onSubmit: async (event: Event) => {
         event.preventDefault();
