@@ -1,5 +1,6 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import { useModelItems } from '../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
   listModelProviders
@@ -7,6 +8,7 @@ import {
 import { getTeam, updateTeam } from '../../../services/teams/teams.service';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { textInputHandler } from '../../../utils/signalInput';
 
 export const useTeamDefaults = (teamId: string | null) => {
   const promptTemplate = useSignal('');
@@ -42,18 +44,12 @@ export const useTeamDefaults = (teamId: string | null) => {
   }, [teamId, team]);
 
   const catalogProviders = modelCatalog?.providers ?? [];
-  const connectedProviderItems = modelProviders.map((provider) => ({
-    value: provider.providerKey,
-    label: provider.displayName || provider.providerKey
-  }));
-  const primaryModelItems =
-    catalogProviders
-      .find((provider) => provider.id === primaryModelProviderKey.value)
-      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
-  const smallModelItems =
-    catalogProviders
-      .find((provider) => provider.id === smallModelProviderKey.value)
-      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
+  const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
+    modelProviders,
+    catalogProviders,
+    primaryModelProviderKey,
+    smallModelProviderKey
+  });
 
   const mutation = useApiMutation(
     (input: Parameters<typeof updateTeam>[1]) => updateTeam(teamId ?? '', input),
@@ -84,12 +80,8 @@ export const useTeamDefaults = (teamId: string | null) => {
       error: formError
     },
     actions: {
-      onPromptTemplateInput: (event: Event) => {
-        promptTemplate.value = (event.target as HTMLTextAreaElement).value;
-      },
-      onAgentsMdInput: (event: Event) => {
-        agentsMd.value = (event.target as HTMLTextAreaElement).value;
-      },
+      onPromptTemplateInput: textInputHandler(promptTemplate),
+      onAgentsMdInput: textInputHandler(agentsMd),
       onPrimaryProviderChange: (value: string) => {
         primaryModelProviderKey.value = value;
         primaryModelId.value = '';

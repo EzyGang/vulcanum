@@ -1,5 +1,12 @@
-UPDATE project_configs SET prompt_template = '' WHERE prompt_template IS NULL;
-UPDATE project_configs SET agents_md = '' WHERE agents_md IS NULL;
+UPDATE project_configs pc
+SET prompt_template = t.prompt_template
+FROM teams t
+WHERE pc.team_id = t.id AND pc.prompt_template IS NULL;
+
+UPDATE project_configs pc
+SET agents_md = t.agents_md
+FROM teams t
+WHERE pc.team_id = t.id AND pc.agents_md IS NULL;
 
 ALTER TABLE project_configs
     ADD COLUMN opencode_config TEXT NOT NULL DEFAULT '',

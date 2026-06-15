@@ -56,5 +56,7 @@ fn github_repo_path(value: &str) -> &str {
     value
         .strip_prefix(GITHUB_REPO_URL_PREFIX)
         .or_else(|| value.strip_prefix("http://github.com/"))
+        .or_else(|| value.strip_prefix("git@github.com:"))
+        .or_else(|| value.strip_prefix("ssh://git@github.com/"))
         .unwrap_or(value)
 }

@@ -1,15 +1,11 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
+import type { SelectOption } from '../../../types/shared';
 import { Button } from '../../shared/ui/Button.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Label } from '../../shared/ui/Label.view';
 import { Select } from '../../shared/ui/Select.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
 
 interface TeamDefaultsViewProps {
   data: {

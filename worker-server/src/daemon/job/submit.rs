@@ -13,7 +13,7 @@ use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
 pub(crate) struct FailedResult {
     pub(crate) exit_code: i32,
     pub(crate) tokens_used: i64,
-    pub(crate) pr_url: Option<String>,
+    pub(crate) pr_urls: Vec<String>,
     pub(crate) duration_ms: i64,
     pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
@@ -27,7 +27,7 @@ impl FailedResult {
         Self {
             exit_code: 1,
             tokens_used: 0,
-            pr_url: None,
+            pr_urls: Vec::new(),
             duration_ms: 0,
             finish_status: None,
             finish_summary: None,
@@ -52,12 +52,12 @@ pub(crate) async fn submit_failed_result(
         output_tokens: 0,
         cache_read_tokens: 0,
         cache_write_tokens: 0,
-        pr_url: result.pr_url.as_deref(),
+        pr_url: result.pr_urls.first().map(String::as_str),
         duration_ms: result.duration_ms,
         status: JournalStatus::Failed,
     });
     let submit = submit_result_request(SubmitResultParams {
-        pr_urls: single_url_to_vec(result.pr_url.clone()),
+        pr_urls: result.pr_urls.clone(),
         exit_code: result.exit_code,
         tokens_used: result.tokens_used,
         duration_ms: result.duration_ms,

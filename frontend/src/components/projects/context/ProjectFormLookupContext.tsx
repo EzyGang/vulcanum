@@ -1,11 +1,7 @@
 import type { Signal } from '@preact/signals';
 import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
+import type { SelectOption } from '../../../types/shared';
 
 export interface ProjectFormLookupContextValue {
   externalProjectId: Signal<string>;

@@ -9,6 +9,7 @@ use vulcanum_shared::runtime::types::WorkspaceRepo;
 
 use crate::daemon::job::finish_tool::FINISH_RUN_TOOL_TS;
 
+#[must_use]
 pub fn container_name(workdir: &Path) -> String {
     format!(
         "vulcanum-{}",

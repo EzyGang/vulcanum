@@ -166,7 +166,8 @@ impl WorkRunsService {
             "work_run completed by worker",
         );
 
-        self.sync_kaneo_on_result(&run, &params, status).await;
+        self.sync_kaneo_on_result(&run, &params, status, &pr_urls)
+            .await;
 
         Ok(updated)
     }
@@ -176,6 +177,7 @@ impl WorkRunsService {
         run: &WorkRun,
         params: &SubmitResultRequest,
         status: WorkRunStatus,
+        pr_urls: &[String],
     ) {
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(c) => c,
@@ -257,7 +259,7 @@ impl WorkRunsService {
         ) {
             (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
             (Some(s), None) => format!("**Summary:** {s}"),
-            _ => format!("PR: {}", normalized_pr_urls(params).join(", ")),
+            _ => format!("PR: {}", pr_urls.join(", ")),
         };
 
         if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {

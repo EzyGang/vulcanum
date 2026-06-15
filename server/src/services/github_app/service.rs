@@ -299,54 +299,6 @@ impl GithubAppManager {
         Ok(infos)
     }
 
-    pub async fn generate_installation_token(
-        &self,
-        team_id: Uuid,
-        repo_url: &str,
-    ) -> Result<InstallationToken, GithubAppError> {
-        let installation = self
-            .repo
-            .get_installation(&self.db, team_id)
-            .await?
-            .ok_or(GithubAppError::NoInstallation)?;
-
-        let repo_name = parse_github_repo(repo_url)
-            .ok_or_else(|| GithubAppError::InvalidRepoUrl(repo_url.to_owned()))?
-            .name()
-            .to_owned();
-
-        let octo = self.app_octocrab()?;
-        let route = format!(
-            "/app/installations/{}/access_tokens",
-            installation.github_installation_id
-        );
-
-        let body = serde_json::json!({
-            "repositories": [repo_name],
-            "permissions": {
-                "contents": "write",
-                "pull_requests": "write"
-            }
-        });
-
-        let response: octocrab::models::InstallationToken = octo
-            .post(&route, Some(&body))
-            .await
-            .map_err(|e| GithubAppError::Api(format!("token mint failed: {e}")))?;
-
-        let expires_at = response
-            .expires_at
-            .as_ref()
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&chrono::Utc))
-            .unwrap_or_else(chrono::Utc::now);
-
-        Ok(InstallationToken {
-            token: response.token,
-            expires_at,
-        })
-    }
-
     pub async fn generate_installation_token_for_repos(
         &self,
         team_id: Uuid,
