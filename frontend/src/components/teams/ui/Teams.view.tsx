@@ -36,6 +36,7 @@ interface TeamsViewProps {
     onNameInput: (event: Event) => void;
     onEditNameInput: (event: Event) => void;
     onOpenTeam: (teamId: string) => void;
+    onOpenTeamKeyDown: (event: KeyboardEvent, teamId: string) => void;
     onUseTeam: (teamId: string) => void;
     onStartEdit: (team: Team) => void;
     onCancelEdit: () => void;
@@ -111,6 +112,7 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
               role='button'
               tabIndex={0}
               onClick={() => actions.onOpenTeam(team.id)}
+              onKeyDown={(event) => actions.onOpenTeamKeyDown(event, team.id)}
             >
               <Table.Cell onClick={(event) => event.stopPropagation()}>
                 {data.editingTeamId === team.id ? (

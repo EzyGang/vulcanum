@@ -101,6 +101,16 @@ export const useTeams = () => {
     [setLocation]
   );
 
+  const handleOpenTeamKeyDown = useCallback(
+    (event: KeyboardEvent, teamId: string) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+
+      event.preventDefault();
+      handleOpenTeam(teamId);
+    },
+    [handleOpenTeam]
+  );
+
   const handleUseTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
     invalidate();
@@ -185,11 +195,10 @@ export const useTeams = () => {
     actions: {
       onShowCreate: handleShowCreate,
       onCancelCreate: handleCancelCreate,
-      onNameChange: handleNameChange,
-      onEditNameChange: handleEditNameChange,
       onNameInput: handleNameInput,
       onEditNameInput: handleEditNameInput,
       onOpenTeam: handleOpenTeam,
+      onOpenTeamKeyDown: handleOpenTeamKeyDown,
       onUseTeam: handleUseTeam,
       onStartEdit: handleStartEdit,
       onCancelEdit: handleCancelEdit,
