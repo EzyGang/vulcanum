@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
+use crate::daemon::job::submit::{submit_result_request, SubmitResultParams};
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::providers::host::HostIsolation;
 use crate::providers::opencode::events;
@@ -98,6 +98,8 @@ fn cleanup_recovery(entry: &JournalEntry) {
         let provider = HostIsolation::new();
         let env = vulcanum_shared::runtime::types::IsolatedEnvironment {
             workdir: std::path::PathBuf::from(&entry.workdir),
+            workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
+            repos: Vec::new(),
             container_name: entry.container_name.clone(),
             secrets: std::collections::HashMap::new(),
             env_vars: std::collections::HashMap::new(),
@@ -133,8 +135,8 @@ pub(crate) async fn mark_lost_and_submit(
         status: JournalStatus::Lost,
     });
 
-    let result = SubmitResultRequest {
-        pr_url: String::new(),
+    let result = submit_result_request(SubmitResultParams {
+        pr_urls: Vec::new(),
         exit_code: 1,
         tokens_used: 0,
         duration_ms: 0,
@@ -147,7 +149,7 @@ pub(crate) async fn mark_lost_and_submit(
         finish_summary: None,
         finish_blocked_reason: None,
         finish_next_column: None,
-    };
+    });
 
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client

@@ -83,6 +83,8 @@ pub struct AgentEvent {
 #[derive(Debug, Clone)]
 pub struct IsolatedEnvironment {
     pub workdir: PathBuf,
+    pub workspace_dir: PathBuf,
+    pub repos: Vec<WorkspaceRepo>,
     pub container_name: Option<String>,
     pub secrets: HashMap<String, String>,
     pub env_vars: HashMap<String, String>,
@@ -92,11 +94,20 @@ pub struct IsolatedEnvironment {
     pub limits: ResourceLimits,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct WorkspaceRepo {
+    pub full_name: String,
+    pub url: String,
+    pub relative_path: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct FinishRunArtifact {
     pub status: FinishStatus,
     #[serde(default)]
     pub pr_url: Option<String>,
+    #[serde(default)]
+    pub pr_urls: Vec<String>,
     #[serde(default)]
     pub summary: Option<String>,
     #[serde(default)]

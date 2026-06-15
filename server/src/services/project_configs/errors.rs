@@ -2,6 +2,7 @@ use thiserror::Error;
 
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::providers::errors::IntegrationError;
+use crate::services::teams::errors::TeamsError;
 
 #[derive(Debug, Error)]
 pub enum ProjectConfigsError {
@@ -19,4 +20,6 @@ pub enum ProjectConfigsError {
     NoProvider,
     #[error("model provider error: {0}")]
     ModelProvider(#[from] ModelProvidersError),
+    #[error("team error: {0}")]
+    Team(#[from] TeamsError),
 }

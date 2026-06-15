@@ -50,6 +50,8 @@ pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
         | WorkRunsError::DeleteRunning
         | WorkRunsError::GithubApp(_)
         | WorkRunsError::ModelProvider(_)
+        | WorkRunsError::ProjectConfig(_)
+        | WorkRunsError::Team(_)
         | WorkRunsError::Dispatch(_) => WorkRunEventsError::Internal(e.to_string()),
     }
 }

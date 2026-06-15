@@ -93,7 +93,8 @@ cargo run --bin vulcanum-web
 
 ### Signal Reactivity in Hooks
 
-- When using `useEffect` or `useCallback` with Preact signals, always include `<signal>.value` in the dependency array, not the signal object itself. Reactivity depends on reading the `.value` property inside the hook body.
+- When using `useEffect` with Preact signals, include `<signal>.value` in the dependency array when the effect must rerun after the signal value changes. Reactivity depends on reading the `.value` property inside the hook body.
+- When using `useCallback` for event handlers or submit handlers, do not include `<signal>.value` in the dependency array just because the callback reads or writes it. Signal objects are stable and `.value` is read at invocation time, so value dependencies recreate handlers on every signal change without improving correctness.
 
 ## Rust Code Guidelines
 

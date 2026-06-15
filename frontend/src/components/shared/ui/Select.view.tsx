@@ -1,11 +1,7 @@
 import { Select as BaseSelect } from '@base-ui/react/select';
 import { clsx } from 'clsx';
 import type { JSX } from 'preact';
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
+import type { SelectOption } from '../../../types/shared';
 
 interface SelectProps {
   items: SelectOption[];

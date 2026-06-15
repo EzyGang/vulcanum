@@ -1,3 +1,4 @@
+use vulcanum_shared::api_types::JobRepo;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -31,8 +32,7 @@ impl IsolationProvider for KataIsolation {
         limits: &ResourceLimits,
         agents_md: &str,
         generated_opencode_config: &str,
-        opencode_config: &str,
-        repo_url: &str,
+        repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, vulcanum_shared::runtime::errors::HarnessError> {
         self.inner
             .prepare(
@@ -42,8 +42,7 @@ impl IsolationProvider for KataIsolation {
                 limits,
                 agents_md,
                 generated_opencode_config,
-                opencode_config,
-                repo_url,
+                repos,
             )
             .await
     }

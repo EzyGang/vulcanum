@@ -4,6 +4,7 @@ pub mod errors;
 pub mod queryer;
 pub mod routes;
 pub mod services;
+pub mod util;
 
 #[cfg(test)]
 pub mod test_helpers;

@@ -1,5 +1,5 @@
 import { useComputed, useSignal } from '@preact/signals';
-import type { JSX } from 'preact';
+import type { TargetedMouseEvent } from 'preact';
 import { useCallback } from 'preact/hooks';
 import { useDeleteConfirm } from '../../../hooks/useDeleteConfirm.hook';
 import { cancelRun } from '../../../services/runs/events.service';
@@ -123,7 +123,7 @@ export const useRuns = () => {
     } else {
       selectedIds.value = new Set(displayRuns.map((r) => r.id));
     }
-  }, [allSelected.value, displayRuns]);
+  }, [displayRuns]);
 
   const handleOpenBulkDelete = useCallback(() => {
     showBulkDeleteDialog.value = true;
@@ -154,12 +154,12 @@ export const useRuns = () => {
     expandedIds.value = next;
   }, []);
 
-  const handleStopRowToggle = useCallback((event: JSX.TargetedMouseEvent<HTMLElement>) => {
+  const handleStopRowToggle = useCallback((event: TargetedMouseEvent<HTMLElement>) => {
     event.stopPropagation();
   }, []);
 
   const handleToggleExpandedControl = useCallback(
-    (id: string, event: JSX.TargetedMouseEvent<HTMLElement>) => {
+    (id: string, event: TargetedMouseEvent<HTMLElement>) => {
       event.stopPropagation();
       handleToggleExpanded(id);
     },

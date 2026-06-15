@@ -80,7 +80,7 @@ export const ProjectsView = ({
           <Table.HeadCell>Project</Table.HeadCell>
           <Table.HeadCell>Enabled</Table.HeadCell>
           <Table.HeadCell>Columns</Table.HeadCell>
-          <Table.HeadCell>Repo URL</Table.HeadCell>
+          <Table.HeadCell>Repos</Table.HeadCell>
           <Table.HeadCell>Actions</Table.HeadCell>
         </Table.Head>
         <Table.Body>
@@ -105,7 +105,7 @@ export const ProjectsView = ({
               </Table.Cell>
               <Table.Cell>
                 <span class='text-text-secondary text-sm font-mono truncate max-w-xs block'>
-                  {project.repoUrl || '—'}
+                  {project.repoFullNames?.join(', ') || '—'}
                 </span>
               </Table.Cell>
               <Table.Cell>

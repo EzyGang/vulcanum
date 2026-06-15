@@ -3,10 +3,12 @@ import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
 import type { CatalogProvider, ModelProviderConfig } from '../../../types/modelProviders';
 import type { ColumnInfo } from '../../../types/projects';
+import type { SelectOption } from '../../../types/shared';
 
-interface SelectOption {
-  value: string;
-  label: string;
+interface RepoItem {
+  fullName: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
 }
 
 export interface ProjectFormFieldsContextValue {
@@ -17,9 +19,8 @@ export interface ProjectFormFieldsContextValue {
   columns: Signal<ColumnInfo[]>;
   columnsLoading: Signal<boolean>;
   promptTemplate: Signal<string>;
-  repoUrl: Signal<string>;
+  repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
-  opencodeConfig: Signal<string>;
   primaryModelProviderKey: Signal<string>;
   primaryModelId: Signal<string>;
   smallModelProviderKey: Signal<string>;
@@ -29,16 +30,19 @@ export interface ProjectFormFieldsContextValue {
   connectedProviderItems: SelectOption[];
   primaryModelItems: SelectOption[];
   smallModelItems: SelectOption[];
-  repos: string[];
+  repoItems: RepoItem[];
   reposLoading: boolean;
+  overridesOpen: Signal<boolean>;
+  overridesToggleLabel: string;
   onEnabledChange: (checked: boolean) => void;
   onPickupColumnChange: (value: string) => void;
   onProgressColumnChange: (value: string) => void;
   onTargetColumnChange: (value: string) => void;
+  onPromptTemplateInput: (event: Event) => void;
   onPromptTemplateChange: (value: string) => void;
-  onRepoUrlChange: (value: string) => void;
+  onAgentsMdInput: (event: Event) => void;
   onAgentsMdChange: (value: string) => void;
-  onOpencodeConfigChange: (value: string) => void;
+  onToggleOverrides: () => void;
   onPrimaryModelProviderChange: (value: string) => void;
   onPrimaryModelChange: (value: string) => void;
   onSmallModelProviderChange: (value: string) => void;

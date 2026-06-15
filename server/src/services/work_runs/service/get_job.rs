@@ -4,7 +4,8 @@ use crate::services::model_providers::renderer::{render_opencode_config, ModelSe
 use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::WorkRunsService;
-use vulcanum_shared::api_types::JobResponse;
+use crate::util::github::github_repo_full_name_from_url;
+use vulcanum_shared::api_types::{JobRepo, JobResponse};
 
 impl WorkRunsService {
     pub async fn get_job(&self, id: Uuid, worker_id: Uuid) -> Result<JobResponse, WorkRunsError> {
@@ -13,13 +14,13 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
-        let config = self
-            .project_configs_repo
-            .find_by_id(&self.db, run.project_config_id)
-            .await;
+        let config = self.project_configs.find_by_id(run.project_config_id).await;
 
         let cfg = match config {
-            Ok(ref c) => c.job_fields(),
+            Ok(ref c) => {
+                let settings = self.project_configs.effective_settings(c).await?;
+                c.job_fields(settings)
+            }
             Err(_) => {
                 tracing::warn!(
                     project_config_id = %run.project_config_id,
@@ -29,6 +30,13 @@ impl WorkRunsService {
                 JobConfigFields::empty_for_team(run.team_id)
             }
         };
+        let mut repos = self.work_runs_repo.list_repos(&self.db, id).await?;
+        if repos.is_empty() && !run.repo_url.is_empty() {
+            repos.push(JobRepo {
+                full_name: github_repo_full_name_from_url(&run.repo_url),
+                url: run.repo_url.clone(),
+            });
+        }
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
             Some(pid) => match self
@@ -42,18 +50,21 @@ impl WorkRunsService {
             None => (String::new(), String::new()),
         };
 
-        let github_token = match cfg.repo_url.is_empty() {
+        let repo_full_names = repos
+            .iter()
+            .map(|repo| repo.full_name.clone())
+            .collect::<Vec<String>>();
+        let github_token = match repo_full_names.is_empty() {
             true => None,
             false => match self
                 .github
-                .generate_installation_token(cfg.team_id, &cfg.repo_url)
+                .generate_installation_token_for_repos(cfg.team_id, &repo_full_names)
                 .await
             {
                 Ok(token) => Some(token.token),
                 Err(e) => {
                     tracing::error!(
                         work_run_id = %id,
-                        repo_url = %cfg.repo_url,
                         error = %e,
                         "failed to mint github installation token"
                     );
@@ -79,9 +90,8 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             prompt_text: run.prompt_text,
-            repo_url: run.repo_url,
+            repos,
             agents_md: run.agents_md,
-            opencode_config: cfg.opencode_config,
             generated_opencode_config: rendered.opencode_config,
             model_provider_env: rendered.env,
             external_task_ref: run.external_task_ref,

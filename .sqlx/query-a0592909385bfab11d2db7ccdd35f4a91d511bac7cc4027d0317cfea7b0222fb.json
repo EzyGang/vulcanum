@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"\n             FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.team_id = $1\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -79,41 +79,46 @@
       },
       {
         "ordinal": 13,
+        "name": "repo_full_names!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 14,
+        "name": "repo_urls!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 15,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
-        "name": "opencode_config",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "primary_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "primary_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "small_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "small_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
@@ -135,10 +140,11 @@
       false,
       false,
       false,
+      true,
       false,
-      false,
-      false,
-      false,
+      null,
+      null,
+      true,
       true,
       true,
       true,
@@ -147,5 +153,5 @@
       true
     ]
   },
-  "hash": "3e629ffbde8132f868f23f96a2634bf4a0d010548bfb621feb9dbd3080cde54d"
+  "hash": "a0592909385bfab11d2db7ccdd35f4a91d511bac7cc4027d0317cfea7b0222fb"
 }

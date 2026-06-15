@@ -98,7 +98,7 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
     let body: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(body["external_task_ref"], "task-get-test");
     assert_eq!(body["prompt_text"], "Review the PR");
-    assert_eq!(body["repo_url"], "");
+    assert_eq!(body["repos"], serde_json::json!([]));
 }
 
 #[sqlx::test]

@@ -13,7 +13,7 @@ use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
 pub(crate) struct FailedResult {
     pub(crate) exit_code: i32,
     pub(crate) tokens_used: i64,
-    pub(crate) pr_url: Option<String>,
+    pub(crate) pr_urls: Vec<String>,
     pub(crate) duration_ms: i64,
     pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
@@ -22,11 +22,12 @@ pub(crate) struct FailedResult {
 }
 
 impl FailedResult {
+    #[must_use]
     pub(crate) fn empty() -> Self {
         Self {
             exit_code: 1,
             tokens_used: 0,
-            pr_url: None,
+            pr_urls: Vec::new(),
             duration_ms: 0,
             finish_status: None,
             finish_summary: None,
@@ -51,12 +52,12 @@ pub(crate) async fn submit_failed_result(
         output_tokens: 0,
         cache_read_tokens: 0,
         cache_write_tokens: 0,
-        pr_url: result.pr_url.as_deref(),
+        pr_url: result.pr_urls.first().map(String::as_str),
         duration_ms: result.duration_ms,
         status: JournalStatus::Failed,
     });
-    let submit = SubmitResultRequest {
-        pr_url: result.pr_url.clone().unwrap_or_default(),
+    let submit = submit_result_request(SubmitResultParams {
+        pr_urls: result.pr_urls.clone(),
         exit_code: result.exit_code,
         tokens_used: result.tokens_used,
         duration_ms: result.duration_ms,
@@ -69,7 +70,7 @@ pub(crate) async fn submit_failed_result(
         finish_summary: result.finish_summary.clone(),
         finish_blocked_reason: result.finish_blocked_reason.clone(),
         finish_next_column: result.finish_next_column.clone(),
-    };
+    });
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client.submit_result(job_id, &submit, &access_token).await {
         tracing::error!(work_run_id = %job_id, error = %e, "submit_result failed for job");
@@ -90,7 +91,8 @@ pub(crate) async fn submit_turn_result(
         _ => JournalStatus::Failed,
     };
 
-    let pr_url = finish_artifact.and_then(|a| a.pr_url.as_deref());
+    let pr_urls = finish_artifact.map(artifact_pr_urls).unwrap_or_default();
+    let pr_url = pr_urls.first().map(String::as_str);
 
     let _ = journal.update_result(JournalResultUpdate {
         job_id,
@@ -105,10 +107,8 @@ pub(crate) async fn submit_turn_result(
         status: journal_status,
     });
 
-    let result = SubmitResultRequest {
-        pr_url: finish_artifact
-            .and_then(|a| a.pr_url.clone())
-            .unwrap_or_default(),
+    let result = submit_result_request(SubmitResultParams {
+        pr_urls,
         exit_code: session_export.exit_code,
         tokens_used: to_i64_saturating(session_export.tokens_used),
         duration_ms: to_i64_saturating(session_export.duration_ms),
@@ -121,7 +121,7 @@ pub(crate) async fn submit_turn_result(
         finish_summary: finish_artifact.and_then(|a| a.summary.clone()),
         finish_blocked_reason: finish_artifact.and_then(|a| a.blocked_reason.clone()),
         finish_next_column: finish_artifact.and_then(|a| a.next_column.clone()),
-    };
+    });
 
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client.submit_result(job_id, &result, &access_token).await {
@@ -134,6 +134,56 @@ pub(crate) async fn submit_turn_result(
     let _ = journal.mark_submitted(job_id);
 }
 
+pub(crate) struct SubmitResultParams {
+    pub(crate) pr_urls: Vec<String>,
+    pub(crate) exit_code: i32,
+    pub(crate) tokens_used: i64,
+    pub(crate) duration_ms: i64,
+    pub(crate) input_tokens: i64,
+    pub(crate) output_tokens: i64,
+    pub(crate) cache_read_tokens: i64,
+    pub(crate) cache_write_tokens: i64,
+    pub(crate) model_used: Option<String>,
+    pub(crate) finish_status: Option<FinishStatus>,
+    pub(crate) finish_summary: Option<String>,
+    pub(crate) finish_blocked_reason: Option<String>,
+    pub(crate) finish_next_column: Option<String>,
+}
+
+#[must_use]
+pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultRequest {
+    SubmitResultRequest {
+        pr_url: params.pr_urls.first().cloned().unwrap_or_default(),
+        pr_urls: params.pr_urls,
+        exit_code: params.exit_code,
+        tokens_used: params.tokens_used,
+        duration_ms: params.duration_ms,
+        input_tokens: params.input_tokens,
+        output_tokens: params.output_tokens,
+        cache_read_tokens: params.cache_read_tokens,
+        cache_write_tokens: params.cache_write_tokens,
+        model_used: params.model_used,
+        finish_status: params.finish_status,
+        finish_summary: params.finish_summary,
+        finish_blocked_reason: params.finish_blocked_reason,
+        finish_next_column: params.finish_next_column,
+    }
+}
+
+#[must_use]
+fn artifact_pr_urls(artifact: &FinishRunArtifact) -> Vec<String> {
+    if !artifact.pr_urls.is_empty() {
+        return artifact.pr_urls.clone();
+    }
+    single_url_to_vec(artifact.pr_url.clone())
+}
+
+#[must_use]
+fn single_url_to_vec(url: Option<String>) -> Vec<String> {
+    url.map(|url| vec![url]).unwrap_or_default()
+}
+
+#[must_use]
 fn to_i64_saturating(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }

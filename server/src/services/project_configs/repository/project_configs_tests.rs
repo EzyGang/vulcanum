@@ -37,10 +37,9 @@ fn test_params(external_project_id: &str, provider_id: Uuid) -> CreateProjectCon
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
         target_column: "in-review".to_owned(),
-        prompt_template: "Review {{task_title}}".to_owned(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        opencode_config: String::new(),
+        prompt_template: Some("Review {{task_title}}".to_owned()),
+        repo_full_names: Vec::new(),
+        agents_md: Some(String::new()),
         primary_model_provider_key: None,
         primary_model_id: None,
         small_model_provider_key: None,
@@ -62,7 +61,6 @@ fn test_update_params() -> UpdateProjectConfigParams<'static> {
         prompt_template: None,
         repo_url: None,
         agents_md: None,
-        opencode_config: None,
         primary_model_provider_key: None,
         primary_model_id: None,
         small_model_provider_key: None,
@@ -112,7 +110,7 @@ async fn list_all_returns_configs(pool: PgPool) {
     let p2 = CreateProjectConfigRequest {
         external_project_id: "kaneo-proj-list-b".to_owned(),
         name: String::new(),
-        prompt_template: "Template B".to_owned(),
+        prompt_template: Some("Template B".to_owned()),
         ..test_params("kaneo-proj-list-b", provider_id)
     };
 
@@ -196,7 +194,7 @@ async fn update_partial_fields(pool: PgPool) {
             &pool,
             created.id,
             &UpdateProjectConfigParams {
-                prompt_template: Some("Updated template"),
+                prompt_template: Some(Some("Updated template")),
                 enabled: Some(false),
                 ..test_update_params()
             },
@@ -204,7 +202,7 @@ async fn update_partial_fields(pool: PgPool) {
         .await
         .expect("Should update");
 
-    assert_eq!(updated.prompt_template, "Updated template");
+    assert_eq!(updated.prompt_template.as_deref(), Some("Updated template"));
     assert!(!updated.enabled);
     assert_eq!(updated.pickup_column, "to-do");
 }

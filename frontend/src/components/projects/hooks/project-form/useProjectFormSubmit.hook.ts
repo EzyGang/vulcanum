@@ -14,9 +14,9 @@ interface UseProjectFormSubmitOptions {
   progressColumn: Signal<string>;
   targetColumn: Signal<string>;
   promptTemplate: Signal<string>;
-  repoUrl: Signal<string>;
+  repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
-  opencodeConfig: Signal<string>;
+  overridesOpen: Signal<boolean>;
   primaryModelProviderKey: Signal<string>;
   primaryModelId: Signal<string>;
   smallModelProviderKey: Signal<string>;
@@ -35,9 +35,9 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     progressColumn,
     targetColumn,
     promptTemplate,
-    repoUrl,
+    repoFullNames,
     agentsMd,
-    opencodeConfig,
+    overridesOpen,
     primaryModelProviderKey,
     primaryModelId,
     smallModelProviderKey,
@@ -77,11 +77,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
       e.preventDefault();
       formError.value = null;
 
-      if (!promptTemplate.value) {
-        formError.value = 'Prompt template is required';
-        return;
-      }
-
       submitting.value = true;
 
       try {
@@ -94,14 +89,13 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               pickupColumn: pickupColumn.value || undefined,
               progressColumn: progressColumn.value || undefined,
               targetColumn: targetColumn.value || undefined,
-              promptTemplate: promptTemplate.value || undefined,
-              repoUrl: repoUrl.value || undefined,
-              agentsMd: agentsMd.value || undefined,
-              opencodeConfig: opencodeConfig.value || undefined,
-              primaryModelProviderKey: primaryModelProviderKey.value || null,
-              primaryModelId: primaryModelId.value || null,
-              smallModelProviderKey: smallModelProviderKey.value || null,
-              smallModelId: smallModelId.value || null,
+              promptTemplate: overrideOrNull(promptTemplate, overridesOpen),
+              repoFullNames: repoFullNames.value,
+              agentsMd: overrideOrNull(agentsMd, overridesOpen),
+              primaryModelProviderKey: overrideOrNull(primaryModelProviderKey, overridesOpen),
+              primaryModelId: overrideOrNull(primaryModelId, overridesOpen),
+              smallModelProviderKey: overrideOrNull(smallModelProviderKey, overridesOpen),
+              smallModelId: overrideOrNull(smallModelId, overridesOpen),
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -122,14 +116,13 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             pickupColumn: pickupColumn.value || undefined,
             progressColumn: progressColumn.value || undefined,
             targetColumn: targetColumn.value || undefined,
-            promptTemplate: promptTemplate.value,
-            repoUrl: repoUrl.value || undefined,
-            agentsMd: agentsMd.value || undefined,
-            opencodeConfig: opencodeConfig.value || undefined,
-            primaryModelProviderKey: primaryModelProviderKey.value || undefined,
-            primaryModelId: primaryModelId.value || undefined,
-            smallModelProviderKey: smallModelProviderKey.value || undefined,
-            smallModelId: smallModelId.value || undefined
+            promptTemplate: overrideOrUndefined(promptTemplate, overridesOpen),
+            repoFullNames: repoFullNames.value,
+            agentsMd: overrideOrUndefined(agentsMd, overridesOpen),
+            primaryModelProviderKey: overrideOrUndefined(primaryModelProviderKey, overridesOpen),
+            primaryModelId: overrideOrUndefined(primaryModelId, overridesOpen),
+            smallModelProviderKey: overrideOrUndefined(smallModelProviderKey, overridesOpen),
+            smallModelId: overrideOrUndefined(smallModelId, overridesOpen)
           });
         }
       } catch (err) {
@@ -138,7 +131,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
         submitting.value = false;
       }
     },
-    [projectId, createMutation, updateMutation]
+    [projectId, createMutation, updateMutation, setLocation]
   );
 
   return {
@@ -147,3 +140,11 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     handleSubmit
   };
 };
+
+const overrideOrNull = (field: Signal<string>, enabled: Signal<boolean>): string | null =>
+  enabled.value ? field.value || null : null;
+
+const overrideOrUndefined = (
+  field: Signal<string>,
+  enabled: Signal<boolean>
+): string | undefined => (enabled.value ? field.value || undefined : undefined);

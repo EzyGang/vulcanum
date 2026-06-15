@@ -1,6 +1,8 @@
 use crate::services::dispatcher::errors::DispatchError;
 use crate::services::github_app::errors::GithubAppError;
 use crate::services::model_providers::errors::ModelProvidersError;
+use crate::services::project_configs::errors::ProjectConfigsError;
+use crate::services::teams::errors::TeamsError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorkRunsError {
@@ -22,4 +24,8 @@ pub enum WorkRunsError {
     GithubApp(#[from] GithubAppError),
     #[error("model provider error: {0}")]
     ModelProvider(#[from] ModelProvidersError),
+    #[error("project config error: {0}")]
+    ProjectConfig(#[from] ProjectConfigsError),
+    #[error("team error: {0}")]
+    Team(#[from] TeamsError),
 }

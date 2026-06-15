@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use vulcanum_shared::api_types::JobRepo;
 use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
@@ -43,8 +44,7 @@ impl IsolationProvider for IsolationKind {
         limits: &ResourceLimits,
         agents_md: &str,
         generated_opencode_config: &str,
-        opencode_config: &str,
-        repo_url: &str,
+        repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, HarnessError> {
         match self {
             IsolationKind::Host(h) => {
@@ -55,8 +55,7 @@ impl IsolationProvider for IsolationKind {
                     limits,
                     agents_md,
                     generated_opencode_config,
-                    opencode_config,
-                    repo_url,
+                    repos,
                 )
                 .await
             }
@@ -68,8 +67,7 @@ impl IsolationProvider for IsolationKind {
                     limits,
                     agents_md,
                     generated_opencode_config,
-                    opencode_config,
-                    repo_url,
+                    repos,
                 )
                 .await
             }
@@ -81,8 +79,7 @@ impl IsolationProvider for IsolationKind {
                     limits,
                     agents_md,
                     generated_opencode_config,
-                    opencode_config,
-                    repo_url,
+                    repos,
                 )
                 .await
             }

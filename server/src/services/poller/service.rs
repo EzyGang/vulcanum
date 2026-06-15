@@ -4,7 +4,7 @@ use std::time::Duration;
 use sqlx::PgPool;
 
 use crate::services::project_configs::model::ProjectConfig;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
 use crate::services::providers::errors::IntegrationError;
@@ -35,7 +35,7 @@ impl From<IntegrationError> for PollError {
 }
 
 pub struct PollerService {
-    project_configs_repo: ProjectConfigsRepository,
+    project_configs: ProjectConfigsService,
     work_runs_repo: WorkRunsRepository,
     providers_repo: IntegrationProvidersRepository,
     db: PgPool,
@@ -45,14 +45,14 @@ pub struct PollerService {
 
 impl PollerService {
     pub fn new(
-        project_configs_repo: ProjectConfigsRepository,
+        project_configs: ProjectConfigsService,
         work_runs_repo: WorkRunsRepository,
         providers_repo: IntegrationProvidersRepository,
         db: PgPool,
         poll_period_secs: u64,
     ) -> Self {
         Self {
-            project_configs_repo,
+            project_configs,
             work_runs_repo,
             providers_repo,
             db,
@@ -79,7 +79,7 @@ impl PollerService {
     pub(crate) async fn poll_once(&self) {
         tracing::debug!("Starting poll cycle");
 
-        let configs = match self.project_configs_repo.list_enabled(&self.db).await {
+        let configs = match self.project_configs.list_enabled().await {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!("Failed to list enabled project configs: {}", e);
@@ -133,6 +133,17 @@ impl PollerService {
     }
 
     async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
+        let settings = match self.project_configs.effective_settings(config).await {
+            Ok(settings) => settings,
+            Err(e) => {
+                tracing::warn!(
+                    project_config_id = %config.id,
+                    error = %e,
+                    "skipping poll — failed to resolve effective settings"
+                );
+                return Ok((0, 0));
+            }
+        };
         let provider_id = match config.provider_id {
             Some(pid) => pid,
             None => {
@@ -181,18 +192,24 @@ impl PollerService {
         let mut inserted = 0;
 
         for task in &tasks {
+            let repo_urls = config.repo_urls.join("\n");
+            let repo_names = config.repo_full_names.join("\n");
+            let repo_layout = repo_layout(&config.repo_full_names);
             let mut prompt_text = crate::services::poller::template::render_template(
-                &config.prompt_template,
+                &settings.prompt_template,
                 &crate::services::poller::template::TemplateVars {
                     task_title: &task.title,
                     task_body: task.description.as_deref().unwrap_or(""),
                     repo_url: &config.repo_url,
+                    repo_urls: &repo_urls,
+                    repo_names: &repo_names,
+                    repo_layout: &repo_layout,
                 },
             );
 
             prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
 
-            if !config.repo_url.is_empty() && config.repo_url.starts_with("https://github.com/") {
+            if !config.repo_full_names.is_empty() {
                 prompt_text.push_str(GITHUB_INSTRUCTION);
             }
             let task_slug = build_task_slug(task);
@@ -202,7 +219,8 @@ impl PollerService {
                 project_config_id: config.id,
                 prompt_text,
                 repo_url: config.repo_url.clone(),
-                agents_md: config.agents_md.clone(),
+                repo_full_names: config.repo_full_names.clone(),
+                agents_md: settings.agents_md.clone(),
                 status: WorkRunStatus::Pending,
                 task_title: Some(task.title.clone()),
                 task_slug,
@@ -245,11 +263,21 @@ impl PollerService {
             }
         });
 
-        let blocked_runs = self
+        let blocked_runs = match self
             .work_runs_repo
             .find_blocked_by_project(&self.db, config.id)
             .await
-            .unwrap_or_default();
+        {
+            Ok(runs) => runs,
+            Err(e) => {
+                tracing::warn!(
+                    project_config_id = %config.id,
+                    error = %e,
+                    "failed to load blocked work runs for reconciliation",
+                );
+                Vec::new()
+            }
+        };
 
         for run in &blocked_runs {
             let tasks = client
@@ -272,6 +300,15 @@ impl PollerService {
 
         Ok(())
     }
+}
+
+#[must_use]
+fn repo_layout(repo_full_names: &[String]) -> String {
+    repo_full_names
+        .iter()
+        .map(|name| format!("{name}: ./{}", name.replace('/', "-")))
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 fn build_task_slug(task: &IntegrationTask) -> Option<String> {

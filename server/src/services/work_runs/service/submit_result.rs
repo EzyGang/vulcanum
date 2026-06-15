@@ -27,6 +27,7 @@ impl WorkRunsService {
                 }
             }
         };
+        let pr_urls = normalized_pr_urls(&params);
 
         let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
 
@@ -46,7 +47,7 @@ impl WorkRunsService {
                 &mut *tx,
                 id,
                 SetResultParams {
-                    pr_url: &params.pr_url,
+                    pr_url: pr_urls.first().map(String::as_str).unwrap_or(""),
                     exit_code: params.exit_code,
                     tokens_used: params.tokens_used,
                     duration_ms: params.duration_ms,
@@ -62,6 +63,10 @@ impl WorkRunsService {
                     finish_next_column: params.finish_next_column.as_deref(),
                 },
             )
+            .await?;
+
+        self.work_runs_repo
+            .replace_pr_urls(&mut *tx, id, &pr_urls)
             .await?;
 
         if let Err(e) = self
@@ -157,11 +162,12 @@ impl WorkRunsService {
             model_used = params.model_used.as_deref(),
             duration_ms = params.duration_ms,
             exit_code = params.exit_code,
-            has_pr_url = !params.pr_url.is_empty(),
+            has_pr_url = !pr_urls.is_empty(),
             "work_run completed by worker",
         );
 
-        self.sync_kaneo_on_result(&run, &params, status).await;
+        self.sync_kaneo_on_result(&run, &params, status, &pr_urls)
+            .await;
 
         Ok(updated)
     }
@@ -171,12 +177,9 @@ impl WorkRunsService {
         run: &WorkRun,
         params: &SubmitResultRequest,
         status: WorkRunStatus,
+        pr_urls: &[String],
     ) {
-        let project_config = match self
-            .project_configs_repo
-            .find_by_id(&self.db, run.project_config_id)
-            .await
-        {
+        let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(c) => c,
             Err(e) => {
                 tracing::warn!(
@@ -234,7 +237,7 @@ impl WorkRunsService {
                     WorkRunStatus::Completed => &project_config.target_column,
                     _ => &project_config.pickup_column,
                 },
-                _ => unreachable!(),
+                Some(FinishStatus::Blocked) => &project_config.pickup_column,
             };
 
             if let Err(e) = client
@@ -256,7 +259,7 @@ impl WorkRunsService {
         ) {
             (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
             (Some(s), None) => format!("**Summary:** {s}"),
-            _ => format!("PR: {}", params.pr_url),
+            _ => format!("PR: {}", pr_urls.join(", ")),
         };
 
         if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {
@@ -266,5 +269,16 @@ impl WorkRunsService {
                 "failed to add kaneo comment",
             );
         }
+    }
+}
+
+fn normalized_pr_urls(params: &SubmitResultRequest) -> Vec<String> {
+    if !params.pr_urls.is_empty() {
+        return params.pr_urls.clone();
+    }
+
+    match params.pr_url.is_empty() {
+        true => Vec::new(),
+        false => vec![params.pr_url.clone()],
     }
 }

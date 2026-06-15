@@ -216,6 +216,7 @@ impl From<ProjectConfigsError> for AppError {
             ProjectConfigsError::ColumnNotFound(_) => Self::ColumnNotFound,
             ProjectConfigsError::NoProvider => Self::NoProvider,
             ProjectConfigsError::ModelProvider(e) => e.into(),
+            ProjectConfigsError::Team(e) => e.into(),
         }
     }
 }
@@ -238,6 +239,8 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
             WorkRunsError::GithubApp(e) => e.into(),
             WorkRunsError::ModelProvider(e) => e.into(),
+            WorkRunsError::ProjectConfig(e) => e.into(),
+            WorkRunsError::Team(e) => e.into(),
         }
     }
 }

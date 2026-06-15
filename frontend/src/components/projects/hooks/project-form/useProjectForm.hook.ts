@@ -1,6 +1,7 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
+import { useModelItems } from '../../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
   listModelProviders
@@ -12,6 +13,7 @@ import {
   getProjectSetupHelpText,
   getProjectSetupMissingMessages
 } from '../../../../utils/projectSetup';
+import { textInputHandler } from '../../../../utils/signalInput';
 import { useGitHubApp } from '../../../github/hooks/useGitHubApp.hook';
 import type { ProjectFormFieldsContextValue } from '../../context/ProjectFormFieldsContext';
 import type { ProjectFormLookupContextValue } from '../../context/ProjectFormLookupContext';
@@ -57,9 +59,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const progressColumn = useSignal('');
   const targetColumn = useSignal('');
   const promptTemplate = useSignal(DEFAULT_PROJECT_PROMPT_TEMPLATE);
-  const repoUrl = useSignal('');
+  const repoFullNames = useSignal<string[]>([]);
   const agentsMd = useSignal('');
-  const opencodeConfig = useSignal('');
+  const overridesOpen = useSignal(false);
   const primaryModelProviderKey = useSignal('');
   const primaryModelId = useSignal('');
   const smallModelProviderKey = useSignal('');
@@ -73,9 +75,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     progressColumn,
     targetColumn,
     promptTemplate,
-    repoUrl,
+    repoFullNames,
     agentsMd,
-    opencodeConfig,
+    overridesOpen,
     primaryModelProviderKey,
     primaryModelId,
     smallModelProviderKey,
@@ -103,10 +105,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       pickupColumn.value = p.pickupColumn;
       progressColumn.value = p.progressColumn;
       targetColumn.value = p.targetColumn;
-      promptTemplate.value = p.promptTemplate;
-      repoUrl.value = p.repoUrl;
-      agentsMd.value = p.agentsMd;
-      opencodeConfig.value = p.opencodeConfig;
+      promptTemplate.value = p.promptTemplate ?? DEFAULT_PROJECT_PROMPT_TEMPLATE;
+      repoFullNames.value = p.repoFullNames ?? [];
+      agentsMd.value = p.agentsMd ?? '';
+      overridesOpen.value = !!p.promptTemplate || !!p.agentsMd || !!p.primaryModelProviderKey;
       primaryModelProviderKey.value = p.primaryModelProviderKey ?? '';
       primaryModelId.value = p.primaryModelId ?? '';
       smallModelProviderKey.value = p.smallModelProviderKey ?? '';
@@ -167,18 +169,12 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
           })
         );
   const catalogProviders = modelCatalog?.providers ?? [];
-  const connectedProviderItems = modelProviders.map((provider) => ({
-    value: provider.providerKey,
-    label: provider.displayName || provider.providerKey
-  }));
-  const primaryModelItems =
-    catalogProviders
-      .find((provider) => provider.id === primaryModelProviderKey.value)
-      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
-  const smallModelItems =
-    catalogProviders
-      .find((provider) => provider.id === smallModelProviderKey.value)
-      ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
+  const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
+    modelProviders,
+    catalogProviders,
+    primaryModelProviderKey,
+    smallModelProviderKey
+  });
 
   return {
     meta: {
@@ -262,9 +258,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       columns: lookup.columns,
       columnsLoading: lookup.columnsLoading,
       promptTemplate,
-      repoUrl,
+      repoFullNames,
       agentsMd,
-      opencodeConfig,
+      overridesOpen,
       primaryModelProviderKey,
       primaryModelId,
       smallModelProviderKey,
@@ -274,8 +270,17 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       connectedProviderItems,
       primaryModelItems,
       smallModelItems,
-      repos,
+      repoItems: repos.map((repo) => ({
+        fullName: repo,
+        checked: repoFullNames.value.includes(repo),
+        onCheckedChange: (checked: boolean) => {
+          repoFullNames.value = checked
+            ? [...repoFullNames.value, repo]
+            : repoFullNames.value.filter((selectedRepo) => selectedRepo !== repo);
+        }
+      })),
       reposLoading,
+      overridesToggleLabel: overridesOpen.value ? 'Hide' : 'Show',
       onEnabledChange: (checked: boolean) => {
         enabled.value = checked;
       },
@@ -288,17 +293,16 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onTargetColumnChange: (value: string) => {
         targetColumn.value = value;
       },
+      onPromptTemplateInput: textInputHandler(promptTemplate),
       onPromptTemplateChange: (value: string) => {
         promptTemplate.value = value;
       },
-      onRepoUrlChange: (value: string) => {
-        repoUrl.value = value;
-      },
+      onAgentsMdInput: textInputHandler(agentsMd),
       onAgentsMdChange: (value: string) => {
         agentsMd.value = value;
       },
-      onOpencodeConfigChange: (value: string) => {
-        opencodeConfig.value = value;
+      onToggleOverrides: () => {
+        overridesOpen.value = !overridesOpen.value;
       },
       onPrimaryModelProviderChange: (value: string) => {
         primaryModelProviderKey.value = value;

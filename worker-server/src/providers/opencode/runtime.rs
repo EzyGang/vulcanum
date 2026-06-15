@@ -97,23 +97,20 @@ impl AgentRuntime for OpenCodeServeRuntime {
         &self,
         prompt: &str,
         env: &IsolatedEnvironment,
-        repo_url: &str,
     ) -> Result<Box<dyn RunningSession>, HarnessError> {
         let is_container = env.container_name.is_some();
-        let has_repo = !repo_url.is_empty();
 
         let (host_port, mut child_process) = if is_container {
-            let repo_dir = if has_repo { "/workdir/repo" } else { "" };
+            let repo_dir = "/workdir/workspace";
             let (port, _cid) = super::spawn::launch_container_server(env, repo_dir).await?;
             (port, None)
         } else {
             let port = Self::discover_host_port()?;
-            let repo_dir = has_repo.then(|| env.workdir.join("repo"));
             let child = super::spawn::launch_host_server(
                 &env.workdir,
                 &env.env_vars,
                 port,
-                repo_dir.as_deref(),
+                Some(&env.workspace_dir),
             )
             .await?;
             (port, Some(child))
