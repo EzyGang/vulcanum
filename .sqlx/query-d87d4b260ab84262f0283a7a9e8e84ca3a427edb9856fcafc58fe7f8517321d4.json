@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)\n             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"",
+  "query": "INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)\n              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as \"repo_full_names!\", ARRAY[]::TEXT[] as \"repo_urls!\", agents_md, primary_model_provider_key, primary_model_id,\n              small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"",
   "describe": {
     "columns": [
       {
@@ -79,41 +79,46 @@
       },
       {
         "ordinal": 13,
+        "name": "repo_full_names!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 14,
+        "name": "repo_urls!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 15,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
-        "name": "opencode_config",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "primary_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "primary_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "small_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "small_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
@@ -143,7 +148,6 @@
         "Text",
         "Text",
         "Text",
-        "Text",
         "Uuid",
         "Text",
         "Text",
@@ -163,10 +167,11 @@
       false,
       false,
       false,
+      true,
       false,
-      false,
-      false,
-      false,
+      null,
+      null,
+      true,
       true,
       true,
       true,
@@ -175,5 +180,5 @@
       true
     ]
   },
-  "hash": "cf16f4178a63ce03f5cd7d55e3d3cd5e6c40875b19801502349ffeac1d280f08"
+  "hash": "d87d4b260ab84262f0283a7a9e8e84ca3a427edb9856fcafc58fe7f8517321d4"
 }

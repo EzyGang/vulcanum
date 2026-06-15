@@ -9,6 +9,7 @@ use crate::services::teams::errors::TeamsError;
 use crate::services::teams::invite_store::{
     hash_token, invite_redis_key, InMemoryTeamInviteStore, TeamInvitePayload, TeamInviteStore,
 };
+use crate::services::teams::model::UpdateTeamRequest;
 use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
 use crate::test_helpers;
@@ -223,7 +224,15 @@ async fn member_cannot_rename_team(pool: sqlx::PgPool) {
     let result = svc
         .update_for_principal(
             team_id,
-            "new name",
+            &UpdateTeamRequest {
+                name: Some("new name".to_owned()),
+                prompt_template: None,
+                agents_md: None,
+                primary_model_provider_key: None,
+                primary_model_id: None,
+                small_model_provider_key: None,
+                small_model_id: None,
+            },
             &TeamPrincipal::User {
                 user_id: member_id.to_owned(),
                 team_id: None,

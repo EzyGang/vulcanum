@@ -21,10 +21,11 @@ pub struct ProjectConfig {
     pub target_column: String,
     pub progress_column: String,
     pub max_turns: i32,
-    pub prompt_template: String,
+    pub prompt_template: Option<String>,
     pub repo_url: String,
-    pub agents_md: String,
-    pub opencode_config: String,
+    pub repo_full_names: Vec<String>,
+    pub repo_urls: Vec<String>,
+    pub agents_md: Option<String>,
     pub primary_model_provider_key: Option<String>,
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
@@ -50,13 +51,12 @@ pub struct CreateProjectConfigRequest {
     pub target_column: String,
     #[serde(default = "default_max_turns")]
     pub max_turns: i32,
-    pub prompt_template: String,
     #[serde(default)]
-    pub repo_url: String,
+    pub prompt_template: Option<String>,
     #[serde(default)]
-    pub agents_md: String,
+    pub repo_full_names: Vec<String>,
     #[serde(default)]
-    pub opencode_config: String,
+    pub agents_md: Option<String>,
     #[serde(default)]
     pub primary_model_provider_key: Option<String>,
     #[serde(default)]
@@ -82,13 +82,12 @@ pub struct UpdateProjectConfigRequest {
     pub target_column: Option<String>,
     #[serde(default)]
     pub max_turns: Option<i32>,
-    pub prompt_template: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub prompt_template: Option<Option<String>>,
     #[serde(default)]
-    pub repo_url: Option<String>,
+    pub repo_full_names: Option<Vec<String>>,
     #[serde(default)]
-    pub agents_md: Option<String>,
-    #[serde(default)]
-    pub opencode_config: Option<String>,
+    pub agents_md: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub primary_model_provider_key: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
@@ -165,35 +164,43 @@ impl From<&IntegrationColumn> for ColumnInfo {
 }
 
 impl ProjectConfig {
-    pub fn job_fields(&self) -> JobConfigFields {
+    pub fn job_fields(&self, settings: EffectiveProjectSettings) -> JobConfigFields {
         JobConfigFields {
             team_id: self.team_id,
             external_project_id: self.external_project_id.clone(),
             external_workspace_id: self.external_workspace_id.clone(),
-            opencode_config: self.opencode_config.clone(),
-            primary_model_provider_key: self.primary_model_provider_key.clone(),
-            primary_model_id: self.primary_model_id.clone(),
-            small_model_provider_key: self.small_model_provider_key.clone(),
-            small_model_id: self.small_model_id.clone(),
+            primary_model_provider_key: settings.primary_model_provider_key,
+            primary_model_id: settings.primary_model_id,
+            small_model_provider_key: settings.small_model_provider_key,
+            small_model_id: settings.small_model_id,
             max_turns: self.max_turns,
             provider_id: self.provider_id,
-            repo_url: self.repo_url.clone(),
+            repo_urls: self.repo_urls.clone(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct EffectiveProjectSettings {
+    pub prompt_template: String,
+    pub agents_md: String,
+    pub primary_model_provider_key: Option<String>,
+    pub primary_model_id: Option<String>,
+    pub small_model_provider_key: Option<String>,
+    pub small_model_id: Option<String>,
 }
 
 pub struct JobConfigFields {
     pub team_id: Uuid,
     pub external_project_id: String,
     pub external_workspace_id: String,
-    pub opencode_config: String,
     pub primary_model_provider_key: Option<String>,
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
     pub max_turns: i32,
     pub provider_id: Option<Uuid>,
-    pub repo_url: String,
+    pub repo_urls: Vec<String>,
 }
 
 impl JobConfigFields {
@@ -202,14 +209,13 @@ impl JobConfigFields {
             team_id,
             external_project_id: String::new(),
             external_workspace_id: String::new(),
-            opencode_config: String::new(),
             primary_model_provider_key: None,
             primary_model_id: None,
             small_model_provider_key: None,
             small_model_id: None,
             max_turns: 0,
             provider_id: None,
-            repo_url: String::new(),
+            repo_urls: Vec::new(),
         }
     }
 }
@@ -234,7 +240,9 @@ fn default_max_turns() -> i32 {
     3
 }
 
-fn deserialize_nullable_string<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+pub fn deserialize_nullable_string<'de, D>(
+    deserializer: D,
+) -> Result<Option<Option<String>>, D::Error>
 where
     D: Deserializer<'de>,
 {

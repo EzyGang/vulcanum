@@ -1,10 +1,11 @@
 use uuid::Uuid;
 
 use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
-use crate::services::project_configs::model::JobConfigFields;
+use crate::services::project_configs::model::{EffectiveProjectSettings, JobConfigFields};
+use crate::services::teams::repository::TeamsRepository;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::WorkRunsService;
-use vulcanum_shared::api_types::JobResponse;
+use vulcanum_shared::api_types::{JobRepo, JobResponse};
 
 impl WorkRunsService {
     pub async fn get_job(&self, id: Uuid, worker_id: Uuid) -> Result<JobResponse, WorkRunsError> {
@@ -19,7 +20,10 @@ impl WorkRunsService {
             .await;
 
         let cfg = match config {
-            Ok(ref c) => c.job_fields(),
+            Ok(ref c) => {
+                let settings = self.effective_project_settings(c).await?;
+                c.job_fields(settings)
+            }
             Err(_) => {
                 tracing::warn!(
                     project_config_id = %run.project_config_id,
@@ -29,6 +33,13 @@ impl WorkRunsService {
                 JobConfigFields::empty_for_team(run.team_id)
             }
         };
+        let mut repos = self.work_runs_repo.list_repos(&self.db, id).await?;
+        if repos.is_empty() && !run.repo_url.is_empty() {
+            repos.push(JobRepo {
+                full_name: repo_full_name_from_url(&run.repo_url),
+                url: run.repo_url.clone(),
+            });
+        }
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
             Some(pid) => match self
@@ -42,18 +53,21 @@ impl WorkRunsService {
             None => (String::new(), String::new()),
         };
 
-        let github_token = match cfg.repo_url.is_empty() {
+        let repo_full_names = repos
+            .iter()
+            .map(|repo| repo.full_name.clone())
+            .collect::<Vec<String>>();
+        let github_token = match repo_full_names.is_empty() {
             true => None,
             false => match self
                 .github
-                .generate_installation_token(cfg.team_id, &cfg.repo_url)
+                .generate_installation_token_for_repos(cfg.team_id, &repo_full_names)
                 .await
             {
                 Ok(token) => Some(token.token),
                 Err(e) => {
                     tracing::error!(
                         work_run_id = %id,
-                        repo_url = %cfg.repo_url,
                         error = %e,
                         "failed to mint github installation token"
                     );
@@ -79,9 +93,8 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             prompt_text: run.prompt_text,
-            repo_url: run.repo_url,
+            repos,
             agents_md: run.agents_md,
-            opencode_config: cfg.opencode_config,
             generated_opencode_config: rendered.opencode_config,
             model_provider_env: rendered.env,
             external_task_ref: run.external_task_ref,
@@ -93,4 +106,40 @@ impl WorkRunsService {
             github_token,
         })
     }
+
+    async fn effective_project_settings(
+        &self,
+        config: &crate::services::project_configs::model::ProjectConfig,
+    ) -> Result<EffectiveProjectSettings, WorkRunsError> {
+        let team = TeamsRepository::new()
+            .get_by_id(&self.db, config.team_id)
+            .await
+            .map_err(WorkRunsError::Team)?;
+
+        Ok(EffectiveProjectSettings {
+            prompt_template: config
+                .prompt_template
+                .clone()
+                .unwrap_or(team.prompt_template),
+            agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
+            primary_model_provider_key: config
+                .primary_model_provider_key
+                .clone()
+                .or(team.primary_model_provider_key),
+            primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
+            small_model_provider_key: config
+                .small_model_provider_key
+                .clone()
+                .or(team.small_model_provider_key),
+            small_model_id: config.small_model_id.clone().or(team.small_model_id),
+        })
+    }
+}
+
+fn repo_full_name_from_url(url: &str) -> String {
+    url.strip_prefix("https://github.com/")
+        .or_else(|| url.strip_prefix("http://github.com/"))
+        .unwrap_or(url)
+        .trim_end_matches(".git")
+        .to_owned()
 }

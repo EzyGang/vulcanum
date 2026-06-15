@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO teams (id, name, personal_user_id)\n             VALUES ($1, $2, $3)\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "personal_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "2dd1c00ba3a8e8f79d41d49b2a901020cd47b1b8088162d3b28feec10389d340"
+}

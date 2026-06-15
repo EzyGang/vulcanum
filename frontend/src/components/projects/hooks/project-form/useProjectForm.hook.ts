@@ -57,9 +57,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const progressColumn = useSignal('');
   const targetColumn = useSignal('');
   const promptTemplate = useSignal(DEFAULT_PROJECT_PROMPT_TEMPLATE);
-  const repoUrl = useSignal('');
+  const repoFullNames = useSignal<string[]>([]);
   const agentsMd = useSignal('');
-  const opencodeConfig = useSignal('');
+  const overridesOpen = useSignal(false);
   const primaryModelProviderKey = useSignal('');
   const primaryModelId = useSignal('');
   const smallModelProviderKey = useSignal('');
@@ -73,9 +73,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     progressColumn,
     targetColumn,
     promptTemplate,
-    repoUrl,
+    repoFullNames,
     agentsMd,
-    opencodeConfig,
+    overridesOpen,
     primaryModelProviderKey,
     primaryModelId,
     smallModelProviderKey,
@@ -103,10 +103,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       pickupColumn.value = p.pickupColumn;
       progressColumn.value = p.progressColumn;
       targetColumn.value = p.targetColumn;
-      promptTemplate.value = p.promptTemplate;
-      repoUrl.value = p.repoUrl;
-      agentsMd.value = p.agentsMd;
-      opencodeConfig.value = p.opencodeConfig;
+      promptTemplate.value = p.promptTemplate ?? DEFAULT_PROJECT_PROMPT_TEMPLATE;
+      repoFullNames.value = p.repoFullNames ?? [];
+      agentsMd.value = p.agentsMd ?? '';
+      overridesOpen.value = !!p.promptTemplate || !!p.agentsMd || !!p.primaryModelProviderKey;
       primaryModelProviderKey.value = p.primaryModelProviderKey ?? '';
       primaryModelId.value = p.primaryModelId ?? '';
       smallModelProviderKey.value = p.smallModelProviderKey ?? '';
@@ -262,9 +262,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       columns: lookup.columns,
       columnsLoading: lookup.columnsLoading,
       promptTemplate,
-      repoUrl,
+      repoFullNames,
       agentsMd,
-      opencodeConfig,
+      overridesOpen,
       primaryModelProviderKey,
       primaryModelId,
       smallModelProviderKey,
@@ -291,14 +291,16 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onPromptTemplateChange: (value: string) => {
         promptTemplate.value = value;
       },
-      onRepoUrlChange: (value: string) => {
-        repoUrl.value = value;
+      onRepoToggle: (value: string, checked: boolean) => {
+        repoFullNames.value = checked
+          ? [...repoFullNames.value, value]
+          : repoFullNames.value.filter((repo) => repo !== value);
       },
       onAgentsMdChange: (value: string) => {
         agentsMd.value = value;
       },
-      onOpencodeConfigChange: (value: string) => {
-        opencodeConfig.value = value;
+      onToggleOverrides: () => {
+        overridesOpen.value = !overridesOpen.value;
       },
       onPrimaryModelProviderChange: (value: string) => {
         primaryModelProviderKey.value = value;

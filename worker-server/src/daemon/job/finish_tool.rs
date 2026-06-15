@@ -5,7 +5,8 @@ export default tool({
   description: "Call this when the task is complete to submit the final result. REQUIRED at end of every run.",
   args: {
     status: tool.schema.enum(["completed", "failed", "blocked"]).describe("Outcome of the run"),
-    pr_url: tool.schema.string().optional().describe("URL of the pull request, if created"),
+    pr_url: tool.schema.string().optional().describe("URL of the pull request, if one was created"),
+    pr_urls: tool.schema.array(tool.schema.string()).optional().describe("URLs of all pull requests created across repositories"),
     summary: tool.schema.string().optional().describe("Brief summary of what was done, what went wrong, or why blocked"),
     blocked_reason: tool.schema.string().optional().describe("If status is 'blocked', explain what input/approval is needed"),
     next_column: tool.schema.string().optional().describe("Suggested Kaneo column to move the task to (e.g. 'In Review', 'Blocked')"),

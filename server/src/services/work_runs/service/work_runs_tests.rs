@@ -193,6 +193,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {
+        pr_urls: vec!["https://github.com/example/pr/1".to_owned()],
         pr_url: "https://github.com/example/pr/1".to_owned(),
         exit_code: 0,
         tokens_used: 500,
@@ -237,6 +238,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {
+        pr_urls: Vec::new(),
         pr_url: String::new(),
         exit_code: 1,
         tokens_used: 0,
@@ -267,6 +269,7 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-early").await;
 
     let params = SubmitResultRequest {
+        pr_urls: Vec::new(),
         pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,
@@ -307,6 +310,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         .expect("Worker A should ack");
 
     let params = SubmitResultRequest {
+        pr_urls: Vec::new(),
         pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,
@@ -348,7 +352,7 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
 
     assert_eq!(job.external_task_ref, "task-get");
     assert_eq!(job.prompt_text, "Review the PR");
-    assert_eq!(job.repo_url, "");
+    assert!(job.repos.is_empty());
 }
 
 #[sqlx::test]
@@ -380,6 +384,17 @@ async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
     .expect("Should update repo_url");
 
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-2").await;
+    sqlx::query!(
+        r#"INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
+         VALUES ($1, $2, $3, $4)"#,
+        wr_id,
+        "org/repo",
+        "https://github.com/org/repo",
+        0,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should insert work run repo snapshot");
     sqlx::query!(
         "UPDATE work_runs SET worker_id = $1 WHERE id = $2",
         worker_id,

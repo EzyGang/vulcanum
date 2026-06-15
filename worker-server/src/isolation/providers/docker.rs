@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use vulcanum_shared::api_types::JobRepo;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -51,8 +52,7 @@ impl IsolationProvider for DockerIsolation {
         limits: &ResourceLimits,
         agents_md: &str,
         generated_opencode_config: &str,
-        opencode_config: &str,
-        repo_url: &str,
+        repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, HarnessError> {
         self.ensure_image().await?;
 
@@ -60,34 +60,21 @@ impl IsolationProvider for DockerIsolation {
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        workspace::write_env_files(
-            workdir,
-            agents_md,
-            generated_opencode_config,
-            opencode_config,
-        )
-        .await?;
+        workspace::write_env_files(workdir, agents_md, generated_opencode_config).await?;
         workspace::write_finish_run_tool(workdir).await?;
 
-        if !repo_url.is_empty() {
-            let token = secrets.get("GITHUB_TOKEN").map(|s| s.as_str());
-            let clone_url = workspace::authenticated_repo_url(repo_url, token);
-            workspace::clone_repo(&clone_url, &workdir.join("repo")).await?;
-        }
+        let token = secrets.get("GITHUB_TOKEN").map(|s| s.as_str());
+        let workspace_repos = workspace::prepare_repos(workdir, repos, token).await?;
 
         let container_name = workspace::container_name(workdir);
 
         let mut combined_env: HashMap<String, String> = secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
-        if !opencode_config.is_empty() {
-            combined_env.insert(
-                "OPENCODE_CONFIG".to_owned(),
-                "/workdir/home/.config/opencode/opencode.user.json".to_owned(),
-            );
-        }
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),
+            workspace_dir: workdir.join("workspace"),
+            repos: workspace_repos,
             container_name: Some(container_name),
             secrets: secrets.clone(),
             env_vars: combined_env,

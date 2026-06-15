@@ -1,3 +1,4 @@
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -18,10 +19,16 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?"
-             FROM project_configs WHERE team_id = $1 ORDER BY created_at DESC"#,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
+             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
+             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
+             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
+             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as "provider_id?"
+             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
+             WHERE pc.team_id = $1
+             GROUP BY pc.id
+             ORDER BY pc.created_at DESC"#,
             team_id,
         )
         .fetch_all(db)
@@ -39,10 +46,15 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?"
-             FROM project_configs WHERE id = $1"#,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
+             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
+             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
+             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
+             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as "provider_id?"
+             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
+             WHERE pc.id = $1
+             GROUP BY pc.id"#,
             id,
         )
         .fetch_optional(db)
@@ -59,10 +71,16 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?"
-             FROM project_configs WHERE enabled = true ORDER BY created_at DESC"#,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
+             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
+             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
+             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
+             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as "provider_id?"
+             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
+             WHERE pc.enabled = true
+             GROUP BY pc.id
+             ORDER BY pc.created_at DESC"#,
         )
         .fetch_all(db)
         .await
@@ -79,16 +97,17 @@ impl ProjectConfigsRepository {
         Q: Queryer<'c>,
     {
         let id = Uuid::new_v4();
+        let repo_url = first_repo_url(&params.repo_full_names);
 
         sqlx::query_as!(
             ProjectConfig,
             r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, provider_id, primary_model_provider_key, primary_model_id,
+             progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, primary_model_provider_key, primary_model_id,
              small_model_provider_key, small_model_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
+              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
             id,
             team_id,
             params.external_project_id,
@@ -100,10 +119,9 @@ impl ProjectConfigsRepository {
             params.target_column,
             params.progress_column,
             params.max_turns,
-            params.prompt_template,
-            params.repo_url,
-            params.agents_md,
-            params.opencode_config,
+            params.prompt_template.as_deref(),
+            repo_url,
+            params.agents_md.as_deref(),
             params.provider_id,
             params.primary_model_provider_key.as_deref(),
             params.primary_model_id.as_deref(),
@@ -132,36 +150,36 @@ impl ProjectConfigsRepository {
              target_column = COALESCE($4, target_column),
              progress_column = COALESCE($5, progress_column),
              max_turns = COALESCE($6, max_turns),
-             prompt_template = COALESCE($7, prompt_template),
-             repo_url = COALESCE($8, repo_url),
-             agents_md = COALESCE($9, agents_md),
-             enabled = COALESCE($10, enabled),
-             external_workspace_id = COALESCE($11, external_workspace_id),
-             integration_type = COALESCE($12, integration_type),
-             provider_id = COALESCE($13, provider_id),
-             opencode_config = COALESCE($14, opencode_config),
-             primary_model_provider_key = CASE WHEN $15 THEN $16 ELSE primary_model_provider_key END,
-             primary_model_id = CASE WHEN $17 THEN $18 ELSE primary_model_id END,
-             small_model_provider_key = CASE WHEN $19 THEN $20 ELSE small_model_provider_key END,
-             small_model_id = CASE WHEN $21 THEN $22 ELSE small_model_id END
-             WHERE id = $1
-             RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, opencode_config, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
+             prompt_template = CASE WHEN $7 THEN $8 ELSE prompt_template END,
+             repo_url = COALESCE($9, repo_url),
+             agents_md = CASE WHEN $10 THEN $11 ELSE agents_md END,
+             enabled = COALESCE($12, enabled),
+             external_workspace_id = COALESCE($13, external_workspace_id),
+             integration_type = COALESCE($14, integration_type),
+             provider_id = COALESCE($15, provider_id),
+             primary_model_provider_key = CASE WHEN $16 THEN $17 ELSE primary_model_provider_key END,
+             primary_model_id = CASE WHEN $18 THEN $19 ELSE primary_model_id END,
+             small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,
+             small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END
+              WHERE id = $1
+              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
+              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
             id,
             params.name,
             params.pickup_column,
             params.target_column,
             params.progress_column,
             params.max_turns,
-            params.prompt_template,
+            params.prompt_template.is_some(),
+            params.prompt_template.flatten(),
             params.repo_url,
-            params.agents_md,
+            params.agents_md.is_some(),
+            params.agents_md.flatten(),
             params.enabled,
             params.external_workspace_id,
             params.integration_type as _,
             params.provider_id,
-            params.opencode_config,
             params.primary_model_provider_key.is_some(),
             params.primary_model_provider_key.flatten(),
             params.primary_model_id.is_some(),
@@ -174,6 +192,38 @@ impl ProjectConfigsRepository {
         .fetch_optional(db)
         .await?
         .ok_or(ProjectConfigsError::NotFound)
+    }
+
+    pub async fn replace_repos(
+        &self,
+        db: &PgPool,
+        project_config_id: Uuid,
+        repo_full_names: &[String],
+    ) -> Result<(), ProjectConfigsError> {
+        let mut tx = db.begin().await.map_err(ProjectConfigsError::from)?;
+        sqlx::query!(
+            "DELETE FROM project_config_repos WHERE project_config_id = $1",
+            project_config_id,
+        )
+        .execute(&mut *tx)
+        .await
+        .map_err(ProjectConfigsError::from)?;
+
+        for (position, full_name) in repo_full_names.iter().enumerate() {
+            sqlx::query!(
+                r#"INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)
+                 VALUES ($1, $2, $3, $4)"#,
+                project_config_id,
+                full_name,
+                repo_url_from_full_name(full_name),
+                position as i32,
+            )
+            .execute(&mut *tx)
+            .await
+            .map_err(ProjectConfigsError::from)?;
+        }
+
+        tx.commit().await.map_err(ProjectConfigsError::from)
     }
 
     pub async fn delete<'c, Q>(&self, db: Q, id: Uuid) -> Result<(), ProjectConfigsError>
@@ -210,4 +260,15 @@ impl ProjectConfigsRepository {
 
         Ok(count)
     }
+}
+
+fn repo_url_from_full_name(full_name: &str) -> String {
+    format!("https://github.com/{full_name}")
+}
+
+fn first_repo_url(repo_full_names: &[String]) -> String {
+    repo_full_names
+        .first()
+        .map(|full_name| repo_url_from_full_name(full_name))
+        .unwrap_or_default()
 }

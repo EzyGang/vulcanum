@@ -23,7 +23,9 @@ impl TeamsRepository {
             Team,
             r#"INSERT INTO teams (id, name, personal_user_id)
              VALUES ($1, $2, $3)
-             RETURNING id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+              primary_model_id, small_model_provider_key, small_model_id,
+              created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
             user_id,
@@ -42,7 +44,9 @@ impl TeamsRepository {
             Team,
             r#"INSERT INTO teams (id, name)
              VALUES ($1, $2)
-             RETURNING id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+              primary_model_id, small_model_provider_key, small_model_id,
+              created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
         )
@@ -57,7 +61,9 @@ impl TeamsRepository {
     {
         sqlx::query_as!(
             Team,
-            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+            r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+             primary_model_id, small_model_provider_key, small_model_id,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE id = $1"#,
             team_id,
         )
@@ -94,7 +100,9 @@ impl TeamsRepository {
     {
         sqlx::query_as!(
             Team,
-            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+            r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+             primary_model_id, small_model_provider_key, small_model_id,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE personal_user_id = $1"#,
             user_id,
         )
@@ -162,7 +170,9 @@ impl TeamsRepository {
     {
         sqlx::query_as!(
             Team,
-            r#"SELECT t.id, t.name, t.personal_user_id, t.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+            r#"SELECT t.id, t.name, t.personal_user_id, t.prompt_template, t.agents_md, t.primary_model_provider_key,
+             t.primary_model_id, t.small_model_provider_key, t.small_model_id,
+             t.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams t
              INNER JOIN team_members tm ON tm.team_id = t.id
              WHERE tm.user_id = $1
@@ -180,7 +190,9 @@ impl TeamsRepository {
     {
         sqlx::query_as!(
             Team,
-            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+            r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+             primary_model_id, small_model_provider_key, small_model_id,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams
              ORDER BY created_at ASC"#,
         )
@@ -195,7 +207,9 @@ impl TeamsRepository {
     {
         sqlx::query_as!(
             Team,
-            r#"SELECT id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+            r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+             primary_model_id, small_model_provider_key, small_model_id,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams ORDER BY created_at ASC LIMIT 1"#,
         )
         .fetch_optional(db)
@@ -268,22 +282,48 @@ impl TeamsRepository {
         .map_err(TeamsError::from)
     }
 
-    pub async fn update_name<'c, Q>(
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_settings<'c, Q>(
         &self,
         db: Q,
         team_id: Uuid,
-        name: &str,
+        name: Option<&str>,
+        prompt_template: Option<&str>,
+        agents_md: Option<&str>,
+        primary_model_provider_key: Option<Option<&str>>,
+        primary_model_id: Option<Option<&str>>,
+        small_model_provider_key: Option<Option<&str>>,
+        small_model_id: Option<Option<&str>>,
     ) -> Result<Team, TeamsError>
     where
         Q: Queryer<'c>,
     {
         sqlx::query_as!(
             Team,
-            r#"UPDATE teams SET name = $2
+            r#"UPDATE teams SET
+             name = COALESCE($2, name),
+             prompt_template = COALESCE($3, prompt_template),
+             agents_md = COALESCE($4, agents_md),
+             primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,
+             primary_model_id = CASE WHEN $7 THEN $8 ELSE primary_model_id END,
+             small_model_provider_key = CASE WHEN $9 THEN $10 ELSE small_model_provider_key END,
+             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END
              WHERE id = $1
-             RETURNING id, name, personal_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
+              primary_model_id, small_model_provider_key, small_model_id,
+              created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             team_id,
             name,
+            prompt_template,
+            agents_md,
+            primary_model_provider_key.is_some(),
+            primary_model_provider_key.flatten(),
+            primary_model_id.is_some(),
+            primary_model_id.flatten(),
+            small_model_provider_key.is_some(),
+            small_model_provider_key.flatten(),
+            small_model_id.is_some(),
+            small_model_id.flatten(),
         )
         .fetch_optional(db)
         .await?

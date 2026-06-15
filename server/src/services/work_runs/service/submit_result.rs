@@ -27,6 +27,7 @@ impl WorkRunsService {
                 }
             }
         };
+        let pr_urls = normalized_pr_urls(&params);
 
         let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
 
@@ -46,7 +47,7 @@ impl WorkRunsService {
                 &mut *tx,
                 id,
                 SetResultParams {
-                    pr_url: &params.pr_url,
+                    pr_url: pr_urls.first().map(String::as_str).unwrap_or(""),
                     exit_code: params.exit_code,
                     tokens_used: params.tokens_used,
                     duration_ms: params.duration_ms,
@@ -62,6 +63,10 @@ impl WorkRunsService {
                     finish_next_column: params.finish_next_column.as_deref(),
                 },
             )
+            .await?;
+
+        self.work_runs_repo
+            .replace_pr_urls(&mut tx, id, &pr_urls)
             .await?;
 
         if let Err(e) = self
@@ -157,7 +162,7 @@ impl WorkRunsService {
             model_used = params.model_used.as_deref(),
             duration_ms = params.duration_ms,
             exit_code = params.exit_code,
-            has_pr_url = !params.pr_url.is_empty(),
+            has_pr_url = !pr_urls.is_empty(),
             "work_run completed by worker",
         );
 
@@ -267,4 +272,12 @@ impl WorkRunsService {
             );
         }
     }
+}
+
+fn normalized_pr_urls(params: &SubmitResultRequest) -> Vec<String> {
+    let mut urls = params.pr_urls.clone();
+    if urls.is_empty() && !params.pr_url.is_empty() {
+        urls.push(params.pr_url.clone());
+    }
+    urls
 }

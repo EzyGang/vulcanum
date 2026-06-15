@@ -3,12 +3,13 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::services::project_configs::model::ProjectConfig;
+use crate::services::project_configs::model::{EffectiveProjectSettings, ProjectConfig};
 use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
 use crate::services::providers::errors::IntegrationError;
 use crate::services::providers::model::{IntegrationTask, IntegrationType};
+use crate::services::teams::repository::TeamsRepository;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -133,6 +134,17 @@ impl PollerService {
     }
 
     async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
+        let settings = match self.effective_settings(config).await {
+            Ok(settings) => settings,
+            Err(e) => {
+                tracing::warn!(
+                    project_config_id = %config.id,
+                    error = %e,
+                    "skipping poll — failed to resolve effective settings"
+                );
+                return Ok((0, 0));
+            }
+        };
         let provider_id = match config.provider_id {
             Some(pid) => pid,
             None => {
@@ -181,18 +193,24 @@ impl PollerService {
         let mut inserted = 0;
 
         for task in &tasks {
+            let repo_urls = config.repo_urls.join("\n");
+            let repo_names = config.repo_full_names.join("\n");
+            let repo_layout = repo_layout(&config.repo_full_names);
             let mut prompt_text = crate::services::poller::template::render_template(
-                &config.prompt_template,
+                &settings.prompt_template,
                 &crate::services::poller::template::TemplateVars {
                     task_title: &task.title,
                     task_body: task.description.as_deref().unwrap_or(""),
                     repo_url: &config.repo_url,
+                    repo_urls: &repo_urls,
+                    repo_names: &repo_names,
+                    repo_layout: &repo_layout,
                 },
             );
 
             prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
 
-            if !config.repo_url.is_empty() && config.repo_url.starts_with("https://github.com/") {
+            if !config.repo_full_names.is_empty() {
                 prompt_text.push_str(GITHUB_INSTRUCTION);
             }
             let task_slug = build_task_slug(task);
@@ -202,7 +220,8 @@ impl PollerService {
                 project_config_id: config.id,
                 prompt_text,
                 repo_url: config.repo_url.clone(),
-                agents_md: config.agents_md.clone(),
+                repo_full_names: config.repo_full_names.clone(),
+                agents_md: settings.agents_md.clone(),
                 status: WorkRunStatus::Pending,
                 task_title: Some(task.title.clone()),
                 task_slug,
@@ -222,6 +241,32 @@ impl PollerService {
         }
 
         Ok((tasks_found, inserted))
+    }
+
+    async fn effective_settings(
+        &self,
+        config: &ProjectConfig,
+    ) -> Result<EffectiveProjectSettings, crate::services::teams::errors::TeamsError> {
+        let team = TeamsRepository::new()
+            .get_by_id(&self.db, config.team_id)
+            .await?;
+        Ok(EffectiveProjectSettings {
+            prompt_template: config
+                .prompt_template
+                .clone()
+                .unwrap_or(team.prompt_template),
+            agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
+            primary_model_provider_key: config
+                .primary_model_provider_key
+                .clone()
+                .or(team.primary_model_provider_key),
+            primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
+            small_model_provider_key: config
+                .small_model_provider_key
+                .clone()
+                .or(team.small_model_provider_key),
+            small_model_id: config.small_model_id.clone().or(team.small_model_id),
+        })
     }
 
     async fn reconcile_blocked_runs(&self, config: &ProjectConfig) -> Result<(), PollError> {
@@ -272,6 +317,14 @@ impl PollerService {
 
         Ok(())
     }
+}
+
+fn repo_layout(repo_full_names: &[String]) -> String {
+    repo_full_names
+        .iter()
+        .map(|name| format!("{name}: ./{name}"))
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 fn build_task_slug(task: &IntegrationTask) -> Option<String> {

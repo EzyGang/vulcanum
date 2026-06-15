@@ -14,8 +14,9 @@ const makeProject = (overrides = {}) => ({
   progressColumn: 'in-progress',
   promptTemplate: 'Review {{task_title}}',
   repoUrl: 'https://github.com/test/repo',
+  repoFullNames: ['test/repo'],
+  repoUrls: ['https://github.com/test/repo'],
   agentsMd: '',
-  opencodeConfig: '',
   createdAt: '2026-01-01T00:00:00Z',
   ...overrides
 });

@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "personal_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "1b57b21a07c531f03263be3bbea80f0428828bcb27165d329a105948b4cf2738"
+}

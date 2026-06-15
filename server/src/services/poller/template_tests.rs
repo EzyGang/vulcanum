@@ -7,6 +7,9 @@ fn interpolates_all_vars() {
         task_title: "Fix login bug",
         task_body: "The login form crashes on submit.",
         repo_url: "https://github.com/org/repo",
+        repo_urls: "https://github.com/org/repo",
+        repo_names: "org/repo",
+        repo_layout: "org/repo: ./org-repo",
     };
     let result = render_template(template, &vars);
 
@@ -23,6 +26,9 @@ fn preserves_unknown_vars() {
         task_title: "",
         task_body: "",
         repo_url: "",
+        repo_urls: "",
+        repo_names: "",
+        repo_layout: "",
     };
     let result = render_template(template, &vars);
     assert_eq!(result, "Unknown {{foo}} and {{bar}}");
@@ -34,6 +40,9 @@ fn handles_empty_template() {
         task_title: "",
         task_body: "",
         repo_url: "",
+        repo_urls: "",
+        repo_names: "",
+        repo_layout: "",
     };
     assert_eq!(render_template("", &vars), "");
 }
@@ -45,6 +54,9 @@ fn handles_partial_template() {
         task_title: "My Task",
         task_body: "",
         repo_url: "",
+        repo_urls: "",
+        repo_names: "",
+        repo_layout: "",
     };
     assert_eq!(render_template(template, &vars), "Only title: My Task");
 }

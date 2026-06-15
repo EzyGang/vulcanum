@@ -37,6 +37,7 @@ fn insert_params(
         project_config_id,
         prompt_text: "Review the PR".to_owned(),
         repo_url: String::new(),
+        repo_full_names: Vec::new(),
         agents_md: String::new(),
         status,
         task_title: None,

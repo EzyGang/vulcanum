@@ -98,6 +98,8 @@ fn cleanup_recovery(entry: &JournalEntry) {
         let provider = HostIsolation::new();
         let env = vulcanum_shared::runtime::types::IsolatedEnvironment {
             workdir: std::path::PathBuf::from(&entry.workdir),
+            workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
+            repos: Vec::new(),
             container_name: entry.container_name.clone(),
             secrets: std::collections::HashMap::new(),
             env_vars: std::collections::HashMap::new(),
@@ -134,6 +136,7 @@ pub(crate) async fn mark_lost_and_submit(
     });
 
     let result = SubmitResultRequest {
+        pr_urls: Vec::new(),
         pr_url: String::new(),
         exit_code: 1,
         tokens_used: 0,

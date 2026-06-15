@@ -6,6 +6,7 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Input } from '../../shared/ui/Input.view';
 import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Table } from '../../shared/ui/Table.view';
+import { TeamDefaultsContainer } from '../../team-defaults/containers/TeamDefaults.container';
 
 interface FormattedTeam extends Team {
   formattedCreatedAt: string;
@@ -121,6 +122,8 @@ export const TeamDetailView = ({ data, status, actions }: TeamDetailViewProps): 
             </div>
           )}
         </div>
+
+        <TeamDefaultsContainer teamId={data.team.id} />
 
         <div class='flex flex-col gap-3'>
           <h4 class='text-sm font-semibold uppercase tracking-wide text-text-primary'>Members</h4>

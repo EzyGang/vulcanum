@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{
-    ColumnInfo, CreateProjectConfigRequest, LookupProjectResult, ProjectConfig, ProjectInfo,
-    UpdateProjectConfigRequest, WorkspaceInfo,
+    ColumnInfo, CreateProjectConfigRequest, EffectiveProjectSettings, LookupProjectResult,
+    ProjectConfig, ProjectInfo, UpdateProjectConfigRequest, WorkspaceInfo,
 };
 use crate::services::project_configs::repository::{
     ProjectConfigsRepository, UpdateProjectConfigParams,
@@ -85,7 +85,11 @@ impl ProjectConfigsService {
         )
         .await?;
 
-        self.repo.create(&self.db, team_id, &params).await
+        let config = self.repo.create(&self.db, team_id, &params).await?;
+        self.repo
+            .replace_repos(&self.db, config.id, &params.repo_full_names)
+            .await?;
+        self.repo.find_by_id(&self.db, config.id).await
     }
 
     pub async fn update(
@@ -139,7 +143,14 @@ impl ProjectConfigsService {
         self.validate_model_selection(team_id, small_provider_key, small_model_id)
             .await?;
 
-        self.repo
+        let repo_url = params
+            .repo_full_names
+            .as_ref()
+            .and_then(|repos| repos.first())
+            .map(|full_name| format!("https://github.com/{full_name}"));
+
+        let updated = self
+            .repo
             .update(
                 &self.db,
                 id,
@@ -149,10 +160,12 @@ impl ProjectConfigsService {
                     target_column: params.target_column.as_deref(),
                     progress_column: params.progress_column.as_deref(),
                     max_turns: params.max_turns,
-                    prompt_template: params.prompt_template.as_deref(),
-                    repo_url: params.repo_url.as_deref(),
-                    agents_md: params.agents_md.as_deref(),
-                    opencode_config: params.opencode_config.as_deref(),
+                    prompt_template: params
+                        .prompt_template
+                        .as_ref()
+                        .map(|value| value.as_deref()),
+                    repo_url: repo_url.as_deref(),
+                    agents_md: params.agents_md.as_ref().map(|value| value.as_deref()),
                     primary_model_provider_key: params
                         .primary_model_provider_key
                         .as_ref()
@@ -172,7 +185,44 @@ impl ProjectConfigsService {
                     provider_id: params.provider_id,
                 },
             )
+            .await?;
+
+        if let Some(repo_full_names) = params.repo_full_names {
+            self.repo
+                .replace_repos(&self.db, id, &repo_full_names)
+                .await?;
+            return self.repo.find_by_id(&self.db, id).await;
+        }
+
+        Ok(updated)
+    }
+
+    pub async fn effective_settings(
+        &self,
+        config: &ProjectConfig,
+    ) -> Result<EffectiveProjectSettings, ProjectConfigsError> {
+        let team = crate::services::teams::repository::TeamsRepository::new()
+            .get_by_id(&self.db, config.team_id)
             .await
+            .map_err(ProjectConfigsError::Team)?;
+
+        Ok(EffectiveProjectSettings {
+            prompt_template: config
+                .prompt_template
+                .clone()
+                .unwrap_or(team.prompt_template),
+            agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
+            primary_model_provider_key: config
+                .primary_model_provider_key
+                .clone()
+                .or(team.primary_model_provider_key),
+            primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
+            small_model_provider_key: config
+                .small_model_provider_key
+                .clone()
+                .or(team.small_model_provider_key),
+            small_model_id: config.small_model_id.clone().or(team.small_model_id),
+        })
     }
 
     pub async fn delete(&self, id: Uuid, team_id: Uuid) -> Result<(), ProjectConfigsError> {

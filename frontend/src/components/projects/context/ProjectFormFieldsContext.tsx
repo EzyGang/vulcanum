@@ -17,9 +17,8 @@ export interface ProjectFormFieldsContextValue {
   columns: Signal<ColumnInfo[]>;
   columnsLoading: Signal<boolean>;
   promptTemplate: Signal<string>;
-  repoUrl: Signal<string>;
+  repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
-  opencodeConfig: Signal<string>;
   primaryModelProviderKey: Signal<string>;
   primaryModelId: Signal<string>;
   smallModelProviderKey: Signal<string>;
@@ -31,14 +30,15 @@ export interface ProjectFormFieldsContextValue {
   smallModelItems: SelectOption[];
   repos: string[];
   reposLoading: boolean;
+  overridesOpen: Signal<boolean>;
   onEnabledChange: (checked: boolean) => void;
   onPickupColumnChange: (value: string) => void;
   onProgressColumnChange: (value: string) => void;
   onTargetColumnChange: (value: string) => void;
   onPromptTemplateChange: (value: string) => void;
-  onRepoUrlChange: (value: string) => void;
+  onRepoToggle: (value: string, checked: boolean) => void;
   onAgentsMdChange: (value: string) => void;
-  onOpencodeConfigChange: (value: string) => void;
+  onToggleOverrides: () => void;
   onPrimaryModelProviderChange: (value: string) => void;
   onPrimaryModelChange: (value: string) => void;
   onSmallModelProviderChange: (value: string) => void;

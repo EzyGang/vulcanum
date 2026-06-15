@@ -56,6 +56,11 @@ pub(crate) async fn submit_failed_result(
         status: JournalStatus::Failed,
     });
     let submit = SubmitResultRequest {
+        pr_urls: result
+            .pr_url
+            .clone()
+            .map(|url| vec![url])
+            .unwrap_or_default(),
         pr_url: result.pr_url.clone().unwrap_or_default(),
         exit_code: result.exit_code,
         tokens_used: result.tokens_used,
@@ -90,7 +95,8 @@ pub(crate) async fn submit_turn_result(
         _ => JournalStatus::Failed,
     };
 
-    let pr_url = finish_artifact.and_then(|a| a.pr_url.as_deref());
+    let pr_urls = finish_artifact.map(artifact_pr_urls).unwrap_or_default();
+    let pr_url = pr_urls.first().map(String::as_str);
 
     let _ = journal.update_result(JournalResultUpdate {
         job_id,
@@ -106,9 +112,8 @@ pub(crate) async fn submit_turn_result(
     });
 
     let result = SubmitResultRequest {
-        pr_url: finish_artifact
-            .and_then(|a| a.pr_url.clone())
-            .unwrap_or_default(),
+        pr_url: pr_urls.first().cloned().unwrap_or_default(),
+        pr_urls,
         exit_code: session_export.exit_code,
         tokens_used: to_i64_saturating(session_export.tokens_used),
         duration_ms: to_i64_saturating(session_export.duration_ms),
@@ -132,6 +137,17 @@ pub(crate) async fn submit_turn_result(
         );
     }
     let _ = journal.mark_submitted(job_id);
+}
+
+fn artifact_pr_urls(artifact: &FinishRunArtifact) -> Vec<String> {
+    if !artifact.pr_urls.is_empty() {
+        return artifact.pr_urls.clone();
+    }
+    artifact
+        .pr_url
+        .clone()
+        .map(|url| vec![url])
+        .unwrap_or_default()
 }
 
 fn to_i64_saturating(value: u64) -> i64 {

@@ -139,8 +139,7 @@ pub(crate) async fn handle_job(
             &limits,
             &job.agents_md,
             &job.generated_opencode_config,
-            &job.opencode_config,
-            &job.repo_url,
+            &job.repos,
         )
         .await
     {
@@ -169,35 +168,38 @@ pub(crate) async fn handle_job(
         }
     };
 
+    let prompt_text = format!(
+        "{}{}",
+        crate::isolation::workspace::workspace_prompt_prefix(&isolated_env.repos),
+        job.prompt_text,
+    );
     let runtime = crate::providers::opencode::runtime::OpenCodeServeRuntime::new();
-    let mut running_session: Box<dyn RunningSession> = match runtime
-        .execute(&job.prompt_text, &isolated_env, &job.repo_url)
-        .await
-    {
-        Ok(session) => session,
-        Err(e) => {
-            tracing::error!(
-                worker_id = %worker_id,
-                work_run_id = %job_id,
-                error = %e,
-                "runtime execute failed",
-            );
-            reporter.emit(
-                "session.failed",
-                serde_json::json!({"reason": "runtime_execute_failed"}),
-            );
-            provider.cleanup(&isolated_env).await;
-            submit_failed_result(
-                client,
-                worker_state,
-                journal,
-                job_id,
-                &FailedResult::empty(),
-            )
-            .await;
-            return Ok(());
-        }
-    };
+    let mut running_session: Box<dyn RunningSession> =
+        match runtime.execute(&prompt_text, &isolated_env).await {
+            Ok(session) => session,
+            Err(e) => {
+                tracing::error!(
+                    worker_id = %worker_id,
+                    work_run_id = %job_id,
+                    error = %e,
+                    "runtime execute failed",
+                );
+                reporter.emit(
+                    "session.failed",
+                    serde_json::json!({"reason": "runtime_execute_failed"}),
+                );
+                provider.cleanup(&isolated_env).await;
+                submit_failed_result(
+                    client,
+                    worker_state,
+                    journal,
+                    job_id,
+                    &FailedResult::empty(),
+                )
+                .await;
+                return Ok(());
+            }
+        };
 
     tracing::info!(
         worker_id = %worker_id,

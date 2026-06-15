@@ -1,9 +1,11 @@
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::WorkRunsRepository;
+use vulcanum_shared::api_types::JobRepo;
 
 pub struct InsertWorkRunParams {
     pub team_id: Uuid,
@@ -11,6 +13,7 @@ pub struct InsertWorkRunParams {
     pub project_config_id: Uuid,
     pub prompt_text: String,
     pub repo_url: String,
+    pub repo_full_names: Vec<String>,
     pub agents_md: String,
     pub status: WorkRunStatus,
     pub task_title: Option<String>,
@@ -18,14 +21,17 @@ pub struct InsertWorkRunParams {
 }
 
 impl WorkRunsRepository {
-    pub async fn insert_work_run<'c, Q: Queryer<'c>>(
+    pub async fn insert_work_run<'c, Q>(
         &self,
         db: Q,
         params: InsertWorkRunParams,
-    ) -> Result<WorkRun, WorkRunsError> {
+    ) -> Result<WorkRun, WorkRunsError>
+    where
+        Q: Queryer<'c> + Copy,
+    {
         let id = Uuid::new_v4();
 
-        sqlx::query_as!(
+        let run = sqlx::query_as!(
             WorkRun,
             r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -50,17 +56,23 @@ impl WorkRunsRepository {
         )
         .fetch_one(db)
         .await
-        .map_err(WorkRunsError::from)
+        .map_err(WorkRunsError::from)?;
+        self.insert_repos(db, run.id, &params.repo_full_names)
+            .await?;
+        Ok(run)
     }
 
-    pub async fn insert_work_run_if_not_active<'c, Q: Queryer<'c>>(
+    pub async fn insert_work_run_if_not_active<'c, Q>(
         &self,
         db: Q,
         params: InsertWorkRunParams,
-    ) -> Result<bool, WorkRunsError> {
+    ) -> Result<bool, WorkRunsError>
+    where
+        Q: Queryer<'c> + Copy,
+    {
         let id = Uuid::new_v4();
 
-        sqlx::query!(
+        let result = sqlx::query!(
             r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, prompt_text, repo_url, agents_md, task_title, task_slug)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
               ON CONFLICT DO NOTHING"#,
@@ -77,8 +89,66 @@ impl WorkRunsRepository {
         )
         .execute(db)
         .await
-        .map(|result| result.rows_affected() > 0)
-        .map_err(WorkRunsError::from)
+        .map_err(WorkRunsError::from)?;
+
+        if result.rows_affected() == 0 {
+            return Ok(false);
+        }
+
+        self.insert_repos(db, id, &params.repo_full_names).await?;
+        Ok(true)
+    }
+
+    async fn insert_repos<'c, Q>(
+        &self,
+        db: Q,
+        work_run_id: Uuid,
+        repo_full_names: &[String],
+    ) -> Result<(), WorkRunsError>
+    where
+        Q: Queryer<'c> + Copy,
+    {
+        for (position, full_name) in repo_full_names.iter().enumerate() {
+            sqlx::query!(
+                r#"INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
+                 VALUES ($1, $2, $3, $4)"#,
+                work_run_id,
+                full_name,
+                repo_url_from_full_name(full_name),
+                position as i32,
+            )
+            .execute(db)
+            .await
+            .map_err(WorkRunsError::from)?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn list_repos<'c, Q>(
+        &self,
+        db: Q,
+        work_run_id: Uuid,
+    ) -> Result<Vec<JobRepo>, WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        let rows = sqlx::query!(
+            r#"SELECT repo_full_name, repo_url FROM work_run_repos
+             WHERE work_run_id = $1 ORDER BY position ASC"#,
+            work_run_id,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(WorkRunsError::from)?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| JobRepo {
+                full_name: row.repo_full_name,
+                url: row.repo_url,
+            })
+            .collect())
     }
 
     pub async fn find_by_id<'c, Q: Queryer<'c>>(
@@ -373,6 +443,36 @@ impl WorkRunsRepository {
         .ok_or(WorkRunsError::InvalidStatusTransition)
     }
 
+    pub async fn replace_pr_urls(
+        &self,
+        db: &mut PgConnection,
+        work_run_id: Uuid,
+        pr_urls: &[String],
+    ) -> Result<(), WorkRunsError> {
+        sqlx::query!(
+            "DELETE FROM work_run_prs WHERE work_run_id = $1",
+            work_run_id
+        )
+        .execute(&mut *db)
+        .await
+        .map_err(WorkRunsError::from)?;
+
+        for (position, pr_url) in pr_urls.iter().enumerate() {
+            sqlx::query!(
+                r#"INSERT INTO work_run_prs (work_run_id, pr_url, position)
+                 VALUES ($1, $2, $3)"#,
+                work_run_id,
+                pr_url,
+                position as i32,
+            )
+            .execute(&mut *db)
+            .await
+            .map_err(WorkRunsError::from)?;
+        }
+
+        Ok(())
+    }
+
     pub async fn find_blocked_by_project<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -416,6 +516,10 @@ impl WorkRunsRepository {
 
         Ok(())
     }
+}
+
+fn repo_url_from_full_name(full_name: &str) -> String {
+    format!("https://github.com/{full_name}")
 }
 
 pub struct SetResultParams<'a> {

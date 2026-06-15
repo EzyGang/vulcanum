@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::teams::errors::TeamsError;
 use crate::services::teams::invite_store::{InMemoryTeamInviteStore, TeamInviteStore};
-use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo};
+use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo, UpdateTeamRequest};
 use crate::services::teams::repository::TeamsRepository;
 
 #[derive(Clone)]
@@ -102,14 +102,38 @@ impl TeamsService {
     pub async fn update_for_principal(
         &self,
         team_id: Uuid,
-        name: &str,
+        params: &UpdateTeamRequest,
         principal: &TeamPrincipal,
         single_user: bool,
     ) -> Result<Team, TeamsError> {
-        let name = validate_team_name(name)?;
+        let name = match params.name.as_deref() {
+            Some(name) => Some(validate_team_name(name)?),
+            None => None,
+        };
         self.authorize_owner(team_id, principal, single_user)
             .await?;
-        self.repo.update_name(&self.db, team_id, name).await
+        self.repo
+            .update_settings(
+                &self.db,
+                team_id,
+                name,
+                params.prompt_template.as_deref(),
+                params.agents_md.as_deref(),
+                params
+                    .primary_model_provider_key
+                    .as_ref()
+                    .map(|value| value.as_deref()),
+                params
+                    .primary_model_id
+                    .as_ref()
+                    .map(|value| value.as_deref()),
+                params
+                    .small_model_provider_key
+                    .as_ref()
+                    .map(|value| value.as_deref()),
+                params.small_model_id.as_ref().map(|value| value.as_deref()),
+            )
+            .await
     }
 
     pub async fn delete_for_principal(

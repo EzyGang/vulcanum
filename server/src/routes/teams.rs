@@ -52,7 +52,7 @@ pub async fn update(
 ) -> Result<HttpResponse, AppError> {
     let team = state
         .teams
-        .update_for_principal(path.into_inner(), &body.name, &auth, state.is_single_user)
+        .update_for_principal(path.into_inner(), &body, &auth, state.is_single_user)
         .await?;
 
     Ok(HttpResponse::Ok().json(team))

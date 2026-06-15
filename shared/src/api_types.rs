@@ -51,9 +51,8 @@ pub struct AckRequest {}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JobResponse {
     pub prompt_text: String,
-    pub repo_url: String,
+    pub repos: Vec<JobRepo>,
     pub agents_md: String,
-    pub opencode_config: String,
     pub generated_opencode_config: String,
     pub model_provider_env: std::collections::HashMap<String, String>,
     pub external_task_ref: String,
@@ -65,8 +64,17 @@ pub struct JobResponse {
     pub github_token: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct JobRepo {
+    pub full_name: String,
+    pub url: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubmitResultRequest {
+    #[serde(default)]
+    pub pr_urls: Vec<String>,
+    #[serde(default)]
     pub pr_url: String,
     pub exit_code: i32,
     pub tokens_used: i64,

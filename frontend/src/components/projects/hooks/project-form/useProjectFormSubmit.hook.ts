@@ -14,9 +14,9 @@ interface UseProjectFormSubmitOptions {
   progressColumn: Signal<string>;
   targetColumn: Signal<string>;
   promptTemplate: Signal<string>;
-  repoUrl: Signal<string>;
+  repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
-  opencodeConfig: Signal<string>;
+  overridesOpen: Signal<boolean>;
   primaryModelProviderKey: Signal<string>;
   primaryModelId: Signal<string>;
   smallModelProviderKey: Signal<string>;
@@ -35,9 +35,9 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     progressColumn,
     targetColumn,
     promptTemplate,
-    repoUrl,
+    repoFullNames,
     agentsMd,
-    opencodeConfig,
+    overridesOpen,
     primaryModelProviderKey,
     primaryModelId,
     smallModelProviderKey,
@@ -77,11 +77,6 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
       e.preventDefault();
       formError.value = null;
 
-      if (!promptTemplate.value) {
-        formError.value = 'Prompt template is required';
-        return;
-      }
-
       submitting.value = true;
 
       try {
@@ -94,14 +89,17 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               pickupColumn: pickupColumn.value || undefined,
               progressColumn: progressColumn.value || undefined,
               targetColumn: targetColumn.value || undefined,
-              promptTemplate: promptTemplate.value || undefined,
-              repoUrl: repoUrl.value || undefined,
-              agentsMd: agentsMd.value || undefined,
-              opencodeConfig: opencodeConfig.value || undefined,
-              primaryModelProviderKey: primaryModelProviderKey.value || null,
-              primaryModelId: primaryModelId.value || null,
-              smallModelProviderKey: smallModelProviderKey.value || null,
-              smallModelId: smallModelId.value || null,
+              promptTemplate: overridesOpen.value ? promptTemplate.value || null : null,
+              repoFullNames: repoFullNames.value,
+              agentsMd: overridesOpen.value ? agentsMd.value || null : null,
+              primaryModelProviderKey: overridesOpen.value
+                ? primaryModelProviderKey.value || null
+                : null,
+              primaryModelId: overridesOpen.value ? primaryModelId.value || null : null,
+              smallModelProviderKey: overridesOpen.value
+                ? smallModelProviderKey.value || null
+                : null,
+              smallModelId: overridesOpen.value ? smallModelId.value || null : null,
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -122,14 +120,17 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             pickupColumn: pickupColumn.value || undefined,
             progressColumn: progressColumn.value || undefined,
             targetColumn: targetColumn.value || undefined,
-            promptTemplate: promptTemplate.value,
-            repoUrl: repoUrl.value || undefined,
-            agentsMd: agentsMd.value || undefined,
-            opencodeConfig: opencodeConfig.value || undefined,
-            primaryModelProviderKey: primaryModelProviderKey.value || undefined,
-            primaryModelId: primaryModelId.value || undefined,
-            smallModelProviderKey: smallModelProviderKey.value || undefined,
-            smallModelId: smallModelId.value || undefined
+            promptTemplate: overridesOpen.value ? promptTemplate.value || undefined : undefined,
+            repoFullNames: repoFullNames.value,
+            agentsMd: overridesOpen.value ? agentsMd.value || undefined : undefined,
+            primaryModelProviderKey: overridesOpen.value
+              ? primaryModelProviderKey.value || undefined
+              : undefined,
+            primaryModelId: overridesOpen.value ? primaryModelId.value || undefined : undefined,
+            smallModelProviderKey: overridesOpen.value
+              ? smallModelProviderKey.value || undefined
+              : undefined,
+            smallModelId: overridesOpen.value ? smallModelId.value || undefined : undefined
           });
         }
       } catch (err) {

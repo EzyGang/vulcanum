@@ -42,6 +42,5 @@ pub trait AgentRuntime: Send + Sync {
         &self,
         prompt: &str,
         env: &IsolatedEnvironment,
-        repo_url: &str,
     ) -> impl std::future::Future<Output = Result<Box<dyn RunningSession>, HarnessError>> + Send;
 }
