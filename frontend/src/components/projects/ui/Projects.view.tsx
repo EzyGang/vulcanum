@@ -8,6 +8,7 @@ import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Table } from '../../shared/ui/Table.view';
+import { WarningBanner } from '../../shared/ui/WarningBanner.view';
 
 interface ProjectsViewProps {
   data: {
@@ -20,7 +21,8 @@ interface ProjectsViewProps {
     error: ApiError | null;
   };
   extra: {
-    hasProviders: boolean;
+    canCreateProject: boolean;
+    projectSetupWarning: string;
   };
   actions: {
     onEditClick: (id: string) => void;
@@ -37,7 +39,7 @@ const columnsTriad = (pickup: string, progress: string, target: string): string 
 export const ProjectsView = ({
   data: { projects, deleteConfirmId, deleteError },
   status: { loading, error },
-  extra: { hasProviders },
+  extra: { canCreateProject, projectSetupWarning },
   actions: { onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }
 }: ProjectsViewProps): JSX.Element => (
   <div class='flex flex-col gap-4'>
@@ -49,7 +51,8 @@ export const ProjectsView = ({
           variant='primary'
           class='shrink-0 whitespace-nowrap px-5'
           onClick={onConnectProject}
-          disabled={!hasProviders}
+          disabled={!canCreateProject}
+          title={projectSetupWarning || undefined}
         >
           Connect Project
         </Button>
@@ -57,6 +60,8 @@ export const ProjectsView = ({
     />
 
     {error && <ErrorBanner message={error.message} />}
+
+    {projectSetupWarning && <WarningBanner message={projectSetupWarning} />}
 
     {deleteError.value && <ErrorBanner message={deleteError.value} />}
 

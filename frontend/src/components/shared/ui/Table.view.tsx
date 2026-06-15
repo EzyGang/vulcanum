@@ -45,12 +45,16 @@ interface RowProps {
   children: ComponentChildren;
   class?: string;
   onClick?: JSX.MouseEventHandler<HTMLTableRowElement>;
+  role?: JSX.HTMLAttributes<HTMLTableRowElement>['role'];
+  tabIndex?: number;
 }
 
-const Row = ({ children, class: classProp, onClick }: RowProps): JSX.Element => (
+const Row = ({ children, class: classProp, onClick, role, tabIndex }: RowProps): JSX.Element => (
   <tr
     class={clsx('border-b border-border-base transition-colors hover:bg-bg-hover', classProp)}
     onClick={onClick}
+    role={role}
+    tabIndex={tabIndex}
   >
     {children}
   </tr>

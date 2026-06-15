@@ -1,76 +1,90 @@
+import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
-import type { Team, TeamMember } from '../../../types/teams';
+import type { Team } from '../../../types/teams';
 import type { ApiError } from '../../../utils/api/client';
 import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Input } from '../../shared/ui/Input.view';
+import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Table } from '../../shared/ui/Table.view';
+
+interface TeamRow extends Team {
+  formattedCreatedAt: string;
+}
 
 interface TeamsViewProps {
   data: {
-    teams: Team[];
-    members: TeamMember[];
-    selectedTeam: Team | null;
+    teams: TeamRow[];
     selectedTeamId: string | null;
-    selectedManageTeamId: string | null;
+    showCreateForm: Signal<boolean>;
     name: string;
     editName: string;
     editingTeamId: string | null;
-    isSingleUser: boolean;
-    inviteLink: string | null;
-    inviteExpiresAt: string | null;
   };
   status: {
     loading: boolean;
-    membersLoading: boolean;
     error: ApiError | null;
     formError: string | null;
     creating: boolean;
     updating: boolean;
     deleting: boolean;
-    creatingInvite: boolean;
   };
   actions: {
-    onNameChange: (value: string) => void;
-    onEditNameChange: (value: string) => void;
+    onShowCreate: () => void;
+    onCancelCreate: () => void;
     onNameInput: (event: Event) => void;
     onEditNameInput: (event: Event) => void;
-    onSelectTeam: (teamId: string) => void;
+    onOpenTeam: (teamId: string) => void;
     onUseTeam: (teamId: string) => void;
     onStartEdit: (team: Team) => void;
     onCancelEdit: () => void;
     onCreate: (event: Event) => void;
     onUpdate: (event: Event) => void;
     onDelete: (teamId: string) => void;
-    onCreateInvite: () => void;
   };
 }
 
 export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Element => (
   <div class='flex flex-col gap-6'>
-    <div class='flex flex-col gap-2'>
-      <h3 class='text-base font-semibold text-text-secondary uppercase tracking-wide'>Teams</h3>
-      <p class='text-sm text-text-muted'>Teams scope providers, projects, workers, and runs.</p>
-    </div>
+    <SectionHeader
+      title='Teams'
+      hint='Teams scope providers, projects, workers, and runs.'
+      action={
+        !data.showCreateForm.value ? (
+          <Button
+            variant='primary'
+            class='shrink-0 whitespace-nowrap px-5'
+            onClick={actions.onShowCreate}
+          >
+            Create Team
+          </Button>
+        ) : null
+      }
+    />
 
     {status.error && <ErrorBanner message={status.error.message} />}
     {status.formError && <ErrorBanner message={status.formError} />}
 
-    <form
-      onSubmit={actions.onCreate}
-      class='flex flex-col gap-3 border border-border-base bg-bg-card p-5 sm:flex-row'
-    >
-      <Input
-        value={data.name}
-        onInput={actions.onNameInput}
-        placeholder='New team name'
-        disabled={status.creating}
-      />
-      <Button type='submit' variant='primary' disabled={status.creating}>
-        {status.creating ? 'Creating...' : 'Create Team'}
-      </Button>
-    </form>
+    {data.showCreateForm.value && (
+      <form
+        onSubmit={actions.onCreate}
+        class='flex flex-col gap-3 border border-border-base bg-bg-card p-5 sm:flex-row'
+      >
+        <Input
+          value={data.name}
+          onInput={actions.onNameInput}
+          placeholder='New team name'
+          disabled={status.creating}
+        />
+        <Button type='submit' variant='primary' disabled={status.creating}>
+          {status.creating ? 'Creating...' : 'Create Team'}
+        </Button>
+        <Button type='button' variant='secondary' onClick={actions.onCancelCreate}>
+          Cancel
+        </Button>
+      </form>
+    )}
 
     {status.loading && <div class='text-text-muted text-sm'>Loading teams...</div>}
 
@@ -91,16 +105,31 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
           {data.teams.map((team) => (
             <Table.Row
               key={team.id}
-              class={team.id === data.selectedManageTeamId ? 'bg-bg-active' : ''}
+              class={
+                team.id === data.selectedTeamId ? 'cursor-pointer bg-bg-active' : 'cursor-pointer'
+              }
+              role='button'
+              tabIndex={0}
+              onClick={() => actions.onOpenTeam(team.id)}
             >
-              <Table.Cell>
-                <button
-                  type='button'
-                  class='bg-transparent border-0 p-0 text-left text-text-primary text-sm cursor-pointer hover:underline'
-                  onClick={() => actions.onSelectTeam(team.id)}
-                >
-                  {team.name}
-                </button>
+              <Table.Cell onClick={(event) => event.stopPropagation()}>
+                {data.editingTeamId === team.id ? (
+                  <form onSubmit={actions.onUpdate} class='flex flex-col gap-2 sm:flex-row'>
+                    <Input
+                      value={data.editName}
+                      onInput={actions.onEditNameInput}
+                      disabled={status.updating}
+                    />
+                    <Button type='submit' variant='primary' disabled={status.updating}>
+                      {status.updating ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button type='button' variant='secondary' onClick={actions.onCancelEdit}>
+                      Cancel
+                    </Button>
+                  </form>
+                ) : (
+                  <span class='text-text-primary text-sm'>{team.name}</span>
+                )}
               </Table.Cell>
               <Table.Cell>
                 <span class='font-mono text-xs text-text-muted'>{team.id}</span>
@@ -111,9 +140,9 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
                 </span>
               </Table.Cell>
               <Table.Cell>
-                <span class='text-sm text-text-secondary'>{team.createdAt}</span>
+                <span class='text-sm text-text-secondary'>{team.formattedCreatedAt}</span>
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell onClick={(event) => event.stopPropagation()}>
                 <div class='flex flex-wrap items-center gap-3'>
                   <Button
                     variant='ghost'
@@ -138,100 +167,6 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
           ))}
         </Table.Body>
       </Table>
-    )}
-
-    {data.selectedTeam && (
-      <div class='flex flex-col gap-5 border border-border-base bg-bg-card p-5'>
-        <div class='flex flex-col gap-1'>
-          <h4 class='text-sm font-semibold uppercase tracking-wide text-text-primary'>
-            Selected Team
-          </h4>
-          <span class='font-mono text-xs text-text-muted'>{data.selectedTeam.id}</span>
-        </div>
-
-        {data.editingTeamId === data.selectedTeam.id && (
-          <form onSubmit={actions.onUpdate} class='flex flex-col gap-3 sm:flex-row'>
-            <Input
-              value={data.editName}
-              onInput={actions.onEditNameInput}
-              disabled={status.updating}
-            />
-            <Button type='submit' variant='primary' disabled={status.updating}>
-              {status.updating ? 'Saving...' : 'Save'}
-            </Button>
-            <Button type='button' variant='secondary' onClick={actions.onCancelEdit}>
-              Cancel
-            </Button>
-          </form>
-        )}
-
-        <div class='flex flex-col gap-3'>
-          <h4 class='text-sm font-semibold uppercase tracking-wide text-text-primary'>Members</h4>
-          {data.isSingleUser && (
-            <div class='border border-border-base bg-bg-panel p-4 text-sm text-text-muted'>
-              Member management requires multiuser authentication. Instance-password deployments can
-              still use teams as scopes.
-            </div>
-          )}
-          {status.membersLoading && <div class='text-sm text-text-muted'>Loading members...</div>}
-          {!status.membersLoading && data.members.length === 0 && (
-            <div class='text-sm text-text-muted'>No members are attached to this team.</div>
-          )}
-          {!status.membersLoading && data.members.length > 0 && (
-            <Table>
-              <Table.Head>
-                <Table.HeadCell>Email</Table.HeadCell>
-                <Table.HeadCell>User ID</Table.HeadCell>
-                <Table.HeadCell>Role</Table.HeadCell>
-                <Table.HeadCell>Created</Table.HeadCell>
-              </Table.Head>
-              <Table.Body>
-                {data.members.map((member) => (
-                  <Table.Row key={`${member.teamId}:${member.userId}`}>
-                    <Table.Cell>
-                      <span class='text-sm text-text-primary'>{member.email}</span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <span class='font-mono text-xs text-text-muted'>{member.userId}</span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <span class='text-sm text-text-secondary'>{member.role}</span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <span class='text-sm text-text-secondary'>{member.createdAt}</span>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table.Body>
-            </Table>
-          )}
-        </div>
-
-        <div class='flex flex-col gap-3'>
-          <h4 class='text-sm font-semibold uppercase tracking-wide text-text-primary'>Invites</h4>
-          <div class='border border-border-base bg-bg-panel p-4 text-sm text-text-muted'>
-            Generate a single-use invite link for this team. Links expire after 30 minutes and can
-            be used by GitHub-authenticated users only.
-          </div>
-          {data.inviteLink && (
-            <div class='flex flex-col gap-2 border border-border-base bg-bg-panel p-4'>
-              <span class='text-xs uppercase tracking-wide text-text-muted'>Generated Link</span>
-              <span class='break-all font-mono text-xs text-text-primary'>{data.inviteLink}</span>
-              {data.inviteExpiresAt && (
-                <span class='text-xs text-text-muted'>Expires at {data.inviteExpiresAt}</span>
-              )}
-            </div>
-          )}
-          <Button
-            type='button'
-            variant='secondary'
-            onClick={actions.onCreateInvite}
-            disabled={data.isSingleUser || status.creatingInvite}
-          >
-            {status.creatingInvite ? 'Creating Invite...' : 'Create Invite'}
-          </Button>
-        </div>
-      </div>
     )}
   </div>
 );

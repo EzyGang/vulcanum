@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatDuration, formatRelativeTime } from '../utils/format';
+import { formatDateTime, formatDuration, formatRelativeTime } from '../utils/format';
 
 describe('formatRelativeTime', () => {
   beforeEach(() => {
@@ -47,5 +47,15 @@ describe('formatDuration', () => {
 
   it('formats zero', () => {
     expect(formatDuration(0)).toBe('0ms');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('formats timestamps for human reading', () => {
+    expect(formatDateTime('2026-05-23T12:30:00Z')).toMatch(/May 23, 2026/);
+  });
+
+  it('returns a dash for invalid timestamps', () => {
+    expect(formatDateTime('not-a-date')).toBe('—');
   });
 });

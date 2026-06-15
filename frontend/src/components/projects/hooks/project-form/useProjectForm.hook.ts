@@ -8,11 +8,16 @@ import {
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
+import {
+  getProjectSetupHelpText,
+  getProjectSetupMissingMessages
+} from '../../../../utils/projectSetup';
 import { useGitHubApp } from '../../../github/hooks/useGitHubApp.hook';
 import type { ProjectFormFieldsContextValue } from '../../context/ProjectFormFieldsContext';
 import type { ProjectFormLookupContextValue } from '../../context/ProjectFormLookupContext';
 import type { ProjectFormMetaContextValue } from '../../context/ProjectFormMetaContext';
 import type { ProjectFormProviderContextValue } from '../../context/ProjectFormProviderContext';
+import { DEFAULT_PROJECT_PROMPT_TEMPLATE } from '../../projectPromptTemplate';
 import { useProjectFormLookup } from './useProjectFormLookup.hook';
 import { useProjectFormProvider } from './useProjectFormProvider.hook';
 import { useProjectFormSubmit } from './useProjectFormSubmit.hook';
@@ -31,10 +36,13 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     () => getProject(projectId ?? '')
   );
 
-  const { data: providers = [] } = useApiQuery(['providers'], () => listProviders());
+  const { data: providers = [], isLoading: providersLoading } = useApiQuery(['providers'], () =>
+    listProviders()
+  );
   const { repos, reposLoading } = useGitHubApp();
-  const { data: modelProviders = [] } = useApiQuery(['model-providers'], () =>
-    listModelProviders()
+  const { data: modelProviders = [], isLoading: modelProvidersLoading } = useApiQuery(
+    ['model-providers'],
+    () => listModelProviders()
   );
   const { data: modelCatalog } = useApiQuery(['model-provider-catalog'], () =>
     getModelProviderCatalog()
@@ -48,7 +56,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const pickupColumn = useSignal('');
   const progressColumn = useSignal('');
   const targetColumn = useSignal('');
-  const promptTemplate = useSignal('');
+  const promptTemplate = useSignal(DEFAULT_PROJECT_PROMPT_TEMPLATE);
   const repoUrl = useSignal('');
   const agentsMd = useSignal('');
   const opencodeConfig = useSignal('');
@@ -149,6 +157,15 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
 
   const hasProjectSelection = !!workspaceId.value && !!externalProjectId.value;
   const hasColumns = lookup.lookedUp.value && lookup.columns.value.length > 0;
+  const setupWarning =
+    providersLoading || modelProvidersLoading
+      ? ''
+      : getProjectSetupHelpText(
+          getProjectSetupMissingMessages({
+            hasTaskTrackerProvider: providers.length > 0,
+            hasModelProvider: modelProviders.length > 0
+          })
+        );
   const catalogProviders = modelCatalog?.providers ?? [];
   const connectedProviderItems = modelProviders.map((provider) => ({
     value: provider.providerKey,
@@ -171,6 +188,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       formError,
       canShowLookup: !!projectId || !!providerId.value,
       canShowFields: hasProjectSelection && hasColumns,
+      projectSetupWarning: setupWarning,
       onSubmit: handleSubmit,
       onCancel: () => setLocation('/settings?tab=projects')
     },

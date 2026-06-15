@@ -9,6 +9,7 @@ export interface ProjectFormMetaContextValue {
   formError: Signal<string | null>;
   canShowLookup: boolean;
   canShowFields: boolean;
+  projectSetupWarning: string;
   onSubmit: (e: Event) => void;
   onCancel: () => void;
 }
