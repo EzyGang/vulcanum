@@ -177,12 +177,7 @@ impl WorkRunsService {
         params: &SubmitResultRequest,
         status: WorkRunStatus,
     ) {
-        let project_config = match self
-            .project_configs
-            .repo
-            .find_by_id(&self.db, run.project_config_id)
-            .await
-        {
+        let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(c) => c,
             Err(e) => {
                 tracing::warn!(
@@ -262,7 +257,7 @@ impl WorkRunsService {
         ) {
             (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
             (Some(s), None) => format!("**Summary:** {s}"),
-            _ => format!("PR: {}", params.pr_url),
+            _ => format!("PR: {}", normalized_pr_urls(params).join(", ")),
         };
 
         if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {

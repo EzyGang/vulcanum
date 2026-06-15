@@ -9,8 +9,8 @@ export interface ProjectConfig {
   progressColumn: string;
   promptTemplate?: string | null;
   repoUrl: string;
-  repoFullNames: string[];
-  repoUrls: string[];
+  repoFullNames?: string[];
+  repoUrls?: string[];
   agentsMd?: string | null;
   primaryModelProviderKey?: string | null;
   primaryModelId?: string | null;

@@ -8,6 +8,7 @@ use crate::config::AppConfig;
 use crate::services::github_app::errors::GithubAppError;
 use crate::services::github_app::model::GithubInstallation;
 use crate::services::github_app::repository::GithubAppRepository;
+use crate::util::github::parse_github_repo;
 
 pub struct GithubAppManager {
     pub(crate) repo: GithubAppRepository,
@@ -309,7 +310,9 @@ impl GithubAppManager {
             .await?
             .ok_or(GithubAppError::NoInstallation)?;
 
-        let (_owner, repo_name) = parse_github_repo(repo_url)?;
+        let repo_name = parse_github_repo(repo_url)
+            .ok_or_else(|| GithubAppError::InvalidRepoUrl(repo_url.to_owned()))?
+            .name;
 
         let octo = self.app_octocrab()?;
         let route = format!(
@@ -356,7 +359,7 @@ impl GithubAppManager {
 
         let repo_names = repo_full_names
             .iter()
-            .filter_map(|full_name| full_name.rsplit_once('/').map(|(_, repo)| repo.to_owned()))
+            .filter_map(|full_name| parse_github_repo(full_name).map(|repo| repo.name))
             .collect::<Vec<String>>();
 
         let octo = self.app_octocrab()?;
@@ -390,15 +393,4 @@ impl GithubAppManager {
             expires_at,
         })
     }
-}
-
-fn parse_github_repo(url: &str) -> Result<(String, String), GithubAppError> {
-    url.strip_prefix("https://github.com/")
-        .or_else(|| url.strip_prefix("http://github.com/"))
-        .and_then(|rest| rest.rsplit_once('/'))
-        .ok_or_else(|| GithubAppError::InvalidRepoUrl(url.to_string()))
-        .map(|(owner, repo)| {
-            let repo = repo.strip_suffix(".git").unwrap_or(repo);
-            (owner.to_string(), repo.to_string())
-        })
 }

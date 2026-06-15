@@ -2,20 +2,25 @@ use super::template::{render_template, TemplateVars};
 
 #[test]
 fn interpolates_all_vars() {
-    let template = "Task: {{task_title}}\nBody: {{task_body}}\nRepo: {{repo_url}}";
+    let template = "Task: {{task_title}}\nBody: {{task_body}}\nRepo: {{repo_url}}\nRepos: {{repo_urls}}\nNames: {{repo_names}}\nLayout: {{repo_layout}}";
     let vars = TemplateVars {
         task_title: "Fix login bug",
         task_body: "The login form crashes on submit.",
         repo_url: "https://github.com/org/repo",
-        repo_urls: "https://github.com/org/repo",
-        repo_names: "org/repo",
-        repo_layout: "org/repo: ./org-repo",
+        repo_urls: "https://github.com/org/repo\nhttps://github.com/org/other",
+        repo_names: "org/repo\norg/other",
+        repo_layout: "org/repo: ./org-repo\norg/other: ./org-other",
     };
     let result = render_template(template, &vars);
 
     assert!(result.contains("Fix login bug"));
     assert!(result.contains("The login form crashes on submit."));
     assert!(result.contains("https://github.com/org/repo"));
+    assert!(result.contains("https://github.com/org/other"));
+    assert!(result.contains("org/repo"));
+    assert!(result.contains("org/other"));
+    assert!(result.contains("org/repo: ./org-repo"));
+    assert!(result.contains("org/other: ./org-other"));
     assert!(!result.contains("{{"));
 }
 

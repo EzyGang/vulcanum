@@ -14,10 +14,11 @@ use crate::services::provider_configs::repository::IntegrationProvidersRepositor
 use crate::services::providers::client::IntegrationClient;
 use crate::services::providers::model::{IntegrationColumn, IntegrationType};
 use crate::services::teams::service::TeamsService;
+use crate::util::github::github_repo_url;
 
 #[derive(Clone)]
 pub struct ProjectConfigsService {
-    pub repo: ProjectConfigsRepository,
+    repo: ProjectConfigsRepository,
     pub db: PgPool,
     pub providers_repo: IntegrationProvidersRepository,
     pub model_providers: ModelProvidersService,
@@ -47,6 +48,14 @@ impl ProjectConfigsService {
 
     pub async fn count_enabled(&self, team_id: Uuid) -> Result<i64, ProjectConfigsError> {
         self.repo.count_enabled(&self.db, team_id).await
+    }
+
+    pub async fn find_by_id(&self, id: Uuid) -> Result<ProjectConfig, ProjectConfigsError> {
+        self.repo.find_by_id(&self.db, id).await
+    }
+
+    pub async fn list_enabled(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
+        self.repo.list_enabled(&self.db).await
     }
 
     pub async fn get_by_id(
@@ -151,7 +160,7 @@ impl ProjectConfigsService {
             .repo_full_names
             .as_ref()
             .and_then(|repos| repos.first())
-            .map(|full_name| format!("https://github.com/{full_name}"));
+            .map(|full_name| github_repo_url(full_name));
 
         let updated = self
             .repo

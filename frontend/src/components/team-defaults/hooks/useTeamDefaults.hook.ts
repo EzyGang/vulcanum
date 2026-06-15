@@ -52,7 +52,7 @@ export const useTeamDefaults = (teamId: string | null) => {
     status: {
       loading: isLoading,
       saving: mutation.isPending,
-      error: formError.value
+      error: formError
     },
     actions: {
       onPromptTemplateInput: (event: Event) => {

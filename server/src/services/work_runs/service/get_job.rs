@@ -4,6 +4,7 @@ use crate::services::model_providers::renderer::{render_opencode_config, ModelSe
 use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::WorkRunsService;
+use crate::util::github::github_repo_full_name_from_url;
 use vulcanum_shared::api_types::{JobRepo, JobResponse};
 
 impl WorkRunsService {
@@ -13,11 +14,7 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
-        let config = self
-            .project_configs
-            .repo
-            .find_by_id(&self.db, run.project_config_id)
-            .await;
+        let config = self.project_configs.find_by_id(run.project_config_id).await;
 
         let cfg = match config {
             Ok(ref c) => {
@@ -36,7 +33,7 @@ impl WorkRunsService {
         let mut repos = self.work_runs_repo.list_repos(&self.db, id).await?;
         if repos.is_empty() && !run.repo_url.is_empty() {
             repos.push(JobRepo {
-                full_name: repo_full_name_from_url(&run.repo_url),
+                full_name: github_repo_full_name_from_url(&run.repo_url),
                 url: run.repo_url.clone(),
             });
         }
@@ -106,12 +103,4 @@ impl WorkRunsService {
             github_token,
         })
     }
-}
-
-fn repo_full_name_from_url(url: &str) -> String {
-    url.strip_prefix("https://github.com/")
-        .or_else(|| url.strip_prefix("http://github.com/"))
-        .unwrap_or(url)
-        .trim_end_matches(".git")
-        .to_owned()
 }

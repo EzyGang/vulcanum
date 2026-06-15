@@ -79,7 +79,7 @@ impl PollerService {
     pub(crate) async fn poll_once(&self) {
         tracing::debug!("Starting poll cycle");
 
-        let configs = match self.project_configs.repo.list_enabled(&self.db).await {
+        let configs = match self.project_configs.list_enabled().await {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!("Failed to list enabled project configs: {}", e);

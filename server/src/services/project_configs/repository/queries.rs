@@ -6,6 +6,7 @@ use crate::services::project_configs::model::{CreateProjectConfigRequest, Projec
 use crate::services::project_configs::repository::{
     map_sqlx_error, ProjectConfigsRepository, UpdateProjectConfigParams,
 };
+use crate::util::github::{github_repo_url, GITHUB_REPO_URL_PREFIX};
 
 impl ProjectConfigsRepository {
     pub async fn list_all<'c, Q>(
@@ -210,10 +211,11 @@ impl ProjectConfigsRepository {
                 FROM UNNEST($2::TEXT[]) WITH ORDINALITY AS repo(repo_full_name, ordinality)
             )
             INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)
-            SELECT $1, repo_full_name, 'https://github.com/' || repo_full_name, position::INT
+            SELECT $1, repo_full_name, $3::TEXT || repo_full_name, position::INT
             FROM repos"#,
             project_config_id,
             repo_full_names,
+            GITHUB_REPO_URL_PREFIX,
         )
         .execute(db)
         .await
@@ -261,6 +263,6 @@ impl ProjectConfigsRepository {
 fn first_repo_url(repo_full_names: &[String]) -> String {
     repo_full_names
         .first()
-        .map(|full_name| format!("https://github.com/{full_name}"))
+        .map(|full_name| github_repo_url(full_name))
         .unwrap_or_default()
 }

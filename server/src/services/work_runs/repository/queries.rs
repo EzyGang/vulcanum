@@ -5,6 +5,7 @@ use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus};
 use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::util::github::github_repo_url;
 use vulcanum_shared::api_types::JobRepo;
 
 pub struct InsertWorkRunParams {
@@ -114,7 +115,7 @@ impl WorkRunsRepository {
                  VALUES ($1, $2, $3, $4)"#,
                 work_run_id,
                 full_name,
-                format!("https://github.com/{full_name}"),
+                github_repo_url(full_name),
                 position as i32,
             )
             .execute(db)

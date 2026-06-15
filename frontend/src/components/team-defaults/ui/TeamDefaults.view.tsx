@@ -18,7 +18,7 @@ interface TeamDefaultsViewProps {
   status: {
     loading: boolean;
     saving: boolean;
-    error: string | null;
+    error: Signal<string | null>;
   };
   actions: {
     onPromptTemplateInput: (event: Event) => void;
@@ -42,7 +42,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
         Applied to every project unless a project override is enabled.
       </p>
     </div>
-    {status.error && <ErrorBanner message={status.error} />}
+    {status.error.value && <ErrorBanner message={status.error.value} />}
     {status.loading && <div class='text-sm text-text-muted'>Loading team defaults...</div>}
     {!status.loading && (
       <>

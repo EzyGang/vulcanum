@@ -105,7 +105,7 @@ export const ProjectsView = ({
               </Table.Cell>
               <Table.Cell>
                 <span class='text-text-secondary text-sm font-mono truncate max-w-xs block'>
-                  {project.repoFullNames.length > 0 ? project.repoFullNames.join(', ') : '—'}
+                  {project.repoFullNames?.join(', ') || '—'}
                 </span>
               </Table.Cell>
               <Table.Cell>
