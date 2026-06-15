@@ -13,6 +13,7 @@ use crate::services::project_configs::repository::{
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::IntegrationClient;
 use crate::services::providers::model::{IntegrationColumn, IntegrationType};
+use crate::services::teams::service::TeamsService;
 
 #[derive(Clone)]
 pub struct ProjectConfigsService {
@@ -20,6 +21,7 @@ pub struct ProjectConfigsService {
     pub db: PgPool,
     pub providers_repo: IntegrationProvidersRepository,
     pub model_providers: ModelProvidersService,
+    pub teams: TeamsService,
 }
 
 impl ProjectConfigsService {
@@ -28,12 +30,14 @@ impl ProjectConfigsService {
         db: PgPool,
         providers_repo: IntegrationProvidersRepository,
         model_providers: ModelProvidersService,
+        teams: TeamsService,
     ) -> Self {
         Self {
             repo,
             db,
             providers_repo,
             model_providers,
+            teams,
         }
     }
 
@@ -201,10 +205,7 @@ impl ProjectConfigsService {
         &self,
         config: &ProjectConfig,
     ) -> Result<EffectiveProjectSettings, ProjectConfigsError> {
-        let team = crate::services::teams::repository::TeamsRepository::new()
-            .get_by_id(&self.db, config.team_id)
-            .await
-            .map_err(ProjectConfigsError::Team)?;
+        let team = self.teams.get_team(config.team_id).await?;
 
         Ok(EffectiveProjectSettings {
             prompt_template: config

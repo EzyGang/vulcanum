@@ -56,11 +56,7 @@ pub(crate) async fn submit_failed_result(
         status: JournalStatus::Failed,
     });
     let submit = SubmitResultRequest {
-        pr_urls: result
-            .pr_url
-            .clone()
-            .map(|url| vec![url])
-            .unwrap_or_default(),
+        pr_urls: single_url_to_vec(result.pr_url.clone()),
         pr_url: result.pr_url.clone().unwrap_or_default(),
         exit_code: result.exit_code,
         tokens_used: result.tokens_used,
@@ -143,11 +139,11 @@ fn artifact_pr_urls(artifact: &FinishRunArtifact) -> Vec<String> {
     if !artifact.pr_urls.is_empty() {
         return artifact.pr_urls.clone();
     }
-    artifact
-        .pr_url
-        .clone()
-        .map(|url| vec![url])
-        .unwrap_or_default()
+    single_url_to_vec(artifact.pr_url.clone())
+}
+
+fn single_url_to_vec(url: Option<String>) -> Vec<String> {
+    url.map(|url| vec![url]).unwrap_or_default()
 }
 
 fn to_i64_saturating(value: u64) -> i64 {

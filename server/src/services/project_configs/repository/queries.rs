@@ -1,4 +1,3 @@
-use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -194,36 +193,33 @@ impl ProjectConfigsRepository {
         .ok_or(ProjectConfigsError::NotFound)
     }
 
-    pub async fn replace_repos(
+    pub async fn replace_repos<'c, Q>(
         &self,
-        db: &PgPool,
+        db: Q,
         project_config_id: Uuid,
         repo_full_names: &[String],
-    ) -> Result<(), ProjectConfigsError> {
-        let mut tx = db.begin().await.map_err(ProjectConfigsError::from)?;
+    ) -> Result<(), ProjectConfigsError>
+    where
+        Q: Queryer<'c>,
+    {
         sqlx::query!(
-            "DELETE FROM project_config_repos WHERE project_config_id = $1",
+            r#"WITH deleted AS (
+                DELETE FROM project_config_repos WHERE project_config_id = $1
+            ), repos AS (
+                SELECT repo_full_name, ordinality - 1 AS position
+                FROM UNNEST($2::TEXT[]) WITH ORDINALITY AS repo(repo_full_name, ordinality)
+            )
+            INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)
+            SELECT $1, repo_full_name, 'https://github.com/' || repo_full_name, position::INT
+            FROM repos"#,
             project_config_id,
+            repo_full_names,
         )
-        .execute(&mut *tx)
+        .execute(db)
         .await
         .map_err(ProjectConfigsError::from)?;
 
-        for (position, full_name) in repo_full_names.iter().enumerate() {
-            sqlx::query!(
-                r#"INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)
-                 VALUES ($1, $2, $3, $4)"#,
-                project_config_id,
-                full_name,
-                repo_url_from_full_name(full_name),
-                position as i32,
-            )
-            .execute(&mut *tx)
-            .await
-            .map_err(ProjectConfigsError::from)?;
-        }
-
-        tx.commit().await.map_err(ProjectConfigsError::from)
+        Ok(())
     }
 
     pub async fn delete<'c, Q>(&self, db: Q, id: Uuid) -> Result<(), ProjectConfigsError>
@@ -262,13 +258,9 @@ impl ProjectConfigsRepository {
     }
 }
 
-fn repo_url_from_full_name(full_name: &str) -> String {
-    format!("https://github.com/{full_name}")
-}
-
 fn first_repo_url(repo_full_names: &[String]) -> String {
     repo_full_names
         .first()
-        .map(|full_name| repo_url_from_full_name(full_name))
+        .map(|full_name| format!("https://github.com/{full_name}"))
         .unwrap_or_default()
 }

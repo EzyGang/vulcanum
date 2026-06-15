@@ -7,8 +7,12 @@ use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
+use crate::services::teams::repository::TeamsRepository;
+use crate::services::teams::service::TeamsService;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -46,16 +50,29 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
 }
 
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
+    let model_catalog = ModelCatalogClient::new();
+    let model_providers_repo = ModelProvidersRepository::new();
+    let project_configs = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        ModelProvidersService::new(
+            model_providers_repo.clone(),
+            pool.clone(),
+            model_catalog.clone(),
+        ),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
     WorkRunsService::new(
         WorkRunsRepository::new(),
         WorkersRepository::new(),
-        ProjectConfigsRepository::new(),
+        project_configs,
         build_github_manager(pool.clone()),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
-        ModelProvidersRepository::new(),
-        ModelCatalogClient::new(),
+        model_providers_repo,
+        model_catalog,
         Arc::new(InMemoryCancelStore::new()),
         3,
     )

@@ -89,6 +89,7 @@ impl AppState {
             db_pool.clone(),
             providers_repo.clone(),
             model_providers.clone(),
+            teams.clone(),
         );
         let workers_repo = WorkersRepository::new();
         let code_store = RedisCodeStore::new(&cfg.redis_url)?;
@@ -114,7 +115,7 @@ impl AppState {
         let jobs = WorkRunsService::new(
             work_runs.clone(),
             workers_repo,
-            project_configs_repo,
+            project_configs.clone(),
             github.clone(),
             db_pool.clone(),
             dispatch_store.clone(),
@@ -156,11 +157,10 @@ impl AppState {
         self,
         poll_period_secs: u64,
     ) -> crate::services::poller::service::PollerService {
-        let providers_repo = self.providers.repo.clone();
         crate::services::poller::service::PollerService::new(
-            self.project_configs.repo.clone(),
+            self.project_configs.clone(),
             self.work_runs.clone(),
-            providers_repo,
+            self.providers.repo.clone(),
             self.db_pool.clone(),
             poll_period_secs,
         )

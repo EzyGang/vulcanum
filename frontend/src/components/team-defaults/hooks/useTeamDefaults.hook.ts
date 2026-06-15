@@ -42,12 +42,12 @@ export const useTeamDefaults = (teamId: string | null) => {
 
   return {
     data: {
-      promptTemplate: promptTemplate.value,
-      agentsMd: agentsMd.value,
-      primaryModelProviderKey: primaryModelProviderKey.value,
-      primaryModelId: primaryModelId.value,
-      smallModelProviderKey: smallModelProviderKey.value,
-      smallModelId: smallModelId.value
+      promptTemplate,
+      agentsMd,
+      primaryModelProviderKey,
+      primaryModelId,
+      smallModelProviderKey,
+      smallModelId
     },
     status: {
       loading: isLoading,

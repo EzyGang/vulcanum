@@ -1,3 +1,4 @@
+import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
@@ -7,12 +8,12 @@ import { TextArea } from '../../shared/ui/TextArea.view';
 
 interface TeamDefaultsViewProps {
   data: {
-    promptTemplate: string;
-    agentsMd: string;
-    primaryModelProviderKey: string;
-    primaryModelId: string;
-    smallModelProviderKey: string;
-    smallModelId: string;
+    promptTemplate: Signal<string>;
+    agentsMd: Signal<string>;
+    primaryModelProviderKey: Signal<string>;
+    primaryModelId: Signal<string>;
+    smallModelProviderKey: Signal<string>;
+    smallModelId: Signal<string>;
   };
   status: {
     loading: boolean;
@@ -49,7 +50,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
           <Label for='team-default-prompt'>Prompt Template</Label>
           <TextArea
             id='team-default-prompt'
-            value={data.promptTemplate}
+            value={data.promptTemplate.value}
             onInput={actions.onPromptTemplateInput}
             rows={5}
             disabled={status.saving}
@@ -60,7 +61,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             <Label for='team-primary-provider'>Primary Model Provider</Label>
             <Input
               id='team-primary-provider'
-              value={data.primaryModelProviderKey}
+              value={data.primaryModelProviderKey.value}
               onInput={actions.onPrimaryProviderInput}
               disabled={status.saving}
             />
@@ -69,7 +70,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             <Label for='team-primary-model'>Primary Model</Label>
             <Input
               id='team-primary-model'
-              value={data.primaryModelId}
+              value={data.primaryModelId.value}
               onInput={actions.onPrimaryModelInput}
               disabled={status.saving}
             />
@@ -78,7 +79,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             <Label for='team-small-provider'>Small Model Provider</Label>
             <Input
               id='team-small-provider'
-              value={data.smallModelProviderKey}
+              value={data.smallModelProviderKey.value}
               onInput={actions.onSmallProviderInput}
               disabled={status.saving}
             />
@@ -87,7 +88,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             <Label for='team-small-model'>Small Model</Label>
             <Input
               id='team-small-model'
-              value={data.smallModelId}
+              value={data.smallModelId.value}
               onInput={actions.onSmallModelInput}
               disabled={status.saving}
             />
@@ -97,7 +98,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
           <Label for='team-agents-md'>Agents.md</Label>
           <TextArea
             id='team-agents-md'
-            value={data.agentsMd}
+            value={data.agentsMd.value}
             onInput={actions.onAgentsMdInput}
             rows={6}
             disabled={status.saving}

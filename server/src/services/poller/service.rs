@@ -3,13 +3,12 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::services::project_configs::model::{EffectiveProjectSettings, ProjectConfig};
-use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::model::ProjectConfig;
+use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
 use crate::services::providers::errors::IntegrationError;
 use crate::services::providers::model::{IntegrationTask, IntegrationType};
-use crate::services::teams::repository::TeamsRepository;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -36,7 +35,7 @@ impl From<IntegrationError> for PollError {
 }
 
 pub struct PollerService {
-    project_configs_repo: ProjectConfigsRepository,
+    project_configs: ProjectConfigsService,
     work_runs_repo: WorkRunsRepository,
     providers_repo: IntegrationProvidersRepository,
     db: PgPool,
@@ -46,14 +45,14 @@ pub struct PollerService {
 
 impl PollerService {
     pub fn new(
-        project_configs_repo: ProjectConfigsRepository,
+        project_configs: ProjectConfigsService,
         work_runs_repo: WorkRunsRepository,
         providers_repo: IntegrationProvidersRepository,
         db: PgPool,
         poll_period_secs: u64,
     ) -> Self {
         Self {
-            project_configs_repo,
+            project_configs,
             work_runs_repo,
             providers_repo,
             db,
@@ -80,7 +79,7 @@ impl PollerService {
     pub(crate) async fn poll_once(&self) {
         tracing::debug!("Starting poll cycle");
 
-        let configs = match self.project_configs_repo.list_enabled(&self.db).await {
+        let configs = match self.project_configs.repo.list_enabled(&self.db).await {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!("Failed to list enabled project configs: {}", e);
@@ -134,7 +133,7 @@ impl PollerService {
     }
 
     async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
-        let settings = match self.effective_settings(config).await {
+        let settings = match self.project_configs.effective_settings(config).await {
             Ok(settings) => settings,
             Err(e) => {
                 tracing::warn!(
@@ -241,32 +240,6 @@ impl PollerService {
         }
 
         Ok((tasks_found, inserted))
-    }
-
-    async fn effective_settings(
-        &self,
-        config: &ProjectConfig,
-    ) -> Result<EffectiveProjectSettings, crate::services::teams::errors::TeamsError> {
-        let team = TeamsRepository::new()
-            .get_by_id(&self.db, config.team_id)
-            .await?;
-        Ok(EffectiveProjectSettings {
-            prompt_template: config
-                .prompt_template
-                .clone()
-                .unwrap_or(team.prompt_template),
-            agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
-            primary_model_provider_key: config
-                .primary_model_provider_key
-                .clone()
-                .or(team.primary_model_provider_key),
-            primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
-            small_model_provider_key: config
-                .small_model_provider_key
-                .clone()
-                .or(team.small_model_provider_key),
-            small_model_id: config.small_model_id.clone().or(team.small_model_id),
-        })
     }
 
     async fn reconcile_blocked_runs(&self, config: &ProjectConfig) -> Result<(), PollError> {

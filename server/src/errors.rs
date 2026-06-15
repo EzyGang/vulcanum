@@ -239,6 +239,7 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
             WorkRunsError::GithubApp(e) => e.into(),
             WorkRunsError::ModelProvider(e) => e.into(),
+            WorkRunsError::ProjectConfig(e) => e.into(),
             WorkRunsError::Team(e) => e.into(),
         }
     }

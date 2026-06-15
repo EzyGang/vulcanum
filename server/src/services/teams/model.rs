@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+use crate::util::serde::deserialize_nullable_string;
+
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Team {
     pub id: Uuid,
@@ -47,25 +49,13 @@ pub struct UpdateTeamRequest {
     pub prompt_template: Option<String>,
     #[serde(default)]
     pub agents_md: Option<String>,
-    #[serde(
-        default,
-        deserialize_with = "crate::services::project_configs::model::deserialize_nullable_string"
-    )]
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub primary_model_provider_key: Option<Option<String>>,
-    #[serde(
-        default,
-        deserialize_with = "crate::services::project_configs::model::deserialize_nullable_string"
-    )]
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub primary_model_id: Option<Option<String>>,
-    #[serde(
-        default,
-        deserialize_with = "crate::services::project_configs::model::deserialize_nullable_string"
-    )]
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub small_model_provider_key: Option<Option<String>>,
-    #[serde(
-        default,
-        deserialize_with = "crate::services::project_configs::model::deserialize_nullable_string"
-    )]
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub small_model_id: Option<Option<String>>,
 }
 

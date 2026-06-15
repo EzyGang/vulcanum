@@ -20,7 +20,7 @@ use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::repository::ModelProvidersRepository;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::repository::WorkersRepository;
@@ -28,7 +28,7 @@ use crate::services::workers::repository::WorkersRepository;
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
     pub workers_repo: WorkersRepository,
-    pub project_configs_repo: ProjectConfigsRepository,
+    pub project_configs: ProjectConfigsService,
     pub github: GithubAppManager,
     pub db: PgPool,
     pub dispatch_store: Arc<dyn DispatchStore>,
@@ -44,7 +44,7 @@ impl Clone for WorkRunsService {
         Self {
             work_runs_repo: self.work_runs_repo.clone(),
             workers_repo: self.workers_repo.clone(),
-            project_configs_repo: self.project_configs_repo.clone(),
+            project_configs: self.project_configs.clone(),
             github: self.github.clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
@@ -62,7 +62,7 @@ impl WorkRunsService {
     pub fn new(
         work_runs_repo: WorkRunsRepository,
         workers_repo: WorkersRepository,
-        project_configs_repo: ProjectConfigsRepository,
+        project_configs: ProjectConfigsService,
         github: GithubAppManager,
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
@@ -75,7 +75,7 @@ impl WorkRunsService {
         Self {
             work_runs_repo,
             workers_repo,
-            project_configs_repo,
+            project_configs,
             github,
             db,
             dispatch_store,

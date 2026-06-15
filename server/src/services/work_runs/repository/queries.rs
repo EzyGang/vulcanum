@@ -114,7 +114,7 @@ impl WorkRunsRepository {
                  VALUES ($1, $2, $3, $4)"#,
                 work_run_id,
                 full_name,
-                repo_url_from_full_name(full_name),
+                format!("https://github.com/{full_name}"),
                 position as i32,
             )
             .execute(db)
@@ -516,10 +516,6 @@ impl WorkRunsRepository {
 
         Ok(())
     }
-}
-
-fn repo_url_from_full_name(full_name: &str) -> String {
-    format!("https://github.com/{full_name}")
 }
 
 pub struct SetResultParams<'a> {

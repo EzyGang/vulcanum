@@ -178,7 +178,8 @@ impl WorkRunsService {
         status: WorkRunStatus,
     ) {
         let project_config = match self
-            .project_configs_repo
+            .project_configs
+            .repo
             .find_by_id(&self.db, run.project_config_id)
             .await
         {

@@ -6,11 +6,17 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::poller::service::PollerService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
+use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::providers::client::TaskFetcher;
 use crate::services::providers::errors::IntegrationError;
 use crate::services::providers::model::IntegrationTask;
+use crate::services::teams::repository::TeamsRepository;
+use crate::services::teams::service::TeamsService;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 
@@ -110,8 +116,19 @@ async fn insert_project_config(
 
 fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
     let repo = ProjectConfigsRepository::new();
-    let service = PollerService::new(
+    let project_configs = ProjectConfigsService::new(
         repo.clone(),
+        db.clone(),
+        crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
+        ModelProvidersService::new(
+            ModelProvidersRepository::new(),
+            db.clone(),
+            ModelCatalogClient::new(),
+        ),
+        TeamsService::new(TeamsRepository::new(), db.clone()),
+    );
+    let service = PollerService::new(
+        project_configs,
         WorkRunsRepository::new(),
         crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
         db,

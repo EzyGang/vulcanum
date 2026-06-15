@@ -1,8 +1,7 @@
 use uuid::Uuid;
 
 use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
-use crate::services::project_configs::model::{EffectiveProjectSettings, JobConfigFields};
-use crate::services::teams::repository::TeamsRepository;
+use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::WorkRunsService;
 use vulcanum_shared::api_types::{JobRepo, JobResponse};
@@ -15,13 +14,14 @@ impl WorkRunsService {
         }
 
         let config = self
-            .project_configs_repo
+            .project_configs
+            .repo
             .find_by_id(&self.db, run.project_config_id)
             .await;
 
         let cfg = match config {
             Ok(ref c) => {
-                let settings = self.effective_project_settings(c).await?;
+                let settings = self.project_configs.effective_settings(c).await?;
                 c.job_fields(settings)
             }
             Err(_) => {
@@ -104,34 +104,6 @@ impl WorkRunsService {
             external_workspace_id: cfg.external_workspace_id,
             max_turns: cfg.max_turns,
             github_token,
-        })
-    }
-
-    async fn effective_project_settings(
-        &self,
-        config: &crate::services::project_configs::model::ProjectConfig,
-    ) -> Result<EffectiveProjectSettings, WorkRunsError> {
-        let team = TeamsRepository::new()
-            .get_by_id(&self.db, config.team_id)
-            .await
-            .map_err(WorkRunsError::Team)?;
-
-        Ok(EffectiveProjectSettings {
-            prompt_template: config
-                .prompt_template
-                .clone()
-                .unwrap_or(team.prompt_template),
-            agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
-            primary_model_provider_key: config
-                .primary_model_provider_key
-                .clone()
-                .or(team.primary_model_provider_key),
-            primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
-            small_model_provider_key: config
-                .small_model_provider_key
-                .clone()
-                .or(team.small_model_provider_key),
-            small_model_id: config.small_model_id.clone().or(team.small_model_id),
         })
     }
 }

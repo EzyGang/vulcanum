@@ -6,7 +6,6 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Input } from '../../shared/ui/Input.view';
 import { SectionHeader } from '../../shared/ui/SectionHeader.view';
 import { Table } from '../../shared/ui/Table.view';
-import { TeamDefaultsContainer } from '../../team-defaults/containers/TeamDefaults.container';
 
 interface FormattedTeam extends Team {
   formattedCreatedAt: string;
@@ -17,6 +16,9 @@ interface FormattedMember extends TeamMember {
 }
 
 interface TeamDetailViewProps {
+  content: {
+    teamDefaults: JSX.Element | null;
+  };
   data: {
     team: FormattedTeam | null;
     members: FormattedMember[];
@@ -48,7 +50,12 @@ interface TeamDetailViewProps {
   };
 }
 
-export const TeamDetailView = ({ data, status, actions }: TeamDetailViewProps): JSX.Element => (
+export const TeamDetailView = ({
+  content,
+  data,
+  status,
+  actions
+}: TeamDetailViewProps): JSX.Element => (
   <div class='flex flex-col gap-6'>
     <SectionHeader
       title={data.team?.name ?? 'Team'}
@@ -123,7 +130,7 @@ export const TeamDetailView = ({ data, status, actions }: TeamDetailViewProps): 
           )}
         </div>
 
-        <TeamDefaultsContainer teamId={data.team.id} />
+        {content.teamDefaults}
 
         <div class='flex flex-col gap-3'>
           <h4 class='text-sm font-semibold uppercase tracking-wide text-text-primary'>Members</h4>

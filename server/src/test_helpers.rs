@@ -278,6 +278,13 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();
     let teams = TeamsService::new(TeamsRepository::new(), pool.clone());
+    let project_configs = ProjectConfigsService::new(
+        project_configs_repo.clone(),
+        pool.clone(),
+        providers_repo.clone(),
+        model_providers.clone(),
+        teams.clone(),
+    );
 
     let github = GithubAppManager::new(
         GithubAppRepository::new(),
@@ -300,7 +307,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let jobs = crate::services::work_runs::service::WorkRunsService::new(
         work_runs_repo.clone(),
         workers_repo,
-        project_configs_repo.clone(),
+        project_configs.clone(),
         github.clone(),
         pool.clone(),
         dispatch_store.clone(),
@@ -319,12 +326,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     AppState {
         auth,
-        project_configs: ProjectConfigsService::new(
-            project_configs_repo,
-            pool.clone(),
-            crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
-            model_providers.clone(),
-        ),
+        project_configs,
         providers: providers.clone(),
         model_providers,
         workers: WorkersService::new(
