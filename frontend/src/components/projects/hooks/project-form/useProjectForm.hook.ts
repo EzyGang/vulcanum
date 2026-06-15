@@ -274,7 +274,15 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       connectedProviderItems,
       primaryModelItems,
       smallModelItems,
-      repos,
+      repoItems: repos.map((repo) => ({
+        fullName: repo,
+        checked: repoFullNames.value.includes(repo),
+        onCheckedChange: (checked: boolean) => {
+          repoFullNames.value = checked
+            ? [...repoFullNames.value, repo]
+            : repoFullNames.value.filter((selectedRepo) => selectedRepo !== repo);
+        }
+      })),
       reposLoading,
       onEnabledChange: (checked: boolean) => {
         enabled.value = checked;
@@ -290,11 +298,6 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onPromptTemplateChange: (value: string) => {
         promptTemplate.value = value;
-      },
-      onRepoToggle: (value: string, checked: boolean) => {
-        repoFullNames.value = checked
-          ? [...repoFullNames.value, value]
-          : repoFullNames.value.filter((repo) => repo !== value);
       },
       onAgentsMdChange: (value: string) => {
         agentsMd.value = value;

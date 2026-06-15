@@ -66,7 +66,7 @@ impl WorkRunsService {
             .await?;
 
         self.work_runs_repo
-            .replace_pr_urls(&mut tx, id, &pr_urls)
+            .replace_pr_urls(&mut *tx, id, &pr_urls)
             .await?;
 
         if let Err(e) = self

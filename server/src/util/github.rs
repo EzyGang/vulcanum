@@ -2,11 +2,21 @@ pub const GITHUB_REPO_URL_PREFIX: &str = "https://github.com/";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct GithubRepo {
-    pub owner: String,
-    pub name: String,
+    owner: String,
+    name: String,
 }
 
 impl GithubRepo {
+    #[must_use]
+    pub fn owner(&self) -> &str {
+        self.owner.as_str()
+    }
+
+    #[must_use]
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
     #[must_use]
     pub fn full_name(&self) -> String {
         format!("{}/{}", self.owner, self.name)

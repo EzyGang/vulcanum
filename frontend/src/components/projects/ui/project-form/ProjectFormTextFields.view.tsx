@@ -18,22 +18,22 @@ export const ProjectFormTextFields = (): JSX.Element => {
           Select all GitHub repositories this project needs.
         </span>
         {f.reposLoading && <span class='text-xs text-text-muted'>Loading repos...</span>}
-        {!f.reposLoading && f.repos.length === 0 && (
+        {!f.reposLoading && f.repoItems.length === 0 && (
           <span class='text-xs text-text-muted'>No accessible GitHub repositories found.</span>
         )}
-        {f.repos.length > 0 && (
+        {f.repoItems.length > 0 && (
           <div
             id='field-repos'
             class='flex max-h-60 flex-col gap-2 overflow-auto border border-border-base bg-bg-card p-3'
           >
-            {f.repos.map((repo) => (
-              <div key={repo} class='flex items-center gap-2 text-sm text-text-secondary'>
+            {f.repoItems.map((repo) => (
+              <div key={repo.fullName} class='flex items-center gap-2 text-sm text-text-secondary'>
                 <Checkbox
-                  checked={f.repoFullNames.value.includes(repo)}
-                  onCheckedChange={(checked) => f.onRepoToggle(repo, checked)}
+                  checked={repo.checked}
+                  onCheckedChange={repo.onCheckedChange}
                   disabled={m.submitting.value}
                 />
-                <span class='font-mono text-xs'>{repo}</span>
+                <span class='font-mono text-xs'>{repo.fullName}</span>
               </div>
             ))}
           </div>

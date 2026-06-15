@@ -312,7 +312,8 @@ impl GithubAppManager {
 
         let repo_name = parse_github_repo(repo_url)
             .ok_or_else(|| GithubAppError::InvalidRepoUrl(repo_url.to_owned()))?
-            .name;
+            .name()
+            .to_owned();
 
         let octo = self.app_octocrab()?;
         let route = format!(
@@ -359,7 +360,7 @@ impl GithubAppManager {
 
         let repo_names = repo_full_names
             .iter()
-            .filter_map(|full_name| parse_github_repo(full_name).map(|repo| repo.name))
+            .filter_map(|full_name| parse_github_repo(full_name).map(|repo| repo.name().to_owned()))
             .collect::<Vec<String>>();
 
         let octo = self.app_octocrab()?;

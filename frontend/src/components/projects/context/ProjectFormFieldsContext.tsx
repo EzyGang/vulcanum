@@ -9,6 +9,12 @@ interface SelectOption {
   label: string;
 }
 
+interface RepoItem {
+  fullName: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}
+
 export interface ProjectFormFieldsContextValue {
   enabled: Signal<boolean>;
   pickupColumn: Signal<string>;
@@ -28,7 +34,7 @@ export interface ProjectFormFieldsContextValue {
   connectedProviderItems: SelectOption[];
   primaryModelItems: SelectOption[];
   smallModelItems: SelectOption[];
-  repos: string[];
+  repoItems: RepoItem[];
   reposLoading: boolean;
   overridesOpen: Signal<boolean>;
   onEnabledChange: (checked: boolean) => void;
@@ -36,7 +42,6 @@ export interface ProjectFormFieldsContextValue {
   onProgressColumnChange: (value: string) => void;
   onTargetColumnChange: (value: string) => void;
   onPromptTemplateChange: (value: string) => void;
-  onRepoToggle: (value: string, checked: boolean) => void;
   onAgentsMdChange: (value: string) => void;
   onToggleOverrides: () => void;
   onPrimaryModelProviderChange: (value: string) => void;

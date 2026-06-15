@@ -1,4 +1,4 @@
-use sqlx::PgConnection;
+use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -444,32 +444,48 @@ impl WorkRunsRepository {
         .ok_or(WorkRunsError::InvalidStatusTransition)
     }
 
-    pub async fn replace_pr_urls(
+    pub async fn replace_pr_urls<'c, Q>(
         &self,
-        db: &mut PgConnection,
+        db: Q,
         work_run_id: Uuid,
         pr_urls: &[String],
-    ) -> Result<(), WorkRunsError> {
-        sqlx::query!(
-            "DELETE FROM work_run_prs WHERE work_run_id = $1",
-            work_run_id
-        )
-        .execute(&mut *db)
-        .await
-        .map_err(WorkRunsError::from)?;
-
-        for (position, pr_url) in pr_urls.iter().enumerate() {
+    ) -> Result<(), WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        if pr_urls.is_empty() {
             sqlx::query!(
-                r#"INSERT INTO work_run_prs (work_run_id, pr_url, position)
-                 VALUES ($1, $2, $3)"#,
-                work_run_id,
-                pr_url,
-                position as i32,
+                "DELETE FROM work_run_prs WHERE work_run_id = $1",
+                work_run_id
             )
-            .execute(&mut *db)
+            .execute(db)
             .await
             .map_err(WorkRunsError::from)?;
+
+            return Ok(());
         }
+
+        let mut query = QueryBuilder::<Postgres>::new(
+            "WITH deleted AS (DELETE FROM work_run_prs WHERE work_run_id = ",
+        );
+        query.push_bind(work_run_id);
+        query.push(") INSERT INTO work_run_prs (work_run_id, pr_url, position) ");
+
+        query.push_values(
+            pr_urls.iter().enumerate(),
+            |mut builder, (position, pr_url)| {
+                builder
+                    .push_bind(work_run_id)
+                    .push_bind(pr_url)
+                    .push_bind(position as i32);
+            },
+        );
+
+        query
+            .build()
+            .execute(db)
+            .await
+            .map_err(WorkRunsError::from)?;
 
         Ok(())
     }

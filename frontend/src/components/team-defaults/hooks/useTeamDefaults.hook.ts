@@ -13,8 +13,10 @@ export const useTeamDefaults = (teamId: string | null) => {
   const smallModelId = useSignal('');
   const formError = useSignal<string | null>(null);
 
-  const { data: team, isLoading } = useApiQuery(['team', teamId ?? ''], () =>
-    getTeam(teamId ?? '')
+  const { data: team, isLoading } = useApiQuery(
+    ['team', teamId ?? ''],
+    () => getTeam(teamId ?? ''),
+    { enabled: !!teamId }
   );
 
   useEffect(() => {
