@@ -7,6 +7,7 @@ import { Login } from '../pages/Login';
 import { ProjectsFormPage } from '../pages/ProjectsForm';
 import { Runs } from '../pages/Runs';
 import { Settings } from '../pages/Settings';
+import { TeamDetail } from '../pages/TeamDetail';
 import { Teams } from '../pages/Teams';
 import { Workers } from '../pages/Workers';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -27,6 +28,11 @@ const InviteAcceptRoute = () => {
   return <InviteAccept token={params.token} />;
 };
 
+const TeamDetailRoute = () => {
+  const params = useParams<{ id: string }>();
+  return <TeamDetail teamId={params.id} />;
+};
+
 export const AppRouter = () => (
   <Switch>
     <Route path='/login' component={Login} />
@@ -39,6 +45,11 @@ export const AppRouter = () => (
     <Route path='/settings'>
       <AuthenticatedLayout>
         <Settings />
+      </AuthenticatedLayout>
+    </Route>
+    <Route path='/teams/:id'>
+      <AuthenticatedLayout>
+        <TeamDetailRoute />
       </AuthenticatedLayout>
     </Route>
     <Route path='/teams'>

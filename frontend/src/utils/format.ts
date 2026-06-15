@@ -3,6 +3,11 @@ const COMPACT_NUMBER_FORMATTER = new Intl.NumberFormat('en', {
   notation: 'compact'
 });
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en', {
+  dateStyle: 'medium',
+  timeStyle: 'short'
+});
+
 export const formatRelativeTime = (dateStr: string | null): string => {
   if (!dateStr) return '—';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -41,4 +46,13 @@ export const formatTokenCount = (tokens: number | null | undefined): string => {
   if (tokens === null || tokens === undefined) return '—';
 
   return COMPACT_NUMBER_FORMATTER.format(tokens);
+};
+
+export const formatDateTime = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '—';
+
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return DATE_TIME_FORMATTER.format(date);
 };

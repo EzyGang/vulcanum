@@ -34,7 +34,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -47,7 +47,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -60,7 +60,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: true, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -80,7 +80,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects: [], deleteConfirmId, deleteError }}
         status={{ loading: false, error }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -98,7 +98,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -114,7 +114,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -130,7 +130,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -146,7 +146,7 @@ describe('Projects.view', () => {
       <ProjectsView
         data={{ projects, deleteConfirmId, deleteError }}
         status={{ loading: false, error: null }}
-        extra={{ hasProviders: true }}
+        extra={{ canCreateProject: true, projectSetupWarning: '' }}
         actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
       />
     );
@@ -154,5 +154,21 @@ describe('Projects.view', () => {
     expect(getByLabelText('Confirm delete')).toBeDefined();
     fireEvent.click(getByLabelText('Confirm delete'));
     expect(onDelete).toHaveBeenCalledWith('1');
+  });
+
+  it('disables connect project and shows setup warning when requirements are missing', () => {
+    const warning =
+      'Create at least one task tracker provider. Connect at least one model provider.';
+    const { getByText } = render(
+      <ProjectsView
+        data={{ projects: [], deleteConfirmId, deleteError }}
+        status={{ loading: false, error: null }}
+        extra={{ canCreateProject: false, projectSetupWarning: warning }}
+        actions={{ onEditClick, onConnectProject, onConfirmDelete, onCancelDelete, onDelete }}
+      />
+    );
+
+    expect((getByText('Connect Project') as HTMLButtonElement).disabled).toBe(true);
+    expect(getByText(warning)).toBeDefined();
   });
 });

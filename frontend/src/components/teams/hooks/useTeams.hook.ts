@@ -1,11 +1,9 @@
 import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
-import { getAuthMode } from '../../../services/auth/auth.service';
+import { useLocation } from 'wouter-preact';
 import {
   createTeam,
-  createTeamInvite,
   deleteTeam,
-  listTeamMembers,
   listTeams,
   updateTeam
 } from '../../../services/teams/teams.service';
@@ -17,33 +15,21 @@ import {
 import type { Team } from '../../../types/teams';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { formatDateTime } from '../../../utils/format';
 
 export const useTeams = () => {
-  const selectedManageTeamId = useSignal<string | null>(selectedTeamId.value);
+  const [, setLocation] = useLocation();
+  const showCreateForm = useSignal(false);
   const name = useSignal('');
   const editName = useSignal('');
   const editingTeamId = useSignal<string | null>(null);
   const formError = useSignal<string | null>(null);
-  const inviteLink = useSignal<string | null>(null);
-  const inviteExpiresAt = useSignal<string | null>(null);
 
-  const { data: authMode } = useApiQuery(['auth-mode'], getAuthMode);
   const { data: teamList = [], isLoading: loading, error } = useApiQuery(['teams'], listTeams);
 
   useEffect(() => {
     storedTeams.value = teamList.map((team) => ({ id: team.id, name: team.name }));
-    const selectedStillExists = teamList.some((team) => team.id === selectedManageTeamId.value);
-    if (!selectedStillExists && teamList[0]) {
-      selectedManageTeamId.value = teamList[0].id;
-    }
-  }, [teamList, selectedManageTeamId.value]);
-
-  const selectedTeam = teamList.find((team) => team.id === selectedManageTeamId.value) ?? null;
-  const membersQuery = useApiQuery(
-    ['teams', selectedManageTeamId.value, 'members'],
-    () => listTeamMembers(selectedManageTeamId.value ?? ''),
-    { enabled: Boolean(selectedManageTeamId.value) }
-  );
+  }, [teamList]);
 
   const refreshTeams = useCallback(() => {
     invalidate('teams');
@@ -54,7 +40,7 @@ export const useTeams = () => {
     {
       onSuccess: (team) => {
         setSelectedTeamId(team.id);
-        selectedManageTeamId.value = team.id;
+        showCreateForm.value = false;
         refreshTeams();
       }
     }
@@ -68,12 +54,21 @@ export const useTeams = () => {
 
   const deleteMutation = useApiMutation((id: string) => deleteTeam(id), {
     onSuccess: () => {
-      selectedManageTeamId.value = null;
+      editingTeamId.value = null;
       refreshTeams();
     }
   });
 
-  const inviteMutation = useApiMutation((teamId: string) => createTeamInvite(teamId));
+  const handleShowCreate = useCallback(() => {
+    showCreateForm.value = true;
+    formError.value = null;
+  }, []);
+
+  const handleCancelCreate = useCallback(() => {
+    showCreateForm.value = false;
+    name.value = '';
+    formError.value = null;
+  }, []);
 
   const handleNameChange = useCallback((value: string) => {
     name.value = value;
@@ -99,13 +94,22 @@ export const useTeams = () => {
     [handleEditNameChange]
   );
 
-  const handleSelectTeam = useCallback((teamId: string) => {
-    selectedManageTeamId.value = teamId;
-    editingTeamId.value = null;
-    inviteLink.value = null;
-    inviteExpiresAt.value = null;
-    formError.value = null;
-  }, []);
+  const handleOpenTeam = useCallback(
+    (teamId: string) => {
+      setLocation(`/teams/${teamId}`);
+    },
+    [setLocation]
+  );
+
+  const handleOpenTeamKeyDown = useCallback(
+    (event: KeyboardEvent, teamId: string) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+
+      event.preventDefault();
+      handleOpenTeam(teamId);
+    },
+    [handleOpenTeam]
+  );
 
   const handleUseTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
@@ -168,58 +172,39 @@ export const useTeams = () => {
     [deleteMutation]
   );
 
-  const handleCreateInvite = useCallback(async () => {
-    if (!selectedManageTeamId.value) return;
-
-    formError.value = null;
-    inviteLink.value = null;
-    inviteExpiresAt.value = null;
-    try {
-      const invite = await inviteMutation.mutateAsync(selectedManageTeamId.value);
-      inviteLink.value = `${window.location.origin}/invites/${invite.token}`;
-      inviteExpiresAt.value = invite.expiresAt;
-    } catch (err) {
-      formError.value = err instanceof Error ? err.message : 'Failed to create invite';
-    }
-  }, [selectedManageTeamId.value, inviteMutation]);
-
   return {
     data: {
-      teams: teamList,
-      members: membersQuery.data ?? [],
-      selectedTeam,
+      teams: teamList.map((team) => ({
+        ...team,
+        formattedCreatedAt: formatDateTime(team.createdAt)
+      })),
       selectedTeamId: selectedTeamId.value,
-      selectedManageTeamId: selectedManageTeamId.value,
+      showCreateForm,
       name: name.value,
       editName: editName.value,
-      editingTeamId: editingTeamId.value,
-      isSingleUser: authMode?.isSingleUser ?? false,
-      inviteLink: inviteLink.value,
-      inviteExpiresAt: inviteExpiresAt.value
+      editingTeamId: editingTeamId.value
     },
     status: {
       loading,
-      membersLoading: membersQuery.isLoading,
       error,
       formError: formError.value,
       creating: createMutation.isPending,
       updating: updateMutation.isPending,
-      deleting: deleteMutation.isPending,
-      creatingInvite: inviteMutation.isPending
+      deleting: deleteMutation.isPending
     },
     actions: {
-      onNameChange: handleNameChange,
-      onEditNameChange: handleEditNameChange,
+      onShowCreate: handleShowCreate,
+      onCancelCreate: handleCancelCreate,
       onNameInput: handleNameInput,
       onEditNameInput: handleEditNameInput,
-      onSelectTeam: handleSelectTeam,
+      onOpenTeam: handleOpenTeam,
+      onOpenTeamKeyDown: handleOpenTeamKeyDown,
       onUseTeam: handleUseTeam,
       onStartEdit: handleStartEdit,
       onCancelEdit: handleCancelEdit,
       onCreate: handleCreate,
       onUpdate: handleUpdate,
-      onDelete: handleDelete,
-      onCreateInvite: handleCreateInvite
+      onDelete: handleDelete
     }
   };
 };

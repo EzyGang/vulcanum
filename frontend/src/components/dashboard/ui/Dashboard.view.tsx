@@ -4,6 +4,7 @@ import { Button } from '../../shared/ui/Button.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { StatusBadge } from '../../shared/ui/StatusBadge.view';
 import { Table } from '../../shared/ui/Table.view';
+import { WarningBanner } from '../../shared/ui/WarningBanner.view';
 import { DashboardTableSection } from './DashboardTableSection.view';
 
 interface StatsData {
@@ -41,6 +42,8 @@ interface DashboardViewProps {
     providers: ProviderSummary[];
     githubInstallation: { accountLogin: string } | null;
     githubLoading: boolean;
+    canCreateProject: boolean;
+    projectSetupWarning: string;
   };
   status: {
     loading: boolean;
@@ -69,7 +72,16 @@ const SkeletonStatCard = ({ label }: { label: string }): JSX.Element => (
 );
 
 export const DashboardView = ({
-  data: { stats, workers, projects, providers, githubInstallation, githubLoading },
+  data: {
+    stats,
+    workers,
+    projects,
+    providers,
+    githubInstallation,
+    githubLoading,
+    canCreateProject,
+    projectSetupWarning
+  },
   status: { loading, error },
   actions: { goToSettings, goToWorkers, goToRuns, goToNewProject }
 }: DashboardViewProps): JSX.Element => (
@@ -77,6 +89,8 @@ export const DashboardView = ({
     <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Dashboard</h2>
 
     {error && <ErrorBanner message={error.message} />}
+
+    {projectSetupWarning && <WarningBanner message={projectSetupWarning} />}
 
     {loading && !stats && <div class='text-text-muted text-sm'>Loading...</div>}
 
@@ -104,7 +118,12 @@ export const DashboardView = ({
       <Button variant='ghost' onClick={goToSettings}>
         Add Provider
       </Button>
-      <Button variant='ghost' onClick={goToNewProject}>
+      <Button
+        variant='ghost'
+        onClick={goToNewProject}
+        disabled={!canCreateProject}
+        title={projectSetupWarning || undefined}
+      >
         Connect Project
       </Button>
       <Button variant='ghost' onClick={goToRuns}>

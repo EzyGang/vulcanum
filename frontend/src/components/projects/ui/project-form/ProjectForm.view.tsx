@@ -1,5 +1,6 @@
 import type { JSX } from 'preact';
 import { Button } from '../../../shared/ui/Button.view';
+import { WarningBanner } from '../../../shared/ui/WarningBanner.view';
 import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext';
 import { ProjectFormColumns } from './ProjectFormColumns.view';
 import { ProjectFormLookup } from './ProjectFormLookup.view';
@@ -14,6 +15,8 @@ export const ProjectFormView = (): JSX.Element => {
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>
         {m.isEdit ? 'Edit Project' : 'Connect Project'}
       </h2>
+
+      {m.projectSetupWarning && <WarningBanner message={m.projectSetupWarning} />}
 
       {m.projectLoading && <div class='text-text-muted text-sm'>Loading project...</div>}
 
