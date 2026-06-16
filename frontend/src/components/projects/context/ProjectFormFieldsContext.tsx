@@ -19,12 +19,18 @@ export interface ProjectFormFieldsContextValue {
   columns: Signal<ColumnInfo[]>;
   columnsLoading: Signal<boolean>;
   promptTemplate: Signal<string>;
+  promptTemplateOverride: Signal<boolean>;
   repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
+  agentsMdOverride: Signal<boolean>;
   primaryModelProviderKey: Signal<string>;
+  primaryModelProviderOverride: Signal<boolean>;
   primaryModelId: Signal<string>;
+  primaryModelIdOverride: Signal<boolean>;
   smallModelProviderKey: Signal<string>;
+  smallModelProviderOverride: Signal<boolean>;
   smallModelId: Signal<string>;
+  smallModelIdOverride: Signal<boolean>;
   modelProviders: ModelProviderConfig[];
   catalogProviders: CatalogProvider[];
   connectedProviderItems: SelectOption[];
@@ -33,6 +39,7 @@ export interface ProjectFormFieldsContextValue {
   repoItems: RepoItem[];
   reposLoading: boolean;
   overridesOpen: Signal<boolean>;
+  hasOverrides: boolean;
   overridesToggleLabel: string;
   onEnabledChange: (checked: boolean) => void;
   onPickupColumnChange: (value: string) => void;
@@ -40,13 +47,19 @@ export interface ProjectFormFieldsContextValue {
   onTargetColumnChange: (value: string) => void;
   onPromptTemplateInput: (event: Event) => void;
   onPromptTemplateChange: (value: string) => void;
+  onResetPromptTemplateOverride: () => void;
   onAgentsMdInput: (event: Event) => void;
   onAgentsMdChange: (value: string) => void;
+  onResetAgentsMdOverride: () => void;
   onToggleOverrides: () => void;
   onPrimaryModelProviderChange: (value: string) => void;
+  onResetPrimaryModelProviderOverride: () => void;
   onPrimaryModelChange: (value: string) => void;
+  onResetPrimaryModelOverride: () => void;
   onSmallModelProviderChange: (value: string) => void;
+  onResetSmallModelProviderOverride: () => void;
   onSmallModelChange: (value: string) => void;
+  onResetSmallModelOverride: () => void;
 }
 
 const ProjectFormFieldsContext = createContext<ProjectFormFieldsContextValue | null>(null);

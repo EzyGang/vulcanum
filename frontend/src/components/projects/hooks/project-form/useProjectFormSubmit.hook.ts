@@ -14,13 +14,18 @@ interface UseProjectFormSubmitOptions {
   progressColumn: Signal<string>;
   targetColumn: Signal<string>;
   promptTemplate: Signal<string>;
+  promptTemplateOverride: Signal<boolean>;
   repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
-  overridesOpen: Signal<boolean>;
+  agentsMdOverride: Signal<boolean>;
   primaryModelProviderKey: Signal<string>;
+  primaryModelProviderOverride: Signal<boolean>;
   primaryModelId: Signal<string>;
+  primaryModelIdOverride: Signal<boolean>;
   smallModelProviderKey: Signal<string>;
+  smallModelProviderOverride: Signal<boolean>;
   smallModelId: Signal<string>;
+  smallModelIdOverride: Signal<boolean>;
   providerId: Signal<string>;
   externalProjectId: Signal<string>;
   workspaceId: Signal<string>;
@@ -35,13 +40,18 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     progressColumn,
     targetColumn,
     promptTemplate,
+    promptTemplateOverride,
     repoFullNames,
     agentsMd,
-    overridesOpen,
+    agentsMdOverride,
     primaryModelProviderKey,
+    primaryModelProviderOverride,
     primaryModelId,
+    primaryModelIdOverride,
     smallModelProviderKey,
+    smallModelProviderOverride,
     smallModelId,
+    smallModelIdOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -89,13 +99,19 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               pickupColumn: pickupColumn.value || undefined,
               progressColumn: progressColumn.value || undefined,
               targetColumn: targetColumn.value || undefined,
-              promptTemplate: overrideOrNull(promptTemplate, overridesOpen),
+              promptTemplate: overrideOrNull(promptTemplate, promptTemplateOverride),
               repoFullNames: repoFullNames.value,
-              agentsMd: overrideOrNull(agentsMd, overridesOpen),
-              primaryModelProviderKey: overrideOrNull(primaryModelProviderKey, overridesOpen),
-              primaryModelId: overrideOrNull(primaryModelId, overridesOpen),
-              smallModelProviderKey: overrideOrNull(smallModelProviderKey, overridesOpen),
-              smallModelId: overrideOrNull(smallModelId, overridesOpen),
+              agentsMd: overrideOrNull(agentsMd, agentsMdOverride),
+              primaryModelProviderKey: overrideOrNull(
+                primaryModelProviderKey,
+                primaryModelProviderOverride
+              ),
+              primaryModelId: overrideOrNull(primaryModelId, primaryModelIdOverride),
+              smallModelProviderKey: overrideOrNull(
+                smallModelProviderKey,
+                smallModelProviderOverride
+              ),
+              smallModelId: overrideOrNull(smallModelId, smallModelIdOverride),
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -116,13 +132,19 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             pickupColumn: pickupColumn.value || undefined,
             progressColumn: progressColumn.value || undefined,
             targetColumn: targetColumn.value || undefined,
-            promptTemplate: overrideOrUndefined(promptTemplate, overridesOpen),
+            promptTemplate: overrideOrUndefined(promptTemplate, promptTemplateOverride),
             repoFullNames: repoFullNames.value,
-            agentsMd: overrideOrUndefined(agentsMd, overridesOpen),
-            primaryModelProviderKey: overrideOrUndefined(primaryModelProviderKey, overridesOpen),
-            primaryModelId: overrideOrUndefined(primaryModelId, overridesOpen),
-            smallModelProviderKey: overrideOrUndefined(smallModelProviderKey, overridesOpen),
-            smallModelId: overrideOrUndefined(smallModelId, overridesOpen)
+            agentsMd: overrideOrUndefined(agentsMd, agentsMdOverride),
+            primaryModelProviderKey: overrideOrUndefined(
+              primaryModelProviderKey,
+              primaryModelProviderOverride
+            ),
+            primaryModelId: overrideOrUndefined(primaryModelId, primaryModelIdOverride),
+            smallModelProviderKey: overrideOrUndefined(
+              smallModelProviderKey,
+              smallModelProviderOverride
+            ),
+            smallModelId: overrideOrUndefined(smallModelId, smallModelIdOverride)
           });
         }
       } catch (err) {

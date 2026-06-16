@@ -59,13 +59,19 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const progressColumn = useSignal('');
   const targetColumn = useSignal('');
   const promptTemplate = useSignal(DEFAULT_PROJECT_PROMPT_TEMPLATE);
+  const promptTemplateOverride = useSignal(false);
   const repoFullNames = useSignal<string[]>([]);
   const agentsMd = useSignal('');
+  const agentsMdOverride = useSignal(false);
   const overridesOpen = useSignal(false);
   const primaryModelProviderKey = useSignal('');
+  const primaryModelProviderOverride = useSignal(false);
   const primaryModelId = useSignal('');
+  const primaryModelIdOverride = useSignal(false);
   const smallModelProviderKey = useSignal('');
+  const smallModelProviderOverride = useSignal(false);
   const smallModelId = useSignal('');
+  const smallModelIdOverride = useSignal(false);
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
@@ -75,13 +81,18 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     progressColumn,
     targetColumn,
     promptTemplate,
+    promptTemplateOverride,
     repoFullNames,
     agentsMd,
-    overridesOpen,
+    agentsMdOverride,
     primaryModelProviderKey,
+    primaryModelProviderOverride,
     primaryModelId,
+    primaryModelIdOverride,
     smallModelProviderKey,
+    smallModelProviderOverride,
     smallModelId,
+    smallModelIdOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -106,13 +117,19 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       progressColumn.value = p.progressColumn;
       targetColumn.value = p.targetColumn;
       promptTemplate.value = p.promptTemplate ?? DEFAULT_PROJECT_PROMPT_TEMPLATE;
+      promptTemplateOverride.value = p.promptTemplate != null;
       repoFullNames.value = p.repoFullNames ?? [];
       agentsMd.value = p.agentsMd ?? '';
-      overridesOpen.value = !!p.promptTemplate || !!p.agentsMd || !!p.primaryModelProviderKey;
+      agentsMdOverride.value = p.agentsMd != null;
+      overridesOpen.value = false;
       primaryModelProviderKey.value = p.primaryModelProviderKey ?? '';
+      primaryModelProviderOverride.value = p.primaryModelProviderKey != null;
       primaryModelId.value = p.primaryModelId ?? '';
+      primaryModelIdOverride.value = p.primaryModelId != null;
       smallModelProviderKey.value = p.smallModelProviderKey ?? '';
+      smallModelProviderOverride.value = p.smallModelProviderKey != null;
       smallModelId.value = p.smallModelId ?? '';
+      smallModelIdOverride.value = p.smallModelId != null;
     }
   }, [projectId, existingProject]);
 
@@ -175,6 +192,13 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     primaryModelProviderKey,
     smallModelProviderKey
   });
+  const hasOverrides =
+    promptTemplateOverride.value ||
+    agentsMdOverride.value ||
+    primaryModelProviderOverride.value ||
+    primaryModelIdOverride.value ||
+    smallModelProviderOverride.value ||
+    smallModelIdOverride.value;
 
   return {
     meta: {
@@ -258,13 +282,19 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       columns: lookup.columns,
       columnsLoading: lookup.columnsLoading,
       promptTemplate,
+      promptTemplateOverride,
       repoFullNames,
       agentsMd,
+      agentsMdOverride,
       overridesOpen,
       primaryModelProviderKey,
+      primaryModelProviderOverride,
       primaryModelId,
+      primaryModelIdOverride,
       smallModelProviderKey,
+      smallModelProviderOverride,
       smallModelId,
+      smallModelIdOverride,
       modelProviders,
       catalogProviders,
       connectedProviderItems,
@@ -280,6 +310,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         }
       })),
       reposLoading,
+      hasOverrides,
       overridesToggleLabel: overridesOpen.value ? 'Hide' : 'Show',
       onEnabledChange: (checked: boolean) => {
         enabled.value = checked;
@@ -293,30 +324,72 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onTargetColumnChange: (value: string) => {
         targetColumn.value = value;
       },
-      onPromptTemplateInput: textInputHandler(promptTemplate),
+      onPromptTemplateInput: (event: Event) => {
+        promptTemplateOverride.value = true;
+        textInputHandler(promptTemplate)(event);
+      },
       onPromptTemplateChange: (value: string) => {
+        promptTemplateOverride.value = true;
         promptTemplate.value = value;
       },
-      onAgentsMdInput: textInputHandler(agentsMd),
+      onResetPromptTemplateOverride: () => {
+        promptTemplateOverride.value = false;
+        promptTemplate.value = DEFAULT_PROJECT_PROMPT_TEMPLATE;
+      },
+      onAgentsMdInput: (event: Event) => {
+        agentsMdOverride.value = true;
+        textInputHandler(agentsMd)(event);
+      },
       onAgentsMdChange: (value: string) => {
+        agentsMdOverride.value = true;
         agentsMd.value = value;
+      },
+      onResetAgentsMdOverride: () => {
+        agentsMdOverride.value = false;
+        agentsMd.value = '';
       },
       onToggleOverrides: () => {
         overridesOpen.value = !overridesOpen.value;
       },
       onPrimaryModelProviderChange: (value: string) => {
+        primaryModelProviderOverride.value = true;
         primaryModelProviderKey.value = value;
+        primaryModelIdOverride.value = false;
+        primaryModelId.value = '';
+      },
+      onResetPrimaryModelProviderOverride: () => {
+        primaryModelProviderOverride.value = false;
+        primaryModelProviderKey.value = '';
+        primaryModelIdOverride.value = false;
         primaryModelId.value = '';
       },
       onPrimaryModelChange: (value: string) => {
+        primaryModelIdOverride.value = true;
         primaryModelId.value = value;
       },
+      onResetPrimaryModelOverride: () => {
+        primaryModelIdOverride.value = false;
+        primaryModelId.value = '';
+      },
       onSmallModelProviderChange: (value: string) => {
+        smallModelProviderOverride.value = true;
         smallModelProviderKey.value = value;
+        smallModelIdOverride.value = false;
+        smallModelId.value = '';
+      },
+      onResetSmallModelProviderOverride: () => {
+        smallModelProviderOverride.value = false;
+        smallModelProviderKey.value = '';
+        smallModelIdOverride.value = false;
         smallModelId.value = '';
       },
       onSmallModelChange: (value: string) => {
+        smallModelIdOverride.value = true;
         smallModelId.value = value;
+      },
+      onResetSmallModelOverride: () => {
+        smallModelIdOverride.value = false;
+        smallModelId.value = '';
       }
     }
   };

@@ -5,6 +5,7 @@ import { Select } from '../../../shared/ui/Select.view';
 import { TextArea } from '../../../shared/ui/TextArea.view';
 import { useProjectFormFieldsContext } from '../../context/ProjectFormFieldsContext';
 import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext';
+import { OverrideResetButton } from './OverrideResetButton.view';
 
 export const ProjectFormTextFields = (): JSX.Element => {
   const m = useProjectFormMetaContext();
@@ -52,14 +53,23 @@ export const ProjectFormTextFields = (): JSX.Element => {
         </button>
         {!f.overridesOpen.value && (
           <span class='text-xs text-text-muted'>
-            Prompt, model, and Agents.md settings inherit from the team.
+            {f.hasOverrides
+              ? 'This project has override values. Expand to view or reset them.'
+              : 'Prompt, model, and Agents.md settings inherit from the team.'}
           </span>
         )}
         {f.overridesOpen.value && (
           <>
             <div class='flex flex-col gap-2'>
               <div class='flex flex-col gap-1'>
-                <Label for='field-prompt-template'>Prompt Template Override</Label>
+                <div class='flex items-center justify-between gap-2'>
+                  <Label for='field-prompt-template'>Prompt Template Override</Label>
+                  <OverrideResetButton
+                    label='Use team default prompt template'
+                    disabled={m.submitting.value || !f.promptTemplateOverride.value}
+                    onClick={f.onResetPromptTemplateOverride}
+                  />
+                </div>
                 <span class='text-text-muted text-xs'>
                   Supports {'{{task_title}}'}, {'{{task_body}}'}, {'{{repo_url}}'},{' '}
                   {'{{repo_urls}}'}, and {'{{repo_layout}}'} variables.
@@ -75,7 +85,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
             </div>
 
             <div class='flex flex-col gap-2'>
-              <Label for='field-primary-model-provider'>Primary Model Provider</Label>
+              <div class='flex items-center justify-between gap-2'>
+                <Label for='field-primary-model-provider'>Primary Model Provider</Label>
+                <OverrideResetButton
+                  label='Use team default primary model provider'
+                  disabled={m.submitting.value || !f.primaryModelProviderOverride.value}
+                  onClick={f.onResetPrimaryModelProviderOverride}
+                />
+              </div>
               <Select
                 id='field-primary-model-provider'
                 value={f.primaryModelProviderKey.value}
@@ -87,7 +104,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
             </div>
 
             <div class='flex flex-col gap-2'>
-              <Label for='field-primary-model'>Primary Model</Label>
+              <div class='flex items-center justify-between gap-2'>
+                <Label for='field-primary-model'>Primary Model</Label>
+                <OverrideResetButton
+                  label='Use team default primary model'
+                  disabled={m.submitting.value || !f.primaryModelIdOverride.value}
+                  onClick={f.onResetPrimaryModelOverride}
+                />
+              </div>
               <Select
                 id='field-primary-model'
                 value={f.primaryModelId.value}
@@ -100,7 +124,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
 
             <div class='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div class='flex flex-col gap-2'>
-                <Label for='field-small-model-provider'>Small Model Provider</Label>
+                <div class='flex items-center justify-between gap-2'>
+                  <Label for='field-small-model-provider'>Small Model Provider</Label>
+                  <OverrideResetButton
+                    label='Use team default small model provider'
+                    disabled={m.submitting.value || !f.smallModelProviderOverride.value}
+                    onClick={f.onResetSmallModelProviderOverride}
+                  />
+                </div>
                 <Select
                   id='field-small-model-provider'
                   value={f.smallModelProviderKey.value}
@@ -111,7 +142,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
                 />
               </div>
               <div class='flex flex-col gap-2'>
-                <Label for='field-small-model'>Small Model</Label>
+                <div class='flex items-center justify-between gap-2'>
+                  <Label for='field-small-model'>Small Model</Label>
+                  <OverrideResetButton
+                    label='Use team default small model'
+                    disabled={m.submitting.value || !f.smallModelIdOverride.value}
+                    onClick={f.onResetSmallModelOverride}
+                  />
+                </div>
                 <Select
                   id='field-small-model'
                   value={f.smallModelId.value}
@@ -124,7 +162,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
             </div>
 
             <div class='flex flex-col gap-2'>
-              <Label for='field-agents-md'>Agents.md Override</Label>
+              <div class='flex items-center justify-between gap-2'>
+                <Label for='field-agents-md'>Agents.md Override</Label>
+                <OverrideResetButton
+                  label='Use team default Agents.md'
+                  disabled={m.submitting.value || !f.agentsMdOverride.value}
+                  onClick={f.onResetAgentsMdOverride}
+                />
+              </div>
               <span class='text-text-muted text-xs'>
                 Global agent guide for this project. Does not overwrite any per-repo AGENTS.md file.
               </span>
