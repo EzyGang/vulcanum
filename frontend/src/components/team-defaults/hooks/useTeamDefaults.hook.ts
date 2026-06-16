@@ -12,6 +12,7 @@ import {
 import { getTeam, updateTeam } from '../../../services/teams/teams.service';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { parsePositiveNumber } from '../../../utils/numbers';
 import { textInputHandler } from '../../../utils/signalInput';
 
 export const useTeamDefaults = (teamId: string | null) => {
@@ -117,9 +118,10 @@ export const useTeamDefaults = (teamId: string | null) => {
       },
       onReviewPickupColumnInput: textInputHandler(reviewPickupColumn),
       onReviewMaxTurnsInput: (event: Event) => {
-        const value = Number((event.target as HTMLInputElement).value);
-        reviewMaxTurns.value =
-          Number.isFinite(value) && value > 0 ? value : DEFAULT_REVIEW_MAX_TURNS;
+        reviewMaxTurns.value = parsePositiveNumber(
+          (event.target as HTMLInputElement).value,
+          DEFAULT_REVIEW_MAX_TURNS
+        );
       },
       onReviewPromptTemplateInput: textInputHandler(reviewPromptTemplate),
       onSubmit: async (event: Event) => {

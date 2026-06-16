@@ -2,7 +2,7 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../../types/shared';
 import { Button } from '../../shared/ui/Button.view';
-import { Checkbox } from '../../shared/ui/Checkbox.view';
+import { CheckboxWithLabel } from '../../shared/ui/CheckboxWithLabel.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
@@ -127,17 +127,14 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
           />
         </div>
         <div class='flex flex-col gap-4 border border-border-base bg-bg-panel p-4'>
-          <label for='team-review-enabled' class='flex items-center gap-2 cursor-pointer'>
-            <Checkbox
-              id='team-review-enabled'
-              checked={data.reviewEnabled.value}
-              onCheckedChange={actions.onReviewEnabledChange}
-              disabled={status.saving}
-            />
-            <span class='text-sm font-semibold uppercase tracking-wide text-text-primary'>
-              Enable PR Review Automation
-            </span>
-          </label>
+          <CheckboxWithLabel
+            id='team-review-enabled'
+            checked={data.reviewEnabled.value}
+            onCheckedChange={actions.onReviewEnabledChange}
+            disabled={status.saving}
+          >
+            Enable PR Review Automation
+          </CheckboxWithLabel>
           <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
             <div class='flex flex-col gap-2'>
               <Label for='team-review-pickup-column'>Review Pickup Column</Label>

@@ -13,6 +13,7 @@ import {
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
+import { parsePositiveNumber } from '../../../../utils/numbers';
 import {
   getProjectSetupHelpText,
   getProjectSetupMissingMessages
@@ -458,10 +459,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         reviewPickupColumn.value = DEFAULT_REVIEW_PICKUP_COLUMN;
       },
       onReviewMaxTurnsInput: (event: Event) => {
-        const value = Number((event.target as HTMLInputElement).value);
         reviewMaxTurnsOverride.value = true;
-        reviewMaxTurns.value =
-          Number.isFinite(value) && value > 0 ? value : DEFAULT_REVIEW_MAX_TURNS;
+        reviewMaxTurns.value = parsePositiveNumber(
+          (event.target as HTMLInputElement).value,
+          DEFAULT_REVIEW_MAX_TURNS
+        );
       },
       onResetReviewMaxTurnsOverride: () => {
         reviewMaxTurnsOverride.value = false;

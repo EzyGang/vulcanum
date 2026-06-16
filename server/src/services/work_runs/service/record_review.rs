@@ -1,7 +1,8 @@
+use vulcanum_shared::api_types::SubmitResultRequest;
+
 use crate::services::work_runs::model::WorkRun;
 use crate::services::work_runs::repository::queries::prs::InsertReviewResultParams;
 use crate::services::work_runs::service::WorkRunsService;
-use vulcanum_shared::api_types::SubmitResultRequest;
 
 impl WorkRunsService {
     pub(crate) async fn record_review_result(&self, run: &WorkRun, params: &SubmitResultRequest) {

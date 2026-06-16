@@ -1,5 +1,6 @@
 import type { JSX } from 'preact';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
+import { CheckboxWithLabel } from '../../../shared/ui/CheckboxWithLabel.view';
 import { Input } from '../../../shared/ui/Input.view';
 import { Label } from '../../../shared/ui/Label.view';
 import { Select } from '../../../shared/ui/Select.view';
@@ -201,15 +202,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
                   onClick={f.onResetReviewOverrides}
                 />
               </div>
-              <label for='field-review-enabled' class='flex items-center gap-2 cursor-pointer'>
-                <Checkbox
-                  id='field-review-enabled'
-                  checked={f.reviewEnabled.value}
-                  onCheckedChange={f.onReviewEnabledChange}
-                  disabled={m.submitting.value}
-                />
-                <span class='text-sm text-text-primary'>Override review automation enabled</span>
-              </label>
+              <CheckboxWithLabel
+                id='field-review-enabled'
+                checked={f.reviewEnabled.value}
+                onCheckedChange={f.onReviewEnabledChange}
+                disabled={m.submitting.value}
+              >
+                Override review automation enabled
+              </CheckboxWithLabel>
               <ProjectFormColumnSelect
                 id='field-review-pickup-column'
                 label='Review Pickup Column Override'
