@@ -77,11 +77,7 @@ pub fn parse_github_repo(value: &str) -> Option<GithubRepo> {
 
 #[must_use]
 pub fn parse_github_pr_url(value: &str) -> Option<GithubPullRequest> {
-    let trimmed = value
-        .split(['?', '#'])
-        .next()
-        .unwrap_or(value)
-        .trim_end_matches('/');
+    let trimmed = value.split(['?', '#']).next()?.trim_end_matches('/');
     let path = github_repo_path(trimmed);
     let mut parts = path.split('/');
     let owner = parts.next()?;

@@ -288,6 +288,7 @@ impl WorkRunsService {
     }
 }
 
+#[must_use]
 fn normalized_pr_urls(params: &SubmitResultRequest) -> Vec<String> {
     if !params.pr_urls.is_empty() {
         return params.pr_urls.clone();
