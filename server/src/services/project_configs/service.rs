@@ -2,6 +2,8 @@ mod lookup;
 mod mutation;
 mod settings;
 
+use std::collections::HashSet;
+
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -96,11 +98,21 @@ impl ProjectConfigsService {
         )
         .await?;
 
-        let config = self.repo.create(&self.db, team_id, &params).await?;
+        params.repo_full_names = unique_repo_full_names(params.repo_full_names);
+
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(ProjectConfigsError::Database)?;
+        let config = self.repo.create(&mut *tx, team_id, &params).await?;
         self.repo
-            .replace_repos(&self.db, config.id, &params.repo_full_names)
+            .replace_repos(&mut tx, config.id, &params.repo_full_names)
             .await?;
-        self.repo.find_by_id(&self.db, config.id).await
+        let created = self.repo.find_by_id(&mut *tx, config.id).await?;
+        tx.commit().await.map_err(ProjectConfigsError::Database)?;
+
+        Ok(created)
     }
 
     pub(super) async fn resolve_client(
@@ -133,6 +145,19 @@ impl ProjectConfigsService {
             .await
             .map_err(ProjectConfigsError::ModelProvider)
     }
+}
+
+pub(super) fn unique_repo_full_names(repo_full_names: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    let mut unique = Vec::new();
+
+    for full_name in repo_full_names {
+        if seen.insert(full_name.clone()) {
+            unique.push(full_name);
+        }
+    }
+
+    unique
 }
 
 pub(super) fn resolve_model_field<'a>(

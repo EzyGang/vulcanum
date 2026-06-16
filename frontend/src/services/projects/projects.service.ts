@@ -3,7 +3,7 @@ import type {
   ProjectConfig,
   UpdateProjectRequest
 } from '../../types/projects';
-import { del, get, post, put } from '../../utils/api/request';
+import { del, get, patch, post } from '../../utils/api/request';
 
 export const listProjects = (): Promise<ProjectConfig[]> => get<ProjectConfig[]>('/projects');
 
@@ -14,7 +14,7 @@ export const createProject = (input: CreateProjectRequest): Promise<ProjectConfi
   post<ProjectConfig>('/projects', input);
 
 export const updateProject = (id: string, input: UpdateProjectRequest): Promise<ProjectConfig> =>
-  put<ProjectConfig>(`/projects/${id}`, input);
+  patch<ProjectConfig>(`/projects/${id}`, input);
 
 export const deleteProject = (id: string): Promise<void> => del<void>(`/projects/${id}`);
 

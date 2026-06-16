@@ -43,7 +43,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("", web::get().to(teams::list))
                     .route("", web::post().to(teams::create))
                     .route("/{id}", web::get().to(teams::get))
-                    .route("/{id}", web::put().to(teams::update))
+                    .route("/{id}", web::patch().to(teams::update))
                     .route("/{id}", web::delete().to(teams::delete))
                     .route("/{id}/invites", web::post().to(teams::create_invite))
                     .route("/{id}/members", web::get().to(teams::list_members)),
@@ -82,7 +82,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("", web::post().to(project_configs::create))
                     .route("/stats", web::get().to(project_configs::stats))
                     .route("/{id}", web::get().to(project_configs::get))
-                    .route("/{id}", web::put().to(project_configs::update))
+                    .route("/{id}", web::patch().to(project_configs::update))
                     .route("/{id}", web::delete().to(project_configs::delete)),
             )
             .service(
@@ -90,7 +90,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/catalog", web::get().to(model_providers::catalog))
                     .route("", web::get().to(model_providers::list))
                     .route("", web::post().to(model_providers::create))
-                    .route("/{id}", web::put().to(model_providers::update))
+                    .route("/{id}", web::patch().to(model_providers::update))
                     .route("/{id}", web::delete().to(model_providers::delete)),
             )
             .service(
@@ -98,7 +98,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("", web::get().to(providers::list))
                     .route("", web::post().to(providers::create))
                     .route("/{id}", web::get().to(providers::get))
-                    .route("/{id}", web::put().to(providers::update))
+                    .route("/{id}", web::patch().to(providers::update))
                     .route("/{id}", web::delete().to(providers::delete))
                     .route(
                         "/{id}/projects/lookup",
@@ -117,7 +117,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/connect", web::post().to(workers::connect))
                     .route("/refresh", web::post().to(workers::refresh))
                     .route("/me", web::delete().to(workers::self_delete))
-                    .route("/{id}/status", web::put().to(workers::update_status))
+                    .route("/{id}/status", web::patch().to(workers::update_status))
                     .route("/{id}", web::delete().to(workers::delete)),
             )
             .service(

@@ -208,6 +208,69 @@ async fn update_partial_fields(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn replace_repos_allows_replacing_existing_repo(pool: PgPool) {
+    let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
+    let params = test_params("kaneo-proj-replace-same-repo", provider_id);
+    let created = repo
+        .create(&pool, DEFAULT_TEAM_ID, &params)
+        .await
+        .expect("Should create");
+    let repo_names = vec!["owner/repo".to_owned()];
+
+    let mut tx = pool.begin().await.expect("Should begin transaction");
+    repo.replace_repos(&mut tx, created.id, &repo_names)
+        .await
+        .expect("Should insert repos");
+    tx.commit().await.expect("Should commit transaction");
+
+    let mut tx = pool.begin().await.expect("Should begin transaction");
+    repo.replace_repos(&mut tx, created.id, &repo_names)
+        .await
+        .expect("Should replace existing repos with same repo");
+    tx.commit().await.expect("Should commit transaction");
+
+    let found = repo
+        .find_by_id(&pool, created.id)
+        .await
+        .expect("Should find config");
+
+    assert_eq!(found.repo_full_names, repo_names);
+}
+
+#[sqlx::test]
+async fn replace_repos_deduplicates_repo_names(pool: PgPool) {
+    let repo = ProjectConfigsRepository::new();
+    let provider_id = insert_provider(&pool).await;
+    let params = test_params("kaneo-proj-replace-duplicate-repos", provider_id);
+    let created = repo
+        .create(&pool, DEFAULT_TEAM_ID, &params)
+        .await
+        .expect("Should create");
+    let repo_names = vec![
+        "owner/repo".to_owned(),
+        "owner/other".to_owned(),
+        "owner/repo".to_owned(),
+    ];
+
+    let mut tx = pool.begin().await.expect("Should begin transaction");
+    repo.replace_repos(&mut tx, created.id, &repo_names)
+        .await
+        .expect("Should insert deduplicated repos");
+    tx.commit().await.expect("Should commit transaction");
+
+    let found = repo
+        .find_by_id(&pool, created.id)
+        .await
+        .expect("Should find config");
+
+    assert_eq!(
+        found.repo_full_names,
+        vec!["owner/repo".to_owned(), "owner/other".to_owned()]
+    );
+}
+
+#[sqlx::test]
 async fn update_name_persists(pool: PgPool) {
     let repo = ProjectConfigsRepository::new();
     let provider_id = insert_provider(&pool).await;

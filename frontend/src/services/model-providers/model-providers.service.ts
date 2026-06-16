@@ -4,7 +4,7 @@ import type {
   ModelProviderConfig,
   UpdateModelProviderRequest
 } from '../../types/modelProviders';
-import { del, get, post, put } from '../../utils/api/request';
+import { del, get, patch, post } from '../../utils/api/request';
 
 export const getModelProviderCatalog = (): Promise<CatalogResponse> =>
   get<CatalogResponse>('/model-providers/catalog');
@@ -19,7 +19,7 @@ export const createModelProvider = (
 export const updateModelProvider = (
   id: string,
   input: UpdateModelProviderRequest
-): Promise<ModelProviderConfig> => put<ModelProviderConfig>(`/model-providers/${id}`, input);
+): Promise<ModelProviderConfig> => patch<ModelProviderConfig>(`/model-providers/${id}`, input);
 
 export const deleteModelProvider = (id: string): Promise<void> =>
   del<void>(`/model-providers/${id}`);

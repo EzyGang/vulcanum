@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH repos AS (\n                SELECT repo_full_name, MIN(ordinality) AS first_position\n                FROM UNNEST($2::TEXT[]) WITH ORDINALITY AS repo(repo_full_name, ordinality)\n                WHERE repo_full_name <> ''\n                GROUP BY repo_full_name\n            ), ordered_repos AS (\n                SELECT repo_full_name, ROW_NUMBER() OVER (ORDER BY first_position) - 1 AS position\n                FROM repos\n            )\n            INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)\n            SELECT $1, repo_full_name, $3::TEXT || repo_full_name, position::INT\n            FROM ordered_repos",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aafe8c5b60c44f9bbc85ff34c842c28b3b1b0827ef604101c5c799b34e5a3ee1"
+}

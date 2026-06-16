@@ -194,30 +194,38 @@ impl ProjectConfigsRepository {
         .ok_or(ProjectConfigsError::NotFound)
     }
 
-    pub async fn replace_repos<'c, Q>(
+    pub async fn replace_repos(
         &self,
-        db: Q,
+        db: &mut sqlx::Transaction<'_, sqlx::Postgres>,
         project_config_id: Uuid,
         repo_full_names: &[String],
-    ) -> Result<(), ProjectConfigsError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<(), ProjectConfigsError> {
         sqlx::query!(
-            r#"WITH deleted AS (
-                DELETE FROM project_config_repos WHERE project_config_id = $1
-            ), repos AS (
-                SELECT repo_full_name, ordinality - 1 AS position
+            "DELETE FROM project_config_repos WHERE project_config_id = $1",
+            project_config_id,
+        )
+        .execute(&mut **db)
+        .await
+        .map_err(ProjectConfigsError::from)?;
+
+        sqlx::query!(
+            r#"WITH repos AS (
+                SELECT repo_full_name, MIN(ordinality) AS first_position
                 FROM UNNEST($2::TEXT[]) WITH ORDINALITY AS repo(repo_full_name, ordinality)
+                WHERE repo_full_name <> ''
+                GROUP BY repo_full_name
+            ), ordered_repos AS (
+                SELECT repo_full_name, ROW_NUMBER() OVER (ORDER BY first_position) - 1 AS position
+                FROM repos
             )
             INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)
             SELECT $1, repo_full_name, $3::TEXT || repo_full_name, position::INT
-            FROM repos"#,
+            FROM ordered_repos"#,
             project_config_id,
             repo_full_names,
             GITHUB_REPO_URL_PREFIX,
         )
-        .execute(db)
+        .execute(&mut **db)
         .await
         .map_err(ProjectConfigsError::from)?;
 

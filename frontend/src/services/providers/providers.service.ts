@@ -6,7 +6,7 @@ import type {
   UpdateProviderRequest,
   WorkspaceInfo
 } from '../../types/projects';
-import { del, get, post, put } from '../../utils/api/request';
+import { del, get, patch, post } from '../../utils/api/request';
 
 export const listProviders = (): Promise<IntegrationProvider[]> =>
   get<IntegrationProvider[]>('/providers');
@@ -20,7 +20,7 @@ export const createProvider = (input: CreateProviderRequest): Promise<Integratio
 export const updateProvider = (
   id: string,
   input: UpdateProviderRequest
-): Promise<IntegrationProvider> => put<IntegrationProvider>(`/providers/${id}`, input);
+): Promise<IntegrationProvider> => patch<IntegrationProvider>(`/providers/${id}`, input);
 
 export const deleteProvider = (id: string): Promise<void> => del<void>(`/providers/${id}`);
 
