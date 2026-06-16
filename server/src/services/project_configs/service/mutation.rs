@@ -4,7 +4,7 @@ use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
 use crate::services::project_configs::repository::UpdateProjectConfigParams;
 use crate::services::project_configs::service::{
-    resolve_column_if_set, resolve_model_field, unique_repo_full_names, ProjectConfigsService,
+    resolve_column_if_set, resolve_model_field, ProjectConfigsService,
 };
 use crate::util::github::github_repo_url;
 
@@ -59,10 +59,6 @@ impl ProjectConfigsService {
             .await?;
         self.validate_model_selection(team_id, small_provider_key, small_model_id)
             .await?;
-
-        if let Some(repo_full_names) = params.repo_full_names.take() {
-            params.repo_full_names = Some(unique_repo_full_names(repo_full_names));
-        }
 
         let repo_url = params
             .repo_full_names

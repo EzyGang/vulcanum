@@ -2,8 +2,6 @@ mod lookup;
 mod mutation;
 mod settings;
 
-use std::collections::HashSet;
-
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -98,8 +96,6 @@ impl ProjectConfigsService {
         )
         .await?;
 
-        params.repo_full_names = unique_repo_full_names(params.repo_full_names);
-
         let mut tx = self
             .db
             .begin()
@@ -145,19 +141,6 @@ impl ProjectConfigsService {
             .await
             .map_err(ProjectConfigsError::ModelProvider)
     }
-}
-
-pub(super) fn unique_repo_full_names(repo_full_names: Vec<String>) -> Vec<String> {
-    let mut seen = HashSet::new();
-    let mut unique = Vec::new();
-
-    for full_name in repo_full_names {
-        if seen.insert(full_name.clone()) {
-            unique.push(full_name);
-        }
-    }
-
-    unique
 }
 
 pub(super) fn resolve_model_field<'a>(
