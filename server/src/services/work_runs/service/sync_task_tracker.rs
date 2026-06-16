@@ -2,13 +2,12 @@ use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::runtime::types::FinishStatus;
 
 use crate::services::providers::client::IntegrationClient;
-use crate::services::providers::model::IntegrationType;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::record_review::review_comment;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {
-    pub(crate) async fn sync_kaneo_on_result(
+    pub(crate) async fn sync_task_tracker_on_result(
         &self,
         run: &WorkRun,
         params: &SubmitResultRequest,
@@ -57,12 +56,7 @@ impl WorkRunsService {
             }
         };
 
-        let client = match provider.provider_type {
-            IntegrationType::Kaneo => {
-                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
-            }
-        };
-
+        let client = IntegrationClient::from_provider(provider);
         let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
         let is_blocked = matches!(params.finish_status, Some(FinishStatus::Blocked));
 
@@ -85,7 +79,7 @@ impl WorkRunsService {
                     task_ref = %run.external_task_ref,
                     column = %new_column,
                     error = %e,
-                    "failed to update kaneo task status",
+                    "failed to update task status",
                 );
             }
         }
@@ -107,7 +101,7 @@ impl WorkRunsService {
             tracing::warn!(
                 task_ref = %run.external_task_ref,
                 error = %e,
-                "failed to add kaneo comment",
+                "failed to add task comment",
             );
         }
     }

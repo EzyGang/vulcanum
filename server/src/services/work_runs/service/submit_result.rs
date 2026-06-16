@@ -167,7 +167,7 @@ impl WorkRunsService {
             "work_run completed by worker",
         );
 
-        self.sync_kaneo_on_result(&run, &params, status, &pr_urls)
+        self.sync_task_tracker_on_result(&run, &params, status, &pr_urls)
             .await;
 
         if matches!(status, WorkRunStatus::Completed) {

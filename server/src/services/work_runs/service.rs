@@ -9,7 +9,7 @@ pub mod poll;
 pub(crate) mod record_review;
 pub mod spawn_review;
 pub mod submit_result;
-pub(crate) mod sync_kaneo;
+pub(crate) mod sync_task_tracker;
 
 #[cfg(test)]
 mod record_review_tests;
