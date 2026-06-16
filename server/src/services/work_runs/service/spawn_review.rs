@@ -3,7 +3,8 @@ use crate::services::poller::template::{render_template, TemplateVars};
 use crate::services::providers::client::IntegrationClient;
 use crate::services::providers::model::IntegrationType;
 use crate::services::work_runs::model::{TaskPr, WorkRun, WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::{InsertWorkRunParams, UpsertTaskPrParams};
+use crate::services::work_runs::repository::queries::prs::UpsertTaskPrParams;
+use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::parse_github_pr_url;
 

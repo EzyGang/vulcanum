@@ -1,5 +1,6 @@
 import type { JSX } from 'preact';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
+import { Input } from '../../../shared/ui/Input.view';
 import { Label } from '../../../shared/ui/Label.view';
 import { Select } from '../../../shared/ui/Select.view';
 import { TextArea } from '../../../shared/ui/TextArea.view';
@@ -197,22 +198,14 @@ export const ProjectFormTextFields = (): JSX.Element => {
                       !f.reviewMaxTurnsOverride.value &&
                       !f.reviewPromptTemplateOverride.value)
                   }
-                  onClick={() => {
-                    f.onResetReviewEnabledOverride();
-                    f.onResetReviewPickupColumnOverride();
-                    f.onResetReviewMaxTurnsOverride();
-                    f.onResetReviewPromptTemplateOverride();
-                  }}
+                  onClick={f.onResetReviewOverrides}
                 />
               </div>
               <label for='field-review-enabled' class='flex items-center gap-2 cursor-pointer'>
-                <input
+                <Checkbox
                   id='field-review-enabled'
-                  type='checkbox'
                   checked={f.reviewEnabled.value}
-                  onChange={(event) =>
-                    f.onReviewEnabledChange((event.target as HTMLInputElement).checked)
-                  }
+                  onCheckedChange={f.onReviewEnabledChange}
                   disabled={m.submitting.value}
                 />
                 <span class='text-sm text-text-primary'>Override review automation enabled</span>
@@ -229,9 +222,8 @@ export const ProjectFormTextFields = (): JSX.Element => {
               />
               <div class='flex flex-col gap-2'>
                 <Label for='field-review-max-turns'>Review Max Turns Override</Label>
-                <input
+                <Input
                   id='field-review-max-turns'
-                  class='border border-border-base bg-bg-card px-3 py-2 text-sm text-text-primary'
                   type='number'
                   min='1'
                   value={f.reviewMaxTurns.value}

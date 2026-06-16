@@ -1,7 +1,11 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../../types/runs';
-import { CANCELLABLE_STATUSES } from '../../../../types/runs';
+import {
+  CANCELLABLE_STATUSES,
+  WORK_RUN_PR_LINK_LABELS,
+  WORK_RUN_TYPE_LABELS
+} from '../../../../types/runs';
 import { formatDuration, formatRelativeTime } from '../../../../utils/format';
 import { Button } from '../../../shared/ui/Button.view';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
@@ -110,7 +114,7 @@ export const RunsTable = ({
               </Table.Cell>
               <Table.Cell class='hidden md:table-cell'>
                 <span class='border border-border-base bg-bg-panel px-2 py-1 text-xs font-mono text-text-secondary'>
-                  {run.workType === 'pull_request_review' ? 'Review' : 'Implement'}
+                  {WORK_RUN_TYPE_LABELS[run.workType]}
                 </span>
               </Table.Cell>
               <Table.Cell class='hidden md:table-cell'>
@@ -137,7 +141,7 @@ export const RunsTable = ({
                     onClick={onStopRowToggle}
                     class='text-accent text-sm hover:underline'
                   >
-                    {run.workType === 'pull_request_review' ? 'Review PR' : 'PR'}
+                    {WORK_RUN_PR_LINK_LABELS[run.workType]}
                   </a>
                 ) : (
                   <span class='text-text-muted text-sm'>—</span>

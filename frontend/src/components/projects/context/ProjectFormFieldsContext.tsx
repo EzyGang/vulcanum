@@ -35,7 +35,7 @@ export interface ProjectFormFieldsContextValue {
   reviewEnabledOverride: Signal<boolean>;
   reviewPickupColumn: Signal<string>;
   reviewPickupColumnOverride: Signal<boolean>;
-  reviewMaxTurns: Signal<string>;
+  reviewMaxTurns: Signal<number>;
   reviewMaxTurnsOverride: Signal<boolean>;
   reviewPromptTemplate: Signal<string>;
   reviewPromptTemplateOverride: Signal<boolean>;
@@ -69,6 +69,7 @@ export interface ProjectFormFieldsContextValue {
   onSmallModelChange: (value: string) => void;
   onResetSmallModelOverride: () => void;
   onReviewEnabledChange: (checked: boolean) => void;
+  onResetReviewOverrides: () => void;
   onResetReviewEnabledOverride: () => void;
   onReviewPickupColumnChange: (value: string) => void;
   onResetReviewPickupColumnOverride: () => void;

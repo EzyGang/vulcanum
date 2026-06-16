@@ -114,6 +114,7 @@ impl WorkRunsService {
     }
 }
 
+#[must_use]
 fn shared_work_type(work_type: WorkRunType) -> vulcanum_shared::api_types::WorkRunType {
     match work_type {
         WorkRunType::Implementation => vulcanum_shared::api_types::WorkRunType::Implementation,

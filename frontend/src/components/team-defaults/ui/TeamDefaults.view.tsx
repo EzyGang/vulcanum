@@ -2,7 +2,9 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../../types/shared';
 import { Button } from '../../shared/ui/Button.view';
+import { Checkbox } from '../../shared/ui/Checkbox.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
+import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 import { Select } from '../../shared/ui/Select.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
@@ -17,7 +19,7 @@ interface TeamDefaultsViewProps {
     smallModelId: Signal<string>;
     reviewEnabled: Signal<boolean>;
     reviewPickupColumn: Signal<string>;
-    reviewMaxTurns: Signal<string>;
+    reviewMaxTurns: Signal<number>;
     reviewPromptTemplate: Signal<string>;
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
@@ -126,13 +128,10 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
         </div>
         <div class='flex flex-col gap-4 border border-border-base bg-bg-panel p-4'>
           <label for='team-review-enabled' class='flex items-center gap-2 cursor-pointer'>
-            <input
+            <Checkbox
               id='team-review-enabled'
-              type='checkbox'
               checked={data.reviewEnabled.value}
-              onChange={(event) =>
-                actions.onReviewEnabledChange((event.target as HTMLInputElement).checked)
-              }
+              onCheckedChange={actions.onReviewEnabledChange}
               disabled={status.saving}
             />
             <span class='text-sm font-semibold uppercase tracking-wide text-text-primary'>
@@ -142,9 +141,8 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
           <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
             <div class='flex flex-col gap-2'>
               <Label for='team-review-pickup-column'>Review Pickup Column</Label>
-              <input
+              <Input
                 id='team-review-pickup-column'
-                class='border border-border-base bg-bg-card px-3 py-2 text-sm text-text-primary'
                 value={data.reviewPickupColumn.value}
                 onInput={actions.onReviewPickupColumnInput}
                 disabled={status.saving}
@@ -152,9 +150,8 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             </div>
             <div class='flex flex-col gap-2'>
               <Label for='team-review-max-turns'>Review Max Turns</Label>
-              <input
+              <Input
                 id='team-review-max-turns'
-                class='border border-border-base bg-bg-card px-3 py-2 text-sm text-text-primary'
                 type='number'
                 min='1'
                 value={data.reviewMaxTurns.value}

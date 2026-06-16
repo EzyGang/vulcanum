@@ -1,5 +1,9 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import {
+  DEFAULT_REVIEW_MAX_TURNS,
+  DEFAULT_REVIEW_PICKUP_COLUMN
+} from '../../../constants/reviewAutomation';
 import { useModelItems } from '../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
@@ -18,8 +22,8 @@ export const useTeamDefaults = (teamId: string | null) => {
   const smallModelProviderKey = useSignal('');
   const smallModelId = useSignal('');
   const reviewEnabled = useSignal(false);
-  const reviewPickupColumn = useSignal('in-review');
-  const reviewMaxTurns = useSignal('1');
+  const reviewPickupColumn = useSignal(DEFAULT_REVIEW_PICKUP_COLUMN);
+  const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewPromptTemplate = useSignal('');
   const formError = useSignal<string | null>(null);
 
@@ -47,7 +51,7 @@ export const useTeamDefaults = (teamId: string | null) => {
     smallModelId.value = team.smallModelId ?? '';
     reviewEnabled.value = team.reviewEnabled;
     reviewPickupColumn.value = team.reviewPickupColumn;
-    reviewMaxTurns.value = String(team.reviewMaxTurns);
+    reviewMaxTurns.value = team.reviewMaxTurns;
     reviewPromptTemplate.value = team.reviewPromptTemplate;
   }, [teamId, team]);
 
@@ -112,7 +116,11 @@ export const useTeamDefaults = (teamId: string | null) => {
         reviewEnabled.value = checked;
       },
       onReviewPickupColumnInput: textInputHandler(reviewPickupColumn),
-      onReviewMaxTurnsInput: textInputHandler(reviewMaxTurns),
+      onReviewMaxTurnsInput: (event: Event) => {
+        const value = Number((event.target as HTMLInputElement).value);
+        reviewMaxTurns.value =
+          Number.isFinite(value) && value > 0 ? value : DEFAULT_REVIEW_MAX_TURNS;
+      },
       onReviewPromptTemplateInput: textInputHandler(reviewPromptTemplate),
       onSubmit: async (event: Event) => {
         event.preventDefault();
@@ -130,8 +138,8 @@ export const useTeamDefaults = (teamId: string | null) => {
             smallModelProviderKey: smallModelProviderKey.value || null,
             smallModelId: smallModelId.value || null,
             reviewEnabled: reviewEnabled.value,
-            reviewPickupColumn: reviewPickupColumn.value || 'in-review',
-            reviewMaxTurns: Number(reviewMaxTurns.value) || 1,
+            reviewPickupColumn: reviewPickupColumn.value || DEFAULT_REVIEW_PICKUP_COLUMN,
+            reviewMaxTurns: reviewMaxTurns.value,
             reviewPromptTemplate: reviewPromptTemplate.value
           });
         } catch (err) {

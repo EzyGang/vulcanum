@@ -1,4 +1,5 @@
 mod blocked;
+pub(crate) mod prs;
 mod reset;
 mod result;
 
@@ -6,9 +7,7 @@ use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{
-    TaskPr, WorkRun, WorkRunListItem, WorkRunStatus, WorkRunType,
-};
+use crate::services::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::util::github::github_repo_url;
 use vulcanum_shared::api_types::JobRepo;
@@ -29,15 +28,6 @@ pub struct InsertWorkRunParams {
     pub task_slug: Option<String>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,
-}
-
-pub struct UpsertTaskPrParams<'a> {
-    pub project_config_id: Uuid,
-    pub external_task_ref: &'a str,
-    pub pr_url: &'a str,
-    pub repo_full_name: &'a str,
-    pub pr_number: i64,
-    pub source_work_run_id: Uuid,
 }
 
 impl WorkRunsRepository {
@@ -194,56 +184,6 @@ impl WorkRunsRepository {
             .collect())
     }
 
-    pub async fn list_pr_urls<'c, Q>(
-        &self,
-        db: Q,
-        work_run_id: Uuid,
-    ) -> Result<Vec<String>, WorkRunsError>
-    where
-        Q: Queryer<'c>,
-    {
-        let rows = sqlx::query!(
-            r#"SELECT pr_url FROM work_run_prs
-             WHERE work_run_id = $1 ORDER BY position ASC"#,
-            work_run_id,
-        )
-        .fetch_all(db)
-        .await
-        .map_err(WorkRunsError::from)?;
-
-        Ok(rows.into_iter().map(|row| row.pr_url).collect())
-    }
-
-    pub async fn upsert_task_pr<'c, Q>(
-        &self,
-        db: Q,
-        params: UpsertTaskPrParams<'_>,
-    ) -> Result<TaskPr, WorkRunsError>
-    where
-        Q: Queryer<'c>,
-    {
-        sqlx::query_as!(
-            TaskPr,
-            r#"INSERT INTO task_prs (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number, source_work_run_id)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET
-                 repo_full_name = EXCLUDED.repo_full_name,
-                 pr_number = EXCLUDED.pr_number,
-                 source_work_run_id = EXCLUDED.source_work_run_id
-             RETURNING id, project_config_id, external_task_ref, pr_url, repo_full_name, pr_number,
-              source_work_run_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
-            params.project_config_id,
-            params.external_task_ref,
-            params.pr_url,
-            params.repo_full_name,
-            params.pr_number,
-            params.source_work_run_id,
-        )
-        .fetch_one(db)
-        .await
-        .map_err(WorkRunsError::from)
-    }
-
     pub async fn find_by_id<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -268,20 +208,6 @@ impl WorkRunsRepository {
         .await
         .map_err(WorkRunsError::from)?
         .ok_or(WorkRunsError::NotFound)
-    }
-
-    pub async fn find_oldest_pending_id<'c, Q: Queryer<'c>>(
-        &self,
-        db: Q,
-    ) -> Result<Option<(Uuid, String)>, WorkRunsError> {
-        let row = sqlx::query!(
-            r#"SELECT id, external_task_ref FROM work_runs WHERE status = 'pending'::work_run_status ORDER BY created_at ASC LIMIT 1"#,
-        )
-        .fetch_optional(db)
-        .await
-        .map_err(WorkRunsError::from)?;
-
-        Ok(row.map(|r| (r.id, r.external_task_ref)))
     }
 
     pub async fn list_all<'c, Q: Queryer<'c>>(
@@ -349,15 +275,6 @@ pub struct SetResultParams<'a> {
     pub finish_summary: Option<&'a str>,
     pub finish_blocked_reason: Option<&'a str>,
     pub finish_next_column: Option<&'a str>,
-    pub review_url: Option<&'a str>,
-    pub review_body: Option<&'a str>,
-    pub review_already_exists: bool,
-}
-
-pub struct InsertReviewResultParams<'a> {
-    pub work_run_id: Uuid,
-    pub pr_url: &'a str,
-    pub repo_full_name: &'a str,
     pub review_url: Option<&'a str>,
     pub review_body: Option<&'a str>,
     pub review_already_exists: bool,

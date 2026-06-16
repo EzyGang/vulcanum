@@ -1,6 +1,10 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
+import {
+  DEFAULT_REVIEW_MAX_TURNS,
+  DEFAULT_REVIEW_PICKUP_COLUMN
+} from '../../../../constants/reviewAutomation';
 import { useModelItems } from '../../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
@@ -74,9 +78,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const smallModelIdOverride = useSignal(false);
   const reviewEnabled = useSignal(false);
   const reviewEnabledOverride = useSignal(false);
-  const reviewPickupColumn = useSignal('in-review');
+  const reviewPickupColumn = useSignal(DEFAULT_REVIEW_PICKUP_COLUMN);
   const reviewPickupColumnOverride = useSignal(false);
-  const reviewMaxTurns = useSignal('1');
+  const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewMaxTurnsOverride = useSignal(false);
   const reviewPromptTemplate = useSignal('');
   const reviewPromptTemplateOverride = useSignal(false);
@@ -148,9 +152,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       smallModelIdOverride.value = p.smallModelId != null;
       reviewEnabled.value = p.reviewEnabled ?? false;
       reviewEnabledOverride.value = p.reviewEnabled != null;
-      reviewPickupColumn.value = p.reviewPickupColumn ?? 'in-review';
+      reviewPickupColumn.value = p.reviewPickupColumn ?? DEFAULT_REVIEW_PICKUP_COLUMN;
       reviewPickupColumnOverride.value = p.reviewPickupColumn != null;
-      reviewMaxTurns.value = String(p.reviewMaxTurns ?? 1);
+      reviewMaxTurns.value = p.reviewMaxTurns ?? DEFAULT_REVIEW_MAX_TURNS;
       reviewMaxTurnsOverride.value = p.reviewMaxTurns != null;
       reviewPromptTemplate.value = p.reviewPromptTemplate ?? '';
       reviewPromptTemplateOverride.value = p.reviewPromptTemplate != null;
@@ -431,6 +435,16 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         reviewEnabledOverride.value = true;
         reviewEnabled.value = checked;
       },
+      onResetReviewOverrides: () => {
+        reviewEnabledOverride.value = false;
+        reviewEnabled.value = false;
+        reviewPickupColumnOverride.value = false;
+        reviewPickupColumn.value = DEFAULT_REVIEW_PICKUP_COLUMN;
+        reviewMaxTurnsOverride.value = false;
+        reviewMaxTurns.value = DEFAULT_REVIEW_MAX_TURNS;
+        reviewPromptTemplateOverride.value = false;
+        reviewPromptTemplate.value = '';
+      },
       onResetReviewEnabledOverride: () => {
         reviewEnabledOverride.value = false;
         reviewEnabled.value = false;
@@ -441,15 +455,17 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onResetReviewPickupColumnOverride: () => {
         reviewPickupColumnOverride.value = false;
-        reviewPickupColumn.value = 'in-review';
+        reviewPickupColumn.value = DEFAULT_REVIEW_PICKUP_COLUMN;
       },
       onReviewMaxTurnsInput: (event: Event) => {
+        const value = Number((event.target as HTMLInputElement).value);
         reviewMaxTurnsOverride.value = true;
-        textInputHandler(reviewMaxTurns)(event);
+        reviewMaxTurns.value =
+          Number.isFinite(value) && value > 0 ? value : DEFAULT_REVIEW_MAX_TURNS;
       },
       onResetReviewMaxTurnsOverride: () => {
         reviewMaxTurnsOverride.value = false;
-        reviewMaxTurns.value = '1';
+        reviewMaxTurns.value = DEFAULT_REVIEW_MAX_TURNS;
       },
       onReviewPromptTemplateInput: (event: Event) => {
         reviewPromptTemplateOverride.value = true;

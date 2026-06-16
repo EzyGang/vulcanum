@@ -10,6 +10,16 @@ export const CANCELLABLE_STATUSES: WorkRunStatus[] = ['running', 'dispatched'];
 
 export type WorkRunType = 'implementation' | 'pull_request_review';
 
+export const WORK_RUN_TYPE_LABELS: Record<WorkRunType, string> = {
+  implementation: 'Implement',
+  pull_request_review: 'Review'
+};
+
+export const WORK_RUN_PR_LINK_LABELS: Record<WorkRunType, string> = {
+  implementation: 'PR',
+  pull_request_review: 'Review PR'
+};
+
 export interface WorkRunListItem {
   id: string;
   externalTaskRef: string;

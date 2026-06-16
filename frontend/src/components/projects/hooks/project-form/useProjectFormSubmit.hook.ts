@@ -30,7 +30,7 @@ interface UseProjectFormSubmitOptions {
   reviewEnabledOverride: Signal<boolean>;
   reviewPickupColumn: Signal<string>;
   reviewPickupColumnOverride: Signal<boolean>;
-  reviewMaxTurns: Signal<string>;
+  reviewMaxTurns: Signal<number>;
   reviewMaxTurnsOverride: Signal<boolean>;
   reviewPromptTemplate: Signal<string>;
   reviewPromptTemplateOverride: Signal<boolean>;
@@ -209,10 +209,10 @@ const overrideBoolOrUndefined = (
   enabled: Signal<boolean>
 ): boolean | undefined => (enabled.value ? field.value : undefined);
 
-const overrideNumberOrNull = (field: Signal<string>, enabled: Signal<boolean>): number | null =>
-  enabled.value ? Number(field.value) || null : null;
+const overrideNumberOrNull = (field: Signal<number>, enabled: Signal<boolean>): number | null =>
+  enabled.value ? field.value : null;
 
 const overrideNumberOrUndefined = (
-  field: Signal<string>,
+  field: Signal<number>,
   enabled: Signal<boolean>
-): number | undefined => (enabled.value ? Number(field.value) || undefined : undefined);
+): number | undefined => (enabled.value ? field.value : undefined);

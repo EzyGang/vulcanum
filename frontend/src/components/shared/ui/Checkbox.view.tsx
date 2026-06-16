@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import type { JSX } from 'preact';
 
 interface CheckboxProps {
+  id?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
@@ -11,6 +12,7 @@ interface CheckboxProps {
 }
 
 export const Checkbox = ({
+  id,
   checked,
   onCheckedChange,
   disabled,
@@ -18,6 +20,7 @@ export const Checkbox = ({
   class: classProp
 }: CheckboxProps): JSX.Element => (
   <BaseCheckbox.Root
+    id={id}
     checked={checked}
     onCheckedChange={onCheckedChange}
     disabled={disabled}
