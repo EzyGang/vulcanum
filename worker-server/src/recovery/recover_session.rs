@@ -149,6 +149,9 @@ pub(crate) async fn mark_lost_and_submit(
         finish_summary: None,
         finish_blocked_reason: None,
         finish_next_column: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
     });
 
     let access_token = worker_state.read().await.access_token.clone();

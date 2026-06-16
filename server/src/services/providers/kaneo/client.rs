@@ -106,6 +106,36 @@ impl KaneoClient {
         result
     }
 
+    pub async fn update_task_description(
+        &self,
+        task_id: &str,
+        description: &str,
+    ) -> Result<(), KaneoError> {
+        let client = self.build_client()?;
+
+        #[derive(serde::Serialize)]
+        struct DescriptionBody {
+            description: String,
+        }
+
+        let path = format!("/task/{task_id}");
+        let start = std::time::Instant::now();
+        let result = client
+            .put(
+                &path,
+                &DescriptionBody {
+                    description: description.to_owned(),
+                },
+            )
+            .await
+            .map(|_: Task| ())
+            .map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("PUT", &path, duration_ms, &result);
+        result
+    }
+
     pub async fn fetch_columns(&self, project_id: &str) -> Result<Vec<Column>, KaneoError> {
         let client = self.build_client()?;
         let path = format!("/column/{project_id}");

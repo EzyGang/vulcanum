@@ -10,6 +10,8 @@ fn interpolates_all_vars() {
         repo_urls: "https://github.com/org/repo\nhttps://github.com/org/other",
         repo_names: "org/repo\norg/other",
         repo_layout: "org/repo: ./org-repo\norg/other: ./org-other",
+        review_target_pr_url: "",
+        review_marker: "",
     };
     let result = render_template(template, &vars);
 
@@ -34,6 +36,8 @@ fn preserves_unknown_vars() {
         repo_urls: "",
         repo_names: "",
         repo_layout: "",
+        review_target_pr_url: "",
+        review_marker: "",
     };
     let result = render_template(template, &vars);
     assert_eq!(result, "Unknown {{foo}} and {{bar}}");
@@ -48,6 +52,8 @@ fn handles_empty_template() {
         repo_urls: "",
         repo_names: "",
         repo_layout: "",
+        review_target_pr_url: "",
+        review_marker: "",
     };
     assert_eq!(render_template("", &vars), "");
 }
@@ -62,6 +68,8 @@ fn handles_partial_template() {
         repo_urls: "",
         repo_names: "",
         repo_layout: "",
+        review_target_pr_url: "",
+        review_marker: "",
     };
     assert_eq!(render_template(template, &vars), "Only title: My Task");
 }

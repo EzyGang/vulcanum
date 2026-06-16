@@ -8,6 +8,8 @@ export type WorkRunStatus =
 
 export const CANCELLABLE_STATUSES: WorkRunStatus[] = ['running', 'dispatched'];
 
+export type WorkRunType = 'implementation' | 'pull_request_review';
+
 export interface WorkRunListItem {
   id: string;
   externalTaskRef: string;
@@ -15,10 +17,18 @@ export interface WorkRunListItem {
   workerId: string | null;
   workerName: string | null;
   status: WorkRunStatus;
+  workType: WorkRunType;
+  parentWorkRunId: string | null;
   promptText: string;
   repoUrl: string;
+  taskBody: string;
   taskTitle: string | null;
   taskSlug: string | null;
+  reviewTargetPrUrl: string | null;
+  reviewTargetRepoFullName: string | null;
+  reviewUrl: string | null;
+  reviewBody: string | null;
+  reviewAlreadyExists: boolean;
   resultPrUrl: string | null;
   resultExitCode: number | null;
   tokensUsed: number | null;

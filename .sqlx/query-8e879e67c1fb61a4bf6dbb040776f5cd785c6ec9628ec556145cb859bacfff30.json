@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.id = $1\n             GROUP BY pc.id",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n             pc.small_model_provider_key, pc.small_model_id,\n             pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,\n             pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.team_id = $1\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -114,11 +114,31 @@
       },
       {
         "ordinal": 20,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 21,
+        "name": "review_pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 23,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 24,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 25,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
@@ -149,9 +169,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "99417d7fe12a20bbdc74cf0ac96a3646881fd7ec1323ca291c2067a06b0a2def"
+  "hash": "8e879e67c1fb61a4bf6dbb040776f5cd785c6ec9628ec556145cb859bacfff30"
 }

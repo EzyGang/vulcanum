@@ -17,6 +17,10 @@ export const useTeamDefaults = (teamId: string | null) => {
   const primaryModelId = useSignal('');
   const smallModelProviderKey = useSignal('');
   const smallModelId = useSignal('');
+  const reviewEnabled = useSignal(false);
+  const reviewPickupColumn = useSignal('in-review');
+  const reviewMaxTurns = useSignal('1');
+  const reviewPromptTemplate = useSignal('');
   const formError = useSignal<string | null>(null);
 
   const { data: team, isLoading } = useApiQuery(
@@ -41,6 +45,10 @@ export const useTeamDefaults = (teamId: string | null) => {
     primaryModelId.value = team.primaryModelId ?? '';
     smallModelProviderKey.value = team.smallModelProviderKey ?? '';
     smallModelId.value = team.smallModelId ?? '';
+    reviewEnabled.value = team.reviewEnabled;
+    reviewPickupColumn.value = team.reviewPickupColumn;
+    reviewMaxTurns.value = String(team.reviewMaxTurns);
+    reviewPromptTemplate.value = team.reviewPromptTemplate;
   }, [teamId, team]);
 
   const catalogProviders = modelCatalog?.providers ?? [];
@@ -70,6 +78,10 @@ export const useTeamDefaults = (teamId: string | null) => {
       primaryModelId,
       smallModelProviderKey,
       smallModelId,
+      reviewEnabled,
+      reviewPickupColumn,
+      reviewMaxTurns,
+      reviewPromptTemplate,
       connectedProviderItems,
       primaryModelItems,
       smallModelItems
@@ -96,6 +108,12 @@ export const useTeamDefaults = (teamId: string | null) => {
       onSmallModelChange: (value: string) => {
         smallModelId.value = value;
       },
+      onReviewEnabledChange: (checked: boolean) => {
+        reviewEnabled.value = checked;
+      },
+      onReviewPickupColumnInput: textInputHandler(reviewPickupColumn),
+      onReviewMaxTurnsInput: textInputHandler(reviewMaxTurns),
+      onReviewPromptTemplateInput: textInputHandler(reviewPromptTemplate),
       onSubmit: async (event: Event) => {
         event.preventDefault();
         if (!teamId) {
@@ -110,7 +128,11 @@ export const useTeamDefaults = (teamId: string | null) => {
             primaryModelProviderKey: primaryModelProviderKey.value || null,
             primaryModelId: primaryModelId.value || null,
             smallModelProviderKey: smallModelProviderKey.value || null,
-            smallModelId: smallModelId.value || null
+            smallModelId: smallModelId.value || null,
+            reviewEnabled: reviewEnabled.value,
+            reviewPickupColumn: reviewPickupColumn.value || 'in-review',
+            reviewMaxTurns: Number(reviewMaxTurns.value) || 1,
+            reviewPromptTemplate: reviewPromptTemplate.value
           });
         } catch (err) {
           formError.value = err instanceof Error ? err.message : 'Failed to update team defaults';

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE personal_user_id = $1",
+  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_pickup_column, review_max_turns, review_prompt_template,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -50,13 +50,33 @@
       },
       {
         "ordinal": 9,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "review_pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -69,8 +89,12 @@
       true,
       true,
       true,
+      false,
+      false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "1cf832edeb41e0ce9ea174831e1a19f51fcc710cc73ffb9dedf313e77bbbc82f"
+  "hash": "128a9a185634a9b7febe471672752e964f2b3bd93e08ead512126fe06da203a7"
 }

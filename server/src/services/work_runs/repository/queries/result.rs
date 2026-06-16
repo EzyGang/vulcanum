@@ -3,8 +3,8 @@ use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
-use crate::services::work_runs::repository::queries::SetResultParams;
+use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
+use crate::services::work_runs::repository::queries::{InsertReviewResultParams, SetResultParams};
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 impl WorkRunsRepository {
@@ -19,7 +19,9 @@ impl WorkRunsRepository {
             r#"UPDATE work_runs SET status = 'running'::work_run_status
              WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, task_title, task_slug,
+              work_type as "work_type: WorkRunType", parent_work_run_id,
+              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
+              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -46,7 +48,9 @@ impl WorkRunsRepository {
              input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0
              WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, task_title, task_slug,
+              work_type as "work_type: WorkRunType", parent_work_run_id,
+              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
+              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -72,10 +76,13 @@ impl WorkRunsRepository {
              duration_ms = $5, status = $6, input_tokens = $7, output_tokens = $8,
              cache_read_tokens = $9, cache_write_tokens = $10, model_used = $11,
              finish_status = $12, finish_summary = $13, finish_blocked_reason = $14,
-             finish_next_column = $15
+             finish_next_column = $15, review_url = $16, review_body = $17,
+             review_already_exists = $18
              WHERE id = $1 AND status = 'running'::work_run_status
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, task_title, task_slug,
+              work_type as "work_type: WorkRunType", parent_work_run_id,
+              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
+              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -97,6 +104,9 @@ impl WorkRunsRepository {
             params.finish_summary,
             params.finish_blocked_reason,
             params.finish_next_column,
+            params.review_url,
+            params.review_body,
+            params.review_already_exists,
         )
         .fetch_optional(db)
         .await
@@ -146,6 +156,35 @@ impl WorkRunsRepository {
             .execute(db)
             .await
             .map_err(WorkRunsError::from)?;
+
+        Ok(())
+    }
+
+    pub async fn insert_review_result<'c, Q>(
+        &self,
+        db: Q,
+        params: InsertReviewResultParams<'_>,
+    ) -> Result<(), WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query!(
+            r#"INSERT INTO work_run_reviews (work_run_id, pr_url, repo_full_name, review_url, review_body, review_already_exists)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (work_run_id, pr_url) DO UPDATE SET
+                 review_url = EXCLUDED.review_url,
+                 review_body = EXCLUDED.review_body,
+                 review_already_exists = EXCLUDED.review_already_exists"#,
+            params.work_run_id,
+            params.pr_url,
+            params.repo_full_name,
+            params.review_url,
+            params.review_body,
+            params.review_already_exists,
+        )
+        .execute(db)
+        .await
+        .map_err(WorkRunsError::from)?;
 
         Ok(())
     }

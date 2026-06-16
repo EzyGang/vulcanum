@@ -15,6 +15,10 @@ export interface ProjectConfig {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewEnabled?: boolean | null;
+  reviewPickupColumn?: string | null;
+  reviewMaxTurns?: number | null;
+  reviewPromptTemplate?: string | null;
   createdAt: string;
   providerId?: string;
 }
@@ -35,6 +39,10 @@ export interface CreateProjectRequest {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewEnabled?: boolean | null;
+  reviewPickupColumn?: string | null;
+  reviewMaxTurns?: number | null;
+  reviewPromptTemplate?: string | null;
 }
 
 export interface UpdateProjectRequest {
@@ -51,6 +59,10 @@ export interface UpdateProjectRequest {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewEnabled?: boolean | null;
+  reviewPickupColumn?: string | null;
+  reviewMaxTurns?: number | null;
+  reviewPromptTemplate?: string | null;
   providerId?: string;
 }
 

@@ -6,6 +6,7 @@ import { TextArea } from '../../../shared/ui/TextArea.view';
 import { useProjectFormFieldsContext } from '../../context/ProjectFormFieldsContext';
 import { useProjectFormMetaContext } from '../../context/ProjectFormMetaContext';
 import { OverrideResetButton } from './OverrideResetButton.view';
+import { ProjectFormColumnSelect } from './ProjectFormColumnSelect.view';
 
 export const ProjectFormTextFields = (): JSX.Element => {
   const m = useProjectFormMetaContext();
@@ -180,6 +181,74 @@ export const ProjectFormTextFields = (): JSX.Element => {
                 disabled={m.submitting.value}
                 rows={6}
               />
+            </div>
+
+            <div class='flex flex-col gap-4 border border-border-base bg-bg-card p-3'>
+              <div class='flex items-center justify-between gap-2'>
+                <span class='text-xs font-semibold uppercase tracking-wide text-text-primary'>
+                  PR Review Automation Overrides
+                </span>
+                <OverrideResetButton
+                  label='Reset review automation overrides'
+                  disabled={
+                    m.submitting.value ||
+                    (!f.reviewEnabledOverride.value &&
+                      !f.reviewPickupColumnOverride.value &&
+                      !f.reviewMaxTurnsOverride.value &&
+                      !f.reviewPromptTemplateOverride.value)
+                  }
+                  onClick={() => {
+                    f.onResetReviewEnabledOverride();
+                    f.onResetReviewPickupColumnOverride();
+                    f.onResetReviewMaxTurnsOverride();
+                    f.onResetReviewPromptTemplateOverride();
+                  }}
+                />
+              </div>
+              <label for='field-review-enabled' class='flex items-center gap-2 cursor-pointer'>
+                <input
+                  id='field-review-enabled'
+                  type='checkbox'
+                  checked={f.reviewEnabled.value}
+                  onChange={(event) =>
+                    f.onReviewEnabledChange((event.target as HTMLInputElement).checked)
+                  }
+                  disabled={m.submitting.value}
+                />
+                <span class='text-sm text-text-primary'>Override review automation enabled</span>
+              </label>
+              <ProjectFormColumnSelect
+                id='field-review-pickup-column'
+                label='Review Pickup Column Override'
+                value={f.reviewPickupColumn.value}
+                columns={f.columns.value}
+                columnsLoading={f.columnsLoading.value}
+                disabled={m.submitting.value}
+                placeholderText='Select review pickup column'
+                onChange={f.onReviewPickupColumnChange}
+              />
+              <div class='flex flex-col gap-2'>
+                <Label for='field-review-max-turns'>Review Max Turns Override</Label>
+                <input
+                  id='field-review-max-turns'
+                  class='border border-border-base bg-bg-card px-3 py-2 text-sm text-text-primary'
+                  type='number'
+                  min='1'
+                  value={f.reviewMaxTurns.value}
+                  onInput={f.onReviewMaxTurnsInput}
+                  disabled={m.submitting.value}
+                />
+              </div>
+              <div class='flex flex-col gap-2'>
+                <Label for='field-review-prompt-template'>Review Prompt Template Override</Label>
+                <TextArea
+                  id='field-review-prompt-template'
+                  value={f.reviewPromptTemplate.value}
+                  onInput={f.onReviewPromptTemplateInput}
+                  disabled={m.submitting.value}
+                  rows={4}
+                />
+              </div>
             </div>
           </>
         )}

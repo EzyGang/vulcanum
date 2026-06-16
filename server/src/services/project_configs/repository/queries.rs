@@ -24,7 +24,9 @@ impl ProjectConfigsRepository {
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
-             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as "provider_id?"
+             pc.small_model_provider_key, pc.small_model_id,
+             pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,
+             pc.created_at, pc.provider_id as "provider_id?"
              FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
              WHERE pc.team_id = $1
              GROUP BY pc.id
@@ -50,8 +52,10 @@ impl ProjectConfigsRepository {
              pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
-             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
-             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as "provider_id?"
+              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
+              pc.small_model_provider_key, pc.small_model_id,
+              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,
+              pc.created_at, pc.provider_id as "provider_id?"
              FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
              WHERE pc.id = $1
              GROUP BY pc.id"#,
@@ -75,8 +79,10 @@ impl ProjectConfigsRepository {
              pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
-             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
-             pc.small_model_provider_key, pc.small_model_id, pc.created_at, pc.provider_id as "provider_id?"
+              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
+              pc.small_model_provider_key, pc.small_model_id,
+              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,
+              pc.created_at, pc.provider_id as "provider_id?"
              FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
              WHERE pc.enabled = true
              GROUP BY pc.id
@@ -103,11 +109,12 @@ impl ProjectConfigsRepository {
             ProjectConfig,
             r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
              progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+             small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
               RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
               progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
-              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
+              small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
+              created_at, provider_id as "provider_id?""#,
             id,
             team_id,
             params.external_project_id,
@@ -127,6 +134,10 @@ impl ProjectConfigsRepository {
             params.primary_model_id.as_deref(),
             params.small_model_provider_key.as_deref(),
             params.small_model_id.as_deref(),
+            params.review_enabled,
+            params.review_pickup_column.as_deref(),
+            params.review_max_turns,
+            params.review_prompt_template.as_deref(),
         )
         .fetch_one(db)
         .await
@@ -159,12 +170,17 @@ impl ProjectConfigsRepository {
              provider_id = COALESCE($15, provider_id),
              primary_model_provider_key = CASE WHEN $16 THEN $17 ELSE primary_model_provider_key END,
              primary_model_id = CASE WHEN $18 THEN $19 ELSE primary_model_id END,
-             small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,
-             small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END
-              WHERE id = $1
-              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
-              small_model_provider_key, small_model_id, created_at, provider_id as "provider_id?""#,
+              small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,
+              small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END,
+              review_enabled = CASE WHEN $24 THEN $25 ELSE review_enabled END,
+              review_pickup_column = CASE WHEN $26 THEN $27 ELSE review_pickup_column END,
+              review_max_turns = CASE WHEN $28 THEN $29 ELSE review_max_turns END,
+              review_prompt_template = CASE WHEN $30 THEN $31 ELSE review_prompt_template END
+               WHERE id = $1
+               RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
+               progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
+              small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
+              created_at, provider_id as "provider_id?""#,
             id,
             params.name,
             params.pickup_column,
@@ -188,6 +204,14 @@ impl ProjectConfigsRepository {
             params.small_model_provider_key.flatten(),
             params.small_model_id.is_some(),
             params.small_model_id.flatten(),
+            params.review_enabled.is_some(),
+            params.review_enabled.flatten(),
+            params.review_pickup_column.is_some(),
+            params.review_pickup_column.flatten(),
+            params.review_max_turns.is_some(),
+            params.review_max_turns.flatten(),
+            params.review_prompt_template.is_some(),
+            params.review_prompt_template.flatten(),
         )
         .fetch_optional(db)
         .await?

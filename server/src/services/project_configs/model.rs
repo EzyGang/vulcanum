@@ -31,6 +31,10 @@ pub struct ProjectConfig {
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
+    pub review_enabled: Option<bool>,
+    pub review_pickup_column: Option<String>,
+    pub review_max_turns: Option<i32>,
+    pub review_prompt_template: Option<String>,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
 }
@@ -67,6 +71,14 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub small_model_id: Option<String>,
     #[serde(default)]
+    pub review_enabled: Option<bool>,
+    #[serde(default)]
+    pub review_pickup_column: Option<String>,
+    #[serde(default)]
+    pub review_max_turns: Option<i32>,
+    #[serde(default)]
+    pub review_prompt_template: Option<String>,
+    #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
 }
@@ -97,6 +109,14 @@ pub struct UpdateProjectConfigRequest {
     pub small_model_provider_key: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub small_model_id: Option<Option<String>>,
+    #[serde(default)]
+    pub review_enabled: Option<Option<bool>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub review_pickup_column: Option<Option<String>>,
+    #[serde(default)]
+    pub review_max_turns: Option<Option<i32>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub review_prompt_template: Option<Option<String>>,
     #[serde(default)]
     pub external_workspace_id: Option<String>,
     #[serde(default)]
@@ -175,6 +195,7 @@ impl ProjectConfig {
             small_model_provider_key: settings.small_model_provider_key,
             small_model_id: settings.small_model_id,
             max_turns: self.max_turns,
+            review_max_turns: settings.review_max_turns,
             provider_id: self.provider_id,
             repo_urls: self.repo_urls.clone(),
         }
@@ -189,6 +210,10 @@ pub struct EffectiveProjectSettings {
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
+    pub review_enabled: bool,
+    pub review_pickup_column: String,
+    pub review_max_turns: i32,
+    pub review_prompt_template: String,
 }
 
 pub struct JobConfigFields {
@@ -200,6 +225,7 @@ pub struct JobConfigFields {
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
     pub max_turns: i32,
+    pub review_max_turns: i32,
     pub provider_id: Option<Uuid>,
     pub repo_urls: Vec<String>,
 }
@@ -215,6 +241,7 @@ impl JobConfigFields {
             small_model_provider_key: None,
             small_model_id: None,
             max_turns: 0,
+            review_max_turns: 1,
             provider_id: None,
             repo_urls: Vec::new(),
         }

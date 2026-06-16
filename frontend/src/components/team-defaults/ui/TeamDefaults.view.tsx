@@ -15,6 +15,10 @@ interface TeamDefaultsViewProps {
     primaryModelId: Signal<string>;
     smallModelProviderKey: Signal<string>;
     smallModelId: Signal<string>;
+    reviewEnabled: Signal<boolean>;
+    reviewPickupColumn: Signal<string>;
+    reviewMaxTurns: Signal<string>;
+    reviewPromptTemplate: Signal<string>;
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
     smallModelItems: SelectOption[];
@@ -31,6 +35,10 @@ interface TeamDefaultsViewProps {
     onPrimaryModelChange: (value: string) => void;
     onSmallProviderChange: (value: string) => void;
     onSmallModelChange: (value: string) => void;
+    onReviewEnabledChange: (checked: boolean) => void;
+    onReviewPickupColumnInput: (event: Event) => void;
+    onReviewMaxTurnsInput: (event: Event) => void;
+    onReviewPromptTemplateInput: (event: Event) => void;
     onSubmit: (event: Event) => void;
   };
 }
@@ -115,6 +123,56 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             rows={6}
             disabled={status.saving}
           />
+        </div>
+        <div class='flex flex-col gap-4 border border-border-base bg-bg-panel p-4'>
+          <label for='team-review-enabled' class='flex items-center gap-2 cursor-pointer'>
+            <input
+              id='team-review-enabled'
+              type='checkbox'
+              checked={data.reviewEnabled.value}
+              onChange={(event) =>
+                actions.onReviewEnabledChange((event.target as HTMLInputElement).checked)
+              }
+              disabled={status.saving}
+            />
+            <span class='text-sm font-semibold uppercase tracking-wide text-text-primary'>
+              Enable PR Review Automation
+            </span>
+          </label>
+          <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
+            <div class='flex flex-col gap-2'>
+              <Label for='team-review-pickup-column'>Review Pickup Column</Label>
+              <input
+                id='team-review-pickup-column'
+                class='border border-border-base bg-bg-card px-3 py-2 text-sm text-text-primary'
+                value={data.reviewPickupColumn.value}
+                onInput={actions.onReviewPickupColumnInput}
+                disabled={status.saving}
+              />
+            </div>
+            <div class='flex flex-col gap-2'>
+              <Label for='team-review-max-turns'>Review Max Turns</Label>
+              <input
+                id='team-review-max-turns'
+                class='border border-border-base bg-bg-card px-3 py-2 text-sm text-text-primary'
+                type='number'
+                min='1'
+                value={data.reviewMaxTurns.value}
+                onInput={actions.onReviewMaxTurnsInput}
+                disabled={status.saving}
+              />
+            </div>
+          </div>
+          <div class='flex flex-col gap-2'>
+            <Label for='team-review-prompt'>Review Prompt Template</Label>
+            <TextArea
+              id='team-review-prompt'
+              value={data.reviewPromptTemplate.value}
+              onInput={actions.onReviewPromptTemplateInput}
+              rows={5}
+              disabled={status.saving}
+            />
+          </div>
         </div>
         <Button type='submit' variant='primary' disabled={status.saving}>
           {status.saving ? 'Saving...' : 'Save Team Defaults'}

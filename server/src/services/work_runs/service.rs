@@ -6,8 +6,11 @@ pub mod fail;
 pub mod get_job;
 pub mod list;
 pub mod poll;
+pub mod spawn_review;
 pub mod submit_result;
 
+#[cfg(test)]
+mod spawn_review_tests;
 #[cfg(test)]
 mod work_runs_tests;
 

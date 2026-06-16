@@ -22,7 +22,7 @@ use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::repository::WorkRunEventsRepository;
 use crate::services::work_run_events::service::WorkRunEventsService;
-use crate::services::work_runs::model::WorkRunStatus;
+use crate::services::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::registration_code_store::InMemoryCodeStore;
@@ -169,8 +169,13 @@ pub async fn insert_pending_work_run_for_team(
         repo_full_names: Vec::new(),
         agents_md: String::new(),
         status: WorkRunStatus::Pending,
+        work_type: WorkRunType::Implementation,
+        parent_work_run_id: None,
+        task_body: String::new(),
         task_title: None,
         task_slug: None,
+        review_target_pr_url: None,
+        review_target_repo_full_name: None,
     };
 
     repo.insert_work_run(pool, params)
@@ -217,8 +222,13 @@ pub async fn insert_running_work_run_for_team(
         repo_full_names: Vec::new(),
         agents_md: String::new(),
         status: WorkRunStatus::Running,
+        work_type: WorkRunType::Implementation,
+        parent_work_run_id: None,
+        task_body: String::new(),
         task_title: None,
         task_slug: None,
+        review_target_pr_url: None,
+        review_target_repo_full_name: None,
     };
     let id = repo
         .insert_work_run(pool, params)

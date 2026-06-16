@@ -72,6 +72,20 @@ impl IntegrationClient {
         Ok(())
     }
 
+    pub async fn update_task_description(
+        &self,
+        task_id: &str,
+        description: &str,
+    ) -> Result<(), IntegrationError> {
+        match self {
+            Self::Kaneo(client) => client
+                .update_task_description(task_id, description)
+                .await
+                .map_err(IntegrationError::from)?,
+        };
+        Ok(())
+    }
+
     pub async fn lookup_project(
         &self,
         project_id: &str,

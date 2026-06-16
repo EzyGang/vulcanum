@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO work_run_reviews (work_run_id, pr_url, repo_full_name, review_url, review_body, review_already_exists)\n             VALUES ($1, $2, $3, $4, $5, $6)\n             ON CONFLICT (work_run_id, pr_url) DO UPDATE SET\n                 review_url = EXCLUDED.review_url,\n                 review_body = EXCLUDED.review_body,\n                 review_already_exists = EXCLUDED.review_already_exists",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4963f6e7bb1bedecccdd1a041f6fbf062c50f40cf907a6059c64d12ff1ab6f90"
+}

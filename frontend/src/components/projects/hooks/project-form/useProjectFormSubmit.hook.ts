@@ -26,6 +26,14 @@ interface UseProjectFormSubmitOptions {
   smallModelProviderOverride: Signal<boolean>;
   smallModelId: Signal<string>;
   smallModelIdOverride: Signal<boolean>;
+  reviewEnabled: Signal<boolean>;
+  reviewEnabledOverride: Signal<boolean>;
+  reviewPickupColumn: Signal<string>;
+  reviewPickupColumnOverride: Signal<boolean>;
+  reviewMaxTurns: Signal<string>;
+  reviewMaxTurnsOverride: Signal<boolean>;
+  reviewPromptTemplate: Signal<string>;
+  reviewPromptTemplateOverride: Signal<boolean>;
   providerId: Signal<string>;
   externalProjectId: Signal<string>;
   workspaceId: Signal<string>;
@@ -52,6 +60,14 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     smallModelProviderOverride,
     smallModelId,
     smallModelIdOverride,
+    reviewEnabled,
+    reviewEnabledOverride,
+    reviewPickupColumn,
+    reviewPickupColumnOverride,
+    reviewMaxTurns,
+    reviewMaxTurnsOverride,
+    reviewPromptTemplate,
+    reviewPromptTemplateOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -112,6 +128,13 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
                 smallModelProviderOverride
               ),
               smallModelId: overrideOrNull(smallModelId, smallModelIdOverride),
+              reviewEnabled: overrideBoolOrNull(reviewEnabled, reviewEnabledOverride),
+              reviewPickupColumn: overrideOrNull(reviewPickupColumn, reviewPickupColumnOverride),
+              reviewMaxTurns: overrideNumberOrNull(reviewMaxTurns, reviewMaxTurnsOverride),
+              reviewPromptTemplate: overrideOrNull(
+                reviewPromptTemplate,
+                reviewPromptTemplateOverride
+              ),
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -144,7 +167,14 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               smallModelProviderKey,
               smallModelProviderOverride
             ),
-            smallModelId: overrideOrUndefined(smallModelId, smallModelIdOverride)
+            smallModelId: overrideOrUndefined(smallModelId, smallModelIdOverride),
+            reviewEnabled: overrideBoolOrUndefined(reviewEnabled, reviewEnabledOverride),
+            reviewPickupColumn: overrideOrUndefined(reviewPickupColumn, reviewPickupColumnOverride),
+            reviewMaxTurns: overrideNumberOrUndefined(reviewMaxTurns, reviewMaxTurnsOverride),
+            reviewPromptTemplate: overrideOrUndefined(
+              reviewPromptTemplate,
+              reviewPromptTemplateOverride
+            )
           });
         }
       } catch (err) {
@@ -170,3 +200,19 @@ const overrideOrUndefined = (
   field: Signal<string>,
   enabled: Signal<boolean>
 ): string | undefined => (enabled.value ? field.value || undefined : undefined);
+
+const overrideBoolOrNull = (field: Signal<boolean>, enabled: Signal<boolean>): boolean | null =>
+  enabled.value ? field.value : null;
+
+const overrideBoolOrUndefined = (
+  field: Signal<boolean>,
+  enabled: Signal<boolean>
+): boolean | undefined => (enabled.value ? field.value : undefined);
+
+const overrideNumberOrNull = (field: Signal<string>, enabled: Signal<boolean>): number | null =>
+  enabled.value ? Number(field.value) || null : null;
+
+const overrideNumberOrUndefined = (
+  field: Signal<string>,
+  enabled: Signal<boolean>
+): number | undefined => (enabled.value ? Number(field.value) || undefined : undefined);

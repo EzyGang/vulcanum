@@ -72,6 +72,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const smallModelProviderOverride = useSignal(false);
   const smallModelId = useSignal('');
   const smallModelIdOverride = useSignal(false);
+  const reviewEnabled = useSignal(false);
+  const reviewEnabledOverride = useSignal(false);
+  const reviewPickupColumn = useSignal('in-review');
+  const reviewPickupColumnOverride = useSignal(false);
+  const reviewMaxTurns = useSignal('1');
+  const reviewMaxTurnsOverride = useSignal(false);
+  const reviewPromptTemplate = useSignal('');
+  const reviewPromptTemplateOverride = useSignal(false);
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
@@ -93,6 +101,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     smallModelProviderOverride,
     smallModelId,
     smallModelIdOverride,
+    reviewEnabled,
+    reviewEnabledOverride,
+    reviewPickupColumn,
+    reviewPickupColumnOverride,
+    reviewMaxTurns,
+    reviewMaxTurnsOverride,
+    reviewPromptTemplate,
+    reviewPromptTemplateOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -130,6 +146,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       smallModelProviderOverride.value = p.smallModelProviderKey != null;
       smallModelId.value = p.smallModelId ?? '';
       smallModelIdOverride.value = p.smallModelId != null;
+      reviewEnabled.value = p.reviewEnabled ?? false;
+      reviewEnabledOverride.value = p.reviewEnabled != null;
+      reviewPickupColumn.value = p.reviewPickupColumn ?? 'in-review';
+      reviewPickupColumnOverride.value = p.reviewPickupColumn != null;
+      reviewMaxTurns.value = String(p.reviewMaxTurns ?? 1);
+      reviewMaxTurnsOverride.value = p.reviewMaxTurns != null;
+      reviewPromptTemplate.value = p.reviewPromptTemplate ?? '';
+      reviewPromptTemplateOverride.value = p.reviewPromptTemplate != null;
     }
   }, [projectId, existingProject]);
 
@@ -198,7 +222,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     primaryModelProviderOverride.value ||
     primaryModelIdOverride.value ||
     smallModelProviderOverride.value ||
-    smallModelIdOverride.value;
+    smallModelIdOverride.value ||
+    reviewEnabledOverride.value ||
+    reviewPickupColumnOverride.value ||
+    reviewMaxTurnsOverride.value ||
+    reviewPromptTemplateOverride.value;
 
   return {
     meta: {
@@ -295,6 +323,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       smallModelProviderOverride,
       smallModelId,
       smallModelIdOverride,
+      reviewEnabled,
+      reviewEnabledOverride,
+      reviewPickupColumn,
+      reviewPickupColumnOverride,
+      reviewMaxTurns,
+      reviewMaxTurnsOverride,
+      reviewPromptTemplate,
+      reviewPromptTemplateOverride,
       modelProviders,
       catalogProviders,
       connectedProviderItems,
@@ -390,6 +426,38 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onResetSmallModelOverride: () => {
         smallModelIdOverride.value = false;
         smallModelId.value = '';
+      },
+      onReviewEnabledChange: (checked: boolean) => {
+        reviewEnabledOverride.value = true;
+        reviewEnabled.value = checked;
+      },
+      onResetReviewEnabledOverride: () => {
+        reviewEnabledOverride.value = false;
+        reviewEnabled.value = false;
+      },
+      onReviewPickupColumnChange: (value: string) => {
+        reviewPickupColumnOverride.value = true;
+        reviewPickupColumn.value = value;
+      },
+      onResetReviewPickupColumnOverride: () => {
+        reviewPickupColumnOverride.value = false;
+        reviewPickupColumn.value = 'in-review';
+      },
+      onReviewMaxTurnsInput: (event: Event) => {
+        reviewMaxTurnsOverride.value = true;
+        textInputHandler(reviewMaxTurns)(event);
+      },
+      onResetReviewMaxTurnsOverride: () => {
+        reviewMaxTurnsOverride.value = false;
+        reviewMaxTurns.value = '1';
+      },
+      onReviewPromptTemplateInput: (event: Event) => {
+        reviewPromptTemplateOverride.value = true;
+        textInputHandler(reviewPromptTemplate)(event);
+      },
+      onResetReviewPromptTemplateOverride: () => {
+        reviewPromptTemplateOverride.value = false;
+        reviewPromptTemplate.value = '';
       }
     }
   };

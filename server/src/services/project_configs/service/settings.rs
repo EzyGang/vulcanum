@@ -25,6 +25,16 @@ impl ProjectConfigsService {
                 .clone()
                 .or(team.small_model_provider_key),
             small_model_id: config.small_model_id.clone().or(team.small_model_id),
+            review_enabled: config.review_enabled.unwrap_or(team.review_enabled),
+            review_pickup_column: config
+                .review_pickup_column
+                .clone()
+                .unwrap_or(team.review_pickup_column),
+            review_max_turns: config.review_max_turns.unwrap_or(team.review_max_turns),
+            review_prompt_template: config
+                .review_prompt_template
+                .clone()
+                .unwrap_or(team.review_prompt_template),
         })
     }
 }

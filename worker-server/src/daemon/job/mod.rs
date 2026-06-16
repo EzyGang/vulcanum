@@ -7,3 +7,8 @@ pub(crate) mod submit;
 pub(crate) mod turn_loop;
 
 pub(crate) use orchestrate::handle_job;
+
+#[cfg(test)]
+mod artifact_tests;
+#[cfg(test)]
+mod submit_tests;

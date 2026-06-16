@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,\n             progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, primary_model_provider_key, primary_model_id,\n             small_model_provider_key, small_model_id)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)\n              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as \"repo_full_names!\", ARRAY[]::TEXT[] as \"repo_urls!\", agents_md, primary_model_provider_key, primary_model_id,\n              small_model_provider_key, small_model_id, created_at, provider_id as \"provider_id?\"",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n              pc.small_model_provider_key, pc.small_model_id,\n              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,\n              pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.id = $1\n             GROUP BY pc.id",
   "describe": {
     "columns": [
       {
@@ -114,45 +114,38 @@
       },
       {
         "ordinal": 20,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 21,
+        "name": "review_pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 23,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 24,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 25,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "integration_type",
-            "kind": {
-              "Enum": [
-                "kaneo"
-              ]
-            }
-          }
-        },
-        "Bool",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Text",
-        "Text",
-        "Text",
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -176,9 +169,13 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "d87d4b260ab84262f0283a7a9e8e84ca3a427edb9856fcafc58fe7f8517321d4"
+  "hash": "5ca6273b0c99faec7576cf417edbaea103a7c4c6fb6ef1f44b778eedf0e6f8d2"
 }

@@ -3,8 +3,8 @@ use uuid::Uuid;
 use crate::services::providers::client::IntegrationClient;
 use crate::services::providers::model::IntegrationType;
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
-use crate::services::work_runs::repository::queries::SetResultParams;
+use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
+use crate::services::work_runs::repository::queries::{InsertReviewResultParams, SetResultParams};
 use crate::services::work_runs::service::WorkRunsService;
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::runtime::types::FinishStatus;
@@ -61,6 +61,9 @@ impl WorkRunsService {
                     finish_summary: params.finish_summary.as_deref(),
                     finish_blocked_reason: params.finish_blocked_reason.as_deref(),
                     finish_next_column: params.finish_next_column.as_deref(),
+                    review_url: params.review_url.as_deref(),
+                    review_body: params.review_body.as_deref(),
+                    review_already_exists: params.review_already_exists,
                 },
             )
             .await?;
@@ -169,6 +172,14 @@ impl WorkRunsService {
         self.sync_kaneo_on_result(&run, &params, status, &pr_urls)
             .await;
 
+        if matches!(status, WorkRunStatus::Completed) {
+            self.attach_prs_and_spawn_reviews(&run, &pr_urls).await;
+        }
+
+        if matches!(run.work_type, WorkRunType::PullRequestReview) {
+            self.record_review_result(&run, &params).await;
+        }
+
         Ok(updated)
     }
 
@@ -227,9 +238,10 @@ impl WorkRunsService {
             }
         };
 
+        let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
         let is_blocked = matches!(params.finish_status, Some(FinishStatus::Blocked));
 
-        if !is_blocked {
+        if !is_blocked && !is_review {
             let new_column = match params.finish_status {
                 Some(FinishStatus::Completed) => &project_config.target_column,
                 Some(FinishStatus::Failed) => &project_config.pickup_column,
@@ -253,13 +265,16 @@ impl WorkRunsService {
             }
         }
 
-        let comment = match (
-            params.finish_summary.as_deref(),
-            params.finish_blocked_reason.as_deref(),
-        ) {
-            (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
-            (Some(s), None) => format!("**Summary:** {s}"),
-            _ => format!("PR: {}", pr_urls.join(", ")),
+        let comment = match is_review {
+            true => review_comment(run, params),
+            false => match (
+                params.finish_summary.as_deref(),
+                params.finish_blocked_reason.as_deref(),
+            ) {
+                (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
+                (Some(s), None) => format!("**Summary:** {s}"),
+                _ => format!("PR: {}", pr_urls.join(", ")),
+            },
         };
 
         if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {
@@ -268,6 +283,32 @@ impl WorkRunsService {
                 error = %e,
                 "failed to add kaneo comment",
             );
+        }
+    }
+
+    async fn record_review_result(&self, run: &WorkRun, params: &SubmitResultRequest) {
+        let pr_url = match run.review_target_pr_url.as_deref() {
+            Some(url) => url,
+            None => return,
+        };
+        let repo = run.review_target_repo_full_name.as_deref().unwrap_or("");
+
+        if let Err(e) = self
+            .work_runs_repo
+            .insert_review_result(
+                &self.db,
+                InsertReviewResultParams {
+                    work_run_id: run.id,
+                    pr_url,
+                    repo_full_name: repo,
+                    review_url: params.review_url.as_deref(),
+                    review_body: params.review_body.as_deref(),
+                    review_already_exists: params.review_already_exists,
+                },
+            )
+            .await
+        {
+            tracing::warn!(work_run_id = %run.id, error = %e, "failed to record review result");
         }
     }
 }
@@ -280,5 +321,21 @@ fn normalized_pr_urls(params: &SubmitResultRequest) -> Vec<String> {
     match params.pr_url.is_empty() {
         true => Vec::new(),
         false => vec![params.pr_url.clone()],
+    }
+}
+
+fn review_comment(run: &WorkRun, params: &SubmitResultRequest) -> String {
+    let pr_url = run
+        .review_target_pr_url
+        .as_deref()
+        .unwrap_or("the pull request");
+    let prefix = match params.review_already_exists {
+        true => "Review already existed",
+        false => "Review posted",
+    };
+
+    match params.review_url.as_deref() {
+        Some(review_url) => format!("{prefix} for {pr_url}: {review_url}"),
+        None => format!("{prefix} for {pr_url}"),
     }
 }
