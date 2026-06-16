@@ -66,10 +66,15 @@ impl ProjectConfigsService {
             .and_then(|repos| repos.first())
             .map(|full_name| github_repo_url(full_name));
 
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(ProjectConfigsError::Database)?;
         let updated = self
             .repo
             .update(
-                &self.db,
+                &mut *tx,
                 id,
                 &UpdateProjectConfigParams {
                     name: params.name.as_deref(),
@@ -107,11 +112,16 @@ impl ProjectConfigsService {
         match params.repo_full_names {
             Some(repo_full_names) => {
                 self.repo
-                    .replace_repos(&self.db, id, &repo_full_names)
+                    .replace_repos(&mut tx, id, &repo_full_names)
                     .await?;
-                self.repo.find_by_id(&self.db, id).await
+                let config = self.repo.find_by_id(&mut *tx, id).await?;
+                tx.commit().await.map_err(ProjectConfigsError::Database)?;
+                Ok(config)
             }
-            None => Ok(updated),
+            None => {
+                tx.commit().await.map_err(ProjectConfigsError::Database)?;
+                Ok(updated)
+            }
         }
     }
 

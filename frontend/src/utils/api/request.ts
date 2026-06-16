@@ -11,10 +11,6 @@ export const post = async <T>(url: string, body?: unknown): Promise<T> => {
   return fetchApi<T>(url, { method: 'POST', body });
 };
 
-export const put = async <T>(url: string, body?: unknown): Promise<T> => {
-  return fetchApi<T>(url, { method: 'PUT', body });
-};
-
 export const patch = async <T>(url: string, body?: unknown): Promise<T> => {
   return fetchApi<T>(url, { method: 'PATCH', body });
 };

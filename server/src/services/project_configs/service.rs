@@ -96,11 +96,19 @@ impl ProjectConfigsService {
         )
         .await?;
 
-        let config = self.repo.create(&self.db, team_id, &params).await?;
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(ProjectConfigsError::Database)?;
+        let config = self.repo.create(&mut *tx, team_id, &params).await?;
         self.repo
-            .replace_repos(&self.db, config.id, &params.repo_full_names)
+            .replace_repos(&mut tx, config.id, &params.repo_full_names)
             .await?;
-        self.repo.find_by_id(&self.db, config.id).await
+        let created = self.repo.find_by_id(&mut *tx, config.id).await?;
+        tx.commit().await.map_err(ProjectConfigsError::Database)?;
+
+        Ok(created)
     }
 
     pub(super) async fn resolve_client(
