@@ -31,6 +31,14 @@ export interface ProjectFormFieldsContextValue {
   smallModelProviderOverride: Signal<boolean>;
   smallModelId: Signal<string>;
   smallModelIdOverride: Signal<boolean>;
+  reviewEnabled: Signal<boolean>;
+  reviewEnabledOverride: Signal<boolean>;
+  reviewPickupColumn: Signal<string>;
+  reviewPickupColumnOverride: Signal<boolean>;
+  reviewMaxTurns: Signal<number>;
+  reviewMaxTurnsOverride: Signal<boolean>;
+  reviewPromptTemplate: Signal<string>;
+  reviewPromptTemplateOverride: Signal<boolean>;
   modelProviders: ModelProviderConfig[];
   catalogProviders: CatalogProvider[];
   connectedProviderItems: SelectOption[];
@@ -60,6 +68,15 @@ export interface ProjectFormFieldsContextValue {
   onResetSmallModelProviderOverride: () => void;
   onSmallModelChange: (value: string) => void;
   onResetSmallModelOverride: () => void;
+  onReviewEnabledChange: (checked: boolean) => void;
+  onResetReviewOverrides: () => void;
+  onResetReviewEnabledOverride: () => void;
+  onReviewPickupColumnChange: (value: string) => void;
+  onResetReviewPickupColumnOverride: () => void;
+  onReviewMaxTurnsInput: (event: Event) => void;
+  onResetReviewMaxTurnsOverride: () => void;
+  onReviewPromptTemplateInput: (event: Event) => void;
+  onResetReviewPromptTemplateOverride: () => void;
 }
 
 const ProjectFormFieldsContext = createContext<ProjectFormFieldsContextValue | null>(null);

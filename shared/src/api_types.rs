@@ -4,6 +4,13 @@ use uuid::Uuid;
 
 use crate::runtime::types::FinishStatus;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkRunType {
+    Implementation,
+    PullRequestReview,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConnectRequest {
     pub code: String,
@@ -50,6 +57,7 @@ pub struct AckRequest {}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JobResponse {
+    pub work_type: WorkRunType,
     pub prompt_text: String,
     pub repos: Vec<JobRepo>,
     pub agents_md: String,
@@ -62,6 +70,9 @@ pub struct JobResponse {
     pub external_workspace_id: String,
     pub max_turns: i32,
     pub github_token: Option<String>,
+    pub pr_urls: Vec<String>,
+    pub review_target_pr_url: Option<String>,
+    pub review_target_repo_full_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -88,6 +99,10 @@ pub struct SubmitResultRequest {
     pub finish_summary: Option<String>,
     pub finish_blocked_reason: Option<String>,
     pub finish_next_column: Option<String>,
+    pub review_url: Option<String>,
+    pub review_body: Option<String>,
+    #[serde(default)]
+    pub review_already_exists: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

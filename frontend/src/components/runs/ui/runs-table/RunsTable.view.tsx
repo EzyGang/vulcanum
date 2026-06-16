@@ -1,7 +1,11 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../../types/runs';
-import { CANCELLABLE_STATUSES } from '../../../../types/runs';
+import {
+  CANCELLABLE_STATUSES,
+  WORK_RUN_PR_LINK_LABELS,
+  WORK_RUN_TYPE_LABELS
+} from '../../../../types/runs';
 import { formatDuration, formatRelativeTime } from '../../../../utils/format';
 import { Button } from '../../../shared/ui/Button.view';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
@@ -11,7 +15,7 @@ import { Table } from '../../../shared/ui/Table.view';
 import { RunEventTimelineContainer } from '../../containers/run-events/RunEventTimeline.container';
 import { hasRunUsageStats, RunUsageStats } from './RunUsageStats';
 
-const COL_SPAN = 10;
+const COL_SPAN = 11;
 
 interface RunsTableProps {
   runs: WorkRunListItem[];
@@ -62,6 +66,7 @@ export const RunsTable = ({
       </Table.HeadCell>
       <Table.HeadCell>Task</Table.HeadCell>
       <Table.HeadCell>Status</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Type</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Worker</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Duration</Table.HeadCell>
       <Table.HeadCell class='hidden md:table-cell'>Tokens</Table.HeadCell>
@@ -108,6 +113,11 @@ export const RunsTable = ({
                 <StatusBadge status={run.status} />
               </Table.Cell>
               <Table.Cell class='hidden md:table-cell'>
+                <span class='border border-border-base bg-bg-panel px-2 py-1 text-xs font-mono text-text-secondary'>
+                  {WORK_RUN_TYPE_LABELS[run.workType]}
+                </span>
+              </Table.Cell>
+              <Table.Cell class='hidden md:table-cell'>
                 <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
               </Table.Cell>
               <Table.Cell class='hidden md:table-cell'>
@@ -123,15 +133,15 @@ export const RunsTable = ({
                 )}
               </Table.Cell>
               <Table.Cell class='hidden md:table-cell'>
-                {run.resultPrUrl ? (
+                {run.reviewTargetPrUrl || run.resultPrUrl ? (
                   <a
-                    href={run.resultPrUrl}
+                    href={run.reviewTargetPrUrl ?? run.resultPrUrl ?? ''}
                     target='_blank'
                     rel='noopener noreferrer'
                     onClick={onStopRowToggle}
                     class='text-accent text-sm hover:underline'
                   >
-                    PR
+                    {WORK_RUN_PR_LINK_LABELS[run.workType]}
                   </a>
                 ) : (
                   <span class='text-text-muted text-sm'>—</span>

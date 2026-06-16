@@ -8,6 +8,10 @@ export interface Team {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewEnabled: boolean;
+  reviewPickupColumn: string;
+  reviewMaxTurns: number;
+  reviewPromptTemplate: string;
   createdAt: string;
 }
 
@@ -31,6 +35,10 @@ export interface UpdateTeamRequest {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewEnabled?: boolean;
+  reviewPickupColumn?: string;
+  reviewMaxTurns?: number;
+  reviewPromptTemplate?: string;
 }
 
 export interface CreateTeamInviteResponse {

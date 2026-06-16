@@ -19,6 +19,9 @@ pub(crate) struct FailedResult {
     pub(crate) finish_summary: Option<String>,
     pub(crate) finish_blocked_reason: Option<String>,
     pub(crate) finish_next_column: Option<String>,
+    pub(crate) review_url: Option<String>,
+    pub(crate) review_body: Option<String>,
+    pub(crate) review_already_exists: bool,
 }
 
 impl FailedResult {
@@ -33,6 +36,9 @@ impl FailedResult {
             finish_summary: None,
             finish_blocked_reason: None,
             finish_next_column: None,
+            review_url: None,
+            review_body: None,
+            review_already_exists: false,
         }
     }
 }
@@ -70,6 +76,9 @@ pub(crate) async fn submit_failed_result(
         finish_summary: result.finish_summary.clone(),
         finish_blocked_reason: result.finish_blocked_reason.clone(),
         finish_next_column: result.finish_next_column.clone(),
+        review_url: result.review_url.clone(),
+        review_body: result.review_body.clone(),
+        review_already_exists: result.review_already_exists,
     });
     let access_token = worker_state.read().await.access_token.clone();
     if let Err(e) = client.submit_result(job_id, &submit, &access_token).await {
@@ -121,6 +130,11 @@ pub(crate) async fn submit_turn_result(
         finish_summary: finish_artifact.and_then(|a| a.summary.clone()),
         finish_blocked_reason: finish_artifact.and_then(|a| a.blocked_reason.clone()),
         finish_next_column: finish_artifact.and_then(|a| a.next_column.clone()),
+        review_url: finish_artifact.and_then(|a| a.review_url.clone()),
+        review_body: finish_artifact.and_then(|a| a.review_body.clone()),
+        review_already_exists: finish_artifact
+            .map(|a| a.review_already_exists)
+            .unwrap_or(false),
     });
 
     let access_token = worker_state.read().await.access_token.clone();
@@ -148,6 +162,9 @@ pub(crate) struct SubmitResultParams {
     pub(crate) finish_summary: Option<String>,
     pub(crate) finish_blocked_reason: Option<String>,
     pub(crate) finish_next_column: Option<String>,
+    pub(crate) review_url: Option<String>,
+    pub(crate) review_body: Option<String>,
+    pub(crate) review_already_exists: bool,
 }
 
 #[must_use]
@@ -167,6 +184,9 @@ pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultR
         finish_summary: params.finish_summary,
         finish_blocked_reason: params.finish_blocked_reason,
         finish_next_column: params.finish_next_column,
+        review_url: params.review_url,
+        review_body: params.review_body,
+        review_already_exists: params.review_already_exists,
     }
 }
 

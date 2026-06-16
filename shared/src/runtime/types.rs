@@ -114,4 +114,10 @@ pub struct FinishRunArtifact {
     pub blocked_reason: Option<String>,
     #[serde(default)]
     pub next_column: Option<String>,
+    #[serde(default)]
+    pub review_url: Option<String>,
+    #[serde(default)]
+    pub review_body: Option<String>,
+    #[serde(default)]
+    pub review_already_exists: bool,
 }

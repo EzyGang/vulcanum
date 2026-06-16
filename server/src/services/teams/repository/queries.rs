@@ -25,6 +25,7 @@ impl TeamsRepository {
              VALUES ($1, $2, $3)
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
+              review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
@@ -46,6 +47,7 @@ impl TeamsRepository {
              VALUES ($1, $2)
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
+              review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
@@ -63,6 +65,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
+             review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE id = $1"#,
             team_id,
@@ -102,6 +105,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
+             review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE personal_user_id = $1"#,
             user_id,
@@ -172,6 +176,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT t.id, t.name, t.personal_user_id, t.prompt_template, t.agents_md, t.primary_model_provider_key,
              t.primary_model_id, t.small_model_provider_key, t.small_model_id,
+             t.review_enabled, t.review_pickup_column, t.review_max_turns, t.review_prompt_template,
              t.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams t
              INNER JOIN team_members tm ON tm.team_id = t.id
@@ -192,6 +197,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
+             review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams
              ORDER BY created_at ASC"#,
@@ -209,6 +215,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
+             review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams ORDER BY created_at ASC LIMIT 1"#,
         )
@@ -294,6 +301,10 @@ impl TeamsRepository {
         primary_model_id: Option<Option<&str>>,
         small_model_provider_key: Option<Option<&str>>,
         small_model_id: Option<Option<&str>>,
+        review_enabled: Option<bool>,
+        review_pickup_column: Option<&str>,
+        review_max_turns: Option<i32>,
+        review_prompt_template: Option<&str>,
     ) -> Result<Team, TeamsError>
     where
         Q: Queryer<'c>,
@@ -307,10 +318,15 @@ impl TeamsRepository {
              primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,
              primary_model_id = CASE WHEN $7 THEN $8 ELSE primary_model_id END,
              small_model_provider_key = CASE WHEN $9 THEN $10 ELSE small_model_provider_key END,
-             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END
+             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END,
+             review_enabled = COALESCE($13, review_enabled),
+             review_pickup_column = COALESCE($14, review_pickup_column),
+             review_max_turns = COALESCE($15, review_max_turns),
+             review_prompt_template = COALESCE($16, review_prompt_template)
              WHERE id = $1
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
+              review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             team_id,
             name,
@@ -324,6 +340,10 @@ impl TeamsRepository {
             small_model_provider_key.flatten(),
             small_model_id.is_some(),
             small_model_id.flatten(),
+            review_enabled,
+            review_pickup_column,
+            review_max_turns,
+            review_prompt_template,
         )
         .fetch_optional(db)
         .await?

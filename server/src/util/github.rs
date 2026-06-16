@@ -6,6 +6,30 @@ pub struct GithubRepo {
     name: String,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct GithubPullRequest {
+    repo: GithubRepo,
+    number: i64,
+    url: String,
+}
+
+impl GithubPullRequest {
+    #[must_use]
+    pub fn repo(&self) -> &GithubRepo {
+        &self.repo
+    }
+
+    #[must_use]
+    pub fn number(&self) -> i64 {
+        self.number
+    }
+
+    #[must_use]
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+}
+
 impl GithubRepo {
     #[must_use]
     pub fn owner(&self) -> &str {
@@ -48,6 +72,33 @@ pub fn parse_github_repo(value: &str) -> Option<GithubRepo> {
     Some(GithubRepo {
         owner: owner.to_owned(),
         name: name.to_owned(),
+    })
+}
+
+#[must_use]
+pub fn parse_github_pr_url(value: &str) -> Option<GithubPullRequest> {
+    let trimmed = value.split(['?', '#']).next()?.trim_end_matches('/');
+    let path = github_repo_path(trimmed);
+    let mut parts = path.split('/');
+    let owner = parts.next()?;
+    let repo = parts.next()?;
+    let pull = parts.next()?;
+    let number = parts.next()?;
+
+    if parts.next().is_some() || pull != "pull" {
+        return None;
+    }
+
+    let number = number.parse::<i64>().ok()?;
+    let repo = GithubRepo {
+        owner: owner.to_owned(),
+        name: repo.to_owned(),
+    };
+
+    Some(GithubPullRequest {
+        url: format!("{}{}", GITHUB_REPO_URL_PREFIX, path),
+        repo,
+        number,
     })
 }
 

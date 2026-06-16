@@ -3,6 +3,7 @@ use uuid::Uuid;
 use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
 use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
+use crate::services::work_runs::model::WorkRunType;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_repo_full_name_from_url;
 use vulcanum_shared::api_types::{JobRepo, JobResponse};
@@ -37,6 +38,7 @@ impl WorkRunsService {
                 url: run.repo_url.clone(),
             });
         }
+        let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
             Some(pid) => match self
@@ -89,6 +91,7 @@ impl WorkRunsService {
         );
 
         Ok(JobResponse {
+            work_type: shared_work_type(run.work_type),
             prompt_text: run.prompt_text,
             repos,
             agents_md: run.agents_md,
@@ -99,8 +102,24 @@ impl WorkRunsService {
             provider_api_key,
             external_project_id: cfg.external_project_id,
             external_workspace_id: cfg.external_workspace_id,
-            max_turns: cfg.max_turns,
+            max_turns: match run.work_type {
+                WorkRunType::Implementation => cfg.max_turns,
+                WorkRunType::PullRequestReview => cfg.review_max_turns,
+            },
             github_token,
+            pr_urls,
+            review_target_pr_url: run.review_target_pr_url,
+            review_target_repo_full_name: run.review_target_repo_full_name,
         })
+    }
+}
+
+#[must_use]
+fn shared_work_type(work_type: WorkRunType) -> vulcanum_shared::api_types::WorkRunType {
+    match work_type {
+        WorkRunType::Implementation => vulcanum_shared::api_types::WorkRunType::Implementation,
+        WorkRunType::PullRequestReview => {
+            vulcanum_shared::api_types::WorkRunType::PullRequestReview
+        }
     }
 }

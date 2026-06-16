@@ -137,6 +137,10 @@ impl TeamsService {
                     .as_ref()
                     .map(|value| value.as_deref()),
                 params.small_model_id.as_ref().map(|value| value.as_deref()),
+                params.review_enabled,
+                params.review_pickup_column.as_deref(),
+                params.review_max_turns,
+                params.review_prompt_template.as_deref(),
             )
             .await
     }

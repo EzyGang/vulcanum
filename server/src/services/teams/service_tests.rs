@@ -232,6 +232,10 @@ async fn member_cannot_rename_team(pool: sqlx::PgPool) {
                 primary_model_id: None,
                 small_model_provider_key: None,
                 small_model_id: None,
+                review_enabled: None,
+                review_pickup_column: None,
+                review_max_turns: None,
+                review_prompt_template: None,
             },
             &TeamPrincipal::User {
                 user_id: member_id.to_owned(),

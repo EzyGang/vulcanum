@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{WorkRunListItem, WorkRunStatus};
+use crate::services::work_runs::model::{WorkRunListItem, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::repository::WorkRunsRepository;
 
 impl WorkRunsRepository {
@@ -15,8 +15,10 @@ impl WorkRunsRepository {
             WorkRunListItem,
             r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
-             wr.status as "status: WorkRunStatus", wr.prompt_text, wr.repo_url,
+             wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
+             wr.prompt_text, wr.repo_url, wr.task_body,
              wr.task_title, wr.task_slug,
+             wr.review_target_pr_url, wr.review_target_repo_full_name, wr.review_url, wr.review_body, wr.review_already_exists,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",

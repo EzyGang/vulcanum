@@ -6,8 +6,15 @@ pub mod fail;
 pub mod get_job;
 pub mod list;
 pub mod poll;
+pub(crate) mod record_review;
+pub mod spawn_review;
 pub mod submit_result;
+pub(crate) mod sync_task_tracker;
 
+#[cfg(test)]
+mod record_review_tests;
+#[cfg(test)]
+mod spawn_review_tests;
 #[cfg(test)]
 mod work_runs_tests;
 

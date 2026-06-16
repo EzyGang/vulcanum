@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::queryer::Queryer;
 use crate::services::dispatcher::errors::DispatchError;
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus};
+use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::workers::model::{Worker, WorkerStatus};
 
 fn map_sqlx_error(err: sqlx::Error) -> DispatchError {
@@ -42,7 +42,9 @@ impl DispatchRepository {
         sqlx::query_as!(
             WorkRun,
             r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, task_title, task_slug,
+             work_type as "work_type: WorkRunType", parent_work_run_id,
+             prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
+             review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -69,7 +71,9 @@ impl DispatchRepository {
              WHERE id = $1 AND status = 'pending'::work_run_status
              AND team_id = (SELECT team_id FROM workers WHERE id = $2)
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-             prompt_text, repo_url, agents_md, task_title, task_slug,
+              work_type as "work_type: WorkRunType", parent_work_run_id,
+              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
+              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",

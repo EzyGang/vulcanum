@@ -1,6 +1,10 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
+import {
+  DEFAULT_REVIEW_MAX_TURNS,
+  DEFAULT_REVIEW_PICKUP_COLUMN
+} from '../../../../constants/reviewAutomation';
 import { useModelItems } from '../../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
@@ -9,6 +13,7 @@ import {
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
+import { parsePositiveNumber } from '../../../../utils/numbers';
 import {
   getProjectSetupHelpText,
   getProjectSetupMissingMessages
@@ -72,6 +77,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const smallModelProviderOverride = useSignal(false);
   const smallModelId = useSignal('');
   const smallModelIdOverride = useSignal(false);
+  const reviewEnabled = useSignal(false);
+  const reviewEnabledOverride = useSignal(false);
+  const reviewPickupColumn = useSignal(DEFAULT_REVIEW_PICKUP_COLUMN);
+  const reviewPickupColumnOverride = useSignal(false);
+  const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
+  const reviewMaxTurnsOverride = useSignal(false);
+  const reviewPromptTemplate = useSignal('');
+  const reviewPromptTemplateOverride = useSignal(false);
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
@@ -93,6 +106,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     smallModelProviderOverride,
     smallModelId,
     smallModelIdOverride,
+    reviewEnabled,
+    reviewEnabledOverride,
+    reviewPickupColumn,
+    reviewPickupColumnOverride,
+    reviewMaxTurns,
+    reviewMaxTurnsOverride,
+    reviewPromptTemplate,
+    reviewPromptTemplateOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -130,6 +151,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       smallModelProviderOverride.value = p.smallModelProviderKey != null;
       smallModelId.value = p.smallModelId ?? '';
       smallModelIdOverride.value = p.smallModelId != null;
+      reviewEnabled.value = p.reviewEnabled ?? false;
+      reviewEnabledOverride.value = p.reviewEnabled != null;
+      reviewPickupColumn.value = p.reviewPickupColumn ?? DEFAULT_REVIEW_PICKUP_COLUMN;
+      reviewPickupColumnOverride.value = p.reviewPickupColumn != null;
+      reviewMaxTurns.value = p.reviewMaxTurns ?? DEFAULT_REVIEW_MAX_TURNS;
+      reviewMaxTurnsOverride.value = p.reviewMaxTurns != null;
+      reviewPromptTemplate.value = p.reviewPromptTemplate ?? '';
+      reviewPromptTemplateOverride.value = p.reviewPromptTemplate != null;
     }
   }, [projectId, existingProject]);
 
@@ -198,7 +227,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     primaryModelProviderOverride.value ||
     primaryModelIdOverride.value ||
     smallModelProviderOverride.value ||
-    smallModelIdOverride.value;
+    smallModelIdOverride.value ||
+    reviewEnabledOverride.value ||
+    reviewPickupColumnOverride.value ||
+    reviewMaxTurnsOverride.value ||
+    reviewPromptTemplateOverride.value;
 
   return {
     meta: {
@@ -295,6 +328,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       smallModelProviderOverride,
       smallModelId,
       smallModelIdOverride,
+      reviewEnabled,
+      reviewEnabledOverride,
+      reviewPickupColumn,
+      reviewPickupColumnOverride,
+      reviewMaxTurns,
+      reviewMaxTurnsOverride,
+      reviewPromptTemplate,
+      reviewPromptTemplateOverride,
       modelProviders,
       catalogProviders,
       connectedProviderItems,
@@ -390,6 +431,51 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onResetSmallModelOverride: () => {
         smallModelIdOverride.value = false;
         smallModelId.value = '';
+      },
+      onReviewEnabledChange: (checked: boolean) => {
+        reviewEnabledOverride.value = true;
+        reviewEnabled.value = checked;
+      },
+      onResetReviewOverrides: () => {
+        reviewEnabledOverride.value = false;
+        reviewEnabled.value = false;
+        reviewPickupColumnOverride.value = false;
+        reviewPickupColumn.value = DEFAULT_REVIEW_PICKUP_COLUMN;
+        reviewMaxTurnsOverride.value = false;
+        reviewMaxTurns.value = DEFAULT_REVIEW_MAX_TURNS;
+        reviewPromptTemplateOverride.value = false;
+        reviewPromptTemplate.value = '';
+      },
+      onResetReviewEnabledOverride: () => {
+        reviewEnabledOverride.value = false;
+        reviewEnabled.value = false;
+      },
+      onReviewPickupColumnChange: (value: string) => {
+        reviewPickupColumnOverride.value = true;
+        reviewPickupColumn.value = value;
+      },
+      onResetReviewPickupColumnOverride: () => {
+        reviewPickupColumnOverride.value = false;
+        reviewPickupColumn.value = DEFAULT_REVIEW_PICKUP_COLUMN;
+      },
+      onReviewMaxTurnsInput: (event: Event) => {
+        reviewMaxTurnsOverride.value = true;
+        reviewMaxTurns.value = parsePositiveNumber(
+          (event.target as HTMLInputElement).value,
+          DEFAULT_REVIEW_MAX_TURNS
+        );
+      },
+      onResetReviewMaxTurnsOverride: () => {
+        reviewMaxTurnsOverride.value = false;
+        reviewMaxTurns.value = DEFAULT_REVIEW_MAX_TURNS;
+      },
+      onReviewPromptTemplateInput: (event: Event) => {
+        reviewPromptTemplateOverride.value = true;
+        textInputHandler(reviewPromptTemplate)(event);
+      },
+      onResetReviewPromptTemplateOverride: () => {
+        reviewPromptTemplateOverride.value = false;
+        reviewPromptTemplate.value = '';
       }
     }
   };

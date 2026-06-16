@@ -3,6 +3,7 @@ mod client_tests;
 
 use async_trait::async_trait;
 
+use crate::services::provider_configs::model::IntegrationProvider;
 use crate::services::providers::kaneo::client::KaneoClient;
 
 use super::errors::IntegrationError;
@@ -14,6 +15,14 @@ pub enum IntegrationClient {
 }
 
 impl IntegrationClient {
+    pub fn from_provider(provider: IntegrationProvider) -> Self {
+        match provider.provider_type {
+            super::model::IntegrationType::Kaneo => {
+                Self::new_kaneo(provider.instance_url, provider.api_key)
+            }
+        }
+    }
+
     pub fn new_kaneo(instance: String, api_key: String) -> Self {
         Self::Kaneo(KaneoClient::new(instance, api_key))
     }
@@ -66,6 +75,20 @@ impl IntegrationClient {
         match self {
             Self::Kaneo(client) => client
                 .add_comment(task_id, content)
+                .await
+                .map_err(IntegrationError::from)?,
+        };
+        Ok(())
+    }
+
+    pub async fn update_task_description(
+        &self,
+        task_id: &str,
+        description: &str,
+    ) -> Result<(), IntegrationError> {
+        match self {
+            Self::Kaneo(client) => client
+                .update_task_description(task_id, description)
                 .await
                 .map_err(IntegrationError::from)?,
         };

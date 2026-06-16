@@ -2,7 +2,9 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../../types/shared';
 import { Button } from '../../shared/ui/Button.view';
+import { CheckboxWithLabel } from '../../shared/ui/CheckboxWithLabel.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
+import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 import { Select } from '../../shared/ui/Select.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
@@ -15,6 +17,10 @@ interface TeamDefaultsViewProps {
     primaryModelId: Signal<string>;
     smallModelProviderKey: Signal<string>;
     smallModelId: Signal<string>;
+    reviewEnabled: Signal<boolean>;
+    reviewPickupColumn: Signal<string>;
+    reviewMaxTurns: Signal<number>;
+    reviewPromptTemplate: Signal<string>;
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
     smallModelItems: SelectOption[];
@@ -31,6 +37,10 @@ interface TeamDefaultsViewProps {
     onPrimaryModelChange: (value: string) => void;
     onSmallProviderChange: (value: string) => void;
     onSmallModelChange: (value: string) => void;
+    onReviewEnabledChange: (checked: boolean) => void;
+    onReviewPickupColumnInput: (event: Event) => void;
+    onReviewMaxTurnsInput: (event: Event) => void;
+    onReviewPromptTemplateInput: (event: Event) => void;
     onSubmit: (event: Event) => void;
   };
 }
@@ -115,6 +125,48 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             rows={6}
             disabled={status.saving}
           />
+        </div>
+        <div class='flex flex-col gap-4 border border-border-base bg-bg-panel p-4'>
+          <CheckboxWithLabel
+            id='team-review-enabled'
+            checked={data.reviewEnabled.value}
+            onCheckedChange={actions.onReviewEnabledChange}
+            disabled={status.saving}
+          >
+            Enable PR Review Automation
+          </CheckboxWithLabel>
+          <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
+            <div class='flex flex-col gap-2'>
+              <Label for='team-review-pickup-column'>Review Pickup Column</Label>
+              <Input
+                id='team-review-pickup-column'
+                value={data.reviewPickupColumn.value}
+                onInput={actions.onReviewPickupColumnInput}
+                disabled={status.saving}
+              />
+            </div>
+            <div class='flex flex-col gap-2'>
+              <Label for='team-review-max-turns'>Review Max Turns</Label>
+              <Input
+                id='team-review-max-turns'
+                type='number'
+                min='1'
+                value={data.reviewMaxTurns.value}
+                onInput={actions.onReviewMaxTurnsInput}
+                disabled={status.saving}
+              />
+            </div>
+          </div>
+          <div class='flex flex-col gap-2'>
+            <Label for='team-review-prompt'>Review Prompt Template</Label>
+            <TextArea
+              id='team-review-prompt'
+              value={data.reviewPromptTemplate.value}
+              onInput={actions.onReviewPromptTemplateInput}
+              rows={5}
+              disabled={status.saving}
+            />
+          </div>
         </div>
         <Button type='submit' variant='primary' disabled={status.saving}>
           {status.saving ? 'Saving...' : 'Save Team Defaults'}

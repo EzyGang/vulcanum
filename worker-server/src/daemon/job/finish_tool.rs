@@ -10,6 +10,9 @@ export default tool({
     summary: tool.schema.string().optional().describe("Brief summary of what was done, what went wrong, or why blocked"),
     blocked_reason: tool.schema.string().optional().describe("If status is 'blocked', explain what input/approval is needed"),
     next_column: tool.schema.string().optional().describe("Suggested Kaneo column to move the task to (e.g. 'In Review', 'Blocked')"),
+    review_url: tool.schema.string().optional().describe("URL of the GitHub review that was posted, for review runs"),
+    review_body: tool.schema.string().optional().describe("Body of the GitHub review that was posted, for review runs"),
+    review_already_exists: tool.schema.boolean().optional().describe("True when the required Vulcanum review marker already existed and no duplicate review was posted"),
   },
   async execute(args) {
     writeFileSync(

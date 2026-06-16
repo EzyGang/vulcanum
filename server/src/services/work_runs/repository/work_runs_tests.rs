@@ -2,7 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::WorkRunStatus;
+use crate::services::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::test_helpers::DEFAULT_TEAM_ID;
@@ -40,8 +40,13 @@ fn insert_params(
         repo_full_names: Vec::new(),
         agents_md: String::new(),
         status,
+        work_type: WorkRunType::Implementation,
+        parent_work_run_id: None,
+        task_body: String::new(),
         task_title: None,
         task_slug: None,
+        review_target_pr_url: None,
+        review_target_repo_full_name: None,
     }
 }
 

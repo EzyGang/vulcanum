@@ -9,7 +9,7 @@ use crate::services::provider_configs::repository::IntegrationProvidersRepositor
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
 use crate::services::providers::errors::IntegrationError;
 use crate::services::providers::model::{IntegrationTask, IntegrationType};
-use crate::services::work_runs::model::WorkRunStatus;
+use crate::services::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
@@ -204,6 +204,8 @@ impl PollerService {
                     repo_urls: &repo_urls,
                     repo_names: &repo_names,
                     repo_layout: &repo_layout,
+                    review_target_pr_url: "",
+                    review_marker: "",
                 },
             );
 
@@ -222,8 +224,13 @@ impl PollerService {
                 repo_full_names: config.repo_full_names.clone(),
                 agents_md: settings.agents_md.clone(),
                 status: WorkRunStatus::Pending,
+                work_type: WorkRunType::Implementation,
+                parent_work_run_id: None,
+                task_body: task.description.clone().unwrap_or_default(),
                 task_title: Some(task.title.clone()),
                 task_slug,
+                review_target_pr_url: None,
+                review_target_repo_full_name: None,
             };
 
             match self
@@ -303,7 +310,7 @@ impl PollerService {
 }
 
 #[must_use]
-fn repo_layout(repo_full_names: &[String]) -> String {
+pub(crate) fn repo_layout(repo_full_names: &[String]) -> String {
     repo_full_names
         .iter()
         .map(|name| format!("{name}: ./{}", name.replace('/', "-")))
