@@ -88,10 +88,20 @@ impl PollerService {
         };
 
         let project_count = configs.len();
+        tracing::debug!(project_count, "loaded enabled project configs for polling");
 
         for config in &configs {
             match self.poll_project(config).await {
-                Ok((tasks_found, inserted)) => {
+                Ok((tasks_found, inserted, skipped)) => {
+                    tracing::debug!(
+                        project_config_id = %config.id,
+                        project_id = %config.external_project_id,
+                        tasks_found,
+                        tasks_inserted = inserted,
+                        tasks_skipped = skipped,
+                        "project poll complete",
+                    );
+
                     if inserted > 0 {
                         tracing::info!(
                             project_count = project_count,
@@ -132,7 +142,21 @@ impl PollerService {
         );
     }
 
-    async fn poll_project(&self, config: &ProjectConfig) -> Result<(usize, usize), PollError> {
+    async fn poll_project(
+        &self,
+        config: &ProjectConfig,
+    ) -> Result<(usize, usize, usize), PollError> {
+        tracing::debug!(
+            project_config_id = %config.id,
+            team_id = %config.team_id,
+            project_id = %config.external_project_id,
+            provider_id = ?config.provider_id,
+            pickup_column = %config.pickup_column,
+            progress_column = %config.progress_column,
+            target_column = %config.target_column,
+            "polling project config",
+        );
+
         let settings = match self.project_configs.effective_settings(config).await {
             Ok(settings) => settings,
             Err(e) => {
@@ -141,7 +165,7 @@ impl PollerService {
                     error = %e,
                     "skipping poll — failed to resolve effective settings"
                 );
-                return Ok((0, 0));
+                return Ok((0, 0, 0));
             }
         };
         let provider_id = match config.provider_id {
@@ -151,7 +175,7 @@ impl PollerService {
                     project_id = %config.external_project_id,
                     "skipping poll — no provider configured for project"
                 );
-                return Ok((0, 0));
+                return Ok((0, 0, 0));
             }
         };
 
@@ -168,7 +192,7 @@ impl PollerService {
                     error = %e,
                     "skipping poll — provider not found"
                 );
-                return Ok((0, 0));
+                return Ok((0, 0, 0));
             }
         };
 
@@ -190,6 +214,19 @@ impl PollerService {
 
         let tasks_found = tasks.len();
         let mut inserted = 0;
+        let mut skipped = 0;
+
+        tracing::debug!(
+            project_config_id = %config.id,
+            project_id = %config.external_project_id,
+            pickup_column = %config.pickup_column,
+            tasks_found,
+            tasks = ?tasks
+                .iter()
+                .map(|task| format!("{}:{}", task.id, task.title))
+                .collect::<Vec<String>>(),
+            "fetched provider tasks for project",
+        );
 
         for task in &tasks {
             let repo_urls = config.repo_urls.join("\n");
@@ -239,14 +276,23 @@ impl PollerService {
                 .await
             {
                 Ok(true) => inserted += 1,
-                Ok(false) => (),
+                Ok(false) => {
+                    skipped += 1;
+                    tracing::debug!(
+                        project_config_id = %config.id,
+                        project_id = %config.external_project_id,
+                        task_id = %task.id,
+                        task_title = %task.title,
+                        "skipped work_run insert because an active run already exists",
+                    );
+                }
                 Err(e) => {
                     tracing::error!("Failed to insert work_run for task {}: {}", task.id, e);
                 }
             }
         }
 
-        Ok((tasks_found, inserted))
+        Ok((tasks_found, inserted, skipped))
     }
 
     async fn reconcile_blocked_runs(&self, config: &ProjectConfig) -> Result<(), PollError> {

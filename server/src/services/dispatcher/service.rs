@@ -70,6 +70,37 @@ impl DispatcherService {
         let pending = self.dispatch_repo.find_pending_unassigned(&self.db).await?;
 
         if workers.is_empty() || pending.is_empty() {
+            tracing::debug!(
+                workers_available = workers.len(),
+                pending_jobs = pending.len(),
+                workers = ?workers
+                    .iter()
+                    .map(|worker| {
+                        format!(
+                            "{}:{}:{:?}:{}/{}",
+                            worker.id,
+                            worker.team_id,
+                            worker.status,
+                            worker.active_jobs,
+                            worker.max_concurrent_jobs
+                        )
+                    })
+                    .collect::<Vec<String>>(),
+                pending = ?pending
+                    .iter()
+                    .map(|work_run| {
+                        format!(
+                            "{}:{}:{}:{}",
+                            work_run.id,
+                            work_run.team_id,
+                            work_run.project_config_id,
+                            work_run.external_task_ref
+                        )
+                    })
+                    .collect::<Vec<String>>(),
+                "dispatch skipped because no workers or pending jobs are available",
+            );
+
             return Ok(DispatchSummary {
                 workers_available: workers.len(),
                 pending_jobs: pending.len(),
@@ -89,7 +120,19 @@ impl DispatcherService {
                 worker.team_id == work_run.team_id && !used_workers.contains(&worker.id)
             }) {
                 Some(worker) => worker,
-                None => continue,
+                None => {
+                    tracing::debug!(
+                        work_run_id = %work_run.id,
+                        work_run_team_id = %work_run.team_id,
+                        used_workers = ?used_workers,
+                        available_worker_teams = ?workers
+                            .iter()
+                            .map(|worker| worker.team_id)
+                            .collect::<Vec<uuid::Uuid>>(),
+                        "no available worker for pending work_run team",
+                    );
+                    continue;
+                }
             };
             let mut tx = self.db.begin().await.map_err(DispatchError::Database)?;
 

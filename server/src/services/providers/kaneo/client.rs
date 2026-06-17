@@ -44,8 +44,41 @@ impl KaneoClient {
         log_kaneo_result("GET", &path, duration_ms, &result);
 
         result.map(|board| {
+            let column_summaries = board
+                .data
+                .columns
+                .iter()
+                .map(|column| {
+                    format!(
+                        "{}:{}:{}",
+                        column.name,
+                        column.status.as_deref().unwrap_or("<none>"),
+                        column.tasks.len()
+                    )
+                })
+                .collect::<Vec<String>>();
+            tracing::debug!(
+                project_id = %project_id,
+                requested_status = %column_slug,
+                board_slug = %board.data.slug,
+                columns = ?column_summaries,
+                planned_tasks = board.data.planned_tasks.len(),
+                archived_tasks = board.data.archived_tasks.len(),
+                "received Kaneo task board",
+            );
+
             let slug = board.data.slug.clone();
             let tasks = filter_tasks_in_column(board, column_slug);
+            tracing::debug!(
+                project_id = %project_id,
+                requested_status = %column_slug,
+                tasks_selected = tasks.len(),
+                tasks = ?tasks
+                    .iter()
+                    .map(|task| format!("{}:{}:{}", task.id, task.status, task.title))
+                    .collect::<Vec<String>>(),
+                "selected Kaneo tasks for Vulcanum polling",
+            );
             (tasks, slug)
         })
     }
