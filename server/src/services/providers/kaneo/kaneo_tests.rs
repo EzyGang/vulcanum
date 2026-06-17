@@ -14,7 +14,7 @@ fn test_filter_tasks_in_column_exact_match() {
         user_id: None,
         title: "Test task".to_owned(),
         description: None,
-        status: "todo".to_owned(),
+        status: "to-do".to_owned(),
         priority: "low".to_owned(),
         due_date: None,
         created_at: "2024-01-01".to_owned(),
@@ -49,6 +49,50 @@ fn test_filter_tasks_in_column_exact_match() {
 }
 
 #[test]
+fn test_filter_tasks_in_column_uses_task_status_when_column_status_missing() {
+    let task = Task {
+        id: "t-missing-column-status".to_owned(),
+        project_id: "p1".to_owned(),
+        position: None,
+        number: None,
+        user_id: None,
+        title: "Task from column without status".to_owned(),
+        description: None,
+        status: "to-do".to_owned(),
+        priority: "low".to_owned(),
+        due_date: None,
+        created_at: "2024-01-01".to_owned(),
+        start_date: None,
+        updated_at: None,
+        column_id: None,
+        assignee_name: None,
+        assignee_id: None,
+        assignee_image: None,
+    };
+
+    let board = BoardResponse {
+        data: BoardData {
+            id: "p1".to_owned(),
+            name: "Project".to_owned(),
+            slug: "proj".to_owned(),
+            columns: vec![BoardColumn {
+                id: "c1".to_owned(),
+                name: "To Do".to_owned(),
+                status: None,
+                is_final: None,
+                tasks: vec![task.clone()],
+            }],
+            planned_tasks: vec![],
+            archived_tasks: vec![],
+        },
+    };
+
+    let result = filter_tasks_in_column(board, "to-do");
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].id, "t-missing-column-status");
+}
+
+#[test]
 fn test_filter_tasks_in_column_case_insensitive() {
     let task = Task {
         id: "t2".to_owned(),
@@ -58,7 +102,7 @@ fn test_filter_tasks_in_column_case_insensitive() {
         user_id: None,
         title: "Another".to_owned(),
         description: None,
-        status: "in_progress".to_owned(),
+        status: "in-progress".to_owned(),
         priority: "high".to_owned(),
         due_date: None,
         created_at: "2024-01-01".to_owned(),

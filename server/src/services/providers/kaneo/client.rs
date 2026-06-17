@@ -223,9 +223,11 @@ pub(crate) fn filter_tasks_in_column(board: BoardResponse, column_slug: &str) ->
         .data
         .columns
         .into_iter()
-        .find(|col| col.status.as_deref() == Some(column_slug))
-        .map(|col| col.tasks)
-        .unwrap_or_default()
+        .flat_map(|column| column.tasks)
+        .chain(board.data.planned_tasks)
+        .chain(board.data.archived_tasks)
+        .filter(|task| task.status == column_slug)
+        .collect()
 }
 
 pub(crate) fn log_kaneo_result<T>(
