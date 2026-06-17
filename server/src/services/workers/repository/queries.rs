@@ -108,10 +108,19 @@ impl WorkersRepository {
         id: Uuid,
         ts: DateTime<Utc>,
     ) -> Result<(), WorkersError> {
-        sqlx::query!("UPDATE workers SET last_seen = $1 WHERE id = $2", ts, id)
-            .execute(db)
-            .await
-            .map_err(map_sqlx_error)?;
+        sqlx::query!(
+            r#"UPDATE workers SET last_seen = $1,
+             status = CASE
+                 WHEN status = 'disconnected'::worker_status THEN 'idle'::worker_status
+                 ELSE status
+             END
+             WHERE id = $2"#,
+            ts,
+            id,
+        )
+        .execute(db)
+        .await
+        .map_err(map_sqlx_error)?;
         Ok(())
     }
 

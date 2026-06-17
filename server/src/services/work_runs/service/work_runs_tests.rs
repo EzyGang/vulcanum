@@ -17,6 +17,7 @@ use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::WorkRunsService;
+use crate::services::workers::model::WorkerStatus;
 use crate::services::workers::repository::WorkersRepository;
 use crate::test_helpers;
 use vulcanum_shared::api_types::SubmitResultRequest;
@@ -89,6 +90,68 @@ async fn poll_returns_none_when_no_dispatch(pool: sqlx::PgPool) {
         result.is_none(),
         "Should return None when nothing dispatched"
     );
+}
+
+#[sqlx::test]
+async fn poll_recovers_disconnected_worker_to_idle(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "disconnected-worker").await;
+
+    sqlx::query!(
+        "UPDATE workers SET status = 'disconnected'::worker_status WHERE id = $1",
+        worker_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should mark worker disconnected");
+
+    let result = svc.poll(worker_id).await.expect("Should succeed");
+
+    assert!(
+        result.is_none(),
+        "Should return None when nothing dispatched"
+    );
+
+    let row = sqlx::query!(
+        r#"SELECT status as "status: WorkerStatus" FROM workers WHERE id = $1"#,
+        worker_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query worker");
+
+    assert!(matches!(row.status, WorkerStatus::Idle));
+}
+
+#[sqlx::test]
+async fn poll_does_not_recover_unhealthy_worker(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "unhealthy-worker").await;
+
+    sqlx::query!(
+        "UPDATE workers SET status = 'unhealthy'::worker_status WHERE id = $1",
+        worker_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should mark worker unhealthy");
+
+    let result = svc.poll(worker_id).await.expect("Should succeed");
+
+    assert!(
+        result.is_none(),
+        "Should return None when nothing dispatched"
+    );
+
+    let row = sqlx::query!(
+        r#"SELECT status as "status: WorkerStatus" FROM workers WHERE id = $1"#,
+        worker_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should query worker");
+
+    assert!(matches!(row.status, WorkerStatus::Unhealthy));
 }
 
 #[sqlx::test]

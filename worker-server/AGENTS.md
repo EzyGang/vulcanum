@@ -141,7 +141,7 @@ All worker configuration lives in `~/.vulcanum/config.json`. On first run, defau
 | `image` | `"ghcr.io/ezygang/vulcanum/agent:latest"` | Docker image for container isolation providers |
 | `log_format` | `null` | Set to `"json"` for JSON-formatted logs |
 | `debug` | `false` | Enable debug-level logging |
-| `poll_interval_secs` | `15` | Seconds to sleep between polls when no jobs are available |
+| `poll_interval_secs` | `30` | Seconds to sleep between polls when no jobs are available |
 
 ## Build & Run
 

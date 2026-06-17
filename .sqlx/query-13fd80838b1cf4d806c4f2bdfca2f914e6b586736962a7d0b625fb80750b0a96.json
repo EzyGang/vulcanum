@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET status = 'unhealthy'::worker_status WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "13fd80838b1cf4d806c4f2bdfca2f914e6b586736962a7d0b625fb80750b0a96"
+}

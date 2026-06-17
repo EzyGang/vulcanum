@@ -14,7 +14,7 @@ fn default_image() -> String {
 }
 
 const fn default_poll_interval() -> u64 {
-    15
+    30
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
