@@ -33,7 +33,6 @@ interface RunsTableProps {
   onDelete: (id: string) => void;
   onCancelDelete: () => void;
   onStopRowToggle: (event: JSX.TargetedMouseEvent<HTMLElement>) => void;
-  onToggleExpandedControl: (id: string, event: JSX.TargetedMouseEvent<HTMLElement>) => void;
 }
 
 export const RunsTable = ({
@@ -51,13 +50,12 @@ export const RunsTable = ({
   onConfirmDelete,
   onDelete,
   onCancelDelete,
-  onStopRowToggle,
-  onToggleExpandedControl
+  onStopRowToggle
 }: RunsTableProps): JSX.Element => (
-  <table class='w-full border-collapse'>
+  <Table>
     <Table.Head>
       <Table.HeadCell class='w-5 px-1'>{''}</Table.HeadCell>
-      <Table.HeadCell class='w-10'>
+      <Table.HeadCell class='w-5 px-1! py-3!'>
         <Checkbox
           checked={allSelected}
           indeterminate={someSelected}
@@ -81,17 +79,10 @@ export const RunsTable = ({
         return (
           <>
             <Table.Row key={run.id} class='cursor-pointer' onClick={() => onToggleExpanded(run.id)}>
-              <Table.Cell class='w-5 px-1'>
-                <button
-                  type='button'
-                  aria-label={expanded ? 'Collapse' : 'Expand'}
-                  onClick={(event) => onToggleExpandedControl(run.id, event)}
-                  class='px-1 text-xs text-text-muted hover:text-text-primary'
-                >
-                  {expanded ? '▾' : '▸'}
-                </button>
+              <Table.Cell class='w-1' paddingClass='px-1 py-3'>
+                <span>{expanded ? '▾' : '▸'}</span>
               </Table.Cell>
-              <Table.Cell onClick={onStopRowToggle}>
+              <Table.Cell onClick={onStopRowToggle} paddingClass='px-1 py-3'>
                 <Checkbox
                   checked={selectedIds.value.has(run.id)}
                   onCheckedChange={() => onToggleSelect(run.id)}
@@ -174,16 +165,16 @@ export const RunsTable = ({
             </Table.Row>
             {expanded && (
               <Table.Row key={`${run.id}-events`}>
-                <td colSpan={COL_SPAN} class='p-0'>
+                <Table.Cell colSpan={COL_SPAN} paddingClass='p-0'>
                   <div class='p-2'>
                     <RunEventTimelineContainer runId={run.id} status={run.status} />
                   </div>
-                </td>
+                </Table.Cell>
               </Table.Row>
             )}
           </>
         );
       })}
     </Table.Body>
-  </table>
+  </Table>
 );

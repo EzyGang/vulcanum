@@ -45,7 +45,6 @@ interface RunsViewProps {
     handleFailRun: (id: string) => void;
     handleToggleExpanded: (id: string) => void;
     handleStopRowToggle: (event: JSX.TargetedMouseEvent<HTMLElement>) => void;
-    handleToggleExpandedControl: (id: string, event: JSX.TargetedMouseEvent<HTMLElement>) => void;
     handleCancelRun: (id: string) => void;
   };
 }
@@ -76,7 +75,6 @@ export const RunsView = ({
     handleFailRun,
     handleToggleExpanded,
     handleStopRowToggle,
-    handleToggleExpandedControl,
     handleCancelRun
   }
 }: RunsViewProps): JSX.Element => (
@@ -118,7 +116,6 @@ export const RunsView = ({
           onDelete={handleDeleteRun}
           onCancelDelete={handleCancelDelete}
           onStopRowToggle={handleStopRowToggle}
-          onToggleExpandedControl={handleToggleExpandedControl}
         />
 
         <RunPagination

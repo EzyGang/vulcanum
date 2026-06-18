@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import type { ComponentChildren, JSX } from 'preact';
+import type { ComponentChildren, HTMLAttributes, JSX, MouseEventHandler } from 'preact';
 
 interface TableProps {
   children: ComponentChildren;
@@ -44,9 +44,9 @@ const Body = ({ children }: BodyProps): JSX.Element => <tbody>{children}</tbody>
 interface RowProps {
   children: ComponentChildren;
   class?: string;
-  onClick?: JSX.MouseEventHandler<HTMLTableRowElement>;
-  onKeyDown?: JSX.HTMLAttributes<HTMLTableRowElement>['onKeyDown'];
-  role?: JSX.HTMLAttributes<HTMLTableRowElement>['role'];
+  onClick?: MouseEventHandler<HTMLTableRowElement>;
+  onKeyDown?: HTMLAttributes<HTMLTableRowElement>['onKeyDown'];
+  role?: HTMLAttributes<HTMLTableRowElement>['role'];
   tabIndex?: number;
 }
 
@@ -72,11 +72,19 @@ const Row = ({
 interface CellProps {
   children: ComponentChildren;
   class?: string;
+  colSpan?: number;
+  paddingClass?: string;
   onClick?: JSX.MouseEventHandler<HTMLTableCellElement>;
 }
 
-const Cell = ({ children, class: classProp, onClick }: CellProps): JSX.Element => (
-  <td class={clsx('px-5 py-3', classProp)} onClick={onClick}>
+const Cell = ({
+  children,
+  class: classProp,
+  colSpan,
+  paddingClass = 'px-5 py-3',
+  onClick
+}: CellProps): JSX.Element => (
+  <td class={clsx(paddingClass, classProp)} colSpan={colSpan} onClick={onClick}>
     {children}
   </td>
 );

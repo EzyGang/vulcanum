@@ -158,14 +158,6 @@ export const useRuns = () => {
     event.stopPropagation();
   }, []);
 
-  const handleToggleExpandedControl = useCallback(
-    (id: string, event: TargetedMouseEvent<HTMLElement>) => {
-      event.stopPropagation();
-      handleToggleExpanded(id);
-    },
-    [handleToggleExpanded]
-  );
-
   return {
     data: {
       runs: displayRuns,
@@ -201,7 +193,6 @@ export const useRuns = () => {
       handleFailRun,
       handleToggleExpanded,
       handleStopRowToggle,
-      handleToggleExpandedControl,
       handleCancelRun
     }
   };
