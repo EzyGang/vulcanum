@@ -78,6 +78,30 @@ pub(crate) async fn run_turn_loop(
             }),
         );
 
+        if session_export.exit_code != 0 {
+            tracing::warn!(
+                worker_id = %ctx.worker_id,
+                work_run_id = %ctx.job_id,
+                turn = turn,
+                exit_code = session_export.exit_code,
+                "session failed, not continuing turn loop",
+            );
+            ctx.reporter.emit(
+                "session.failed",
+                serde_json::json!({"reason": "nonzero_exit", "turn": turn}),
+            );
+            submit_turn_result(
+                &ctx.client,
+                &ctx.worker_state,
+                &ctx.journal,
+                ctx.job_id,
+                &session_export,
+                None,
+            )
+            .await;
+            return true;
+        }
+
         let finish_artifact = read_finish_artifact(artifact_path);
 
         match finish_artifact {
@@ -105,6 +129,8 @@ pub(crate) async fn run_turn_loop(
             }
             None => {
                 if turn >= max_turns {
+                    let mut failed_export = session_export.clone();
+                    failed_export.exit_code = 1;
                     tracing::info!(
                         worker_id = %ctx.worker_id,
                         work_run_id = %ctx.job_id,
@@ -121,7 +147,7 @@ pub(crate) async fn run_turn_loop(
                         &ctx.worker_state,
                         &ctx.journal,
                         ctx.job_id,
-                        &session_export,
+                        &failed_export,
                         None,
                     )
                     .await;

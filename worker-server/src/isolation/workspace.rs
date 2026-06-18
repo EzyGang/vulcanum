@@ -124,6 +124,12 @@ pub fn workspace_prompt_prefix(repos: &[WorkspaceRepo]) -> String {
     )
 }
 
+#[must_use]
+pub(crate) fn repo_dir_name(full_name: &str) -> String {
+    let repo_name = full_name.rsplit('/').next().unwrap_or(full_name);
+    sanitize_repo_dir(repo_name)
+}
+
 pub async fn write_finish_run_tool(workdir: &Path) -> Result<(), HarnessError> {
     let tools_dir = workdir.join("home").join(".opencode").join("tools");
     fs::create_dir_all(&tools_dir)
@@ -138,19 +144,7 @@ pub async fn write_finish_run_tool(workdir: &Path) -> Result<(), HarnessError> {
 }
 
 fn unique_repo_dir(full_name: &str, seen: &mut HashSet<String>) -> String {
-    let base = full_name
-        .chars()
-        .map(|ch| match ch {
-            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => ch,
-            _ => '-',
-        })
-        .collect::<String>()
-        .trim_matches('-')
-        .to_lowercase();
-    let base = match base.is_empty() {
-        true => "repo".to_owned(),
-        false => base,
-    };
+    let base = repo_dir_name(full_name);
     let mut candidate = base.clone();
     let mut suffix = 2;
     while seen.contains(&candidate) {
@@ -159,6 +153,23 @@ fn unique_repo_dir(full_name: &str, seen: &mut HashSet<String>) -> String {
     }
     seen.insert(candidate.clone());
     candidate
+}
+
+fn sanitize_repo_dir(repo_name: &str) -> String {
+    let base = repo_name
+        .chars()
+        .map(|ch| match ch {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => ch,
+            _ => '-',
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_lowercase();
+
+    match base.is_empty() {
+        true => "repo".to_owned(),
+        false => base,
+    }
 }
 
 async fn surface_repo_context(

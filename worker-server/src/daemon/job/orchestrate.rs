@@ -168,10 +168,10 @@ pub(crate) async fn handle_job(
         }
     };
 
-    let prompt_text = format!(
-        "{}{}",
-        crate::isolation::workspace::workspace_prompt_prefix(&isolated_env.repos),
-        job.prompt_text,
+    let prompt_text = super::prompts::initial_prompt(
+        job.work_type,
+        &crate::isolation::workspace::workspace_prompt_prefix(&isolated_env.repos),
+        &job.prompt_text,
     );
     let runtime = crate::providers::opencode::runtime::OpenCodeServeRuntime::new();
     let mut running_session: Box<dyn RunningSession> =

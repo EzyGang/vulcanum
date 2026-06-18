@@ -39,3 +39,15 @@ fn authenticated_repo_url_passes_through_non_https() {
     let result = workspace::authenticated_repo_url(url, Some("tok"));
     assert_eq!(result, url);
 }
+
+#[test]
+fn repo_dir_name_uses_repo_basename() {
+    let result = workspace::repo_dir_name("ezygang/actavoces");
+    assert_eq!(result, "actavoces");
+}
+
+#[test]
+fn repo_dir_name_sanitizes_basename() {
+    let result = workspace::repo_dir_name("owner/My Repo.git");
+    assert_eq!(result, "my-repo-git");
+}
