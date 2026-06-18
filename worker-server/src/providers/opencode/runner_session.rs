@@ -15,6 +15,107 @@ use super::runner::OpenCodeRunningSession;
 
 const STALL_TIMEOUT_SECS: u64 = 300;
 
+impl OpenCodeRunningSession {
+    async fn reconcile_interrupted_stream(&mut self, reason: &str) -> Option<AgentEvent> {
+        let status_map = match api::get_session_status(&self.client).await {
+            Ok(status_map) => status_map,
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %self.session_id,
+                    reason,
+                    error = %e,
+                    "failed to check opencode session status after event stream interruption"
+                );
+                return Some(self.failure_event(serde_json::json!({
+                    "reason": reason,
+                    "status_check_error": e.to_string(),
+                })));
+            }
+        };
+
+        match status_map.get(&self.session_id) {
+            Some(api::OpenCodeSessionStatus::Idle) => {
+                tracing::info!(
+                    session_id = %self.session_id,
+                    reason,
+                    "opencode session is idle after event stream interruption"
+                );
+                self.status = SessionStatus::Completed;
+                Some(AgentEvent {
+                    event_type: "session.completed".to_owned(),
+                    payload: serde_json::json!({"reason": reason, "status": "idle"}),
+                    timestamp: Utc::now(),
+                })
+            }
+            Some(api::OpenCodeSessionStatus::Busy) => self.reconnect_stream(reason, None).await,
+            Some(api::OpenCodeSessionStatus::Retry {
+                attempt,
+                message,
+                next,
+            }) => {
+                self.reconnect_stream(
+                    reason,
+                    Some(serde_json::json!({
+                        "attempt": attempt,
+                        "message": message,
+                        "next": next,
+                    })),
+                )
+                .await
+            }
+            None => Some(self.failure_event(serde_json::json!({
+                "reason": reason,
+                "status_check_error": "session_missing",
+            }))),
+        }
+    }
+
+    async fn reconnect_stream(
+        &mut self,
+        reason: &str,
+        retry: Option<serde_json::Value>,
+    ) -> Option<AgentEvent> {
+        match events::connect_events(&self.client).await {
+            Ok(stream) => {
+                tracing::info!(
+                    session_id = %self.session_id,
+                    reason,
+                    "reconnected opencode event stream"
+                );
+                self.event_stream = Some(stream);
+                self.status = SessionStatus::Running;
+                Some(AgentEvent {
+                    event_type: "session.stream_reconnected".to_owned(),
+                    payload: serde_json::json!({"reason": reason, "retry": retry}),
+                    timestamp: Utc::now(),
+                })
+            }
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %self.session_id,
+                    reason,
+                    error = %e,
+                    "failed to reconnect opencode event stream"
+                );
+                Some(self.failure_event(serde_json::json!({
+                    "reason": reason,
+                    "stream_reconnect_error": e.to_string(),
+                })))
+            }
+        }
+    }
+
+    fn failure_event(&mut self, payload: serde_json::Value) -> AgentEvent {
+        self.status = SessionStatus::Failed;
+        self.failure_payload = Some(payload.clone());
+        AgentEvent {
+            event_type: "session.failed".to_owned(),
+            payload,
+            timestamp: Utc::now(),
+        }
+    }
+}
+
 impl RunningSession for OpenCodeRunningSession {
     fn status(&self) -> SessionStatus {
         self.status.clone()
@@ -39,13 +140,9 @@ impl RunningSession for OpenCodeRunningSession {
         Box::pin(async move {
             let elapsed = (Utc::now() - self.started_at).num_seconds() as u64;
             if elapsed >= self.max_duration_secs {
-                self.status = SessionStatus::Failed;
-                self.failure_payload = Some(serde_json::json!({"reason": "max_duration_exceeded"}));
-                return Some(AgentEvent {
-                    event_type: "session.failed".to_owned(),
-                    payload: self.failure_payload.clone().unwrap_or_default(),
-                    timestamp: Utc::now(),
-                });
+                return Some(
+                    self.failure_event(serde_json::json!({"reason": "max_duration_exceeded"})),
+                );
             }
 
             let stream = match self.event_stream.as_mut() {
@@ -91,17 +188,11 @@ impl RunningSession for OpenCodeRunningSession {
                     last
                 }
                 Ok(None) => {
-                    tracing::info!(
+                    tracing::warn!(
                         session_id = %self.session_id,
-                        "event stream ended, session failed"
+                        "opencode event stream ended before terminal session event"
                     );
-                    self.status = SessionStatus::Failed;
-                    self.failure_payload = Some(serde_json::json!({"reason": "stream_ended"}));
-                    Some(AgentEvent {
-                        event_type: "session.failed".to_owned(),
-                        payload: self.failure_payload.clone().unwrap_or_default(),
-                        timestamp: Utc::now(),
-                    })
+                    self.reconcile_interrupted_stream("stream_ended").await
                 }
                 Err(_) => {
                     tracing::warn!(
@@ -109,15 +200,7 @@ impl RunningSession for OpenCodeRunningSession {
                         stall_timeout_secs = STALL_TIMEOUT_SECS,
                         "session stalled, no events received"
                     );
-                    self.status = SessionStatus::Failed;
-                    self.failure_payload = Some(
-                        serde_json::json!({"reason": "stall_detected", "timeout_secs": STALL_TIMEOUT_SECS}),
-                    );
-                    Some(AgentEvent {
-                        event_type: "session.failed".to_owned(),
-                        payload: self.failure_payload.clone().unwrap_or_default(),
-                        timestamp: Utc::now(),
-                    })
+                    self.reconcile_interrupted_stream("stall_detected").await
                 }
             }
         })

@@ -16,7 +16,7 @@ pub struct SseEvent {
 pub async fn connect_events(client: &OpenCodeClient) -> Result<SseEventStream, HarnessError> {
     let url = format!("{}/global/event", client.base_url());
     let resp = client
-        .http_client()
+        .event_http_client()
         .get(&url)
         .send()
         .await

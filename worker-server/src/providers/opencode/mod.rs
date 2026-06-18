@@ -20,6 +20,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 #[derive(Clone)]
 pub struct OpenCodeClient {
     http: Client,
+    event_http: Client,
     base_url: String,
 }
 
@@ -31,6 +32,7 @@ impl OpenCodeClient {
             .unwrap_or_default();
         Self {
             http,
+            event_http: Client::new(),
             base_url: base_url.to_owned(),
         }
     }
@@ -42,6 +44,10 @@ impl OpenCodeClient {
 
     pub(crate) fn http_client(&self) -> &Client {
         &self.http
+    }
+
+    pub(crate) fn event_http_client(&self) -> &Client {
+        &self.event_http
     }
 
     pub(super) async fn check_response<F>(
