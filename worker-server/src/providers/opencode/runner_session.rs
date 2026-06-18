@@ -40,9 +40,10 @@ impl RunningSession for OpenCodeRunningSession {
             let elapsed = (Utc::now() - self.started_at).num_seconds() as u64;
             if elapsed >= self.max_duration_secs {
                 self.status = SessionStatus::Failed;
+                self.failure_payload = Some(serde_json::json!({"reason": "max_duration_exceeded"}));
                 return Some(AgentEvent {
                     event_type: "session.failed".to_owned(),
-                    payload: serde_json::json!({"reason": "max_duration_exceeded"}),
+                    payload: self.failure_payload.clone().unwrap_or_default(),
                     timestamp: Utc::now(),
                 });
             }
@@ -74,6 +75,7 @@ impl RunningSession for OpenCodeRunningSession {
                                     payload = %event.payload,
                                     "opencode session failed"
                                 );
+                                self.failure_payload = Some(event.payload.clone());
                                 self.status = SessionStatus::Failed;
                             }
                             "turn.failed" => {
@@ -94,9 +96,10 @@ impl RunningSession for OpenCodeRunningSession {
                         "event stream ended, session failed"
                     );
                     self.status = SessionStatus::Failed;
+                    self.failure_payload = Some(serde_json::json!({"reason": "stream_ended"}));
                     Some(AgentEvent {
                         event_type: "session.failed".to_owned(),
-                        payload: serde_json::json!({"reason": "stream_ended"}),
+                        payload: self.failure_payload.clone().unwrap_or_default(),
                         timestamp: Utc::now(),
                     })
                 }
@@ -107,9 +110,12 @@ impl RunningSession for OpenCodeRunningSession {
                         "session stalled, no events received"
                     );
                     self.status = SessionStatus::Failed;
+                    self.failure_payload = Some(
+                        serde_json::json!({"reason": "stall_detected", "timeout_secs": STALL_TIMEOUT_SECS}),
+                    );
                     Some(AgentEvent {
                         event_type: "session.failed".to_owned(),
-                        payload: serde_json::json!({"reason": "stall_detected", "timeout_secs": STALL_TIMEOUT_SECS}),
+                        payload: self.failure_payload.clone().unwrap_or_default(),
                         timestamp: Utc::now(),
                     })
                 }
@@ -135,6 +141,7 @@ impl RunningSession for OpenCodeRunningSession {
         let session_id = self.session_id.clone();
         let current_status = self.status.clone();
         let started_at = self.started_at;
+        let failure_payload = self.failure_payload.clone();
 
         Box::pin(async move {
             let info = api::get_session_info(&client, &session_id).await?;
@@ -171,6 +178,7 @@ impl RunningSession for OpenCodeRunningSession {
                 cache_write_tokens,
                 duration_ms: elapsed_ms,
                 model_used,
+                failure_payload,
             })
         })
     }

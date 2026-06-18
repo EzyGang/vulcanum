@@ -88,7 +88,14 @@ pub(crate) async fn run_turn_loop(
             );
             ctx.reporter.emit(
                 "session.failed",
-                serde_json::json!({"reason": "nonzero_exit", "turn": turn}),
+                serde_json::json!({
+                    "reason": "nonzero_exit",
+                    "turn": turn,
+                    "exit_code": session_export.exit_code,
+                    "tokens_used": session_export.tokens_used,
+                    "model_used": session_export.model_used.clone(),
+                    "provider_error": session_export.failure_payload.clone(),
+                }),
             );
             submit_turn_result(
                 &ctx.client,

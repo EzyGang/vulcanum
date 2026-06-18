@@ -33,7 +33,7 @@ jobs:
           bot_token: ${{ secrets.TG_TOKEN }}
           chat_id: ${{ secrets.TG_CHAT }}
           is_deployment: true
-          pin_on_success: true
+          pin_on_success: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

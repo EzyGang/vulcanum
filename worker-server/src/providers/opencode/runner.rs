@@ -28,6 +28,7 @@ pub struct OpenCodeRunningSession {
     pub(crate) server_process: Option<Child>,
     pub(crate) host_pid: Option<u32>,
     pub(crate) host_port: Option<u16>,
+    pub(crate) failure_payload: Option<serde_json::Value>,
 }
 
 impl OpenCodeRunningSession {
@@ -43,6 +44,7 @@ impl OpenCodeRunningSession {
             server_process: config.server_process,
             host_pid: config.host_pid,
             host_port: config.host_port,
+            failure_payload: None,
         }
     }
 

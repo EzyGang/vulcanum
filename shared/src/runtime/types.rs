@@ -71,6 +71,7 @@ pub struct SessionExport {
     pub cache_write_tokens: u64,
     pub duration_ms: u64,
     pub model_used: Option<String>,
+    pub failure_payload: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
