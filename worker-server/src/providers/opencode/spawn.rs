@@ -76,59 +76,11 @@ pub(super) async fn launch_container_server(
     env: &IsolatedEnvironment,
     repo_dir: &str,
 ) -> Result<(u16, String), HarnessError> {
+    let docker_args = container_docker_args(env, repo_dir)?;
     let container_name = env
         .container_name
         .as_deref()
         .ok_or_else(|| HarnessError::ServerLaunch("container_name missing".to_owned()))?;
-    let image = env
-        .image
-        .as_deref()
-        .ok_or_else(|| HarnessError::ServerLaunch("image missing".to_owned()))?;
-
-    let home_env = "HOME=/workdir".to_owned();
-    let artifact_env = "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json".to_owned();
-    let workdir_str = env.workdir.to_string_lossy().to_string();
-    let volume_mount = format!("{workdir_str}:/workdir");
-    let port_str = OPENCODE_DEFAULT_PORT.to_string();
-
-    let mut docker_args: Vec<String> = vec![
-        "run".to_owned(),
-        "-d".to_owned(),
-        "--name".to_owned(),
-        container_name.to_owned(),
-        "-p".to_owned(),
-        format!("127.0.0.1::{OPENCODE_DEFAULT_PORT}"),
-        "--security-opt=no-new-privileges".to_owned(),
-        home_env,
-        "-e".to_owned(),
-        artifact_env,
-    ];
-
-    if let Some(runtime) = env.runtime {
-        docker_args.push("--runtime".to_owned());
-        docker_args.push(runtime.to_owned());
-    }
-
-    for (k, v) in &env.env_vars {
-        docker_args.push("-e".to_owned());
-        docker_args.push(format!("{k}={v}"));
-    }
-
-    if !repo_dir.is_empty() {
-        docker_args.extend(["--workdir".to_owned(), repo_dir.to_owned()]);
-    }
-
-    docker_args.extend([
-        "-v".to_owned(),
-        volume_mount,
-        image.to_owned(),
-        "opencode".to_owned(),
-        "serve".to_owned(),
-        "--hostname".to_owned(),
-        "0.0.0.0".to_owned(),
-        "--port".to_owned(),
-        port_str,
-    ]);
 
     let output = tokio::process::Command::new("docker")
         .args(&docker_args)
@@ -170,6 +122,72 @@ pub(super) async fn launch_container_server(
     });
 
     Ok((host_port, container_id))
+}
+
+pub(crate) fn container_docker_args(
+    env: &IsolatedEnvironment,
+    repo_dir: &str,
+) -> Result<Vec<String>, HarnessError> {
+    let container_name = env
+        .container_name
+        .as_deref()
+        .ok_or_else(|| HarnessError::ServerLaunch("container_name missing".to_owned()))?;
+    let image = env
+        .image
+        .as_deref()
+        .ok_or_else(|| HarnessError::ServerLaunch("image missing".to_owned()))?;
+
+    let home_env = "HOME=/workdir/home".to_owned();
+    let artifact_env = "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json".to_owned();
+    let workdir_str = env.workdir.to_string_lossy().to_string();
+    let volume_mount = format!("{workdir_str}:/workdir");
+    let port_str = OPENCODE_DEFAULT_PORT.to_string();
+
+    let mut docker_args: Vec<String> = vec![
+        "run".to_owned(),
+        "-d".to_owned(),
+        "--name".to_owned(),
+        container_name.to_owned(),
+        "-p".to_owned(),
+        format!("127.0.0.1::{OPENCODE_DEFAULT_PORT}"),
+        "--security-opt=no-new-privileges".to_owned(),
+        "-e".to_owned(),
+        home_env,
+        "-e".to_owned(),
+        artifact_env,
+    ];
+
+    if let Some(runtime) = env.runtime {
+        docker_args.push("--runtime".to_owned());
+        docker_args.push(runtime.to_owned());
+    }
+
+    for (k, v) in &env.env_vars {
+        if k == "HOME" || k == "FINISH_ARTIFACT_PATH" {
+            continue;
+        }
+
+        docker_args.push("-e".to_owned());
+        docker_args.push(format!("{k}={v}"));
+    }
+
+    if !repo_dir.is_empty() {
+        docker_args.extend(["--workdir".to_owned(), repo_dir.to_owned()]);
+    }
+
+    docker_args.extend([
+        "-v".to_owned(),
+        volume_mount,
+        image.to_owned(),
+        "opencode".to_owned(),
+        "serve".to_owned(),
+        "--hostname".to_owned(),
+        "0.0.0.0".to_owned(),
+        "--port".to_owned(),
+        port_str,
+    ]);
+
+    Ok(docker_args)
 }
 
 async fn pipe_lines_to_tracing<R>(pipe: R)

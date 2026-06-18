@@ -1,5 +1,5 @@
-use crate::providers::opencode::events::SseEvent;
 use crate::providers::opencode::event_mapper;
+use crate::providers::opencode::events::SseEvent;
 
 fn make_sse(event_type: &str, properties: &str) -> SseEvent {
     SseEvent {

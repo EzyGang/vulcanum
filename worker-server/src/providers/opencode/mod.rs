@@ -8,6 +8,11 @@ pub mod runner_session;
 pub mod runtime;
 pub mod spawn;
 
+#[cfg(test)]
+mod event_mapper_tests;
+#[cfg(test)]
+mod spawn_tests;
+
 use reqwest::Client;
 
 use vulcanum_shared::runtime::errors::HarnessError;
