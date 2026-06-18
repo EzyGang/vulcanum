@@ -49,15 +49,14 @@ pub fn render_opencode_config(
     let primary = model_ref(selection.primary_provider_key, selection.primary_model_id);
     let small = model_ref(selection.small_provider_key, selection.small_model_id);
 
-    if provider_json.is_empty() && primary.is_none() && small.is_none() {
-        return RenderedModelConfig::default();
-    }
-
     let mut root = serde_json::Map::new();
-    root.insert(
-        "provider".to_owned(),
-        serde_json::Value::Object(provider_json),
-    );
+    root.insert("permission".to_owned(), permission_config());
+    if !provider_json.is_empty() {
+        root.insert(
+            "provider".to_owned(),
+            serde_json::Value::Object(provider_json),
+        );
+    }
     if let Some(value) = primary {
         root.insert("model".to_owned(), json!(value));
     }
@@ -78,4 +77,11 @@ fn model_ref(provider_key: Option<&str>, model_id: Option<&str>) -> Option<Strin
         }
         _ => None,
     }
+}
+
+fn permission_config() -> serde_json::Value {
+    json!({
+        "*": "allow",
+        "question": "deny",
+    })
 }

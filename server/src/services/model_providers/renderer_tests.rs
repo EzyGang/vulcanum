@@ -30,11 +30,33 @@ fn render_opencode_config_extracts_env_and_models() {
         rendered.env.get("ANTHROPIC_API_KEY"),
         Some(&"secret".to_owned())
     );
-    assert!(rendered
-        .opencode_config
-        .contains("anthropic/claude-sonnet-4-5"));
-    assert!(rendered
-        .opencode_config
-        .contains("anthropic/claude-haiku-4-5"));
-    assert!(rendered.opencode_config.contains("{env:ANTHROPIC_API_KEY}"));
+    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
+        .expect("rendered config should be valid json");
+    assert_eq!(config["model"], "anthropic/claude-sonnet-4-5");
+    assert_eq!(config["small_model"], "anthropic/claude-haiku-4-5");
+    assert_eq!(
+        config["provider"]["anthropic"]["options"]["apiKey"],
+        "{env:ANTHROPIC_API_KEY}"
+    );
+    assert_eq!(config["permission"]["*"], "allow");
+    assert_eq!(config["permission"]["question"], "deny");
+}
+
+#[test]
+fn render_opencode_config_includes_permissions_without_model_config() {
+    let rendered = render_opencode_config(
+        &[],
+        ModelSelection {
+            primary_provider_key: None,
+            primary_model_id: None,
+            small_provider_key: None,
+            small_model_id: None,
+        },
+    );
+
+    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
+        .expect("rendered config should be valid json");
+    assert_eq!(config["permission"]["*"], "allow");
+    assert_eq!(config["permission"]["question"], "deny");
+    assert!(config.get("provider").is_none());
 }

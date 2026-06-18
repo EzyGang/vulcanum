@@ -68,7 +68,21 @@ impl RunningSession for OpenCodeRunningSession {
                     for event in &mapped {
                         match event.event_type.as_str() {
                             "session.completed" => self.status = SessionStatus::Completed,
-                            "session.failed" => self.status = SessionStatus::Failed,
+                            "session.failed" => {
+                                tracing::warn!(
+                                    session_id = %self.session_id,
+                                    payload = %event.payload,
+                                    "opencode session failed"
+                                );
+                                self.status = SessionStatus::Failed;
+                            }
+                            "turn.failed" => {
+                                tracing::warn!(
+                                    session_id = %self.session_id,
+                                    payload = %event.payload,
+                                    "opencode turn failed"
+                                );
+                            }
                             _ => (),
                         }
                     }
