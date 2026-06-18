@@ -70,6 +70,14 @@ impl IsolationProvider for DockerIsolation {
 
         let mut combined_env: HashMap<String, String> = secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
+        combined_env.insert(
+            "OPENCODE_CONFIG".to_owned(),
+            "/workdir/home/.config/opencode/opencode.json".to_owned(),
+        );
+        combined_env.insert(
+            "OPENCODE_CONFIG_DIR".to_owned(),
+            "/workdir/home/.config/opencode".to_owned(),
+        );
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),

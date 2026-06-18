@@ -131,7 +131,11 @@ pub(crate) fn repo_dir_name(full_name: &str) -> String {
 }
 
 pub async fn write_finish_run_tool(workdir: &Path) -> Result<(), HarnessError> {
-    let tools_dir = workdir.join("home").join(".opencode").join("tools");
+    let tools_dir = workdir
+        .join("home")
+        .join(".config")
+        .join("opencode")
+        .join("tools");
     fs::create_dir_all(&tools_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create tools dir: {e}")))?;

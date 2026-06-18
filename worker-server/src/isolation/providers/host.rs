@@ -53,9 +53,19 @@ impl IsolationProvider for HostIsolation {
         for (k, v) in secrets {
             combined_env.insert(k.clone(), v.clone());
         }
+        let home_dir = workdir.join("home");
+        let config_dir = home_dir.join(".config").join("opencode");
+        combined_env.insert("HOME".to_owned(), home_dir.to_string_lossy().to_string());
         combined_env.insert(
-            "HOME".to_owned(),
-            workdir.join("home").to_string_lossy().to_string(),
+            "OPENCODE_CONFIG".to_owned(),
+            config_dir
+                .join("opencode.json")
+                .to_string_lossy()
+                .to_string(),
+        );
+        combined_env.insert(
+            "OPENCODE_CONFIG_DIR".to_owned(),
+            config_dir.to_string_lossy().to_string(),
         );
 
         Ok(IsolatedEnvironment {

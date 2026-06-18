@@ -29,6 +29,20 @@ async fn host_isolation_creates_workdir_and_config() {
             let config_dir = workdir.join("home").join(".config").join("opencode");
             assert!(config_dir.join("AGENTS.md").exists());
             assert!(config_dir.join("opencode.json").exists());
+            assert!(config_dir.join("tools").join("finish_run.ts").exists());
+            assert_eq!(
+                env.env_vars.get("OPENCODE_CONFIG"),
+                Some(
+                    &config_dir
+                        .join("opencode.json")
+                        .to_string_lossy()
+                        .to_string()
+                )
+            );
+            assert_eq!(
+                env.env_vars.get("OPENCODE_CONFIG_DIR"),
+                Some(&config_dir.to_string_lossy().to_string())
+            );
             isolation.cleanup(&env).await;
         }
         Err(e) => {

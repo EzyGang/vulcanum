@@ -36,6 +36,14 @@ fn host_env_allowlist_does_not_contain_sensitive_keys() {
 fn container_docker_args_passes_home_as_environment() {
     let mut env_vars: HashMap<String, String> = HashMap::new();
     env_vars.insert("HOME".to_owned(), "/workdir/home".to_owned());
+    env_vars.insert(
+        "OPENCODE_CONFIG".to_owned(),
+        "/workdir/home/.config/opencode/opencode.json".to_owned(),
+    );
+    env_vars.insert(
+        "OPENCODE_CONFIG_DIR".to_owned(),
+        "/workdir/home/.config/opencode".to_owned(),
+    );
     env_vars.insert("OPENAI_API_KEY".to_owned(), "test-key".to_owned());
 
     let env = IsolatedEnvironment {
@@ -54,6 +62,11 @@ fn container_docker_args_passes_home_as_environment() {
     let args = container_docker_args(&env, "/workdir/workspace").unwrap();
 
     assert_env_arg(&args, "HOME=/workdir/home");
+    assert_env_arg(
+        &args,
+        "OPENCODE_CONFIG=/workdir/home/.config/opencode/opencode.json",
+    );
+    assert_env_arg(&args, "OPENCODE_CONFIG_DIR=/workdir/home/.config/opencode");
     assert_env_arg(
         &args,
         "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json",

@@ -31,8 +31,9 @@ pub fn render_opencode_config(
             for (key, value) in credentials {
                 match value.as_str() {
                     Some(secret) if !secret.is_empty() => {
-                        env.insert(key.clone(), secret.to_owned());
-                        options.insert("apiKey".to_owned(), json!(format!("{{env:{key}}}")));
+                        let env_key = credential_env_key(key);
+                        env.insert(env_key.clone(), secret.to_owned());
+                        options.insert("apiKey".to_owned(), json!(format!("{{env:{env_key}}}")));
                     }
                     Some(_) => (),
                     None => tracing::warn!(
@@ -84,4 +85,45 @@ fn permission_config() -> serde_json::Value {
         "*": "allow",
         "question": "deny",
     })
+}
+
+fn credential_env_key(key: &str) -> String {
+    decode_legacy_snake_case_env_key(key).unwrap_or_else(|| key.to_owned())
+}
+
+fn decode_legacy_snake_case_env_key(key: &str) -> Option<String> {
+    if !key.starts_with('_') || !key.contains("__") {
+        return None;
+    }
+
+    let trimmed = key.trim_matches('_');
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let mut parts: Vec<String> = Vec::new();
+    for segment in trimmed.split("__") {
+        if segment.is_empty()
+            || !segment
+                .chars()
+                .all(|ch| ch == '_' || ch.is_ascii_lowercase())
+        {
+            return None;
+        }
+
+        let part = segment
+            .chars()
+            .filter(|ch| *ch != '_')
+            .collect::<String>()
+            .to_ascii_uppercase();
+        if part.is_empty() {
+            return None;
+        }
+        parts.push(part);
+    }
+
+    match parts.len() {
+        0 | 1 => None,
+        _ => Some(parts.join("_")),
+    }
 }
