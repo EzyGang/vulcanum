@@ -3,6 +3,7 @@ use tokio::time::sleep;
 use vulcanum_shared::api_error::is_fatal_api_error;
 use vulcanum_shared::token::ensure_valid_token;
 
+use super::auth::with_fresh_token;
 use super::queue::try_drain_queue;
 use super::{DaemonState, TickOutcome};
 
@@ -24,11 +25,14 @@ pub(super) async fn tick(state: &DaemonState, refresh_buffer_secs: i64) -> TickO
 
     try_drain_queue(state).await;
 
-    let access_token = state.worker_state.read().await.access_token.clone();
-
     tracing::info!("polling server for jobs");
 
-    match state.client.poll(&access_token).await {
+    match with_fresh_token(&state.client, &state.worker_state, |token| {
+        let client = state.client.clone();
+        async move { client.poll(&token).await }
+    })
+    .await
+    {
         Ok(Some(job_id)) => {
             {
                 let mut queue = state.pending_queue.lock().await;

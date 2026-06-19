@@ -1,3 +1,6 @@
+pub(crate) mod auth;
+#[cfg(test)]
+mod auth_tests;
 pub(crate) mod job;
 mod queue;
 mod tick;

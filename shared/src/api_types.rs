@@ -81,7 +81,7 @@ pub struct JobRepo {
     pub url: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubmitResultRequest {
     #[serde(default)]
     pub pr_urls: Vec<String>,

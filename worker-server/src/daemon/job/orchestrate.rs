@@ -16,6 +16,7 @@ use vulcanum_shared::worker_state::WorkerState;
 use super::event_reporter::EventReporter;
 use super::submit::{submit_failed_result, FailedResult};
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::daemon::auth::with_fresh_token;
 use crate::isolation::factory::create_isolation_provider;
 use crate::providers::opencode::{self, api};
 use crate::state::journal::Journal;
@@ -37,14 +38,18 @@ pub(crate) async fn handle_job(
         "job received",
     );
 
-    let access_token = worker_state.read().await.access_token.clone();
     let reporter = Arc::new(EventReporter::new(
         client.clone(),
-        access_token.clone(),
+        worker_state.clone(),
         job_id,
     ));
 
-    let job = match client.get_job(job_id, &access_token).await {
+    let job = match with_fresh_token(&client, &worker_state, |token| {
+        let client = client.clone();
+        async move { client.get_job(job_id, &token).await }
+    })
+    .await
+    {
         Ok(j) => j,
         Err(e) => {
             if is_fatal_api_error(&e) {
@@ -61,7 +66,12 @@ pub(crate) async fn handle_job(
         }
     };
 
-    if let Err(e) = client.ack_job(job_id, &access_token).await {
+    if let Err(e) = with_fresh_token(&client, &worker_state, |token| {
+        let client = client.clone();
+        async move { client.ack_job(job_id, &token).await }
+    })
+    .await
+    {
         if is_fatal_api_error(&e) {
             return Err(format!("ack failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"));
         }

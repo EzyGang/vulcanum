@@ -1,21 +1,30 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+use tokio::sync::RwLock;
+
 use vulcanum_shared::api_types::WireEvent;
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::worker_state::WorkerState;
+
+use crate::daemon::auth::with_fresh_token;
 
 pub(crate) struct EventReporter {
     client: Arc<ApiClient>,
-    access_token: String,
+    worker_state: Arc<RwLock<WorkerState>>,
     job_id: uuid::Uuid,
     sequence: AtomicU64,
 }
 
 impl EventReporter {
-    pub(crate) fn new(client: Arc<ApiClient>, access_token: String, job_id: uuid::Uuid) -> Self {
+    pub(crate) fn new(
+        client: Arc<ApiClient>,
+        worker_state: Arc<RwLock<WorkerState>>,
+        job_id: uuid::Uuid,
+    ) -> Self {
         Self {
             client,
-            access_token,
+            worker_state,
             job_id,
             sequence: AtomicU64::new(0),
         }
@@ -30,11 +39,17 @@ impl EventReporter {
             occurred_at: chrono::Utc::now(),
         };
         let client = Arc::clone(&self.client);
-        let token = self.access_token.clone();
+        let worker_state = Arc::clone(&self.worker_state);
         let job_id = self.job_id;
         let events = vec![wire];
         tokio::spawn(async move {
-            match client.append_events(job_id, &events, &token).await {
+            match with_fresh_token(&client, &worker_state, |token| {
+                let client = client.clone();
+                let events = events.clone();
+                async move { client.append_events(job_id, &events, &token).await }
+            })
+            .await
+            {
                 Ok(resp) => {
                     if resp.should_cancel {
                         tracing::warn!(
