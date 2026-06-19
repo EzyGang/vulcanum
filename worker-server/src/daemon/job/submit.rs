@@ -8,6 +8,7 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::worker_state::WorkerState;
 
+use crate::daemon::auth::with_retry_on_401;
 use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
 
 pub(crate) struct FailedResult {
@@ -80,8 +81,13 @@ pub(crate) async fn submit_failed_result(
         review_body: result.review_body.clone(),
         review_already_exists: result.review_already_exists,
     });
-    let access_token = worker_state.read().await.access_token.clone();
-    if let Err(e) = client.submit_result(job_id, &submit, &access_token).await {
+    if let Err(e) = with_retry_on_401(&client, &worker_state, |token| {
+        let client = client.clone();
+        let submit = submit.clone();
+        async move { client.submit_result(job_id, &submit, &token).await }
+    })
+    .await
+    {
         tracing::error!(work_run_id = %job_id, error = %e, "submit_result failed for job");
     }
     let _ = journal.mark_submitted(job_id);
@@ -137,8 +143,13 @@ pub(crate) async fn submit_turn_result(
             .unwrap_or(false),
     });
 
-    let access_token = worker_state.read().await.access_token.clone();
-    if let Err(e) = client.submit_result(job_id, &result, &access_token).await {
+    if let Err(e) = with_retry_on_401(client, worker_state, |token| {
+        let client = client.clone();
+        let result = result.clone();
+        async move { client.submit_result(job_id, &result, &token).await }
+    })
+    .await
+    {
         tracing::error!(
             work_run_id = %job_id,
             error = %e,

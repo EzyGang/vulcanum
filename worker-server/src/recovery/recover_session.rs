@@ -7,6 +7,7 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
+use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::submit::{submit_result_request, SubmitResultParams};
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::providers::host::HostIsolation;
@@ -68,10 +69,9 @@ pub(crate) async fn recover_session_task(
     );
 
     let mut boxed: Box<dyn RunningSession> = Box::new(running_session);
-    let access_token = worker_state.read().await.access_token.clone();
     let reporter = Arc::new(crate::daemon::job::event_reporter::EventReporter::new(
         api_client.clone(),
-        access_token,
+        worker_state.clone(),
         entry.job_id,
     ));
     reporter.emit(
@@ -154,10 +154,12 @@ pub(crate) async fn mark_lost_and_submit(
         review_already_exists: false,
     });
 
-    let access_token = worker_state.read().await.access_token.clone();
-    if let Err(e) = client
-        .submit_result(entry.job_id, &result, &access_token)
-        .await
+    if let Err(e) = with_retry_on_401(client, worker_state, |token| {
+        let client = client.clone();
+        let result = result.clone();
+        async move { client.submit_result(entry.job_id, &result, &token).await }
+    })
+    .await
     {
         tracing::warn!(
             job_id = %entry.job_id,
