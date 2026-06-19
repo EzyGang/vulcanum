@@ -11,7 +11,7 @@ use vulcanum_shared::api_error::ApiError;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::daemon::auth::with_fresh_token;
+use crate::daemon::auth::with_retry_on_401;
 
 static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -26,7 +26,7 @@ async fn retries_once_with_refreshed_access_token_after_401() {
     let attempts = Arc::new(AtomicUsize::new(0));
     let seen_tokens = Arc::new(Mutex::new(Vec::new()));
 
-    let result = with_fresh_token(&client, &worker_state, |token| {
+    let result = with_retry_on_401(&client, &worker_state, |token| {
         let attempts = attempts.clone();
         let seen_tokens = seen_tokens.clone();
         async move {
@@ -64,7 +64,7 @@ async fn does_not_refresh_or_retry_non_401_errors() {
     let worker_state = Arc::new(RwLock::new(worker_state("old-token", "refresh-token")));
     let attempts = Arc::new(AtomicUsize::new(0));
 
-    let result = with_fresh_token(&client, &worker_state, |token| {
+    let result = with_retry_on_401(&client, &worker_state, |token| {
         let attempts = attempts.clone();
         async move {
             assert_eq!(token, "old-token");

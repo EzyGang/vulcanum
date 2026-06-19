@@ -7,7 +7,7 @@ use vulcanum_shared::api_types::WireEvent;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::daemon::auth::with_fresh_token;
+use crate::daemon::auth::with_retry_on_401;
 
 pub(crate) struct EventReporter {
     client: Arc<ApiClient>,
@@ -43,7 +43,7 @@ impl EventReporter {
         let job_id = self.job_id;
         let events = vec![wire];
         tokio::spawn(async move {
-            match with_fresh_token(&client, &worker_state, |token| {
+            match with_retry_on_401(&client, &worker_state, |token| {
                 let client = client.clone();
                 let events = events.clone();
                 async move { client.append_events(job_id, &events, &token).await }

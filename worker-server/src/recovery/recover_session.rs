@@ -7,7 +7,7 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::daemon::auth::with_fresh_token;
+use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::submit::{submit_result_request, SubmitResultParams};
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::providers::host::HostIsolation;
@@ -154,7 +154,7 @@ pub(crate) async fn mark_lost_and_submit(
         review_already_exists: false,
     });
 
-    if let Err(e) = with_fresh_token(client, worker_state, |token| {
+    if let Err(e) = with_retry_on_401(client, worker_state, |token| {
         let client = client.clone();
         let result = result.clone();
         async move { client.submit_result(entry.job_id, &result, &token).await }

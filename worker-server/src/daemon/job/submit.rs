@@ -8,7 +8,7 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::daemon::auth::with_fresh_token;
+use crate::daemon::auth::with_retry_on_401;
 use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
 
 pub(crate) struct FailedResult {
@@ -81,7 +81,7 @@ pub(crate) async fn submit_failed_result(
         review_body: result.review_body.clone(),
         review_already_exists: result.review_already_exists,
     });
-    if let Err(e) = with_fresh_token(&client, &worker_state, |token| {
+    if let Err(e) = with_retry_on_401(&client, &worker_state, |token| {
         let client = client.clone();
         let submit = submit.clone();
         async move { client.submit_result(job_id, &submit, &token).await }
@@ -143,7 +143,7 @@ pub(crate) async fn submit_turn_result(
             .unwrap_or(false),
     });
 
-    if let Err(e) = with_fresh_token(client, worker_state, |token| {
+    if let Err(e) = with_retry_on_401(client, worker_state, |token| {
         let client = client.clone();
         let result = result.clone();
         async move { client.submit_result(job_id, &result, &token).await }

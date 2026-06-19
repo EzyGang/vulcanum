@@ -16,7 +16,7 @@ use vulcanum_shared::worker_state::WorkerState;
 use super::event_reporter::EventReporter;
 use super::submit::{submit_failed_result, FailedResult};
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
-use crate::daemon::auth::with_fresh_token;
+use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::factory::create_isolation_provider;
 use crate::providers::opencode::{self, api};
 use crate::state::journal::Journal;
@@ -44,7 +44,7 @@ pub(crate) async fn handle_job(
         job_id,
     ));
 
-    let job = match with_fresh_token(&client, &worker_state, |token| {
+    let job = match with_retry_on_401(&client, &worker_state, |token| {
         let client = client.clone();
         async move { client.get_job(job_id, &token).await }
     })
@@ -66,7 +66,7 @@ pub(crate) async fn handle_job(
         }
     };
 
-    if let Err(e) = with_fresh_token(&client, &worker_state, |token| {
+    if let Err(e) = with_retry_on_401(&client, &worker_state, |token| {
         let client = client.clone();
         async move { client.ack_job(job_id, &token).await }
     })
