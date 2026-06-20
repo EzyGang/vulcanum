@@ -9,7 +9,7 @@ use crate::services::teams::errors::TeamsError;
 use crate::services::teams::invite_store::{
     hash_token, invite_redis_key, InMemoryTeamInviteStore, TeamInvitePayload, TeamInviteStore,
 };
-use crate::services::teams::model::UpdateTeamRequest;
+use crate::services::teams::model::{UpdateTeamRequest, DEFAULT_REVIEW_PROMPT_TEMPLATE};
 use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
 use crate::test_helpers;
@@ -77,6 +77,7 @@ async fn migrations_create_default_team(pool: sqlx::PgPool) {
     assert_eq!(team.id, test_helpers::DEFAULT_TEAM_ID);
     assert_eq!(team.name, "Default team");
     assert_eq!(team.personal_user_id, None);
+    assert_eq!(team.review_prompt_template, DEFAULT_REVIEW_PROMPT_TEMPLATE);
 }
 
 #[sqlx::test]
@@ -131,6 +132,7 @@ async fn ensure_personal_team_is_idempotent(pool: sqlx::PgPool) {
         .expect("second ensure should reuse team");
 
     assert_eq!(first.id, second.id);
+    assert_eq!(first.review_prompt_template, DEFAULT_REVIEW_PROMPT_TEMPLATE);
     assert_single_personal_team(&pool, "personal-idempotent").await;
 }
 
@@ -203,6 +205,7 @@ async fn create_for_user_adds_owner_membership(pool: sqlx::PgPool) {
     .expect("owner membership should exist");
 
     assert_eq!(role, "owner");
+    assert_eq!(team.review_prompt_template, DEFAULT_REVIEW_PROMPT_TEMPLATE);
 }
 
 #[sqlx::test]

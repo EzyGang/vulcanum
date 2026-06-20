@@ -25,6 +25,9 @@ fn review_initial_prompt_uses_review_artifact_fields() {
     assert!(prompt.contains("`review_url`"));
     assert!(prompt.contains("`review_body`"));
     assert!(prompt.contains("`review_already_exists`"));
+    assert!(prompt.contains("CRITICAL"));
+    assert!(prompt.contains("WARNINGS"));
+    assert!(prompt.contains("SUGGESTIONS"));
     assert!(!prompt.contains("`pr_url`"));
 }
 

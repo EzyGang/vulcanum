@@ -61,15 +61,12 @@ impl WorkRunsService {
         let is_blocked = matches!(params.finish_status, Some(FinishStatus::Blocked));
 
         if !is_blocked && !is_review {
-            let new_column = match params.finish_status {
-                Some(FinishStatus::Completed) => &project_config.target_column,
-                Some(FinishStatus::Failed) => &project_config.pickup_column,
-                None => match status {
-                    WorkRunStatus::Completed => &project_config.target_column,
-                    _ => &project_config.pickup_column,
-                },
-                Some(FinishStatus::Blocked) => &project_config.pickup_column,
-            };
+            let new_column = implementation_result_column(
+                params.finish_status,
+                status,
+                &project_config.pickup_column,
+                &project_config.target_column,
+            );
 
             if let Err(e) = client
                 .update_task_status(&run.external_task_ref, new_column)
@@ -101,5 +98,22 @@ impl WorkRunsService {
                 "failed to add task comment",
             );
         }
+    }
+}
+
+#[must_use]
+pub(crate) fn implementation_result_column<'a>(
+    finish_status: Option<FinishStatus>,
+    run_status: WorkRunStatus,
+    pickup_column: &'a str,
+    target_column: &'a str,
+) -> &'a str {
+    match finish_status {
+        Some(FinishStatus::Completed) => target_column,
+        Some(FinishStatus::Failed) | Some(FinishStatus::Blocked) => pickup_column,
+        None => match run_status {
+            WorkRunStatus::Completed => target_column,
+            _ => pickup_column,
+        },
     }
 }

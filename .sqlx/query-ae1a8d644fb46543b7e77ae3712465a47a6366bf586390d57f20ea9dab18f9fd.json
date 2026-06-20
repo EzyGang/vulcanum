@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO teams (id, name, personal_user_id)\n             VALUES ($1, $2, $3)\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_pickup_column, review_max_turns, review_prompt_template,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "INSERT INTO teams (id, name, personal_user_id, review_prompt_template)\n             VALUES ($1, $2, $3, $4)\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_pickup_column, review_max_turns, review_prompt_template,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -78,6 +78,7 @@
       "Left": [
         "Uuid",
         "Text",
+        "Text",
         "Text"
       ]
     },
@@ -98,5 +99,5 @@
       false
     ]
   },
-  "hash": "31e2dbe9a857d42ff5c9221bcee77c159d207f3dbd99056593395e985d5d04ba"
+  "hash": "ae1a8d644fb46543b7e77ae3712465a47a6366bf586390d57f20ea9dab18f9fd"
 }

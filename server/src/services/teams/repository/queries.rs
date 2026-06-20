@@ -5,6 +5,7 @@ use crate::queryer::Queryer;
 use crate::services::teams::errors::TeamsError;
 use crate::services::teams::model::{
     ProviderIdentity, Team, TeamMember, TeamMemberInfo, UserIdentity,
+    DEFAULT_REVIEW_PROMPT_TEMPLATE,
 };
 use crate::services::teams::repository::TeamsRepository;
 
@@ -21,8 +22,8 @@ impl TeamsRepository {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             Team,
-            r#"INSERT INTO teams (id, name, personal_user_id)
-             VALUES ($1, $2, $3)
+            r#"INSERT INTO teams (id, name, personal_user_id, review_prompt_template)
+             VALUES ($1, $2, $3, $4)
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
               review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
@@ -30,6 +31,7 @@ impl TeamsRepository {
             id,
             name,
             user_id,
+            DEFAULT_REVIEW_PROMPT_TEMPLATE,
         )
         .fetch_one(db)
         .await
@@ -43,14 +45,15 @@ impl TeamsRepository {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             Team,
-            r#"INSERT INTO teams (id, name)
-             VALUES ($1, $2)
+            r#"INSERT INTO teams (id, name, review_prompt_template)
+             VALUES ($1, $2, $3)
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
               review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
+            DEFAULT_REVIEW_PROMPT_TEMPLATE,
         )
         .fetch_one(db)
         .await
