@@ -111,7 +111,30 @@ impl WorkRunsRepository {
         .fetch_optional(db)
         .await
         .map_err(WorkRunsError::from)?
-        .ok_or(WorkRunsError::InvalidStatusTransition)
+            .ok_or(WorkRunsError::InvalidStatusTransition)
+    }
+
+    pub async fn touch_active_run<'c, Q>(
+        &self,
+        db: Q,
+        id: Uuid,
+        worker_id: Uuid,
+    ) -> Result<(), WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query!(
+            r#"UPDATE work_runs SET updated_at = NOW()
+             WHERE id = $1 AND worker_id = $2
+             AND status IN ('dispatched'::work_run_status, 'running'::work_run_status)"#,
+            id,
+            worker_id,
+        )
+        .execute(db)
+        .await
+        .map_err(WorkRunsError::from)?;
+
+        Ok(())
     }
 
     pub async fn replace_pr_urls<'c, Q>(

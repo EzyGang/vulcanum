@@ -18,8 +18,6 @@ pub(crate) struct FailedResult {
     pub(crate) duration_ms: i64,
     pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
-    pub(crate) finish_blocked_reason: Option<String>,
-    pub(crate) finish_next_column: Option<String>,
     pub(crate) review_url: Option<String>,
     pub(crate) review_body: Option<String>,
     pub(crate) review_already_exists: bool,
@@ -35,8 +33,6 @@ impl FailedResult {
             duration_ms: 0,
             finish_status: None,
             finish_summary: None,
-            finish_blocked_reason: None,
-            finish_next_column: None,
             review_url: None,
             review_body: None,
             review_already_exists: false,
@@ -75,8 +71,6 @@ pub(crate) async fn submit_failed_result(
         model_used: None,
         finish_status: result.finish_status,
         finish_summary: result.finish_summary.clone(),
-        finish_blocked_reason: result.finish_blocked_reason.clone(),
-        finish_next_column: result.finish_next_column.clone(),
         review_url: result.review_url.clone(),
         review_body: result.review_body.clone(),
         review_already_exists: result.review_already_exists,
@@ -134,8 +128,6 @@ pub(crate) async fn submit_turn_result(
         model_used: session_export.model_used.clone(),
         finish_status: finish_artifact.map(|a| a.status),
         finish_summary: finish_artifact.and_then(|a| a.summary.clone()),
-        finish_blocked_reason: finish_artifact.and_then(|a| a.blocked_reason.clone()),
-        finish_next_column: finish_artifact.and_then(|a| a.next_column.clone()),
         review_url: finish_artifact.and_then(|a| a.review_url.clone()),
         review_body: finish_artifact.and_then(|a| a.review_body.clone()),
         review_already_exists: finish_artifact
@@ -171,8 +163,6 @@ pub(crate) struct SubmitResultParams {
     pub(crate) model_used: Option<String>,
     pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
-    pub(crate) finish_blocked_reason: Option<String>,
-    pub(crate) finish_next_column: Option<String>,
     pub(crate) review_url: Option<String>,
     pub(crate) review_body: Option<String>,
     pub(crate) review_already_exists: bool,
@@ -181,7 +171,6 @@ pub(crate) struct SubmitResultParams {
 #[must_use]
 pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultRequest {
     SubmitResultRequest {
-        pr_url: params.pr_urls.first().cloned().unwrap_or_default(),
         pr_urls: params.pr_urls,
         exit_code: params.exit_code,
         tokens_used: params.tokens_used,
@@ -193,8 +182,6 @@ pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultR
         model_used: params.model_used,
         finish_status: params.finish_status,
         finish_summary: params.finish_summary,
-        finish_blocked_reason: params.finish_blocked_reason,
-        finish_next_column: params.finish_next_column,
         review_url: params.review_url,
         review_body: params.review_body,
         review_already_exists: params.review_already_exists,
@@ -203,15 +190,7 @@ pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultR
 
 #[must_use]
 fn artifact_pr_urls(artifact: &FinishRunArtifact) -> Vec<String> {
-    if !artifact.pr_urls.is_empty() {
-        return artifact.pr_urls.clone();
-    }
-    single_url_to_vec(artifact.pr_url.clone())
-}
-
-#[must_use]
-fn single_url_to_vec(url: Option<String>) -> Vec<String> {
-    url.map(|url| vec![url]).unwrap_or_default()
+    artifact.pr_urls.clone()
 }
 
 #[must_use]

@@ -155,6 +155,23 @@ impl Journal {
         Ok(())
     }
 
+    pub fn find_by_id(&self, job_id: Uuid) -> anyhow::Result<Option<JournalEntry>> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        let mut stmt = conn.prepare(
+            "SELECT job_id, workdir, container_name, harness_type, status, started_at,
+                    finished_at, exit_code, tokens_used, input_tokens, output_tokens,
+                    cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
+                    error_message, turn_count, session_id, max_turns, host_pid, host_port
+             FROM job_journal WHERE job_id = ?1",
+        )?;
+
+        let mut rows = stmt.query_map([job_id.to_string()], Self::journal_entry_from_row)?;
+        match rows.next() {
+            Some(entry) => entry.map(Some).map_err(Into::into),
+            None => Ok(None),
+        }
+    }
+
     pub fn update_result(&self, result: JournalResultUpdate<'_>) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
@@ -244,40 +261,42 @@ impl Journal {
         )?;
 
         let rows = stmt
-            .query_map([], |row| {
-                let started_at: String = row.get(5)?;
-                let finished_at: Option<String> = row.get(6)?;
-                Ok(JournalEntry {
-                    job_id: Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_default(),
-                    workdir: row.get(1)?,
-                    container_name: row.get(2)?,
-                    harness_type: row.get(3)?,
-                    status: JournalStatus::from_str(&row.get::<_, String>(4)?)
-                        .unwrap_or(JournalStatus::Lost),
-                    started_at: DateTime::parse_from_rfc3339(&started_at)
-                        .map(|d| d.to_utc())
-                        .unwrap_or_default(),
-                    finished_at: finished_at
-                        .and_then(|s| DateTime::parse_from_rfc3339(&s).map(|d| d.to_utc()).ok()),
-                    exit_code: row.get(7)?,
-                    tokens_used: row.get(8)?,
-                    input_tokens: row.get(9)?,
-                    output_tokens: row.get(10)?,
-                    cache_read_tokens: row.get(11)?,
-                    cache_write_tokens: row.get(12)?,
-                    pr_url: row.get(13)?,
-                    duration_ms: row.get(14)?,
-                    error_message: row.get(15)?,
-                    turn_count: row.get(16)?,
-                    session_id: row.get(17)?,
-                    max_turns: row.get(18)?,
-                    host_pid: row.get(19)?,
-                    host_port: row.get(20)?,
-                })
-            })?
+            .query_map([], Self::journal_entry_from_row)?
             .filter_map(|r| r.ok())
             .collect();
 
         Ok(rows)
+    }
+
+    fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<JournalEntry> {
+        let started_at: String = row.get(5)?;
+        let finished_at: Option<String> = row.get(6)?;
+        Ok(JournalEntry {
+            job_id: Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_default(),
+            workdir: row.get(1)?,
+            container_name: row.get(2)?,
+            harness_type: row.get(3)?,
+            status: JournalStatus::from_str(&row.get::<_, String>(4)?)
+                .unwrap_or(JournalStatus::Lost),
+            started_at: DateTime::parse_from_rfc3339(&started_at)
+                .map(|d| d.to_utc())
+                .unwrap_or_default(),
+            finished_at: finished_at
+                .and_then(|s| DateTime::parse_from_rfc3339(&s).map(|d| d.to_utc()).ok()),
+            exit_code: row.get(7)?,
+            tokens_used: row.get(8)?,
+            input_tokens: row.get(9)?,
+            output_tokens: row.get(10)?,
+            cache_read_tokens: row.get(11)?,
+            cache_write_tokens: row.get(12)?,
+            pr_url: row.get(13)?,
+            duration_ms: row.get(14)?,
+            error_message: row.get(15)?,
+            turn_count: row.get(16)?,
+            session_id: row.get(17)?,
+            max_turns: row.get(18)?,
+            host_pid: row.get(19)?,
+            host_port: row.get(20)?,
+        })
     }
 }

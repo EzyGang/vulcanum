@@ -147,8 +147,6 @@ pub(crate) async fn mark_lost_and_submit(
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        finish_blocked_reason: None,
-        finish_next_column: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,

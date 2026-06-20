@@ -99,7 +99,6 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
 fn submit_params(review_already_exists: bool, review_url: Option<&str>) -> SubmitResultRequest {
     SubmitResultRequest {
         pr_urls: Vec::new(),
-        pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,
         duration_ms: 0,
@@ -110,8 +109,6 @@ fn submit_params(review_already_exists: bool, review_url: Option<&str>) -> Submi
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        finish_blocked_reason: None,
-        finish_next_column: None,
         review_url: review_url.map(str::to_owned),
         review_body: None,
         review_already_exists,

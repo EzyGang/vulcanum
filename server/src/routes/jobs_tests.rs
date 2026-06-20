@@ -225,7 +225,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
         .uri(&format!("/api/v1/jobs/{wr_id}/result"))
         .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .set_json(json!({
-            "pr_url": "https://github.com/test/pr/1",
+            "pr_urls": ["https://github.com/test/pr/1"],
             "exit_code": 0,
             "tokens_used": 1000,
             "duration_ms": 60000,
@@ -266,7 +266,7 @@ async fn submit_result_returns_409_when_not_running(pool: sqlx::PgPool) {
         .uri(&format!("/api/v1/jobs/{wr_id}/result"))
         .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
         .set_json(json!({
-            "pr_url": "",
+            "pr_urls": [],
             "exit_code": 0,
             "tokens_used": 0,
             "duration_ms": 0,

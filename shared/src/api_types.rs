@@ -85,8 +85,6 @@ pub struct JobRepo {
 pub struct SubmitResultRequest {
     #[serde(default)]
     pub pr_urls: Vec<String>,
-    #[serde(default)]
-    pub pr_url: String,
     pub exit_code: i32,
     pub tokens_used: i64,
     pub duration_ms: i64,
@@ -97,8 +95,6 @@ pub struct SubmitResultRequest {
     pub model_used: Option<String>,
     pub finish_status: Option<FinishStatus>,
     pub finish_summary: Option<String>,
-    pub finish_blocked_reason: Option<String>,
-    pub finish_next_column: Option<String>,
     pub review_url: Option<String>,
     pub review_body: Option<String>,
     #[serde(default)]

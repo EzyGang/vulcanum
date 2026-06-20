@@ -47,6 +47,19 @@ impl OpenCodeRunningSession {
                     timestamp: Utc::now(),
                 })
             }
+            Some(api::OpenCodeSessionStatus::Busy) if reason == "stall_detected" => {
+                tracing::info!(
+                    session_id = %self.session_id,
+                    reason,
+                    "opencode session is still busy after event stall"
+                );
+                self.status = SessionStatus::Running;
+                Some(AgentEvent {
+                    event_type: "session.still_busy".to_owned(),
+                    payload: serde_json::json!({"reason": reason, "status": "busy"}),
+                    timestamp: Utc::now(),
+                })
+            }
             Some(api::OpenCodeSessionStatus::Busy) => self.reconnect_stream(reason, None).await,
             Some(api::OpenCodeSessionStatus::Retry {
                 attempt,
@@ -195,7 +208,7 @@ impl RunningSession for OpenCodeRunningSession {
                     self.reconcile_interrupted_stream("stream_ended").await
                 }
                 Err(_) => {
-                    tracing::warn!(
+                    tracing::info!(
                         session_id = %self.session_id,
                         stall_timeout_secs = STALL_TIMEOUT_SECS,
                         "session stalled, no events received"

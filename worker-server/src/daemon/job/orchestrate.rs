@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 
 use chrono::Utc;
-use tokio::sync::RwLock;
+use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
 use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
@@ -21,6 +23,8 @@ use crate::isolation::factory::create_isolation_provider;
 use crate::providers::opencode::{self, api};
 use crate::state::journal::Journal;
 use crate::storage::messages::MessageStore;
+
+const HEARTBEAT_INTERVAL_SECS: u64 = 60;
 
 pub(crate) async fn handle_job(
     client: Arc<ApiClient>,
@@ -66,6 +70,23 @@ pub(crate) async fn handle_job(
         }
     };
 
+    match journal.find_by_id(job_id) {
+        Ok(Some(entry)) => {
+            tracing::warn!(
+                work_run_id = %job_id,
+                local_status = ?entry.status,
+                workdir = %entry.workdir,
+                "duplicate dispatch ignored because job already exists in local journal"
+            );
+            return Ok(());
+        }
+        Ok(None) => (),
+        Err(e) => {
+            tracing::error!(work_run_id = %job_id, error = %e, "failed to check local journal before ack");
+            return Ok(());
+        }
+    }
+
     if let Err(e) = with_retry_on_401(&client, &worker_state, |token| {
         let client = client.clone();
         async move { client.ack_job(job_id, &token).await }
@@ -94,11 +115,6 @@ pub(crate) async fn handle_job(
     );
 
     let workdir = std::env::temp_dir().join(format!("vulcanum-work-{}", job_id));
-    if let Err(e) = std::fs::create_dir_all(&workdir) {
-        tracing::error!(work_run_id = %job_id, error = %e, "failed to create workdir");
-        return Ok(());
-    }
-
     let workdir_str = workdir.to_string_lossy().to_string();
 
     let container_name = match harness_type {
@@ -116,7 +132,56 @@ pub(crate) async fn handle_job(
         started_at,
         max_turns,
     ) {
-        tracing::warn!(work_run_id = %job_id, error = %e, "journal insert failed, continuing without tracking");
+        match journal.find_by_id(job_id) {
+            Ok(Some(entry)) => {
+                tracing::warn!(
+                    work_run_id = %job_id,
+                    local_status = ?entry.status,
+                    workdir = %entry.workdir,
+                    error = %e,
+                    "journal insert found duplicate after ack, skipping duplicate job"
+                );
+                return Ok(());
+            }
+            Ok(None) | Err(_) => {
+                tracing::error!(work_run_id = %job_id, error = %e, "journal insert failed, submitting failed result");
+                submit_failed_result(
+                    client,
+                    worker_state,
+                    journal,
+                    job_id,
+                    &FailedResult::empty(),
+                )
+                .await;
+                return Ok(());
+            }
+        }
+    }
+
+    if let Err(e) = reset_fresh_workdir(&workdir).await {
+        tracing::error!(work_run_id = %job_id, workdir = %workdir.display(), error = %e, "failed to reset stale workdir");
+        submit_failed_result(
+            client,
+            worker_state,
+            journal,
+            job_id,
+            &FailedResult::empty(),
+        )
+        .await;
+        return Ok(());
+    }
+
+    if let Err(e) = tokio::fs::create_dir_all(&workdir).await {
+        tracing::error!(work_run_id = %job_id, error = %e, "failed to create workdir");
+        submit_failed_result(
+            client,
+            worker_state,
+            journal,
+            job_id,
+            &FailedResult::empty(),
+        )
+        .await;
+        return Ok(());
     }
 
     let provider = create_isolation_provider(config);
@@ -227,6 +292,7 @@ pub(crate) async fn handle_job(
     let artifact_path = workdir.join("home").join("finish_artifact.json");
 
     reporter.emit("session.started", serde_json::json!({}));
+    let heartbeat_stop = spawn_heartbeat(reporter.clone());
 
     let ctx = TurnLoopCtx {
         client: client.clone(),
@@ -238,6 +304,7 @@ pub(crate) async fn handle_job(
     };
 
     run_turn_loop(&mut running_session, &artifact_path, max_turns, 1, &ctx).await;
+    let _ = heartbeat_stop.send(true);
 
     if let (Some(sid), Some(base_url)) = (
         running_session.session_id(),
@@ -262,4 +329,45 @@ pub(crate) async fn handle_job(
     provider.cleanup(&isolated_env).await;
 
     Ok(())
+}
+
+async fn reset_fresh_workdir(workdir: &Path) -> std::io::Result<()> {
+    if !workdir.exists() {
+        return Ok(());
+    }
+    if !is_safe_workdir(workdir) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "refusing to delete unsafe workdir",
+        ));
+    }
+    tokio::fs::remove_dir_all(workdir).await
+}
+
+fn is_safe_workdir(path: &Path) -> bool {
+    let temp = std::env::temp_dir();
+    path.starts_with(&temp)
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("vulcanum-work-"))
+}
+
+fn spawn_heartbeat(reporter: Arc<EventReporter>) -> watch::Sender<bool> {
+    let (tx, mut rx) = watch::channel(false);
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(HEARTBEAT_INTERVAL_SECS)) => {
+                    reporter.emit("worker.heartbeat", serde_json::json!({}));
+                }
+                changed = rx.changed() => {
+                    if changed.is_err() || *rx.borrow() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+    tx
 }

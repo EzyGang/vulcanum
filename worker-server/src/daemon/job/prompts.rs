@@ -29,7 +29,7 @@ fn finish_run_instruction(work_type: WorkRunType) -> &'static str {
         WorkRunType::Implementation => {
             "\n\nBefore ending the run, call the `finish_run` tool exactly once. \
 Use `completed` when the requested work is done, `blocked` when external input is needed, \
-or `failed` when the task cannot be completed. If a pull request was created, include its URL in `pr_url`."
+or `failed` when the task cannot be completed. If pull requests were created, include their URLs in `pr_urls`."
         }
         WorkRunType::PullRequestReview => {
             "\n\nBefore ending the review run, call the `finish_run` tool exactly once. \

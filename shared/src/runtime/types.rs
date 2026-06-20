@@ -106,15 +106,9 @@ pub struct WorkspaceRepo {
 pub struct FinishRunArtifact {
     pub status: FinishStatus,
     #[serde(default)]
-    pub pr_url: Option<String>,
-    #[serde(default)]
     pub pr_urls: Vec<String>,
     #[serde(default)]
     pub summary: Option<String>,
-    #[serde(default)]
-    pub blocked_reason: Option<String>,
-    #[serde(default)]
-    pub next_column: Option<String>,
     #[serde(default)]
     pub review_url: Option<String>,
     #[serde(default)]
