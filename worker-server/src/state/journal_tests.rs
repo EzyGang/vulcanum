@@ -36,6 +36,37 @@ fn insert_and_list_running() {
 }
 
 #[test]
+fn find_by_id_returns_existing_entry() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+
+    journal
+        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 2)
+        .expect("should insert");
+
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("should find")
+        .expect("entry exists");
+
+    assert_eq!(entry.job_id, job_id);
+    assert_eq!(entry.workdir, "/tmp/work");
+    assert_eq!(entry.status, JournalStatus::Running);
+    assert_eq!(entry.max_turns, Some(2));
+}
+
+#[test]
+fn find_by_id_returns_none_for_missing_entry() {
+    let journal = open_journal();
+
+    let entry = journal
+        .find_by_id(Uuid::new_v4())
+        .expect("should query missing entry");
+
+    assert!(entry.is_none());
+}
+
+#[test]
 fn update_result_transitions_status() {
     let journal = open_journal();
     let job_id = Uuid::new_v4();

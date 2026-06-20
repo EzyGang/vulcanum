@@ -84,6 +84,7 @@ pub(crate) async fn run_turn_loop(
                 work_run_id = %ctx.job_id,
                 turn = turn,
                 exit_code = session_export.exit_code,
+                provider_error = ?session_export.failure_payload,
                 "session failed, not continuing turn loop",
             );
             ctx.reporter.emit(

@@ -42,6 +42,11 @@ impl WorkRunEventsService {
             .insert_batch(&self.db, work_run_id, &params)
             .await?;
 
+        self.work_runs_repo
+            .touch_active_run(&self.db, work_run_id, worker_id)
+            .await
+            .map_err(map_work_runs_error)?;
+
         let should_cancel = self
             .cancel_store
             .is_cancel_requested(work_run_id)

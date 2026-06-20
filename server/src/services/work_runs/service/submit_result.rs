@@ -57,8 +57,8 @@ impl WorkRunsService {
                     model_used: params.model_used.as_deref(),
                     finish_status: params.finish_status.as_ref().map(|s| s.as_str()),
                     finish_summary: params.finish_summary.as_deref(),
-                    finish_blocked_reason: params.finish_blocked_reason.as_deref(),
-                    finish_next_column: params.finish_next_column.as_deref(),
+                    finish_blocked_reason: None,
+                    finish_next_column: None,
                     review_url: params.review_url.as_deref(),
                     review_body: params.review_body.as_deref(),
                     review_already_exists: params.review_already_exists,
@@ -184,12 +184,5 @@ impl WorkRunsService {
 
 #[must_use]
 fn normalized_pr_urls(params: &SubmitResultRequest) -> Vec<String> {
-    if !params.pr_urls.is_empty() {
-        return params.pr_urls.clone();
-    }
-
-    match params.pr_url.is_empty() {
-        true => Vec::new(),
-        false => vec![params.pr_url.clone()],
-    }
+    params.pr_urls.clone()
 }

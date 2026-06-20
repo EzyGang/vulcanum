@@ -87,14 +87,11 @@ impl WorkRunsService {
         let comment = if is_review {
             review_comment(run, params)
         } else {
-            match (
-                params.finish_summary.as_deref(),
-                params.finish_blocked_reason.as_deref(),
-            ) {
-                (Some(s), Some(r)) => format!("**Summary:** {s}\n**Blocked:** {r}"),
-                (Some(s), None) => format!("**Summary:** {s}"),
-                _ => format!("PR: {}", pr_urls.join(", ")),
-            }
+            params
+                .finish_summary
+                .as_ref()
+                .map(|summary| format!("**Summary:** {summary}"))
+                .unwrap_or_else(|| format!("PR: {}", pr_urls.join(", ")))
         };
 
         if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {

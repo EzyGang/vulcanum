@@ -48,6 +48,48 @@ async fn append_events_happy_path_returns_should_cancel_false(pool: sqlx::PgPool
 }
 
 #[sqlx::test]
+async fn append_events_touches_active_run_updated_at(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-touch").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-touch-worker").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "evt-svc-touch-task", worker_id)
+            .await;
+
+    sqlx::query!(
+        "UPDATE work_runs SET updated_at = NOW() - INTERVAL '1 hour' WHERE id = $1",
+        wr_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("move updated_at into past");
+
+    let before = sqlx::query!("SELECT updated_at FROM work_runs WHERE id = $1", wr_id)
+        .fetch_one(&pool)
+        .await
+        .expect("fetch before")
+        .updated_at
+        .expect("updated_at exists");
+
+    svc.append_events(
+        wr_id,
+        worker_id,
+        vec![make_wire_event(1, "worker.heartbeat")],
+    )
+    .await
+    .expect("append heartbeat");
+
+    let after = sqlx::query!("SELECT updated_at FROM work_runs WHERE id = $1", wr_id)
+        .fetch_one(&pool)
+        .await
+        .expect("fetch after")
+        .updated_at
+        .expect("updated_at exists");
+
+    assert!(after > before);
+}
+
+#[sqlx::test]
 async fn append_events_rejects_wrong_owner(pool: sqlx::PgPool) {
     let (svc, _cancel) = build_service(pool.clone());
     let project_id = test_helpers::insert_project_config(&pool, "evt-svc-2").await;

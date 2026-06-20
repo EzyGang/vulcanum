@@ -274,7 +274,6 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
 
     let params = SubmitResultRequest {
         pr_urls: vec!["https://github.com/example/pr/1".to_owned()],
-        pr_url: "https://github.com/example/pr/1".to_owned(),
         exit_code: 0,
         tokens_used: 500,
         duration_ms: 30000,
@@ -285,8 +284,6 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        finish_blocked_reason: None,
-        finish_next_column: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -322,7 +319,6 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
 
     let params = SubmitResultRequest {
         pr_urls: Vec::new(),
-        pr_url: String::new(),
         exit_code: 1,
         tokens_used: 0,
         duration_ms: 5000,
@@ -333,8 +329,6 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        finish_blocked_reason: None,
-        finish_next_column: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -356,7 +350,6 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
 
     let params = SubmitResultRequest {
         pr_urls: Vec::new(),
-        pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,
         duration_ms: 0,
@@ -367,8 +360,6 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        finish_blocked_reason: None,
-        finish_next_column: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -400,7 +391,6 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
 
     let params = SubmitResultRequest {
         pr_urls: Vec::new(),
-        pr_url: String::new(),
         exit_code: 0,
         tokens_used: 0,
         duration_ms: 0,
@@ -411,8 +401,6 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        finish_blocked_reason: None,
-        finish_next_column: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,

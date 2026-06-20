@@ -9,7 +9,8 @@ fn implementation_initial_prompt_requires_finish_run() {
     assert!(prompt.contains("Workspace"));
     assert!(prompt.contains("Do the work"));
     assert!(prompt.contains("call the `finish_run` tool exactly once"));
-    assert!(prompt.contains("`pr_url`"));
+    assert!(prompt.contains("`pr_urls`"));
+    assert!(!prompt.contains("`pr_url`"));
 }
 
 #[test]

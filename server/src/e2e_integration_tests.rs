@@ -149,7 +149,7 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
         .uri(&format!("/api/v1/jobs/{wr_id}/result"))
         .insert_header(("Authorization", format!("Bearer {access_token}")))
         .set_json(json!({
-            "pr_url": "https://github.com/test/pr/42",
+            "pr_urls": ["https://github.com/test/pr/42"],
             "exit_code": 0,
             "tokens_used": 1234,
             "duration_ms": 30000,
