@@ -11,6 +11,8 @@ pub mod spawn;
 #[cfg(test)]
 mod event_mapper_tests;
 #[cfg(test)]
+mod events_tests;
+#[cfg(test)]
 mod spawn_tests;
 
 use reqwest::Client;

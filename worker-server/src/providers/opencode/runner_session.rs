@@ -151,69 +151,75 @@ impl RunningSession for OpenCodeRunningSession {
 
     fn poll_event(&mut self) -> Pin<Box<dyn Future<Output = Option<AgentEvent>> + Send + '_>> {
         Box::pin(async move {
-            let elapsed = (Utc::now() - self.started_at).num_seconds() as u64;
-            if elapsed >= self.max_duration_secs {
-                return Some(
-                    self.failure_event(serde_json::json!({"reason": "max_duration_exceeded"})),
-                );
-            }
-
-            let stream = match self.event_stream.as_mut() {
-                Some(s) => s,
-                None => return None,
-            };
-
-            let result =
-                timeout(Duration::from_secs(STALL_TIMEOUT_SECS), stream.next_event()).await;
-
-            match result {
-                Ok(Some(sse)) => {
-                    tracing::debug!(
-                        session_id = %self.session_id,
-                        event_type = %sse.event_type,
-                        properties = %sse.properties,
-                        "sse event received"
+            loop {
+                let elapsed = (Utc::now() - self.started_at).num_seconds() as u64;
+                if elapsed >= self.max_duration_secs {
+                    return Some(
+                        self.failure_event(serde_json::json!({"reason": "max_duration_exceeded"})),
                     );
-                    let mapped = super::event_mapper::map_event(&sse);
-                    let last = mapped.last().cloned();
-                    for event in &mapped {
-                        match event.event_type.as_str() {
-                            "session.completed" => self.status = SessionStatus::Completed,
-                            "session.failed" => {
-                                tracing::warn!(
-                                    session_id = %self.session_id,
-                                    payload = %event.payload,
-                                    "opencode session failed"
-                                );
-                                self.failure_payload = Some(event.payload.clone());
-                                self.status = SessionStatus::Failed;
+                }
+
+                let result = {
+                    let stream = match self.event_stream.as_mut() {
+                        Some(s) => s,
+                        None => return None,
+                    };
+
+                    timeout(Duration::from_secs(STALL_TIMEOUT_SECS), stream.next_event()).await
+                };
+
+                match result {
+                    Ok(Some(sse)) => {
+                        tracing::debug!(
+                            session_id = %self.session_id,
+                            event_type = %sse.event_type,
+                            properties = %sse.properties,
+                            "sse event received"
+                        );
+                        let mapped = super::event_mapper::map_event(&sse);
+                        let last = mapped.last().cloned();
+                        for event in &mapped {
+                            match event.event_type.as_str() {
+                                "session.completed" => self.status = SessionStatus::Completed,
+                                "session.failed" => {
+                                    tracing::warn!(
+                                        session_id = %self.session_id,
+                                        payload = %event.payload,
+                                        "opencode session failed"
+                                    );
+                                    self.failure_payload = Some(event.payload.clone());
+                                    self.status = SessionStatus::Failed;
+                                }
+                                "turn.failed" => {
+                                    tracing::warn!(
+                                        session_id = %self.session_id,
+                                        payload = %event.payload,
+                                        "opencode turn failed"
+                                    );
+                                }
+                                _ => (),
                             }
-                            "turn.failed" => {
-                                tracing::warn!(
-                                    session_id = %self.session_id,
-                                    payload = %event.payload,
-                                    "opencode turn failed"
-                                );
-                            }
-                            _ => (),
+                        }
+                        match last {
+                            Some(event) => return Some(event),
+                            None => continue,
                         }
                     }
-                    last
-                }
-                Ok(None) => {
-                    tracing::warn!(
-                        session_id = %self.session_id,
-                        "opencode event stream ended before terminal session event"
-                    );
-                    self.reconcile_interrupted_stream("stream_ended").await
-                }
-                Err(_) => {
-                    tracing::info!(
-                        session_id = %self.session_id,
-                        stall_timeout_secs = STALL_TIMEOUT_SECS,
-                        "session stalled, no events received"
-                    );
-                    self.reconcile_interrupted_stream("stall_detected").await
+                    Ok(None) => {
+                        tracing::warn!(
+                            session_id = %self.session_id,
+                            "opencode event stream ended before terminal session event"
+                        );
+                        return self.reconcile_interrupted_stream("stream_ended").await;
+                    }
+                    Err(_) => {
+                        tracing::info!(
+                            session_id = %self.session_id,
+                            stall_timeout_secs = STALL_TIMEOUT_SECS,
+                            "session stalled, no events received"
+                        );
+                        return self.reconcile_interrupted_stream("stall_detected").await;
+                    }
                 }
             }
         })

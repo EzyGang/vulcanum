@@ -73,10 +73,68 @@ fn message_updated_assistant_maps_to_message_received() {
 }
 
 #[test]
+fn message_updated_assistant_finish_stop_does_not_complete_session() {
+    let sse = make_sse(
+        "message.updated",
+        r#"{"info": {"role": "assistant", "sessionID": "s1", "finish": "stop", "tokens": {"input": 100, "output": 50}}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "message.received");
+}
+
+#[test]
 fn message_updated_user_is_ignored() {
     let sse = make_sse("message.updated", r#"{"info": {"role": "user"}}"#);
     let events = event_mapper::map_event(&sse);
     assert!(events.is_empty());
+}
+
+#[test]
+fn session_next_step_ended_stop_maps_to_session_completed() {
+    let sse = make_sse(
+        "session.next.step.ended",
+        r#"{"sessionID":"s1","assistantMessageID":"m1","finish":"stop","cost":0.1,"tokens":{"input":1,"output":2,"reasoning":0,"cache":{"read":3,"write":0}}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "session.completed");
+    assert_eq!(events[0].payload["session_id"], "s1");
+    assert_eq!(events[0].payload["reason"], "step_ended");
+}
+
+#[test]
+fn session_next_step_ended_tool_calls_is_ignored() {
+    let sse = make_sse(
+        "session.next.step.ended",
+        r#"{"sessionID":"s1","assistantMessageID":"m1","finish":"tool-calls","cost":0.1,"tokens":{"input":1,"output":2,"reasoning":0,"cache":{"read":3,"write":0}}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert!(events.is_empty());
+}
+
+#[test]
+fn session_next_step_failed_maps_to_session_failed() {
+    let sse = make_sse(
+        "session.next.step.failed",
+        r#"{"sessionID":"s1","assistantMessageID":"m1","error":{"name":"UnknownError","data":{"message":"boom"}}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "session.failed");
+}
+
+#[test]
+fn session_next_tool_success_maps_to_tool_completed() {
+    let sse = make_sse(
+        "session.next.tool.success",
+        r#"{"sessionID":"s1","assistantMessageID":"m1","callID":"c1","tool":"bash","structured":{},"content":[],"provider":{"executed":true}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "tool.completed");
+    assert_eq!(events[0].payload["tool"], "bash");
+    assert_eq!(events[0].payload["status"], "completed");
 }
 
 #[test]
@@ -100,6 +158,26 @@ fn message_part_updated_tool_completed_maps_to_tool_completed() {
     let events = event_mapper::map_event(&sse);
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].event_type, "tool.completed");
+}
+
+#[test]
+fn message_part_updated_step_finish_stop_is_ignored() {
+    let sse = make_sse(
+        "message.part.updated",
+        r#"{"part": {"type": "step-finish", "sessionID": "s1", "reason": "stop"}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert!(events.is_empty());
+}
+
+#[test]
+fn message_part_updated_step_finish_tool_calls_is_ignored() {
+    let sse = make_sse(
+        "message.part.updated",
+        r#"{"part": {"type": "step-finish", "sessionID": "s1", "reason": "tool-calls"}}"#,
+    );
+    let events = event_mapper::map_event(&sse);
+    assert!(events.is_empty());
 }
 
 #[test]

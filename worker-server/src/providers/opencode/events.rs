@@ -13,6 +13,11 @@ pub struct SseEvent {
     pub properties: serde_json::Value,
 }
 
+#[derive(Debug, Deserialize)]
+struct GlobalSseEvent {
+    payload: SseEvent,
+}
+
 pub async fn connect_events(client: &OpenCodeClient) -> Result<SseEventStream, HarnessError> {
     let url = format!("{}/global/event", client.base_url());
     let resp = client
@@ -60,9 +65,9 @@ impl SseEventStream {
                     if data.is_empty() {
                         continue;
                     }
-                    match serde_json::from_str::<SseEvent>(&data) {
-                        Ok(sse) => return Some(sse),
-                        Err(_) => continue,
+                    match parse_sse_event_data(&data) {
+                        Some(sse) => return Some(sse),
+                        None => continue,
                     }
                 }
                 Err(_) => {
@@ -71,5 +76,14 @@ impl SseEventStream {
                 }
             }
         }
+    }
+}
+
+pub(crate) fn parse_sse_event_data(data: &str) -> Option<SseEvent> {
+    match serde_json::from_str::<SseEvent>(data) {
+        Ok(event) => Some(event),
+        Err(_) => serde_json::from_str::<GlobalSseEvent>(data)
+            .map(|event| event.payload)
+            .ok(),
     }
 }
