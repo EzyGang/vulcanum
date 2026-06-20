@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
+use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 use vulcanum_shared::worker_state::WorkerState;
 
 use super::artifact::read_finish_artifact;
@@ -78,6 +79,33 @@ pub(crate) async fn run_turn_loop(
             }),
         );
 
+        let finish_artifact = read_finish_artifact(artifact_path);
+
+        if let Some(ref artifact) = finish_artifact {
+            let mut artifact_export = session_export.clone();
+            artifact_export.exit_code = finish_exit_code(artifact);
+            tracing::info!(
+                worker_id = %ctx.worker_id,
+                work_run_id = %ctx.job_id,
+                status = %artifact.status,
+                "agent declared finish via artifact",
+            );
+            ctx.reporter.emit(
+                "finish.artifact.found",
+                serde_json::json!({"status": artifact.status.to_string()}),
+            );
+            submit_turn_result(
+                &ctx.client,
+                &ctx.worker_state,
+                &ctx.journal,
+                ctx.job_id,
+                &artifact_export,
+                Some(artifact),
+            )
+            .await;
+            return true;
+        }
+
         if session_export.exit_code != 0 {
             tracing::warn!(
                 worker_id = %ctx.worker_id,
@@ -110,89 +138,68 @@ pub(crate) async fn run_turn_loop(
             return true;
         }
 
-        let finish_artifact = read_finish_artifact(artifact_path);
-
-        match finish_artifact {
-            Some(ref artifact) => {
-                tracing::info!(
-                    worker_id = %ctx.worker_id,
-                    work_run_id = %ctx.job_id,
-                    status = %artifact.status,
-                    "agent declared finish via artifact",
-                );
-                ctx.reporter.emit(
-                    "finish.artifact.found",
-                    serde_json::json!({"status": artifact.status.to_string()}),
-                );
-                submit_turn_result(
-                    &ctx.client,
-                    &ctx.worker_state,
-                    &ctx.journal,
-                    ctx.job_id,
-                    &session_export,
-                    Some(artifact),
-                )
-                .await;
-                return true;
-            }
-            None => {
-                if turn >= max_turns {
-                    let mut failed_export = session_export.clone();
-                    failed_export.exit_code = 1;
-                    tracing::info!(
-                        worker_id = %ctx.worker_id,
-                        work_run_id = %ctx.job_id,
-                        turn = turn,
-                        max_turns = max_turns,
-                        "max turns reached, submitting result",
-                    );
-                    ctx.reporter.emit(
-                        "turn.max_reached",
-                        serde_json::json!({"turn": turn, "max_turns": max_turns}),
-                    );
-                    submit_turn_result(
-                        &ctx.client,
-                        &ctx.worker_state,
-                        &ctx.journal,
-                        ctx.job_id,
-                        &failed_export,
-                        None,
-                    )
-                    .await;
-                    return true;
-                }
-
-                let prompt = continuation_prompt(turn, max_turns);
-                ctx.reporter.emit(
-                    "turn.continuing",
-                    serde_json::json!({"turn": turn, "next_turn": turn + 1}),
-                );
-                if let Err(e) = running_session.continue_with(&prompt).await {
-                    tracing::error!(
-                        worker_id = %ctx.worker_id,
-                        work_run_id = %ctx.job_id,
-                        turn = turn,
-                        error = %e,
-                        "continuation prompt failed",
-                    );
-                    ctx.reporter.emit(
-                        "session.failed",
-                        serde_json::json!({"reason": "continuation_failed", "turn": turn}),
-                    );
-                    submit_failed_result(
-                        ctx.client.clone(),
-                        ctx.worker_state.clone(),
-                        ctx.journal.clone(),
-                        ctx.job_id,
-                        &FailedResult::empty(),
-                    )
-                    .await;
-                    return false;
-                }
-
-                turn += 1;
-                let _ = ctx.journal.update_turn(ctx.job_id, turn);
-            }
+        if turn >= max_turns {
+            let mut failed_export = session_export.clone();
+            failed_export.exit_code = 1;
+            tracing::info!(
+                worker_id = %ctx.worker_id,
+                work_run_id = %ctx.job_id,
+                turn = turn,
+                max_turns = max_turns,
+                "max turns reached, submitting result",
+            );
+            ctx.reporter.emit(
+                "turn.max_reached",
+                serde_json::json!({"turn": turn, "max_turns": max_turns}),
+            );
+            submit_turn_result(
+                &ctx.client,
+                &ctx.worker_state,
+                &ctx.journal,
+                ctx.job_id,
+                &failed_export,
+                None,
+            )
+            .await;
+            return true;
         }
+
+        let prompt = continuation_prompt(turn, max_turns);
+        ctx.reporter.emit(
+            "turn.continuing",
+            serde_json::json!({"turn": turn, "next_turn": turn + 1}),
+        );
+        if let Err(e) = running_session.continue_with(&prompt).await {
+            tracing::error!(
+                worker_id = %ctx.worker_id,
+                work_run_id = %ctx.job_id,
+                turn = turn,
+                error = %e,
+                "continuation prompt failed",
+            );
+            ctx.reporter.emit(
+                "session.failed",
+                serde_json::json!({"reason": "continuation_failed", "turn": turn}),
+            );
+            submit_failed_result(
+                ctx.client.clone(),
+                ctx.worker_state.clone(),
+                ctx.journal.clone(),
+                ctx.job_id,
+                &FailedResult::empty(),
+            )
+            .await;
+            return false;
+        }
+
+        turn += 1;
+        let _ = ctx.journal.update_turn(ctx.job_id, turn);
+    }
+}
+
+fn finish_exit_code(artifact: &FinishRunArtifact) -> i32 {
+    match artifact.status {
+        FinishStatus::Completed => 0,
+        FinishStatus::Failed | FinishStatus::Blocked => 1,
     }
 }

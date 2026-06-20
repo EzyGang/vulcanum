@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, work_run_id, sequence, event_type, payload,\n               created_at as \"created_at!: DateTime<Utc>\",\n               occurred_at as \"occurred_at!: DateTime<Utc>\"\n               FROM work_run_events\n               WHERE work_run_id = $1\n                 AND (occurred_at, sequence) > ($2, $3)\n               ORDER BY occurred_at ASC, sequence ASC\n               LIMIT $4",
+  "query": "SELECT id, work_run_id, sequence, event_type, payload,\n               created_at as \"created_at!: DateTime<Utc>\",\n               occurred_at as \"occurred_at!: DateTime<Utc>\"\n               FROM (\n                   SELECT e.* FROM work_run_events e\n                   INNER JOIN work_runs wr ON wr.id = e.work_run_id\n                   WHERE e.work_run_id = $1 AND wr.team_id = $2\n                     AND e.event_type <> 'worker.heartbeat'\n                   ORDER BY e.occurred_at DESC, e.sequence DESC\n                   LIMIT $3\n                ) sub\n               ORDER BY occurred_at ASC, sequence ASC",
   "describe": {
     "columns": [
       {
@@ -42,8 +42,7 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Timestamptz",
-        "Int8",
+        "Uuid",
         "Int8"
       ]
     },
@@ -57,5 +56,5 @@
       false
     ]
   },
-  "hash": "fd93963d61fb92615bdffecf7f6d1e26fdfc76fdbdbe24a0be743c17bae94b55"
+  "hash": "ea0294183b04e4b247236cb36870d8b9231f5d9d184d302687261c1b6646d4ed"
 }

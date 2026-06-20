@@ -71,13 +71,22 @@ async fn append_events_touches_active_run_updated_at(pool: sqlx::PgPool) {
         .updated_at
         .expect("updated_at exists");
 
-    svc.append_events(
-        wr_id,
-        worker_id,
-        vec![make_wire_event(1, "worker.heartbeat")],
-    )
-    .await
-    .expect("append heartbeat");
+    let result = svc
+        .append_events(
+            wr_id,
+            worker_id,
+            vec![make_wire_event(1, "worker.heartbeat")],
+        )
+        .await
+        .expect("append heartbeat");
+
+    assert_eq!(result.accepted, 0);
+
+    let recent = svc
+        .list_recent(wr_id, test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("list recent");
+    assert!(recent.is_empty());
 
     let after = sqlx::query!("SELECT updated_at FROM work_runs WHERE id = $1", wr_id)
         .fetch_one(&pool)
@@ -87,6 +96,41 @@ async fn append_events_touches_active_run_updated_at(pool: sqlx::PgPool) {
         .expect("updated_at exists");
 
     assert!(after > before);
+}
+
+#[sqlx::test]
+async fn append_events_hides_existing_heartbeats_from_recent_list(pool: sqlx::PgPool) {
+    let (svc, _cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-heartbeat-hidden").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-heartbeat-hidden-worker").await;
+    let wr_id = test_helpers::insert_running_work_run(
+        &pool,
+        project_id,
+        "evt-svc-heartbeat-hidden-task",
+        worker_id,
+    )
+    .await;
+
+    sqlx::query!(
+        r#"INSERT INTO work_run_events (work_run_id, sequence, event_type, payload, occurred_at)
+           VALUES ($1, 1, 'worker.heartbeat', '{}'::jsonb, NOW())"#,
+        wr_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("insert legacy heartbeat");
+
+    svc.append_events(wr_id, worker_id, vec![make_wire_event(2, "turn.started")])
+        .await
+        .expect("append visible event");
+
+    let recent = svc
+        .list_recent(wr_id, test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("list recent");
+
+    assert_eq!(recent.len(), 1);
+    assert_eq!(recent[0].event_type, "turn.started");
 }
 
 #[sqlx::test]

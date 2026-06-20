@@ -65,11 +65,12 @@ impl WorkRunEventsRepository {
             r#"SELECT id, work_run_id, sequence, event_type, payload,
                created_at as "created_at!: DateTime<Utc>",
                occurred_at as "occurred_at!: DateTime<Utc>"
-               FROM work_run_events
-               WHERE work_run_id = $1
-                 AND (occurred_at, sequence) > ($2, $3)
-               ORDER BY occurred_at ASC, sequence ASC
-               LIMIT $4"#,
+                FROM work_run_events
+                WHERE work_run_id = $1
+                  AND event_type <> 'worker.heartbeat'
+                  AND (occurred_at, sequence) > ($2, $3)
+                ORDER BY occurred_at ASC, sequence ASC
+                LIMIT $4"#,
             work_run_id,
             after_occurred_at,
             after_sequence,
@@ -93,11 +94,12 @@ impl WorkRunEventsRepository {
                created_at as "created_at!: DateTime<Utc>",
                occurred_at as "occurred_at!: DateTime<Utc>"
                FROM (
-                  SELECT e.* FROM work_run_events e
-                  INNER JOIN work_runs wr ON wr.id = e.work_run_id
-                  WHERE e.work_run_id = $1 AND wr.team_id = $2
-                  ORDER BY e.occurred_at DESC, e.sequence DESC
-                  LIMIT $3
+                   SELECT e.* FROM work_run_events e
+                   INNER JOIN work_runs wr ON wr.id = e.work_run_id
+                   WHERE e.work_run_id = $1 AND wr.team_id = $2
+                     AND e.event_type <> 'worker.heartbeat'
+                   ORDER BY e.occurred_at DESC, e.sequence DESC
+                   LIMIT $3
                 ) sub
                ORDER BY occurred_at ASC, sequence ASC"#,
             work_run_id,

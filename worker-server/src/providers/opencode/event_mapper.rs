@@ -11,6 +11,14 @@ pub fn map_event(sse: &SseEvent) -> Vec<AgentEvent> {
         "session.status" => map_session_status(&sse.properties, ts),
         "session.idle" => map_session_idle(&sse.properties, ts),
         "session.error" => map_session_error(&sse.properties, ts),
+        "session.next.step.started" => map_step_started(&sse.properties, ts),
+        "session.next.step.ended" => map_step_ended(&sse.properties, ts),
+        "session.next.step.failed" => map_step_failed(&sse.properties, ts),
+        "session.next.tool.called" => map_next_tool(&sse.properties, "running", ts),
+        "session.next.tool.progress" => map_next_tool(&sse.properties, "running", ts),
+        "session.next.tool.success" => map_next_tool(&sse.properties, "completed", ts),
+        "session.next.tool.failed" => map_next_tool(&sse.properties, "error", ts),
+        "session.next.retried" => map_session_retry(&sse.properties, ts),
         "message.updated" => map_message_updated(&sse.properties, ts),
         "message.part.updated" => map_message_part_updated(&sse.properties, ts),
         "server.connected" => vec![],
@@ -57,6 +65,92 @@ fn map_session_error(props: &serde_json::Value, ts: chrono::DateTime<Utc>) -> Ve
     vec![AgentEvent {
         event_type: "session.failed".to_owned(),
         payload: props.clone(),
+        timestamp: ts,
+    }]
+}
+
+fn map_step_started(props: &serde_json::Value, ts: chrono::DateTime<Utc>) -> Vec<AgentEvent> {
+    vec![AgentEvent {
+        event_type: "turn.started".to_owned(),
+        payload: json!({
+            "session_id": props.get("sessionID").and_then(|v| v.as_str()).unwrap_or(""),
+            "message_id": props
+                .get("assistantMessageID")
+                .and_then(|v| v.as_str())
+                .unwrap_or(""),
+            "agent": props.get("agent").and_then(|v| v.as_str()).unwrap_or(""),
+            "model": props.get("model").cloned().unwrap_or(json!(null)),
+        }),
+        timestamp: ts,
+    }]
+}
+
+fn map_step_ended(props: &serde_json::Value, ts: chrono::DateTime<Utc>) -> Vec<AgentEvent> {
+    let finish = props.get("finish").and_then(|v| v.as_str()).unwrap_or("");
+    if finish != "stop" {
+        return vec![];
+    }
+
+    vec![AgentEvent {
+        event_type: "session.completed".to_owned(),
+        payload: json!({
+            "session_id": props.get("sessionID").and_then(|v| v.as_str()).unwrap_or(""),
+            "message_id": props
+                .get("assistantMessageID")
+                .and_then(|v| v.as_str())
+                .unwrap_or(""),
+            "reason": "step_ended",
+            "finish": finish,
+            "cost": props.get("cost").cloned().unwrap_or(json!(null)),
+            "tokens": props.get("tokens").cloned().unwrap_or(json!(null)),
+        }),
+        timestamp: ts,
+    }]
+}
+
+fn map_step_failed(props: &serde_json::Value, ts: chrono::DateTime<Utc>) -> Vec<AgentEvent> {
+    vec![AgentEvent {
+        event_type: "session.failed".to_owned(),
+        payload: props.clone(),
+        timestamp: ts,
+    }]
+}
+
+fn map_session_retry(props: &serde_json::Value, ts: chrono::DateTime<Utc>) -> Vec<AgentEvent> {
+    vec![AgentEvent {
+        event_type: "turn.failed".to_owned(),
+        payload: props.clone(),
+        timestamp: ts,
+    }]
+}
+
+fn map_next_tool(
+    props: &serde_json::Value,
+    status: &str,
+    ts: chrono::DateTime<Utc>,
+) -> Vec<AgentEvent> {
+    let tool = props
+        .get("tool")
+        .or_else(|| props.get("name"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    vec![AgentEvent {
+        event_type: match status {
+            "running" => "tool.called".to_owned(),
+            "completed" | "error" => "tool.completed".to_owned(),
+            _ => "tool.called".to_owned(),
+        },
+        payload: json!({
+            "tool": tool,
+            "status": status,
+            "session_id": props.get("sessionID").and_then(|v| v.as_str()).unwrap_or(""),
+            "message_id": props
+                .get("assistantMessageID")
+                .and_then(|v| v.as_str())
+                .unwrap_or(""),
+            "call_id": props.get("callID").and_then(|v| v.as_str()).unwrap_or(""),
+        }),
         timestamp: ts,
     }]
 }

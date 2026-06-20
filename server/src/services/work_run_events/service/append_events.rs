@@ -4,6 +4,8 @@ use crate::services::work_run_events::errors::WorkRunEventsError;
 use crate::services::work_run_events::repository::queries::InsertEventParams;
 use crate::services::work_run_events::service::{map_work_runs_error, WorkRunEventsService};
 
+const HEARTBEAT_EVENT_TYPE: &str = "worker.heartbeat";
+
 #[derive(Debug)]
 pub struct AppendResult {
     pub accepted: u64,
@@ -29,6 +31,7 @@ impl WorkRunEventsService {
 
         let params: Vec<InsertEventParams> = events
             .into_iter()
+            .filter(|e| e.event_type != HEARTBEAT_EVENT_TYPE)
             .map(|e| InsertEventParams {
                 sequence: e.sequence as i64,
                 event_type: e.event_type,
