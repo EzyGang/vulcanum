@@ -16,12 +16,12 @@ use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
 
 use super::event_reporter::EventReporter;
-use super::submit::{submit_failed_result, FailedResult};
+use super::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::factory::create_isolation_provider;
 use crate::providers::opencode::{self, api};
-use crate::state::journal::Journal;
+use crate::state::journal::{Journal, JournalEntry, JournalStatus};
 use crate::storage::messages::MessageStore;
 
 const HEARTBEAT_INTERVAL_SECS: u64 = 60;
@@ -71,15 +71,25 @@ pub(crate) async fn handle_job(
     };
 
     match journal.find_by_id(job_id) {
-        Ok(Some(entry)) => {
-            tracing::warn!(
-                work_run_id = %job_id,
-                local_status = ?entry.status,
-                workdir = %entry.workdir,
-                "duplicate dispatch ignored because job already exists in local journal"
-            );
-            return Ok(());
-        }
+        Ok(Some(entry)) => match entry.status {
+            JournalStatus::Running => {
+                tracing::warn!(
+                    work_run_id = %job_id,
+                    local_status = ?entry.status,
+                    workdir = %entry.workdir,
+                    "duplicate dispatch ignored because job is still running locally"
+                );
+                return Ok(());
+            }
+            JournalStatus::Completed
+            | JournalStatus::Failed
+            | JournalStatus::Lost
+            | JournalStatus::Submitted => {
+                reconcile_terminal_duplicate(&client, &worker_state, &journal, job_id, &entry)
+                    .await?;
+                return Ok(());
+            }
+        },
         Ok(None) => (),
         Err(e) => {
             tracing::error!(work_run_id = %job_id, error = %e, "failed to check local journal before ack");
@@ -328,6 +338,55 @@ pub(crate) async fn handle_job(
 
     provider.cleanup(&isolated_env).await;
 
+    Ok(())
+}
+
+async fn reconcile_terminal_duplicate(
+    client: &Arc<ApiClient>,
+    worker_state: &Arc<RwLock<WorkerState>>,
+    journal: &Arc<Journal>,
+    job_id: Uuid,
+    entry: &JournalEntry,
+) -> Result<(), String> {
+    tracing::warn!(
+        work_run_id = %job_id,
+        local_status = ?entry.status,
+        workdir = %entry.workdir,
+        "duplicate dispatch matches terminal local journal state, resubmitting stored result"
+    );
+
+    match with_retry_on_401(client, worker_state, |token| {
+        let client = client.clone();
+        async move { client.ack_job(job_id, &token).await }
+    })
+    .await
+    {
+        Ok(()) => (),
+        Err(e) => {
+            if is_fatal_api_error(&e) {
+                return Err(format!("ack failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"));
+            }
+            match e.downcast_ref::<ApiError>() {
+                Some(api_err) if api_err.status == 404 => {
+                    tracing::info!(work_run_id = %job_id, "job was deleted or cancelled, skipping duplicate reconciliation");
+                    return Ok(());
+                }
+                Some(api_err) if api_err.status == 409 => {
+                    tracing::warn!(
+                        work_run_id = %job_id,
+                        error = %e,
+                        "duplicate reconciliation ack was rejected, attempting result resubmit anyway"
+                    );
+                }
+                _ => {
+                    tracing::warn!(work_run_id = %job_id, error = %e, "ack failed during duplicate reconciliation");
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    resubmit_stored_result(client, worker_state, journal, entry).await;
     Ok(())
 }
 

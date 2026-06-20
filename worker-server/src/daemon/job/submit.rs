@@ -9,7 +9,7 @@ use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionEx
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
-use crate::state::journal::{Journal, JournalResultUpdate, JournalStatus};
+use crate::state::journal::{Journal, JournalEntry, JournalResultUpdate, JournalStatus};
 
 pub(crate) struct FailedResult {
     pub(crate) exit_code: i32,
@@ -75,16 +75,20 @@ pub(crate) async fn submit_failed_result(
         review_body: result.review_body.clone(),
         review_already_exists: result.review_already_exists,
     });
-    if let Err(e) = with_retry_on_401(&client, &worker_state, |token| {
+    match with_retry_on_401(&client, &worker_state, |token| {
         let client = client.clone();
         let submit = submit.clone();
         async move { client.submit_result(job_id, &submit, &token).await }
     })
     .await
     {
-        tracing::error!(work_run_id = %job_id, error = %e, "submit_result failed for job");
+        Ok(()) => {
+            let _ = journal.mark_submitted(job_id);
+        }
+        Err(e) => {
+            tracing::error!(work_run_id = %job_id, error = %e, "submit_result failed for job");
+        }
     }
-    let _ = journal.mark_submitted(job_id);
 }
 
 pub(crate) async fn submit_turn_result(
@@ -135,20 +139,52 @@ pub(crate) async fn submit_turn_result(
             .unwrap_or(false),
     });
 
-    if let Err(e) = with_retry_on_401(client, worker_state, |token| {
+    match with_retry_on_401(client, worker_state, |token| {
         let client = client.clone();
         let result = result.clone();
         async move { client.submit_result(job_id, &result, &token).await }
     })
     .await
     {
-        tracing::error!(
-            work_run_id = %job_id,
-            error = %e,
-            "submit_result failed for job",
-        );
+        Ok(()) => {
+            let _ = journal.mark_submitted(job_id);
+        }
+        Err(e) => {
+            tracing::error!(
+                work_run_id = %job_id,
+                error = %e,
+                "submit_result failed for job",
+            );
+        }
     }
-    let _ = journal.mark_submitted(job_id);
+}
+
+pub(crate) async fn resubmit_stored_result(
+    client: &Arc<ApiClient>,
+    worker_state: &Arc<RwLock<WorkerState>>,
+    journal: &Arc<Journal>,
+    entry: &JournalEntry,
+) {
+    let result = submit_result_from_journal(entry);
+    match with_retry_on_401(client, worker_state, |token| {
+        let client = client.clone();
+        let result = result.clone();
+        let job_id = entry.job_id;
+        async move { client.submit_result(job_id, &result, &token).await }
+    })
+    .await
+    {
+        Ok(()) => {
+            let _ = journal.mark_submitted(entry.job_id);
+        }
+        Err(e) => {
+            tracing::error!(
+                work_run_id = %entry.job_id,
+                error = %e,
+                "resubmit_result failed for locally completed job",
+            );
+        }
+    }
 }
 
 pub(crate) struct SubmitResultParams {
@@ -186,6 +222,34 @@ pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultR
         review_body: params.review_body,
         review_already_exists: params.review_already_exists,
     }
+}
+
+#[must_use]
+pub(crate) fn submit_result_from_journal(entry: &JournalEntry) -> SubmitResultRequest {
+    let pr_urls = entry
+        .pr_url
+        .as_ref()
+        .filter(|url| !url.is_empty())
+        .cloned()
+        .into_iter()
+        .collect();
+
+    submit_result_request(SubmitResultParams {
+        pr_urls,
+        exit_code: entry.exit_code.unwrap_or(1),
+        tokens_used: entry.tokens_used.unwrap_or(0),
+        duration_ms: entry.duration_ms.unwrap_or(0),
+        input_tokens: entry.input_tokens.unwrap_or(0),
+        output_tokens: entry.output_tokens.unwrap_or(0),
+        cache_read_tokens: entry.cache_read_tokens.unwrap_or(0),
+        cache_write_tokens: entry.cache_write_tokens.unwrap_or(0),
+        model_used: None,
+        finish_status: None,
+        finish_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
+    })
 }
 
 #[must_use]
