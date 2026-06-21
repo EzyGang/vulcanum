@@ -12,7 +12,7 @@ use crate::services::workers::model::WorkerStatus;
 use crate::test_helpers;
 
 #[sqlx::test]
-async fn review_result_with_warning_enqueues_fix_run(pool: sqlx::PgPool) {
+async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
@@ -119,25 +119,38 @@ async fn review_result_with_warning_enqueues_fix_run(pool: sqlx::PgPool) {
         "https://github.com/acme/app/pull/42#pullrequestreview-1"
     );
 
-    let fix_run = sqlx::query!(
-        r#"SELECT status as "status: WorkRunStatus", work_type as "work_type: WorkRunType",
-           review_target_pr_url, review_target_repo_full_name
-           FROM work_runs WHERE parent_work_run_id = $1"#,
+    let review = sqlx::query!(
+        r#"SELECT review_url, review_body, review_already_exists
+           FROM work_run_reviews WHERE work_run_id = $1"#,
         review_run.id,
     )
     .fetch_one(&pool)
     .await
-    .expect("fix run should be inserted");
+    .expect("review result should be recorded");
 
-    assert!(matches!(fix_run.status, WorkRunStatus::Pending));
-    assert!(matches!(fix_run.work_type, WorkRunType::Implementation));
     assert_eq!(
-        fix_run.review_target_pr_url.as_deref(),
-        Some("https://github.com/acme/app/pull/42")
+        review.review_url.as_deref(),
+        Some("https://github.com/acme/app/pull/42#pullrequestreview-1")
     );
+    assert!(review
+        .review_body
+        .as_deref()
+        .unwrap_or_default()
+        .contains("Missing authorization check"));
+    assert!(!review.review_already_exists);
+
+    let child_count = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE parent_work_run_id = $1",
+        review_run.id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("child count should load");
+
     assert_eq!(
-        fix_run.review_target_repo_full_name.as_deref(),
-        Some("acme/app")
+        child_count.count,
+        Some(0),
+        "review fix loop should stay inside the review work run"
     );
 }
 

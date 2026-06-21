@@ -1,10 +1,10 @@
 use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::review_feedback::review_requires_implementation;
 use vulcanum_shared::runtime::types::FinishStatus;
 
 use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::record_review::review_comment;
-use crate::services::work_runs::service::review_feedback::review_requires_implementation;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {

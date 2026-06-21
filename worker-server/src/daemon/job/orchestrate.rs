@@ -351,7 +351,15 @@ pub(crate) async fn handle_job(
         reporter,
     };
 
-    run_turn_loop(&mut running_session, &artifact_path, max_turns, 1, &ctx).await;
+    run_turn_loop(
+        &mut running_session,
+        &artifact_path,
+        job.work_type,
+        max_turns,
+        1,
+        &ctx,
+    )
+    .await;
     let _ = heartbeat_stop.send(true);
 
     if let (Some(sid), Some(base_url)) = (

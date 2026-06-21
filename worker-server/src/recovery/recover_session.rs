@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
@@ -45,6 +46,23 @@ pub(crate) async fn recover_session_task(
     let max_turns = entry.max_turns.unwrap_or(1).max(1);
     let current_turn = entry.turn_count.unwrap_or(0);
     let initial_turn = current_turn + 1;
+    let work_type = match with_retry_on_401(&api_client, &worker_state, |token| {
+        let client = api_client.clone();
+        let job_id = entry.job_id;
+        async move { client.get_job(job_id, &token).await }
+    })
+    .await
+    {
+        Ok(job) => job.work_type,
+        Err(e) => {
+            tracing::warn!(
+                job_id = %entry.job_id,
+                error = %e,
+                "failed to load job type during recovery, using implementation turn loop"
+            );
+            WorkRunType::Implementation
+        }
+    };
 
     let running_session = OpenCodeRunningSession::new(SessionConfig {
         client: oc_client,
@@ -86,7 +104,15 @@ pub(crate) async fn recover_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
-    run_turn_loop(&mut boxed, &artifact_path, max_turns, initial_turn, &ctx).await;
+    run_turn_loop(
+        &mut boxed,
+        &artifact_path,
+        work_type,
+        max_turns,
+        initial_turn,
+        &ctx,
+    )
+    .await;
 
     cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "recovery session completed");

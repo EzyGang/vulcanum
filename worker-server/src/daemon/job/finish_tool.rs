@@ -38,7 +38,7 @@ const IMPLEMENTATION_TOOL_BODY_TS: &str = r#"export default tool({
   description: "Call this when the implementation task is complete to submit the final result. REQUIRED at end of every run.",
   args: {
     status: tool.schema.enum(["completed", "failed", "blocked"]).describe("Outcome of the run"),
-    summary: tool.schema.string().optional().describe("Brief summary of what was done, what went wrong, or why blocked"),
+    summary: tool.schema.string().optional().describe("Brief summary of what was done and which formatter, validation, and test commands were run, or why blocked"),
     pr_urls: tool.schema.array(tool.schema.string()).optional().describe("URLs of all pull requests created across repositories"),
   },
   async execute(args) {
@@ -58,7 +58,7 @@ const REVIEW_TOOL_BODY_TS: &str = r#"export default tool({
     status: tool.schema.enum(["completed", "failed", "blocked"]).describe("Outcome of the review run"),
     summary: tool.schema.string().optional().describe("Brief summary of what was reviewed, what went wrong, or why blocked"),
     review_url: tool.schema.string().optional().describe("URL of the GitHub review that was posted"),
-    review_body: tool.schema.string().optional().describe("Body of the GitHub review that was posted or already exists"),
+    review_body: tool.schema.string().optional().describe("Body of the GitHub review that was posted or already exists, including any missing or failing formatter, validation, or test commands"),
     review_already_exists: tool.schema.boolean().optional().describe("True only when a suitable review already exists for the current PR head commit. If the PR has new commits after the existing review, post a new review and leave this false."),
   },
   async execute(args) {

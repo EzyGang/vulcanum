@@ -23,6 +23,10 @@ export interface TeamMember {
   createdAt: string;
 }
 
+export interface TeamDefaults {
+  reviewPromptTemplate: string;
+}
+
 export interface CreateTeamRequest {
   name: string;
 }

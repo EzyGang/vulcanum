@@ -6,7 +6,6 @@ use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::record_review::review_comment;
-use crate::services::work_runs::service::review_feedback::review_requires_implementation;
 use crate::test_helpers;
 
 #[test]
@@ -59,30 +58,8 @@ fn review_comment_reports_existing_review_without_target_pr() {
     );
 }
 
-#[test]
-fn review_requires_implementation_for_critical_items() {
-    let body = "## CRITICAL\n- Data loss on retry\n\n## WARNINGS\n- None\n\n## SUGGESTIONS\n- Rename helper";
-
-    assert!(review_requires_implementation(body));
-}
-
-#[test]
-fn review_requires_implementation_for_warning_items() {
-    let body = "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None";
-
-    assert!(review_requires_implementation(body));
-}
-
-#[test]
-fn review_does_not_require_implementation_for_suggestions_only() {
-    let body =
-        "## CRITICAL\n- None\n\n## WARNINGS\n- No warnings\n\n## SUGGESTIONS\n- Add a helper later";
-
-    assert!(!review_requires_implementation(body));
-}
-
 #[sqlx::test]
-async fn actionable_review_enqueues_fix_run_for_existing_pr(pool: sqlx::PgPool) {
+async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
     let project_config_id = test_helpers::insert_project_config(&pool, "review-fix-project").await;
     let run = WorkRunsRepository::new()
@@ -119,31 +96,32 @@ async fn actionable_review_enqueues_fix_run_for_existing_pr(pool: sqlx::PgPool) 
 
     state.jobs.record_review_result(&run, &params).await;
 
-    let fix_run = sqlx::query!(
-        r#"SELECT status as "status: WorkRunStatus", work_type as "work_type: WorkRunType",
-           parent_work_run_id, prompt_text, review_target_pr_url, review_target_repo_full_name
-           FROM work_runs WHERE parent_work_run_id = $1"#,
+    let review = sqlx::query!(
+        r#"SELECT review_url, review_body, review_already_exists
+           FROM work_run_reviews WHERE work_run_id = $1 AND pr_url = $2"#,
+        run.id,
+        "https://github.com/acme/app/pull/7",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("review result should be recorded");
+
+    assert_eq!(
+        review.review_url.as_deref(),
+        Some("https://github.com/acme/app/pull/7#pullrequestreview-1")
+    );
+    assert_eq!(review.review_body, params.review_body);
+    assert!(!review.review_already_exists);
+
+    let child_count = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE parent_work_run_id = $1",
         run.id,
     )
     .fetch_one(&pool)
     .await
-    .expect("fix run should be inserted");
+    .expect("child count should load");
 
-    assert!(matches!(fix_run.status, WorkRunStatus::Pending));
-    assert!(matches!(fix_run.work_type, WorkRunType::Implementation));
-    assert_eq!(fix_run.parent_work_run_id, Some(run.id));
-    assert_eq!(
-        fix_run.review_target_pr_url.as_deref(),
-        Some("https://github.com/acme/app/pull/7")
-    );
-    assert_eq!(
-        fix_run.review_target_repo_full_name.as_deref(),
-        Some("acme/app")
-    );
-    assert!(fix_run.prompt_text.contains("Missing authorization check"));
-    assert!(fix_run
-        .prompt_text
-        .contains("Do not create a new pull request"));
+    assert_eq!(child_count.count, Some(0));
 }
 
 fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {

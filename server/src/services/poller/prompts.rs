@@ -4,8 +4,10 @@ gcc, make, cmake, python3, nodejs, npm, pnpm (via corepack), and mise. \
 If a tool is missing, install it with `apt-get update && apt-get install -y <package>` or `mise install <tool>@<version>`. \
 If the project requires a database or service (e.g., PostgreSQL, Redis), \
 install and start it inside the container. \
-After making changes, run the project's test suite and formatters — \
-check package.json, Cargo.toml, pyproject.toml, or Makefile for available commands.";
+Before finishing, run the formatter, validation, and test commands that apply to every repository you changed. \
+Run commands from the changed repository directory, not the wrapper workspace. \
+Check package.json, Cargo.toml, pyproject.toml, Makefile, and AGENTS.md files for the exact commands. \
+If a required command cannot run because of missing external infrastructure, include the command and blocker in your finish summary.";
 
 pub const GITHUB_INSTRUCTION: &str = "\n\nWhen the task is complete:\n\
     1. Create a new branch for your changes (never commit directly to main)\n\

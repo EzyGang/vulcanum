@@ -9,7 +9,7 @@ import {
   getModelProviderCatalog,
   listModelProviders
 } from '../../../services/model-providers/model-providers.service';
-import { getTeam, updateTeam } from '../../../services/teams/teams.service';
+import { getTeam, getTeamDefaults, updateTeam } from '../../../services/teams/teams.service';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
@@ -33,6 +33,10 @@ export const useTeamDefaults = (teamId: string | null) => {
     () => getTeam(teamId ?? ''),
     { enabled: !!teamId }
   );
+  const { data: teamDefaults, isLoading: defaultsLoading } = useApiQuery(
+    ['team-defaults'],
+    getTeamDefaults
+  );
   const { data: modelProviders = [] } = useApiQuery(['model-providers'], () =>
     listModelProviders()
   );
@@ -53,8 +57,11 @@ export const useTeamDefaults = (teamId: string | null) => {
     reviewEnabled.value = team.reviewEnabled;
     reviewPickupColumn.value = team.reviewPickupColumn;
     reviewMaxTurns.value = team.reviewMaxTurns;
-    reviewPromptTemplate.value = team.reviewPromptTemplate;
-  }, [teamId, team]);
+    reviewPromptTemplate.value = reviewPromptTemplateOrDefault(
+      team.reviewPromptTemplate,
+      teamDefaults?.reviewPromptTemplate ?? ''
+    );
+  }, [teamId, team, teamDefaults]);
 
   const catalogProviders = modelCatalog?.providers ?? [];
   const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
@@ -92,7 +99,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       smallModelItems
     },
     status: {
-      loading: isLoading,
+      loading: isLoading || defaultsLoading,
       saving: mutation.isPending,
       error: formError
     },
@@ -142,7 +149,11 @@ export const useTeamDefaults = (teamId: string | null) => {
             reviewEnabled: reviewEnabled.value,
             reviewPickupColumn: reviewPickupColumn.value || DEFAULT_REVIEW_PICKUP_COLUMN,
             reviewMaxTurns: reviewMaxTurns.value,
-            reviewPromptTemplate: reviewPromptTemplate.value
+            reviewPromptTemplate: reviewPromptTemplateForSubmit(
+              team?.reviewPromptTemplate,
+              reviewPromptTemplate.value,
+              teamDefaults?.reviewPromptTemplate
+            )
           });
         } catch (err) {
           formError.value = err instanceof Error ? err.message : 'Failed to update team defaults';
@@ -150,4 +161,28 @@ export const useTeamDefaults = (teamId: string | null) => {
       }
     }
   };
+};
+
+const reviewPromptTemplateOrDefault = (template: string, defaultTemplate: string): string => {
+  if (template.trim()) {
+    return template;
+  }
+
+  return defaultTemplate;
+};
+
+const reviewPromptTemplateForSubmit = (
+  storedTemplate: string | undefined,
+  formTemplate: string,
+  defaultTemplate: string | undefined
+): string => {
+  if (
+    !storedTemplate?.trim() &&
+    defaultTemplate !== undefined &&
+    formTemplate === defaultTemplate
+  ) {
+    return '';
+  }
+
+  return formTemplate;
 };

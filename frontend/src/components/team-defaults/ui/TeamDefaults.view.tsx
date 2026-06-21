@@ -146,7 +146,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
               />
             </div>
             <div class='flex flex-col gap-2'>
-              <Label for='team-review-max-turns'>Review Max Turns</Label>
+              <Label for='team-review-max-turns'>Review Follow-up Passes</Label>
               <Input
                 id='team-review-max-turns'
                 type='number'

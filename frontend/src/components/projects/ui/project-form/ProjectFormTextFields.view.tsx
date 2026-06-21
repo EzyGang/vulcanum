@@ -221,7 +221,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
                 onChange={f.onReviewPickupColumnChange}
               />
               <div class='flex flex-col gap-2'>
-                <Label for='field-review-max-turns'>Review Max Turns Override</Label>
+                <Label for='field-review-max-turns'>Review Follow-up Passes Override</Label>
                 <Input
                   id='field-review-max-turns'
                   type='number'

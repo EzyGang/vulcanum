@@ -1,6 +1,8 @@
 use vulcanum_shared::api_types::WorkRunType;
 
-use crate::daemon::job::prompts::{continuation_prompt, initial_prompt};
+use crate::daemon::job::prompts::{
+    continuation_prompt, initial_prompt, review_after_fix_prompt, review_fix_prompt,
+};
 
 #[test]
 fn implementation_initial_prompt_requires_finish_run() {
@@ -9,6 +11,8 @@ fn implementation_initial_prompt_requires_finish_run() {
     assert!(prompt.contains("Workspace"));
     assert!(prompt.contains("Do the work"));
     assert!(prompt.contains("call the `finish_run` tool exactly once"));
+    assert!(prompt.contains("formatter, validation"));
+    assert!(prompt.contains("every repository you changed"));
     assert!(prompt.contains("`pr_urls`"));
     assert!(!prompt.contains("`pr_url`"));
 }
@@ -30,6 +34,8 @@ fn review_initial_prompt_uses_review_artifact_fields() {
     assert!(prompt.contains("CRITICAL"));
     assert!(prompt.contains("WARNINGS"));
     assert!(prompt.contains("SUGGESTIONS"));
+    assert!(prompt.contains("missing"));
+    assert!(prompt.contains("formatter, validation"));
     assert!(!prompt.contains("`pr_url`"));
 }
 
@@ -39,4 +45,25 @@ fn continuation_prompt_mentions_final_turn() {
 
     assert!(prompt.contains("[Continuation turn 3/3]"));
     assert!(prompt.contains("final allowed turn"));
+}
+
+#[test]
+fn review_fix_prompt_switches_to_existing_pr_fix_mode() {
+    let prompt = review_fix_prompt("## WARNINGS\n- Missing validation");
+
+    assert!(prompt.contains("Switch to implementation mode"));
+    assert!(prompt.contains("existing pull request"));
+    assert!(prompt.contains("formatter, validation, and test commands"));
+    assert!(prompt.contains("Do not create a new pull request"));
+    assert!(prompt.contains("do not call finish_run"));
+}
+
+#[test]
+fn review_after_fix_prompt_requires_new_review() {
+    let prompt = review_after_fix_prompt(1, 2);
+
+    assert!(prompt.contains("[Review follow-up 1/2]"));
+    assert!(prompt.contains("updated pull request"));
+    assert!(prompt.contains("current PR head commit"));
+    assert!(prompt.contains("call finish_run"));
 }
