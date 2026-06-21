@@ -2,7 +2,6 @@ use actix_web::{test, web, App};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::routes;
 use crate::services::dispatcher::repository::DispatchRepository;
 use crate::services::dispatcher::service::DispatcherService;
@@ -12,13 +11,9 @@ use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::workers::model::WorkerStatus;
 use crate::test_helpers;
 
-async fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool).await
-}
-
 #[sqlx::test]
 async fn review_result_with_warning_enqueues_fix_run(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -148,7 +143,7 @@ async fn review_result_with_warning_enqueues_fix_run(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn stale_worker_marked_disconnected(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let worker_id = test_helpers::insert_worker(&pool, "stale-worker").await;
 
     sqlx::query!(

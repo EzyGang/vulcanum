@@ -2,18 +2,13 @@ use actix_web::{test, web, App};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::routes;
 use crate::services::dispatcher::repository::DispatchRepository;
 use crate::test_helpers;
 
-async fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool).await
-}
-
 #[sqlx::test]
 async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -71,7 +66,7 @@ async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn full_job_lifecycle(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -172,7 +167,7 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -236,7 +231,7 @@ async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn double_ack_returns_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
