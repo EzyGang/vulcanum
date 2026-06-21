@@ -4,13 +4,10 @@ import type { UpdateWorkerStatusRequest } from '../../../types/workers';
 import type { ApiError } from '../../../utils/api/client';
 import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
-import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import { ProgressBar } from '../../shared/ui/ProgressBar.view';
-import { StatusBadge } from '../../shared/ui/StatusBadge.view';
-import { Table } from '../../shared/ui/Table.view';
 import type { FormattedWorker } from '../hooks/useWorkers.hook';
+import { WorkersTable } from './workers-table/WorkersTable.view';
 
 interface WorkersViewProps {
   data: {
@@ -81,61 +78,11 @@ export const WorkersView = ({
       )}
 
       {!loading && workers.length > 0 && (
-        <Table>
-          <Table.Head>
-            <Table.HeadCell>Name</Table.HeadCell>
-            <Table.HeadCell>Status</Table.HeadCell>
-            <Table.HeadCell class='hidden md:table-cell'>Last Seen</Table.HeadCell>
-            <Table.HeadCell class='hidden md:table-cell'>Load</Table.HeadCell>
-            <Table.HeadCell class='hidden md:table-cell'>Actions</Table.HeadCell>
-          </Table.Head>
-          <Table.Body>
-            {workers.map((worker) => (
-              <Table.Row key={worker.id}>
-                <Table.Cell>
-                  <span class='text-text-primary text-sm font-mono'>{worker.name}</span>
-                </Table.Cell>
-                <Table.Cell>
-                  <StatusBadge status={worker.status} />
-                </Table.Cell>
-                <Table.Cell class='hidden md:table-cell'>
-                  <span class='text-text-secondary text-sm'>{worker.lastSeen}</span>
-                </Table.Cell>
-                <Table.Cell class='hidden md:table-cell'>
-                  <ProgressBar
-                    value={worker.activeJobs}
-                    max={worker.maxConcurrentJobs}
-                    showFraction
-                  />
-                </Table.Cell>
-                <Table.Cell class='hidden md:table-cell'>
-                  <div class='flex items-center gap-2'>
-                    {worker.status === 'unhealthy' && (
-                      <Button variant='ghost' onClick={() => onUpdateStatus(worker.id, 'idle')}>
-                        Re-enable
-                      </Button>
-                    )}
-                    {(worker.status === 'idle' || worker.status === 'busy') && (
-                      <Button
-                        variant='ghost'
-                        onClick={() => onUpdateStatus(worker.id, 'unhealthy')}
-                      >
-                        Disable
-                      </Button>
-                    )}
-                    <ConfirmDelete
-                      itemId={worker.id}
-                      deletingId={deletingId}
-                      onConfirm={onConfirmDelete}
-                      onDelete={onDeleteWorker}
-                      onCancel={onCancelDelete}
-                    />
-                  </div>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table>
+        <WorkersTable
+          workers={workers}
+          deletingId={deletingId}
+          actions={{ onConfirmDelete, onCancelDelete, onDeleteWorker, onUpdateStatus }}
+        />
       )}
     </section>
   </div>

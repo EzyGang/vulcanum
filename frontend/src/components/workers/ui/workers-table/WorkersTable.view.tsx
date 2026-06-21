@@ -1,6 +1,8 @@
 import type { Signal } from '@preact/signals';
+import { IconBan, IconRefresh } from '@tabler/icons-react';
 import type { JSX } from 'preact';
-import { Button } from '../../../shared/ui/Button.view';
+import type { UpdateWorkerStatusRequest } from '../../../../types/workers';
+import { ActionIconButton } from '../../../shared/ui/ActionIconButton.view';
 import { ConfirmDelete } from '../../../shared/ui/ConfirmDelete.view';
 import { ProgressBar } from '../../../shared/ui/ProgressBar.view';
 import { StatusBadge } from '../../../shared/ui/StatusBadge.view';
@@ -14,7 +16,7 @@ interface WorkersTableProps {
     onConfirmDelete: (id: string) => void;
     onCancelDelete: () => void;
     onDeleteWorker: (id: string) => void;
-    onUpdateStatus: (id: string, status: string) => void;
+    onUpdateStatus: (id: string, status: UpdateWorkerStatusRequest['status']) => void;
   };
 }
 
@@ -27,9 +29,9 @@ export const WorkersTable = ({
     <Table.Head>
       <Table.HeadCell>Name</Table.HeadCell>
       <Table.HeadCell>Status</Table.HeadCell>
-      <Table.HeadCell>Last Seen</Table.HeadCell>
-      <Table.HeadCell>Load</Table.HeadCell>
-      <Table.HeadCell>Actions</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Last Seen</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Load</Table.HeadCell>
+      <Table.HeadCell class='hidden md:table-cell'>Actions</Table.HeadCell>
     </Table.Head>
     <Table.Body>
       {workers.map((worker) => (
@@ -40,23 +42,30 @@ export const WorkersTable = ({
           <Table.Cell>
             <StatusBadge status={worker.status} />
           </Table.Cell>
-          <Table.Cell>
+          <Table.Cell class='hidden md:table-cell'>
             <span class='text-text-secondary text-sm'>{worker.lastSeen}</span>
           </Table.Cell>
-          <Table.Cell>
+          <Table.Cell class='hidden md:table-cell'>
             <ProgressBar value={worker.activeJobs} max={worker.maxConcurrentJobs} showFraction />
           </Table.Cell>
-          <Table.Cell>
+          <Table.Cell class='hidden md:table-cell'>
             <div class='flex items-center gap-2'>
               {worker.status === 'unhealthy' && (
-                <Button variant='ghost' onClick={() => onUpdateStatus(worker.id, 'idle')}>
-                  Re-enable
-                </Button>
+                <ActionIconButton
+                  label='Re-enable worker'
+                  variant='success'
+                  onClick={() => onUpdateStatus(worker.id, 'idle')}
+                >
+                  <IconRefresh size={16} stroke={1.75} aria-hidden='true' />
+                </ActionIconButton>
               )}
               {(worker.status === 'idle' || worker.status === 'busy') && (
-                <Button variant='ghost' onClick={() => onUpdateStatus(worker.id, 'unhealthy')}>
-                  Disable
-                </Button>
+                <ActionIconButton
+                  label='Disable worker'
+                  onClick={() => onUpdateStatus(worker.id, 'unhealthy')}
+                >
+                  <IconBan size={16} stroke={1.75} aria-hidden='true' />
+                </ActionIconButton>
               )}
               <ConfirmDelete
                 itemId={worker.id}

@@ -1,6 +1,7 @@
 import type { Signal } from '@preact/signals';
+import { IconCheck, IconTrash, IconX } from '@tabler/icons-react';
 import type { JSX } from 'preact';
-import { Button } from './Button.view';
+import { ActionIconButton } from './ActionIconButton.view';
 
 interface ConfirmDeleteProps {
   itemId: string;
@@ -19,37 +20,22 @@ export const ConfirmDelete = ({
   onCancel,
   editActions
 }: ConfirmDeleteProps): JSX.Element => (
-  <div class='flex items-center gap-3'>
+  <div class='flex items-center gap-1'>
     {deletingId.value === itemId ? (
-      <div class='flex items-center gap-2'>
-        <Button
-          variant='danger'
-          class='h-6 w-6 text-sm'
-          aria-label='Confirm delete'
-          onClick={() => onDelete(itemId)}
-        >
-          ✓
-        </Button>
-        <Button
-          variant='ghost'
-          class='h-6 w-6 text-sm'
-          aria-label='Cancel delete'
-          onClick={onCancel}
-        >
-          ×
-        </Button>
+      <div class='flex items-center gap-1'>
+        <ActionIconButton label='Confirm delete' variant='danger' onClick={() => onDelete(itemId)}>
+          <IconCheck size={16} stroke={1.75} aria-hidden='true' />
+        </ActionIconButton>
+        <ActionIconButton label='Cancel delete' onClick={onCancel}>
+          <IconX size={16} stroke={1.75} aria-hidden='true' />
+        </ActionIconButton>
       </div>
     ) : (
-      <div class='flex items-center gap-3'>
+      <div class='flex items-center gap-1'>
         {editActions}
-        <Button
-          variant='ghost-danger'
-          class='h-6 w-6 text-base'
-          aria-label='Delete'
-          onClick={() => onConfirm(itemId)}
-        >
-          ×
-        </Button>
+        <ActionIconButton label='Delete' variant='danger' onClick={() => onConfirm(itemId)}>
+          <IconTrash size={16} stroke={1.75} aria-hidden='true' />
+        </ActionIconButton>
       </div>
     )}
   </div>

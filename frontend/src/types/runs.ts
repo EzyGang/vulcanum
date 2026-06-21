@@ -17,7 +17,7 @@ export const WORK_RUN_TYPE_LABELS: Record<WorkRunType, string> = {
 
 export const WORK_RUN_PR_LINK_LABELS: Record<WorkRunType, string> = {
   implementation: 'PR',
-  pull_request_review: 'Review PR'
+  pull_request_review: 'PR'
 };
 
 export interface WorkRunListItem {

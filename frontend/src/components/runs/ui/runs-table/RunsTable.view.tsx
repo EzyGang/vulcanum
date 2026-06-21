@@ -1,4 +1,5 @@
 import type { Signal } from '@preact/signals';
+import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import type { WorkRunListItem } from '../../../../types/runs';
 import {
@@ -7,15 +8,15 @@ import {
   WORK_RUN_TYPE_LABELS
 } from '../../../../types/runs';
 import { formatDuration, formatRelativeTime } from '../../../../utils/format';
-import { Button } from '../../../shared/ui/Button.view';
 import { Checkbox } from '../../../shared/ui/Checkbox.view';
-import { ConfirmDelete } from '../../../shared/ui/ConfirmDelete.view';
 import { StatusBadge } from '../../../shared/ui/StatusBadge.view';
 import { Table } from '../../../shared/ui/Table.view';
 import { RunEventTimelineContainer } from '../../containers/run-events/RunEventTimeline.container';
+import { RunActions } from './RunActions.view';
+import { RunTaskCell } from './RunTaskCell.view';
 import { hasRunUsageStats, RunUsageStats } from './RunUsageStats';
 
-const COL_SPAN = 11;
+const COL_SPAN = 9;
 
 interface RunsTableProps {
   runs: WorkRunListItem[];
@@ -63,14 +64,12 @@ export const RunsTable = ({
         />
       </Table.HeadCell>
       <Table.HeadCell>Task</Table.HeadCell>
-      <Table.HeadCell>Status</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>Type</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>Worker</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>Duration</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>Tokens</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>PR</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>Created</Table.HeadCell>
-      <Table.HeadCell class='hidden md:table-cell'>Actions</Table.HeadCell>
+      <Table.HeadCell>Run</Table.HeadCell>
+      <Table.HeadCell class='hidden lg:table-cell'>Execution</Table.HeadCell>
+      <Table.HeadCell class='hidden lg:table-cell'>Tokens</Table.HeadCell>
+      <Table.HeadCell class='hidden lg:table-cell'>PR</Table.HeadCell>
+      <Table.HeadCell class='hidden lg:table-cell'>Created</Table.HeadCell>
+      <Table.HeadCell>Actions</Table.HeadCell>
     </Table.Head>
     <Table.Body>
       {runs.map((run) => {
@@ -80,7 +79,13 @@ export const RunsTable = ({
           <>
             <Table.Row key={run.id} class='cursor-pointer' onClick={() => onToggleExpanded(run.id)}>
               <Table.Cell class='w-1' paddingClass='px-1 py-3'>
-                <span>{expanded ? '▾' : '▸'}</span>
+                <span class='text-text-muted'>
+                  {expanded ? (
+                    <IconChevronDown size={16} stroke={1.75} aria-hidden='true' />
+                  ) : (
+                    <IconChevronRight size={16} stroke={1.75} aria-hidden='true' />
+                  )}
+                </span>
               </Table.Cell>
               <Table.Cell onClick={onStopRowToggle} paddingClass='px-1 py-3'>
                 <Checkbox
@@ -88,42 +93,33 @@ export const RunsTable = ({
                   onCheckedChange={() => onToggleSelect(run.id)}
                 />
               </Table.Cell>
+              <Table.Cell paddingClass='pl-5 py-3'>
+                <RunTaskCell run={run} />
+              </Table.Cell>
               <Table.Cell>
-                {run.taskSlug ? (
-                  <span class='text-text-primary text-sm font-mono'>{run.taskSlug}</span>
-                ) : (
-                  <span class='text-text-muted text-sm'>—</span>
-                )}
-                {run.taskTitle && (
-                  <span class='text-text-secondary text-sm ml-2 truncate max-w-48 inline-block align-middle'>
-                    {run.taskTitle}
+                <div class='flex flex-col items-start gap-2'>
+                  <StatusBadge status={run.status} />
+                  <span class='border border-border-base bg-bg-panel px-2 py-1 text-xs font-mono text-text-secondary'>
+                    {WORK_RUN_TYPE_LABELS[run.workType]}
                   </span>
-                )}
+                </div>
               </Table.Cell>
-              <Table.Cell>
-                <StatusBadge status={run.status} />
+              <Table.Cell class='hidden lg:table-cell'>
+                <div class='flex flex-col gap-1'>
+                  <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
+                  <span class='text-text-muted text-xs font-mono tabular-nums'>
+                    {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
+                  </span>
+                </div>
               </Table.Cell>
-              <Table.Cell class='hidden md:table-cell'>
-                <span class='border border-border-base bg-bg-panel px-2 py-1 text-xs font-mono text-text-secondary'>
-                  {WORK_RUN_TYPE_LABELS[run.workType]}
-                </span>
-              </Table.Cell>
-              <Table.Cell class='hidden md:table-cell'>
-                <span class='text-text-secondary text-sm'>{run.workerName ?? '—'}</span>
-              </Table.Cell>
-              <Table.Cell class='hidden md:table-cell'>
-                <span class='text-text-secondary text-sm font-mono'>
-                  {run.durationMs !== null ? formatDuration(run.durationMs) : '—'}
-                </span>
-              </Table.Cell>
-              <Table.Cell class='hidden md:table-cell' onClick={onStopRowToggle}>
+              <Table.Cell class='hidden lg:table-cell' onClick={onStopRowToggle}>
                 {hasRunUsageStats(run) ? (
                   <RunUsageStats run={run} />
                 ) : (
                   <span class='text-text-muted text-sm'>—</span>
                 )}
               </Table.Cell>
-              <Table.Cell class='hidden md:table-cell'>
+              <Table.Cell class='hidden lg:table-cell'>
                 {run.reviewTargetPrUrl || run.resultPrUrl ? (
                   <a
                     href={run.reviewTargetPrUrl ?? run.resultPrUrl ?? ''}
@@ -138,29 +134,20 @@ export const RunsTable = ({
                   <span class='text-text-muted text-sm'>—</span>
                 )}
               </Table.Cell>
-              <Table.Cell class='hidden md:table-cell'>
+              <Table.Cell class='hidden lg:table-cell'>
                 <span class='text-text-secondary text-sm'>{formatRelativeTime(run.createdAt)}</span>
               </Table.Cell>
-              <Table.Cell class='hidden md:table-cell' onClick={onStopRowToggle}>
-                <div class='flex items-center gap-2'>
-                  {cancellable && (
-                    <Button variant='ghost' onClick={() => onCancelRun(run.id)}>
-                      Cancel
-                    </Button>
-                  )}
-                  {cancellable && (
-                    <Button variant='ghost-danger' onClick={() => onFailRun(run.id)}>
-                      Fail
-                    </Button>
-                  )}
-                  <ConfirmDelete
-                    itemId={run.id}
-                    deletingId={deletingId}
-                    onConfirm={onConfirmDelete}
-                    onDelete={onDelete}
-                    onCancel={onCancelDelete}
-                  />
-                </div>
+              <Table.Cell onClick={onStopRowToggle}>
+                <RunActions
+                  runId={run.id}
+                  cancellable={cancellable}
+                  deleting={deletingId.value === run.id}
+                  onFailRun={onFailRun}
+                  onCancelRun={onCancelRun}
+                  onConfirmDelete={onConfirmDelete}
+                  onDelete={onDelete}
+                  onCancelDelete={onCancelDelete}
+                />
               </Table.Cell>
             </Table.Row>
             {expanded && (

@@ -74,7 +74,7 @@ interface CellProps {
   class?: string;
   colSpan?: number;
   paddingClass?: string;
-  onClick?: JSX.MouseEventHandler<HTMLTableCellElement>;
+  onClick?: MouseEventHandler<HTMLTableCellElement>;
 }
 
 const Cell = ({

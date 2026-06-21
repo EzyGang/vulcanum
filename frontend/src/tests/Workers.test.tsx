@@ -195,10 +195,10 @@ describe('Workers.view', () => {
     expect(fill).toBeDefined();
   });
 
-  it('shows Disable button for idle workers', () => {
+  it('shows Disable action for idle workers', () => {
     const workers = [makeWorker({ id: '1', name: 'worker-1', status: 'idle' as const })];
 
-    const { getByText } = render(
+    const { getByLabelText, queryByText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
         status={baseStatus}
@@ -206,13 +206,14 @@ describe('Workers.view', () => {
       />
     );
 
-    expect(getByText('Disable')).toBeDefined();
+    expect(getByLabelText('Disable worker')).toBeDefined();
+    expect(queryByText('Disable')).toBeNull();
   });
 
-  it('shows Re-enable button for unhealthy workers', () => {
+  it('shows Re-enable action for unhealthy workers', () => {
     const workers = [makeWorker({ id: '1', name: 'worker-1', status: 'unhealthy' as const })];
 
-    const { getByText } = render(
+    const { getByLabelText, queryByText } = render(
       <WorkersView
         data={{ workers, code: null, countdown }}
         status={baseStatus}
@@ -220,6 +221,7 @@ describe('Workers.view', () => {
       />
     );
 
-    expect(getByText('Re-enable')).toBeDefined();
+    expect(getByLabelText('Re-enable worker')).toBeDefined();
+    expect(queryByText('Re-enable')).toBeNull();
   });
 });

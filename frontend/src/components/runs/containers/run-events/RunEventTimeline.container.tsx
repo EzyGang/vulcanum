@@ -14,21 +14,16 @@ export const RunEventTimelineContainer = ({
   status
 }: RunEventTimelineContainerProps): JSX.Element => {
   const isLive = CANCELLABLE_STATUSES.includes(status);
-  const canCancel = CANCELLABLE_STATUSES.includes(status);
 
-  const { data, status: rs, actions } = useRunEvents({ runId, isLive });
+  const { data, status: rs } = useRunEvents({ runId, isLive });
 
   return (
     <RunEventTimeline
       isLive={isLive}
-      canCancel={canCancel}
       events={data.events}
       hasMore={data.hasMore}
       loading={rs.loading}
       error={rs.error}
-      cancelling={rs.cancelling}
-      cancelError={rs.cancelError}
-      onCancel={actions.handleCancel}
     />
   );
 };

@@ -1,20 +1,15 @@
 import type { JSX } from 'preact';
 import type { RunEvent } from '../../../../types/events';
 import type { ApiError } from '../../../../utils/api/client';
-import { Button } from '../../../shared/ui/Button.view';
 import { ErrorBanner } from '../../../shared/ui/ErrorBanner.view';
 import { StatusBadge } from '../../../shared/ui/StatusBadge.view';
 
 interface RunEventTimelineProps {
   isLive: boolean;
-  canCancel: boolean;
   events: RunEvent[];
   hasMore: boolean;
   loading: boolean;
   error: ApiError | null;
-  cancelling: boolean;
-  cancelError: ApiError | null;
-  onCancel: () => void;
 }
 
 const summarizePayload = (payload: Record<string, unknown>): string => {
@@ -35,14 +30,10 @@ const summarizePayload = (payload: Record<string, unknown>): string => {
 
 export const RunEventTimeline = ({
   isLive,
-  canCancel,
   events,
   hasMore,
   loading,
-  error,
-  cancelling,
-  cancelError,
-  onCancel
+  error
 }: RunEventTimelineProps): JSX.Element => (
   <div class='flex flex-col gap-3 bg-bg-surface border border-border-base p-4'>
     <div class='flex items-center justify-between'>
@@ -52,15 +43,9 @@ export const RunEventTimeline = ({
         </span>
         {isLive && <span class='text-text-muted text-xs uppercase tracking-wider'>live</span>}
       </div>
-      {canCancel && (
-        <Button variant='ghost-danger' onClick={onCancel} disabled={cancelling}>
-          {cancelling ? 'Cancelling…' : 'Cancel run'}
-        </Button>
-      )}
     </div>
 
     {error && <ErrorBanner message={error.message} />}
-    {cancelError && <ErrorBanner message={cancelError.message} />}
 
     {loading && events.length === 0 && <div class='text-text-muted text-xs'>Loading events…</div>}
 

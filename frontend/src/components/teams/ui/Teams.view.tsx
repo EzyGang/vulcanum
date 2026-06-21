@@ -1,7 +1,9 @@
 import type { Signal } from '@preact/signals';
+import { IconCircleCheck, IconPencil, IconSwitchHorizontal, IconTrash } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import type { Team } from '../../../types/teams';
 import type { ApiError } from '../../../utils/api/client';
+import { ActionIconButton } from '../../shared/ui/ActionIconButton.view';
 import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
@@ -145,24 +147,31 @@ export const TeamsView = ({ data, status, actions }: TeamsViewProps): JSX.Elemen
                 <span class='text-sm text-text-secondary'>{team.formattedCreatedAt}</span>
               </Table.Cell>
               <Table.Cell onClick={(event) => event.stopPropagation()}>
-                <div class='flex flex-wrap items-center gap-3'>
-                  <Button
-                    variant='ghost'
-                    onClick={() => actions.onUseTeam(team.id)}
-                    disabled={team.id === data.selectedTeamId}
-                  >
-                    {team.id === data.selectedTeamId ? 'Current' : 'Use'}
-                  </Button>
-                  <Button variant='ghost' onClick={() => actions.onStartEdit(team)}>
-                    Rename
-                  </Button>
-                  <Button
-                    variant='ghost-danger'
+                <div class='flex flex-wrap items-center gap-1'>
+                  {team.id === data.selectedTeamId ? (
+                    <span
+                      class='flex h-10 w-10 items-center justify-center text-success'
+                      role='img'
+                      aria-label='Current team'
+                    >
+                      <IconCircleCheck size={17} stroke={1.75} aria-hidden='true' />
+                    </span>
+                  ) : (
+                    <ActionIconButton label='Use team' onClick={() => actions.onUseTeam(team.id)}>
+                      <IconSwitchHorizontal size={16} stroke={1.75} aria-hidden='true' />
+                    </ActionIconButton>
+                  )}
+                  <ActionIconButton label='Rename team' onClick={() => actions.onStartEdit(team)}>
+                    <IconPencil size={16} stroke={1.75} aria-hidden='true' />
+                  </ActionIconButton>
+                  <ActionIconButton
+                    label='Delete team'
+                    variant='danger'
                     onClick={() => actions.onDelete(team.id)}
                     disabled={status.deleting}
                   >
-                    Delete
-                  </Button>
+                    <IconTrash size={16} stroke={1.75} aria-hidden='true' />
+                  </ActionIconButton>
                 </div>
               </Table.Cell>
             </Table.Row>
