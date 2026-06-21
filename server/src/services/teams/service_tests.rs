@@ -77,7 +77,7 @@ async fn migrations_create_default_team(pool: sqlx::PgPool) {
     assert_eq!(team.id, test_helpers::DEFAULT_TEAM_ID);
     assert_eq!(team.name, "Default team");
     assert_eq!(team.personal_user_id, None);
-    assert_eq!(team.review_prompt_template, DEFAULT_REVIEW_PROMPT_TEMPLATE);
+    assert_eq!(team.review_prompt_template, "");
 }
 
 #[sqlx::test]

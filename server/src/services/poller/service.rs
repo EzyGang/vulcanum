@@ -242,7 +242,6 @@ impl PollerService {
                     repo_names: &repo_names,
                     repo_layout: &repo_layout,
                     review_target_pr_url: "",
-                    review_marker: "",
                 },
             );
 

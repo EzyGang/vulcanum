@@ -4,6 +4,7 @@ use vulcanum_shared::runtime::types::FinishStatus;
 use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::record_review::review_comment;
+use crate::services::work_runs::service::review_feedback::review_requires_implementation;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {
@@ -60,14 +61,22 @@ impl WorkRunsService {
         let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
         let is_blocked = matches!(params.finish_status, Some(FinishStatus::Blocked));
 
-        if !is_blocked && !is_review {
-            let new_column = implementation_result_column(
+        let result_column = match (is_blocked, is_review) {
+            (true, _) => None,
+            (false, true) => review_result_column(
+                params.review_already_exists,
+                params.review_body.as_deref(),
+                &project_config.progress_column,
+            ),
+            (false, false) => Some(implementation_result_column(
                 params.finish_status,
                 status,
                 &project_config.pickup_column,
                 &project_config.target_column,
-            );
+            )),
+        };
 
+        if let Some(new_column) = result_column {
             if let Err(e) = client
                 .update_task_status(&run.external_task_ref, new_column)
                 .await
@@ -98,6 +107,22 @@ impl WorkRunsService {
                 "failed to add task comment",
             );
         }
+    }
+}
+
+#[must_use]
+pub(crate) fn review_result_column<'a>(
+    review_already_exists: bool,
+    review_body: Option<&str>,
+    progress_column: &'a str,
+) -> Option<&'a str> {
+    if review_already_exists {
+        return None;
+    }
+
+    match review_body {
+        Some(body) if review_requires_implementation(body) => Some(progress_column),
+        Some(_) | None => None,
     }
 }
 

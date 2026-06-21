@@ -7,19 +7,7 @@ use crate::util::serde::deserialize_nullable_string;
 
 pub const DEFAULT_REVIEW_PROMPT_TEMPLATE: &str = r#"Review this pull request for the linked task.
 
-Task title:
-{{task_title}}
-
-Task body:
-{{task_body}}
-
-Focus pull request:
-{{review_target_pr_url}}
-
-Repository:
-{{repo_names}}
-
-Follow the repository AGENTS.md instructions. Review code quality, correctness, maintainability, and project conventions. Do not edit files, commit, push, or create pull requests. Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes. Include this marker in the review body: {{review_marker}}. If the marker already exists on the pull request, do not post another review.
+Review the solution for correctness, maintainability, and project fit. Make sure the implementation is elegant, avoids duplication, and follows the root AGENTS.md plus any AGENTS.md files that apply to the changed directories. Do not edit files, commit, push, or create pull requests. Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes.
 
 The review body must use exactly these Markdown sections in this order:
 ## CRITICAL
@@ -31,7 +19,19 @@ The review body must use exactly these Markdown sections in this order:
 ## SUGGESTIONS
 - List optional improvements. Use "- None" if empty.
 
-When done, call finish_run with status completed, review_url if available, review_body, and review_already_exists."#;
+When done, call finish_run with status completed, review_url if available, and review_body.
+
+Task title:
+{{task_title}}
+
+Task body:
+{{task_body}}
+
+Focus pull request:
+{{review_target_pr_url}}
+
+Repository:
+{{repo_names}}"#;
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Team {

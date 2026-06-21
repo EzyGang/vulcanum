@@ -197,6 +197,7 @@ pub(crate) async fn run_turn_loop(
     }
 }
 
+#[must_use]
 fn finish_exit_code(artifact: &FinishRunArtifact) -> i32 {
     match artifact.status {
         FinishStatus::Completed => 0,

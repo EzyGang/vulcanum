@@ -29,7 +29,7 @@ export default tool({
     summary: tool.schema.string().optional().describe("Brief summary of what was done, what went wrong, or why blocked"),
     review_url: tool.schema.string().optional().describe("URL of the GitHub review that was posted, for review runs"),
     review_body: tool.schema.string().optional().describe("Body of the GitHub review that was posted, for review runs"),
-    review_already_exists: tool.schema.boolean().optional().describe("True when the required Vulcanum review marker already existed and no duplicate review was posted"),
+    review_already_exists: tool.schema.boolean().optional().describe("True when the requested review already existed and no duplicate review was posted"),
   },
   async execute(args) {
     const path = artifactPath()

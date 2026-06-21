@@ -1,6 +1,7 @@
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{EffectiveProjectSettings, ProjectConfig};
 use crate::services::project_configs::service::ProjectConfigsService;
+use crate::services::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 
 impl ProjectConfigsService {
     pub async fn effective_settings(
@@ -31,10 +32,21 @@ impl ProjectConfigsService {
                 .clone()
                 .unwrap_or(team.review_pickup_column),
             review_max_turns: config.review_max_turns.unwrap_or(team.review_max_turns),
-            review_prompt_template: config
-                .review_prompt_template
-                .clone()
-                .unwrap_or(team.review_prompt_template),
+            review_prompt_template: effective_review_prompt_template(
+                config.review_prompt_template.as_deref(),
+                &team.review_prompt_template,
+            ),
         })
+    }
+}
+
+#[must_use]
+fn effective_review_prompt_template(config_template: Option<&str>, team_template: &str) -> String {
+    match config_template {
+        Some(template) if !template.trim().is_empty() => template.to_owned(),
+        Some(_) | None => match team_template.trim().is_empty() {
+            true => DEFAULT_REVIEW_PROMPT_TEMPLATE.to_owned(),
+            false => team_template.to_owned(),
+        },
     }
 }
