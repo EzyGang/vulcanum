@@ -1,7 +1,7 @@
 use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 
-use crate::daemon::job::turn_loop::ReviewLoopState;
+use crate::daemon::job::review_loop::ReviewLoopState;
 
 #[test]
 fn review_loop_continues_for_actionable_review_then_stops_at_cap() {

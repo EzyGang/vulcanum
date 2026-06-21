@@ -6,14 +6,14 @@ use uuid::Uuid;
 
 use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::review_feedback::review_requires_implementation;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 use vulcanum_shared::worker_state::WorkerState;
 
 use super::artifact::read_finish_artifact;
 use super::event_reporter::EventReporter;
-use super::prompts::{continuation_prompt, review_after_fix_prompt, review_fix_prompt};
+use super::prompts::continuation_prompt;
+use super::review_loop::ReviewLoopState;
 use super::submit::{submit_failed_result, submit_turn_result, FailedResult};
 use crate::state::journal::Journal;
 
@@ -87,13 +87,14 @@ pub(crate) async fn run_turn_loop(
 
         if let Some(ref artifact) = finish_artifact {
             if let Some(prompt) = review_loop.prompt_after_artifact(artifact) {
+                let progress = review_loop.progress();
                 remove_finish_artifact(artifact_path);
                 ctx.reporter.emit(
                     "review.fix.continuing",
                     serde_json::json!({
                         "turn": turn,
-                        "fix_pass": review_loop.completed_fix_passes,
-                        "max_fix_passes": review_loop.max_fix_passes,
+                        "fix_pass": progress.fix_pass,
+                        "max_fix_passes": progress.max_fix_passes,
                     }),
                 );
                 if !continue_session(running_session, &prompt, turn, ctx).await {
@@ -150,12 +151,13 @@ pub(crate) async fn run_turn_loop(
                 return true;
             }
 
+            let progress = review_loop.progress();
             ctx.reporter.emit(
                 "review.fix.completed",
                 serde_json::json!({
                     "turn": turn,
-                    "fix_pass": review_loop.completed_fix_passes,
-                    "max_fix_passes": review_loop.max_fix_passes,
+                    "fix_pass": progress.fix_pass,
+                    "max_fix_passes": progress.max_fix_passes,
                 }),
             );
             if !continue_session(running_session, &prompt, turn, ctx).await {
@@ -235,91 +237,6 @@ pub(crate) async fn run_turn_loop(
 
         turn += 1;
         let _ = ctx.journal.update_turn(ctx.job_id, turn);
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum ReviewLoopPhase {
-    Review,
-    Fix,
-}
-
-pub(crate) struct ReviewLoopState {
-    enabled: bool,
-    phase: ReviewLoopPhase,
-    max_fix_passes: i32,
-    completed_fix_passes: i32,
-}
-
-impl ReviewLoopState {
-    pub(crate) fn new(work_type: WorkRunType, max_fix_passes: i32) -> Self {
-        Self {
-            enabled: matches!(work_type, WorkRunType::PullRequestReview),
-            phase: ReviewLoopPhase::Review,
-            max_fix_passes: max_fix_passes.max(0),
-            completed_fix_passes: 0,
-        }
-    }
-
-    pub(crate) fn prompt_after_artifact(&mut self, artifact: &FinishRunArtifact) -> Option<String> {
-        if !self.enabled {
-            return None;
-        }
-
-        match self.phase {
-            ReviewLoopPhase::Review => self.prompt_after_review_artifact(artifact),
-            ReviewLoopPhase::Fix => self.prompt_after_fix_artifact(artifact),
-        }
-    }
-
-    fn prompt_after_review_artifact(&mut self, artifact: &FinishRunArtifact) -> Option<String> {
-        if !matches!(artifact.status, FinishStatus::Completed) || artifact.review_already_exists {
-            return None;
-        }
-
-        let review_body = artifact.review_body.as_deref()?;
-        if !review_requires_implementation(review_body) {
-            return None;
-        }
-
-        if self.completed_fix_passes >= self.max_fix_passes {
-            return None;
-        }
-
-        self.completed_fix_passes += 1;
-        self.phase = ReviewLoopPhase::Fix;
-        Some(review_fix_prompt(review_body))
-    }
-
-    fn prompt_after_fix_artifact(&mut self, artifact: &FinishRunArtifact) -> Option<String> {
-        if !matches!(artifact.status, FinishStatus::Completed) {
-            return None;
-        }
-
-        self.phase = ReviewLoopPhase::Review;
-        Some(review_after_fix_prompt(
-            self.completed_fix_passes,
-            self.max_fix_passes,
-        ))
-    }
-
-    pub(crate) fn prompt_after_fix_turn(&mut self) -> Option<String> {
-        if !self.enabled || !matches!(self.phase, ReviewLoopPhase::Fix) {
-            return None;
-        }
-
-        self.phase = ReviewLoopPhase::Review;
-        Some(review_after_fix_prompt(
-            self.completed_fix_passes,
-            self.max_fix_passes,
-        ))
-    }
-
-    pub(crate) fn effective_max_turns(&self) -> i32 {
-        match self.enabled {
-            true => (self.max_fix_passes * 2 + 1).max(1),
-            false => self.max_fix_passes.max(1),
-        }
     }
 }
 
