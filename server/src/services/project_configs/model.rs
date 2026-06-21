@@ -35,6 +35,7 @@ pub struct ProjectConfig {
     pub review_pickup_column: Option<String>,
     pub review_max_turns: Option<i32>,
     pub review_prompt_template: Option<String>,
+    pub max_in_progress_tasks: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub provider_id: Option<Uuid>,
 }
@@ -79,6 +80,8 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub review_prompt_template: Option<String>,
     #[serde(default)]
+    pub max_in_progress_tasks: Option<i32>,
+    #[serde(default)]
     pub integration_type: IntegrationType,
     pub provider_id: Uuid,
 }
@@ -117,6 +120,8 @@ pub struct UpdateProjectConfigRequest {
     pub review_max_turns: Option<Option<i32>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub review_prompt_template: Option<Option<String>>,
+    #[serde(default)]
+    pub max_in_progress_tasks: Option<Option<i32>>,
     #[serde(default)]
     pub external_workspace_id: Option<String>,
     #[serde(default)]
@@ -214,6 +219,7 @@ pub struct EffectiveProjectSettings {
     pub review_pickup_column: String,
     pub review_max_turns: i32,
     pub review_prompt_template: String,
+    pub max_in_progress_tasks: i32,
 }
 
 pub struct JobConfigFields {

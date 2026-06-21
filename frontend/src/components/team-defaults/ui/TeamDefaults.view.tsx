@@ -21,6 +21,7 @@ interface TeamDefaultsViewProps {
     reviewPickupColumn: Signal<string>;
     reviewMaxTurns: Signal<number>;
     reviewPromptTemplate: Signal<string>;
+    maxInProgressTasks: Signal<number>;
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
     smallModelItems: SelectOption[];
@@ -41,6 +42,7 @@ interface TeamDefaultsViewProps {
     onReviewPickupColumnInput: (event: Event) => void;
     onReviewMaxTurnsInput: (event: Event) => void;
     onReviewPromptTemplateInput: (event: Event) => void;
+    onMaxInProgressTasksInput: (event: Event) => void;
     onSubmit: (event: Event) => void;
   };
 }
@@ -125,6 +127,19 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             rows={6}
             disabled={status.saving}
           />
+        </div>
+        <div class='flex flex-col gap-4 border border-border-base bg-bg-panel p-4'>
+          <div class='flex flex-col gap-2'>
+            <Label for='team-max-in-progress-tasks'>Project In-progress Limit</Label>
+            <Input
+              id='team-max-in-progress-tasks'
+              type='number'
+              min='1'
+              value={data.maxInProgressTasks.value}
+              onInput={actions.onMaxInProgressTasksInput}
+              disabled={status.saving}
+            />
+          </div>
         </div>
         <div class='flex flex-col gap-4 border border-border-base bg-bg-panel p-4'>
           <CheckboxWithLabel

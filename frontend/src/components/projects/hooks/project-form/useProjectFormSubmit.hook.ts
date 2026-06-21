@@ -34,6 +34,8 @@ interface UseProjectFormSubmitOptions {
   reviewMaxTurnsOverride: Signal<boolean>;
   reviewPromptTemplate: Signal<string>;
   reviewPromptTemplateOverride: Signal<boolean>;
+  maxInProgressTasks: Signal<number>;
+  maxInProgressTasksOverride: Signal<boolean>;
   providerId: Signal<string>;
   externalProjectId: Signal<string>;
   workspaceId: Signal<string>;
@@ -68,6 +70,8 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     reviewMaxTurnsOverride,
     reviewPromptTemplate,
     reviewPromptTemplateOverride,
+    maxInProgressTasks,
+    maxInProgressTasksOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -135,6 +139,10 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
                 reviewPromptTemplate,
                 reviewPromptTemplateOverride
               ),
+              maxInProgressTasks: overrideNumberOrNull(
+                maxInProgressTasks,
+                maxInProgressTasksOverride
+              ),
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -174,6 +182,10 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             reviewPromptTemplate: overrideOrUndefined(
               reviewPromptTemplate,
               reviewPromptTemplateOverride
+            ),
+            maxInProgressTasks: overrideNumberOrUndefined(
+              maxInProgressTasks,
+              maxInProgressTasksOverride
             )
           });
         }

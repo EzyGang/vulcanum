@@ -62,4 +62,39 @@ async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(poo
         settings.review_prompt_template,
         DEFAULT_REVIEW_PROMPT_TEMPLATE
     );
+    assert_eq!(settings.max_in_progress_tasks, 1);
+}
+
+#[sqlx::test]
+async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
+    let svc = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        ModelProvidersService::new(
+            ModelProvidersRepository::new(),
+            pool.clone(),
+            ModelCatalogClient::new(),
+        ),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
+    let config_id = test_helpers::insert_project_config(&pool, "capacity-override").await;
+    sqlx::query!(
+        "UPDATE project_configs SET max_in_progress_tasks = 3 WHERE id = $1",
+        config_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("capacity override should update");
+    let config = svc
+        .find_by_id(config_id)
+        .await
+        .expect("project config should exist");
+
+    let settings = svc
+        .effective_settings(&config)
+        .await
+        .expect("settings should resolve");
+
+    assert_eq!(settings.max_in_progress_tasks, 3);
 }

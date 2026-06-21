@@ -36,6 +36,7 @@ pub struct UpdateProjectConfigParams<'a> {
     pub review_pickup_column: Option<Option<&'a str>>,
     pub review_max_turns: Option<Option<i32>>,
     pub review_prompt_template: Option<Option<&'a str>>,
+    pub max_in_progress_tasks: Option<Option<i32>>,
     pub external_workspace_id: Option<&'a str>,
     pub enabled: Option<bool>,
     pub integration_type: Option<IntegrationType>,

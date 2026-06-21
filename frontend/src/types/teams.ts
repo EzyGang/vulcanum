@@ -12,6 +12,7 @@ export interface Team {
   reviewPickupColumn: string;
   reviewMaxTurns: number;
   reviewPromptTemplate: string;
+  maxInProgressTasks: number;
   createdAt: string;
 }
 
@@ -25,6 +26,7 @@ export interface TeamMember {
 
 export interface TeamDefaults {
   reviewPromptTemplate: string;
+  maxInProgressTasks: number;
 }
 
 export interface CreateTeamRequest {
@@ -43,6 +45,7 @@ export interface UpdateTeamRequest {
   reviewPickupColumn?: string;
   reviewMaxTurns?: number;
   reviewPromptTemplate?: string;
+  maxInProgressTasks?: number;
 }
 
 export interface CreateTeamInviteResponse {

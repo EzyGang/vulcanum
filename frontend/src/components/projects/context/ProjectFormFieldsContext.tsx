@@ -39,6 +39,8 @@ export interface ProjectFormFieldsContextValue {
   reviewMaxTurnsOverride: Signal<boolean>;
   reviewPromptTemplate: Signal<string>;
   reviewPromptTemplateOverride: Signal<boolean>;
+  maxInProgressTasks: Signal<number>;
+  maxInProgressTasksOverride: Signal<boolean>;
   modelProviders: ModelProviderConfig[];
   catalogProviders: CatalogProvider[];
   connectedProviderItems: SelectOption[];
@@ -77,6 +79,8 @@ export interface ProjectFormFieldsContextValue {
   onResetReviewMaxTurnsOverride: () => void;
   onReviewPromptTemplateInput: (event: Event) => void;
   onResetReviewPromptTemplateOverride: () => void;
+  onMaxInProgressTasksInput: (event: Event) => void;
+  onResetMaxInProgressTasksOverride: () => void;
 }
 
 const ProjectFormFieldsContext = createContext<ProjectFormFieldsContextValue | null>(null);

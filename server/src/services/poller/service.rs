@@ -1,27 +1,24 @@
+mod project;
+
+use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
 use sqlx::PgPool;
 
-use crate::services::project_configs::model::ProjectConfig;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
-use crate::services::providers::client::{IntegrationClient, TaskFetcher};
+use crate::services::providers::client::TaskFetcher;
 use crate::services::providers::errors::IntegrationError;
-use crate::services::providers::model::{IntegrationTask, IntegrationType};
-use crate::services::work_runs::model::{WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::repository::WorkRunsRepository;
 
-use super::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
-
 #[derive(Debug)]
-enum PollError {
+pub(super) enum PollError {
     Integration(IntegrationError),
 }
 
-impl std::fmt::Display for PollError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for PollError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Integration(e) => write!(f, "{}", e),
         }
@@ -35,12 +32,12 @@ impl From<IntegrationError> for PollError {
 }
 
 pub struct PollerService {
-    project_configs: ProjectConfigsService,
-    work_runs_repo: WorkRunsRepository,
-    providers_repo: IntegrationProvidersRepository,
-    db: PgPool,
+    pub(super) project_configs: ProjectConfigsService,
+    pub(super) work_runs_repo: WorkRunsRepository,
+    pub(super) providers_repo: IntegrationProvidersRepository,
+    pub(super) db: PgPool,
     poll_period: Duration,
-    task_fetcher: Option<Arc<dyn TaskFetcher>>,
+    pub(super) task_fetcher: Option<Arc<dyn TaskFetcher>>,
 }
 
 impl PollerService {
@@ -141,236 +138,9 @@ impl PollerService {
             project_count,
         );
     }
-
-    async fn poll_project(
-        &self,
-        config: &ProjectConfig,
-    ) -> Result<(usize, usize, usize), PollError> {
-        tracing::debug!(
-            project_config_id = %config.id,
-            team_id = %config.team_id,
-            project_id = %config.external_project_id,
-            provider_id = ?config.provider_id,
-            pickup_column = %config.pickup_column,
-            progress_column = %config.progress_column,
-            target_column = %config.target_column,
-            "polling project config",
-        );
-
-        let settings = match self.project_configs.effective_settings(config).await {
-            Ok(settings) => settings,
-            Err(e) => {
-                tracing::warn!(
-                    project_config_id = %config.id,
-                    error = %e,
-                    "skipping poll — failed to resolve effective settings"
-                );
-                return Ok((0, 0, 0));
-            }
-        };
-        let provider_id = match config.provider_id {
-            Some(pid) => pid,
-            None => {
-                tracing::warn!(
-                    project_id = %config.external_project_id,
-                    "skipping poll — no provider configured for project"
-                );
-                return Ok((0, 0, 0));
-            }
-        };
-
-        let provider = match self
-            .providers_repo
-            .find_by_id(&self.db, provider_id, config.team_id)
-            .await
-        {
-            Ok(p) => p,
-            Err(e) => {
-                tracing::warn!(
-                    provider_id = %provider_id,
-                    project_id = %config.external_project_id,
-                    error = %e,
-                    "skipping poll — provider not found"
-                );
-                return Ok((0, 0, 0));
-            }
-        };
-
-        let fetcher: Arc<dyn TaskFetcher> = match &self.task_fetcher {
-            Some(f) => Arc::clone(f),
-            None => {
-                let client = match provider.provider_type {
-                    IntegrationType::Kaneo => {
-                        IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
-                    }
-                };
-                Arc::new(client)
-            }
-        };
-
-        let tasks = fetcher
-            .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
-            .await?;
-
-        let tasks_found = tasks.len();
-        let mut inserted = 0;
-        let mut skipped = 0;
-
-        tracing::debug!(
-            project_config_id = %config.id,
-            project_id = %config.external_project_id,
-            pickup_column = %config.pickup_column,
-            tasks_found,
-            tasks = ?tasks
-                .iter()
-                .map(|task| format!("{}:{}", task.id, task.title))
-                .collect::<Vec<String>>(),
-            "fetched provider tasks for project",
-        );
-
-        for task in &tasks {
-            let repo_urls = config.repo_urls.join("\n");
-            let repo_names = config.repo_full_names.join("\n");
-            let repo_layout = repo_layout(&config.repo_full_names);
-            let mut prompt_text = crate::services::poller::template::render_template(
-                &settings.prompt_template,
-                &crate::services::poller::template::TemplateVars {
-                    task_title: &task.title,
-                    task_body: task.description.as_deref().unwrap_or(""),
-                    repo_url: &config.repo_url,
-                    repo_urls: &repo_urls,
-                    repo_names: &repo_names,
-                    repo_layout: &repo_layout,
-                    review_target_pr_url: "",
-                },
-            );
-
-            prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
-
-            if !config.repo_full_names.is_empty() {
-                prompt_text.push_str(GITHUB_INSTRUCTION);
-            }
-            let task_slug = build_task_slug(task);
-            let params = InsertWorkRunParams {
-                team_id: config.team_id,
-                external_task_ref: task.id.clone(),
-                project_config_id: config.id,
-                prompt_text,
-                repo_url: config.repo_url.clone(),
-                repo_full_names: config.repo_full_names.clone(),
-                agents_md: settings.agents_md.clone(),
-                status: WorkRunStatus::Pending,
-                work_type: WorkRunType::Implementation,
-                parent_work_run_id: None,
-                task_body: task.description.clone().unwrap_or_default(),
-                task_title: Some(task.title.clone()),
-                task_slug,
-                review_target_pr_url: None,
-                review_target_repo_full_name: None,
-            };
-
-            match self
-                .work_runs_repo
-                .insert_work_run_if_not_active(&self.db, params)
-                .await
-            {
-                Ok(true) => inserted += 1,
-                Ok(false) => {
-                    skipped += 1;
-                    tracing::debug!(
-                        project_config_id = %config.id,
-                        project_id = %config.external_project_id,
-                        task_id = %task.id,
-                        task_title = %task.title,
-                        "skipped work_run insert because an active run already exists",
-                    );
-                }
-                Err(e) => {
-                    tracing::error!("Failed to insert work_run for task {}: {}", task.id, e);
-                }
-            }
-        }
-
-        Ok((tasks_found, inserted, skipped))
-    }
-
-    async fn reconcile_blocked_runs(&self, config: &ProjectConfig) -> Result<(), PollError> {
-        let provider_id = match config.provider_id {
-            Some(pid) => pid,
-            None => return Ok(()),
-        };
-
-        let provider = match self
-            .providers_repo
-            .find_by_id(&self.db, provider_id, config.team_id)
-            .await
-        {
-            Ok(p) => p,
-            Err(_) => return Ok(()),
-        };
-
-        let client: Arc<dyn TaskFetcher> = Arc::new(match provider.provider_type {
-            IntegrationType::Kaneo => {
-                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
-            }
-        });
-
-        let blocked_runs = match self
-            .work_runs_repo
-            .find_blocked_by_project(&self.db, config.id)
-            .await
-        {
-            Ok(runs) => runs,
-            Err(e) => {
-                tracing::warn!(
-                    project_config_id = %config.id,
-                    error = %e,
-                    "failed to load blocked work runs for reconciliation",
-                );
-                Vec::new()
-            }
-        };
-
-        for run in &blocked_runs {
-            let tasks = client
-                .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
-                .await?;
-
-            if tasks.iter().any(|t| t.id == run.external_task_ref) {
-                self.work_runs_repo
-                    .reset_blocked_to_pending(&self.db, run.id)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::warn!(
-                            work_run_id = %run.id,
-                            error = %e,
-                            "failed to unblock work run",
-                        );
-                    });
-            }
-        }
-
-        Ok(())
-    }
 }
 
 #[must_use]
 pub(crate) fn repo_layout(repo_full_names: &[String]) -> String {
-    repo_full_names
-        .iter()
-        .map(|name| format!("{name}: ./{}", name.replace('/', "-")))
-        .collect::<Vec<String>>()
-        .join("\n")
-}
-
-fn build_task_slug(task: &IntegrationTask) -> Option<String> {
-    let project_slug = task.project_slug.as_deref()?;
-    let number = match task.number {
-        Some(n) => n.to_string(),
-        None => {
-            let id_prefix = &task.id[..task.id.len().min(8)];
-            id_prefix.to_owned()
-        }
-    };
-    Some(format!("{project_slug}-{number}"))
+    project::repo_layout(repo_full_names)
 }

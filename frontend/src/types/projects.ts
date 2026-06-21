@@ -19,6 +19,7 @@ export interface ProjectConfig {
   reviewPickupColumn?: string | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
+  maxInProgressTasks?: number | null;
   createdAt: string;
   providerId?: string;
 }
@@ -43,6 +44,7 @@ export interface CreateProjectRequest {
   reviewPickupColumn?: string | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
+  maxInProgressTasks?: number | null;
 }
 
 export interface UpdateProjectRequest {
@@ -63,6 +65,7 @@ export interface UpdateProjectRequest {
   reviewPickupColumn?: string | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
+  maxInProgressTasks?: number | null;
   providerId?: string;
 }
 

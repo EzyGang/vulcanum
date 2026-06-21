@@ -197,9 +197,21 @@ export const ProjectFormTextFields = (): JSX.Element => {
                     (!f.reviewEnabledOverride.value &&
                       !f.reviewPickupColumnOverride.value &&
                       !f.reviewMaxTurnsOverride.value &&
-                      !f.reviewPromptTemplateOverride.value)
+                      !f.reviewPromptTemplateOverride.value &&
+                      !f.maxInProgressTasksOverride.value)
                   }
                   onClick={f.onResetReviewOverrides}
+                />
+              </div>
+              <div class='flex flex-col gap-2'>
+                <Label for='field-max-in-progress-tasks'>Project In-progress Limit Override</Label>
+                <Input
+                  id='field-max-in-progress-tasks'
+                  type='number'
+                  min='1'
+                  value={f.maxInProgressTasks.value}
+                  onInput={f.onMaxInProgressTasksInput}
+                  disabled={m.submitting.value}
                 />
               </div>
               <CheckboxWithLabel

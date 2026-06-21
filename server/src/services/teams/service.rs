@@ -141,6 +141,7 @@ impl TeamsService {
                 params.review_pickup_column.as_deref(),
                 params.review_max_turns,
                 params.review_prompt_template.as_deref(),
+                params.max_in_progress_tasks,
             )
             .await
     }

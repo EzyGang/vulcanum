@@ -1,142 +1,12 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use sqlx::PgPool;
-use tokio::sync::RwLock;
-use uuid::Uuid;
 
-use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
-use crate::services::model_providers::service::ModelProvidersService;
-use crate::services::poller::service::PollerService;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
-use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::providers::client::TaskFetcher;
+use crate::services::poller::poller_test_support::{
+    build_service, insert_active_run, insert_project_config, insert_provider, make_task,
+    MockTaskFetcher,
+};
 use crate::services::providers::errors::IntegrationError;
-use crate::services::providers::model::IntegrationTask;
-use crate::services::teams::repository::TeamsRepository;
-use crate::services::teams::service::TeamsService;
-use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::test_helpers::DEFAULT_TEAM_ID;
-
-struct MockTaskFetcher {
-    responses: RwLock<HashMap<String, Result<Vec<IntegrationTask>, IntegrationError>>>,
-}
-
-impl MockTaskFetcher {
-    fn new() -> Self {
-        Self {
-            responses: RwLock::new(HashMap::new()),
-        }
-    }
-
-    async fn set_tasks(&self, project_id: &str, column_slug: &str, tasks: Vec<IntegrationTask>) {
-        let key = format!("{}:{}", project_id, column_slug);
-        self.responses.write().await.insert(key, Ok(tasks));
-    }
-
-    async fn set_error(&self, project_id: &str, column_slug: &str, error: IntegrationError) {
-        let key = format!("{}:{}", project_id, column_slug);
-        self.responses.write().await.insert(key, Err(error));
-    }
-}
-
-#[async_trait]
-impl TaskFetcher for MockTaskFetcher {
-    async fn fetch_tasks_in_column(
-        &self,
-        project_id: &str,
-        column_slug: &str,
-    ) -> Result<Vec<IntegrationTask>, IntegrationError> {
-        let key = format!("{}:{}", project_id, column_slug);
-        match self.responses.read().await.get(&key) {
-            Some(Ok(tasks)) => Ok(tasks.clone()),
-            Some(Err(e)) => Err(IntegrationError::Other(format!("{}", e))),
-            None => Err(IntegrationError::Other("unreachable".to_owned())),
-        }
-    }
-}
-
-fn make_task(id: &str, title: &str) -> IntegrationTask {
-    IntegrationTask {
-        id: id.to_owned(),
-        title: title.to_owned(),
-        project_id: "test-proj".to_owned(),
-        description: None,
-        number: Some(1),
-        project_slug: Some("tst".to_owned()),
-    }
-}
-
-async fn insert_provider(pool: &PgPool) -> Uuid {
-    let id = Uuid::new_v4();
-
-    crate::test_helpers::ensure_default_team(pool).await;
-
-    sqlx::query!(
-        "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) \
-         VALUES ($1, $2, 'Test Provider', 'http://test', 'key')",
-        id,
-        DEFAULT_TEAM_ID,
-    )
-    .execute(pool)
-    .await
-    .expect("Should insert provider");
-
-    id
-}
-
-async fn insert_project_config(
-    pool: &PgPool,
-    external_project_id: &str,
-    provider_id: Uuid,
-) -> Uuid {
-    let id = Uuid::new_v4();
-
-    crate::test_helpers::ensure_default_team(pool).await;
-
-    sqlx::query!(
-        "INSERT INTO project_configs \
-         (id, team_id, external_project_id, enabled, pickup_column, target_column, progress_column, \
-           prompt_template, repo_url, provider_id) \
-         VALUES ($1, $2, $3, true, 'to-do', 'in-review', 'in-progress', \
-          'Review {{task_title}}', '', $4)",
-        id,
-        DEFAULT_TEAM_ID,
-        external_project_id,
-        provider_id,
-    )
-    .execute(pool)
-    .await
-    .expect("Should insert project config");
-
-    id
-}
-
-fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
-    let repo = ProjectConfigsRepository::new();
-    let project_configs = ProjectConfigsService::new(
-        repo.clone(),
-        db.clone(),
-        crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            db.clone(),
-            ModelCatalogClient::new(),
-        ),
-        TeamsService::new(TeamsRepository::new(), db.clone()),
-    );
-    let service = PollerService::new(
-        project_configs,
-        WorkRunsRepository::new(),
-        crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
-        db,
-        30,
-    );
-
-    service.with_fetcher(mock)
-}
 
 #[sqlx::test]
 async fn poller_inserts_tasks(pool: PgPool) {
@@ -166,17 +36,12 @@ async fn poller_inserts_tasks(pool: PgPool) {
     .await
     .expect("Should query work_runs");
 
-    assert_eq!(rows.len(), 2, "Should insert 2 work_runs");
+    assert_eq!(rows.len(), 1, "Should respect default project capacity");
     assert_eq!(rows[0].external_task_ref, "task-1");
     assert_eq!(rows[0].task_slug.as_deref(), Some("tst-1"));
     assert_eq!(rows[0].task_title.as_deref(), Some("Fix login bug"));
     assert!(rows[0].prompt_text.starts_with("Review Fix login bug"));
     assert!(rows[0].prompt_text.contains("Debian-based container"));
-    assert_eq!(rows[1].external_task_ref, "task-2");
-    assert_eq!(rows[1].task_slug.as_deref(), Some("tst-1"));
-    assert_eq!(rows[1].task_title.as_deref(), Some("Add dark mode"));
-    assert!(rows[1].prompt_text.starts_with("Review Add dark mode"));
-    assert!(rows[1].prompt_text.contains("Debian-based container"));
 }
 
 #[sqlx::test]
@@ -184,7 +49,7 @@ async fn poller_skips_duplicates(pool: PgPool) {
     let mock = Arc::new(MockTaskFetcher::new());
     let provider_id = insert_provider(&pool).await;
 
-    let _project_id = insert_project_config(&pool, "kaneo-proj-2", provider_id).await;
+    insert_project_config(&pool, "kaneo-proj-2", provider_id).await;
 
     mock.set_tasks(
         "kaneo-proj-2",
@@ -211,6 +76,62 @@ async fn poller_skips_duplicates(pool: PgPool) {
         1,
         "Should not insert duplicate work_run"
     );
+}
+
+#[sqlx::test]
+async fn poller_respects_team_default_project_capacity(pool: PgPool) {
+    let mock = Arc::new(MockTaskFetcher::new());
+    let provider_id = insert_provider(&pool).await;
+    let project_id = insert_project_config(&pool, "kaneo-proj-capacity-default", provider_id).await;
+    insert_active_run(&pool, project_id, "task-active").await;
+
+    let service = build_service(mock, pool.clone());
+    service.poll_once().await;
+
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE project_config_id = $1",
+        project_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should count work runs");
+
+    assert_eq!(row.count.unwrap(), 1);
+}
+
+#[sqlx::test]
+async fn poller_allows_project_capacity_override(pool: PgPool) {
+    let mock = Arc::new(MockTaskFetcher::new());
+    let provider_id = insert_provider(&pool).await;
+    let project_id =
+        insert_project_config(&pool, "kaneo-proj-capacity-override", provider_id).await;
+    insert_active_run(&pool, project_id, "task-active").await;
+    sqlx::query!(
+        "UPDATE project_configs SET max_in_progress_tasks = 2 WHERE id = $1",
+        project_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should set project override");
+    mock.set_tasks(
+        "kaneo-proj-capacity-override",
+        "to-do",
+        vec![make_task("task-new", "Add one more task")],
+    )
+    .await;
+
+    let service = build_service(mock, pool.clone());
+    service.poll_once().await;
+
+    let row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM work_runs WHERE project_config_id = $1",
+        project_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should count work runs");
+
+    assert_eq!(row.count.unwrap(), 2);
 }
 
 #[sqlx::test]

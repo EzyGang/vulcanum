@@ -1,5 +1,4 @@
 use vulcanum_shared::api_types::SubmitResultRequest;
-use vulcanum_shared::review_feedback::review_requires_implementation;
 use vulcanum_shared::runtime::types::FinishStatus;
 
 use crate::services::providers::client::IntegrationClient;
@@ -61,13 +60,32 @@ impl WorkRunsService {
         let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
         let is_blocked = matches!(params.finish_status, Some(FinishStatus::Blocked));
 
+        let review_pickup_column = match is_review {
+            true => match self
+                .project_configs
+                .effective_settings(&project_config)
+                .await
+            {
+                Ok(settings) => settings.review_pickup_column,
+                Err(e) => {
+                    tracing::warn!(
+                        project_config_id = %run.project_config_id,
+                        work_run_id = %run.id,
+                        error = %e,
+                        "failed to resolve review pickup column",
+                    );
+                    project_config
+                        .review_pickup_column
+                        .clone()
+                        .unwrap_or(project_config.target_column.clone())
+                }
+            },
+            false => String::new(),
+        };
+
         let result_column = match (is_blocked, is_review) {
             (true, _) => None,
-            (false, true) => review_result_column(
-                params.review_already_exists,
-                params.review_body.as_deref(),
-                &project_config.progress_column,
-            ),
+            (false, true) => Some(review_pickup_column.as_str()),
             (false, false) => Some(implementation_result_column(
                 params.finish_status,
                 status,
@@ -107,22 +125,6 @@ impl WorkRunsService {
                 "failed to add task comment",
             );
         }
-    }
-}
-
-#[must_use]
-pub(crate) fn review_result_column<'a>(
-    review_already_exists: bool,
-    review_body: Option<&str>,
-    progress_column: &'a str,
-) -> Option<&'a str> {
-    if review_already_exists {
-        return None;
-    }
-
-    match review_body {
-        Some(body) if review_requires_implementation(body) => Some(progress_column),
-        Some(_) | None => None,
     }
 }
 

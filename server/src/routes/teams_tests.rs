@@ -27,4 +27,5 @@ async fn defaults_returns_review_prompt_template(pool: sqlx::PgPool) {
         body["review_prompt_template"].as_str(),
         Some(DEFAULT_REVIEW_PROMPT_TEMPLATE)
     );
+    assert_eq!(body["max_in_progress_tasks"].as_i64(), Some(1));
 }

@@ -3,6 +3,8 @@ pub mod service;
 pub mod template;
 
 #[cfg(test)]
+mod poller_test_support;
+#[cfg(test)]
 mod poller_tests;
 #[cfg(test)]
 mod prompts_tests;

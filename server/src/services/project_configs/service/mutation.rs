@@ -112,6 +112,7 @@ impl ProjectConfigsService {
                         .review_prompt_template
                         .as_ref()
                         .map(|value| value.as_deref()),
+                    max_in_progress_tasks: params.max_in_progress_tasks,
                     external_workspace_id: params.external_workspace_id.as_deref(),
                     enabled: params.enabled,
                     integration_type: params.integration_type,

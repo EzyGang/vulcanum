@@ -23,6 +23,7 @@ pub async fn list(
 pub async fn defaults(_auth: TeamPrincipal) -> Result<HttpResponse, AppError> {
     Ok(HttpResponse::Ok().json(TeamDefaultsResponse {
         review_prompt_template: DEFAULT_REVIEW_PROMPT_TEMPLATE,
+        max_in_progress_tasks: 1,
     }))
 }
 
