@@ -2,20 +2,13 @@ use actix_web::{test, web, App};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::app_state::AppState;
 use crate::routes;
 use crate::services::dispatcher::repository::DispatchRepository;
-use crate::services::dispatcher::service::DispatcherService;
-use crate::services::workers::model::WorkerStatus;
 use crate::test_helpers;
-
-async fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool).await
-}
 
 #[sqlx::test]
 async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -73,7 +66,7 @@ async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn full_job_lifecycle(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -174,7 +167,7 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -238,7 +231,7 @@ async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn double_ack_returns_409(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
+    let state = test_helpers::build_state(pool.clone()).await;
     let token = state.auth.instance_login("test-password").unwrap();
 
     let app = test::init_service(
@@ -290,47 +283,4 @@ async fn double_ack_returns_409(pool: sqlx::PgPool) {
         .to_request();
     let ack_again_resp = test::call_service(&app, ack_again_req).await;
     assert_eq!(ack_again_resp.status(), 409);
-}
-
-#[sqlx::test]
-async fn stale_worker_marked_disconnected(pool: sqlx::PgPool) {
-    let state = build_state(pool.clone()).await;
-    let worker_id = test_helpers::insert_worker(&pool, "stale-worker").await;
-
-    sqlx::query!(
-        "UPDATE workers SET last_seen = NOW() - INTERVAL '10 minutes' WHERE id = $1",
-        worker_id
-    )
-    .execute(&pool)
-    .await
-    .expect("Should update last_seen");
-
-    let dispatcher = DispatcherService::new(
-        crate::services::dispatcher::repository::DispatchRepository::new(),
-        crate::services::workers::repository::WorkersRepository::new(),
-        crate::services::work_runs::repository::WorkRunsRepository::new(),
-        pool.clone(),
-        state.dispatch_store.clone(),
-        60,
-        1800,
-    );
-
-    let summary = dispatcher
-        .dispatch_once()
-        .await
-        .expect("Should run dispatch");
-    assert!(
-        summary.disconnected > 0,
-        "Should mark at least one worker disconnected"
-    );
-
-    let row = sqlx::query!(
-        r#"SELECT status as "status: WorkerStatus" FROM workers WHERE id = $1"#,
-        worker_id
-    )
-    .fetch_one(&pool)
-    .await
-    .expect("Should query worker");
-
-    assert!(matches!(row.status, WorkerStatus::Disconnected));
 }

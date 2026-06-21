@@ -4,21 +4,10 @@ ALTER TABLE teams
     ADD COLUMN review_enabled BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN review_pickup_column TEXT NOT NULL DEFAULT 'in-review',
     ADD COLUMN review_max_turns INTEGER NOT NULL DEFAULT 1,
-    ADD COLUMN review_prompt_template TEXT NOT NULL DEFAULT 'Review this pull request for the linked task.
+    ADD COLUMN review_prompt_template TEXT NOT NULL DEFAULT '';
 
-Task title:
-{{task_title}}
-
-Task body:
-{{task_body}}
-
-Focus pull request:
-{{review_target_pr_url}}
-
-Repository:
-{{repo_names}}
-
-Follow the repository AGENTS.md instructions. Review code quality, correctness, maintainability, and project conventions. Do not edit files, commit, push, or create pull requests. Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes. Include this marker in the review body: {{review_marker}}. If the marker already exists on the pull request, do not post another review. When done, call finish_run with status completed, review_url if available, review_body, and review_already_exists.';
+ALTER TABLE teams
+    ALTER COLUMN review_prompt_template DROP DEFAULT;
 
 ALTER TABLE project_configs
     ADD COLUMN review_enabled BOOLEAN,
@@ -67,9 +56,11 @@ CREATE UNIQUE INDEX unique_active_implementation_task
     ON work_runs(project_config_id, external_task_ref)
     WHERE status IN ('pending', 'dispatched', 'running') AND work_type = 'implementation';
 
-CREATE UNIQUE INDEX unique_review_run_per_task_pr
+CREATE UNIQUE INDEX unique_active_review_run_per_task_pr
     ON work_runs(project_config_id, external_task_ref, review_target_pr_url)
-    WHERE work_type = 'pull_request_review' AND review_target_pr_url IS NOT NULL;
+    WHERE work_type = 'pull_request_review'
+      AND review_target_pr_url IS NOT NULL
+      AND status IN ('pending', 'dispatched', 'running');
 
 CREATE TRIGGER trg_task_prs_updated_at
     BEFORE UPDATE ON task_prs FOR EACH ROW

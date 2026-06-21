@@ -3,7 +3,11 @@ use uuid::Uuid;
 use vulcanum_shared::api_types::SubmitResultRequest;
 
 use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
+use crate::services::work_runs::repository::queries::InsertWorkRunParams;
+use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::record_review::review_comment;
+use crate::services::work_runs::service::review_feedback::review_requires_implementation;
+use crate::test_helpers;
 
 #[test]
 fn review_comment_reports_posted_review_with_url() {
@@ -53,6 +57,93 @@ fn review_comment_reports_existing_review_without_target_pr() {
         review_comment(&run, &params),
         "Review already existed for the pull request"
     );
+}
+
+#[test]
+fn review_requires_implementation_for_critical_items() {
+    let body = "## CRITICAL\n- Data loss on retry\n\n## WARNINGS\n- None\n\n## SUGGESTIONS\n- Rename helper";
+
+    assert!(review_requires_implementation(body));
+}
+
+#[test]
+fn review_requires_implementation_for_warning_items() {
+    let body = "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None";
+
+    assert!(review_requires_implementation(body));
+}
+
+#[test]
+fn review_does_not_require_implementation_for_suggestions_only() {
+    let body =
+        "## CRITICAL\n- None\n\n## WARNINGS\n- No warnings\n\n## SUGGESTIONS\n- Add a helper later";
+
+    assert!(!review_requires_implementation(body));
+}
+
+#[sqlx::test]
+async fn actionable_review_enqueues_fix_run_for_existing_pr(pool: sqlx::PgPool) {
+    let state = test_helpers::build_state(pool.clone()).await;
+    let project_config_id = test_helpers::insert_project_config(&pool, "review-fix-project").await;
+    let run = WorkRunsRepository::new()
+        .insert_work_run(
+            &pool,
+            InsertWorkRunParams {
+                team_id: test_helpers::DEFAULT_TEAM_ID,
+                external_task_ref: "task-review-fix".to_owned(),
+                project_config_id,
+                prompt_text: "Review".to_owned(),
+                repo_url: "https://github.com/acme/app".to_owned(),
+                repo_full_names: vec!["acme/app".to_owned()],
+                agents_md: String::new(),
+                status: WorkRunStatus::Completed,
+                work_type: WorkRunType::PullRequestReview,
+                parent_work_run_id: None,
+                task_body: "Fix the issue".to_owned(),
+                task_title: Some("Fix issue".to_owned()),
+                task_slug: Some("APP-1".to_owned()),
+                review_target_pr_url: Some("https://github.com/acme/app/pull/7".to_owned()),
+                review_target_repo_full_name: Some("acme/app".to_owned()),
+            },
+        )
+        .await
+        .expect("review run should insert");
+    let mut params = submit_params(
+        false,
+        Some("https://github.com/acme/app/pull/7#pullrequestreview-1"),
+    );
+    params.review_body = Some(
+        "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None"
+            .to_owned(),
+    );
+
+    state.jobs.record_review_result(&run, &params).await;
+
+    let fix_run = sqlx::query!(
+        r#"SELECT status as "status: WorkRunStatus", work_type as "work_type: WorkRunType",
+           parent_work_run_id, prompt_text, review_target_pr_url, review_target_repo_full_name
+           FROM work_runs WHERE parent_work_run_id = $1"#,
+        run.id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("fix run should be inserted");
+
+    assert!(matches!(fix_run.status, WorkRunStatus::Pending));
+    assert!(matches!(fix_run.work_type, WorkRunType::Implementation));
+    assert_eq!(fix_run.parent_work_run_id, Some(run.id));
+    assert_eq!(
+        fix_run.review_target_pr_url.as_deref(),
+        Some("https://github.com/acme/app/pull/7")
+    );
+    assert_eq!(
+        fix_run.review_target_repo_full_name.as_deref(),
+        Some("acme/app")
+    );
+    assert!(fix_run.prompt_text.contains("Missing authorization check"));
+    assert!(fix_run
+        .prompt_text
+        .contains("Do not create a new pull request"));
 }
 
 fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {

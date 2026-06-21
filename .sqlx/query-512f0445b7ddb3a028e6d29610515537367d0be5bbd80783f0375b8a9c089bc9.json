@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT status as \"status: WorkRunStatus\", work_type as \"work_type: WorkRunType\",\n           parent_work_run_id, prompt_text, review_target_pr_url, review_target_repo_full_name\n           FROM work_runs WHERE parent_work_run_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "status: WorkRunStatus",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "work_type: WorkRunType",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "parent_work_run_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "review_target_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "review_target_repo_full_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "512f0445b7ddb3a028e6d29610515537367d0be5bbd80783f0375b8a9c089bc9"
+}

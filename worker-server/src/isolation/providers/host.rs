@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use tokio::fs;
-use vulcanum_shared::api_types::JobRepo;
+use vulcanum_shared::api_types::{JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -35,6 +35,7 @@ impl IsolationProvider for HostIsolation {
         secrets: &HashMap<String, String>,
         env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
+        work_type: WorkRunType,
         agents_md: &str,
         generated_opencode_config: &str,
         repos: &[JobRepo],
@@ -44,7 +45,7 @@ impl IsolationProvider for HostIsolation {
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
         workspace::write_env_files(workdir, agents_md, generated_opencode_config).await?;
-        workspace::write_finish_run_tool(workdir).await?;
+        workspace::write_finish_run_tool(workdir, work_type).await?;
 
         let token = secrets.get("GITHUB_TOKEN").map(|s| s.as_str());
         let workspace_repos = workspace::prepare_repos(workdir, repos, token).await?;

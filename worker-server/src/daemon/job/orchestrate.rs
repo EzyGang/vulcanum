@@ -222,6 +222,7 @@ pub(crate) async fn handle_job(
             &secrets,
             &env_vars,
             &limits,
+            job.work_type,
             &job.agents_md,
             &job.generated_opencode_config,
             &job.repos,
@@ -252,6 +253,43 @@ pub(crate) async fn handle_job(
             return Ok(());
         }
     };
+
+    if let (Some(pr_url), Some(repo_full_name)) = (
+        job.review_target_pr_url.as_deref(),
+        job.review_target_repo_full_name.as_deref(),
+    ) {
+        match crate::isolation::checkout::checkout_pull_request(
+            &isolated_env.workspace_dir,
+            &isolated_env.repos,
+            repo_full_name,
+            pr_url,
+            job.github_token.as_deref(),
+        )
+        .await
+        {
+            Ok(()) => (),
+            Err(e) => {
+                tracing::error!(
+                    worker_id = %worker_id,
+                    work_run_id = %job_id,
+                    repo = %repo_full_name,
+                    pr_url = %pr_url,
+                    error = %e,
+                    "pull request checkout failed",
+                );
+                provider.cleanup(&isolated_env).await;
+                submit_failed_result(
+                    client,
+                    worker_state,
+                    journal,
+                    job_id,
+                    &FailedResult::empty(),
+                )
+                .await;
+                return Ok(());
+            }
+        }
+    }
 
     let prompt_text = super::prompts::initial_prompt(
         job.work_type,

@@ -1,3 +1,4 @@
+use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -17,6 +18,7 @@ async fn host_isolation_creates_workdir_and_config() {
             &secrets,
             &env_vars,
             &limits,
+            WorkRunType::Implementation,
             "# AGENTS.md",
             "{}",
             &[],
@@ -72,6 +74,7 @@ async fn host_isolation_writes_agents_md() {
             &secrets,
             &env_vars,
             &limits,
+            WorkRunType::Implementation,
             agents_content,
             "",
             &[],
@@ -109,7 +112,16 @@ async fn host_isolation_skips_agents_md_when_empty() {
 
     let _ = std::fs::create_dir_all(&workdir);
     let result = isolation
-        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", &[])
+        .prepare(
+            &workdir,
+            &secrets,
+            &env_vars,
+            &limits,
+            WorkRunType::Implementation,
+            "",
+            "",
+            &[],
+        )
         .await;
 
     let agents_path = workdir
@@ -142,7 +154,16 @@ async fn host_isolation_writes_generated_config() {
     let generated = r#"{"model":"anthropic/claude-sonnet-4-5"}"#;
     let _ = std::fs::create_dir_all(&workdir);
     let env = isolation
-        .prepare(&workdir, &secrets, &env_vars, &limits, "", generated, &[])
+        .prepare(
+            &workdir,
+            &secrets,
+            &env_vars,
+            &limits,
+            WorkRunType::Implementation,
+            "",
+            generated,
+            &[],
+        )
         .await
         .expect("prepare should succeed");
 
@@ -165,7 +186,16 @@ async fn host_isolation_cleanup_deletes_workdir() {
     let workdir = std::env::temp_dir().join("vulcanum-work-test-host-cleanup");
 
     let env = isolation
-        .prepare(&workdir, &secrets, &env_vars, &limits, "", "", &[])
+        .prepare(
+            &workdir,
+            &secrets,
+            &env_vars,
+            &limits,
+            WorkRunType::Implementation,
+            "",
+            "",
+            &[],
+        )
         .await
         .expect("prepare should succeed");
 

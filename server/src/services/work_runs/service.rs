@@ -7,6 +7,7 @@ pub mod get_job;
 pub mod list;
 pub mod poll;
 pub(crate) mod record_review;
+pub(crate) mod review_feedback;
 pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;
@@ -15,6 +16,8 @@ pub(crate) mod sync_task_tracker;
 mod record_review_tests;
 #[cfg(test)]
 mod spawn_review_tests;
+#[cfg(test)]
+mod sync_task_tracker_tests;
 #[cfg(test)]
 mod work_runs_tests;
 

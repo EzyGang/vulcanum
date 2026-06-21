@@ -16,6 +16,7 @@ use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::repository::UsersRepository;
@@ -33,9 +34,10 @@ pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
 
 pub async fn ensure_default_team(pool: &sqlx::PgPool) {
     sqlx::query!(
-        "INSERT INTO teams (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING",
+        "INSERT INTO teams (id, name, review_prompt_template) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING",
         DEFAULT_TEAM_ID,
         "Default team",
+        DEFAULT_REVIEW_PROMPT_TEMPLATE,
     )
     .execute(pool)
     .await
@@ -45,10 +47,15 @@ pub async fn ensure_default_team(pool: &sqlx::PgPool) {
 pub async fn insert_team(pool: &sqlx::PgPool, name: &str) -> Uuid {
     let id = Uuid::new_v4();
 
-    sqlx::query!("INSERT INTO teams (id, name) VALUES ($1, $2)", id, name)
-        .execute(pool)
-        .await
-        .expect("Should insert team");
+    sqlx::query!(
+        "INSERT INTO teams (id, name, review_prompt_template) VALUES ($1, $2, $3)",
+        id,
+        name,
+        DEFAULT_REVIEW_PROMPT_TEMPLATE,
+    )
+    .execute(pool)
+    .await
+    .expect("Should insert team");
 
     id
 }

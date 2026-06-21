@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::JobRepo;
+use vulcanum_shared::api_types::{JobRepo, WorkRunType};
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -30,6 +30,7 @@ impl IsolationProvider for KataIsolation {
         secrets: &std::collections::HashMap<String, String>,
         env_vars: &std::collections::HashMap<String, String>,
         limits: &ResourceLimits,
+        work_type: WorkRunType,
         agents_md: &str,
         generated_opencode_config: &str,
         repos: &[JobRepo],
@@ -40,6 +41,7 @@ impl IsolationProvider for KataIsolation {
                 secrets,
                 env_vars,
                 limits,
+                work_type,
                 agents_md,
                 generated_opencode_config,
                 repos,

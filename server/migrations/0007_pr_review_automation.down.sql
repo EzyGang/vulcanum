@@ -1,6 +1,6 @@
 DROP TRIGGER IF EXISTS trg_task_prs_updated_at ON task_prs;
 
-DROP INDEX IF EXISTS unique_review_run_per_task_pr;
+DROP INDEX IF EXISTS unique_active_review_run_per_task_pr;
 DROP INDEX IF EXISTS unique_active_implementation_task;
 
 CREATE UNIQUE INDEX unique_active_task

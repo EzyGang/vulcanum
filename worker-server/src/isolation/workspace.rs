@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::JobRepo;
+use vulcanum_shared::api_types::{JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 
-use crate::daemon::job::finish_tool::FINISH_RUN_TOOL_TS;
+use crate::daemon::job::finish_tool::finish_run_tool_ts;
 
 #[must_use]
 pub fn container_name(workdir: &Path) -> String {
@@ -130,7 +130,10 @@ pub(crate) fn repo_dir_name(full_name: &str) -> String {
     sanitize_repo_dir(repo_name)
 }
 
-pub async fn write_finish_run_tool(workdir: &Path) -> Result<(), HarnessError> {
+pub async fn write_finish_run_tool(
+    workdir: &Path,
+    work_type: WorkRunType,
+) -> Result<(), HarnessError> {
     let tools_dir = workdir
         .join("home")
         .join(".config")
@@ -140,9 +143,12 @@ pub async fn write_finish_run_tool(workdir: &Path) -> Result<(), HarnessError> {
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create tools dir: {e}")))?;
 
-    fs::write(tools_dir.join("finish_run.ts"), FINISH_RUN_TOOL_TS)
-        .await
-        .map_err(|e| HarnessError::Crash(format!("failed to write finish_run tool: {e}")))?;
+    fs::write(
+        tools_dir.join("finish_run.ts"),
+        finish_run_tool_ts(work_type),
+    )
+    .await
+    .map_err(|e| HarnessError::Crash(format!("failed to write finish_run tool: {e}")))?;
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::api_types::JobRepo;
+use crate::api_types::{JobRepo, WorkRunType};
 use crate::runtime::errors::HarnessError;
 use crate::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -13,6 +13,7 @@ pub trait IsolationProvider {
         secrets: &HashMap<String, String>,
         env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
+        work_type: WorkRunType,
         agents_md: &str,
         generated_opencode_config: &str,
         repos: &[JobRepo],

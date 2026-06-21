@@ -83,7 +83,6 @@ impl WorkRunsService {
         }
 
         for task_pr in &task_prs {
-            let review_marker = review_marker(&run.external_task_ref, &task_pr.pr_url);
             let repo_names = task_pr.repo_full_name.clone();
             let repo_urls = crate::util::github::github_repo_url(&task_pr.repo_full_name);
             let prompt_text = render_template(
@@ -96,7 +95,6 @@ impl WorkRunsService {
                     repo_names: &repo_names,
                     repo_layout: &repo_layout(std::slice::from_ref(&repo_names)),
                     review_target_pr_url: &task_pr.pr_url,
-                    review_marker: &review_marker,
                 },
             );
 
@@ -190,9 +188,4 @@ pub(crate) fn upsert_pr_block(body: &str, pr_urls: &[String]) -> String {
             false => format!("{}\n\n{}", body.trim_end(), block),
         },
     }
-}
-
-#[must_use]
-fn review_marker(external_task_ref: &str, pr_url: &str) -> String {
-    format!("<!-- vulcanum-review task={external_task_ref} pr={pr_url} -->")
 }
