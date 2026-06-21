@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n              pc.small_model_provider_key, pc.small_model_id,\n              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,\n              pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.enabled = true\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n             pc.small_model_provider_key, pc.small_model_id,\n             pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n             pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.team_id = $1\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -134,17 +134,24 @@
       },
       {
         "ordinal": 24,
+        "name": "max_in_progress_tasks",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 25,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 25,
+        "ordinal": 26,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -171,9 +178,10 @@
       true,
       true,
       true,
+      true,
       false,
       true
     ]
   },
-  "hash": "83116f821fbcb63c5f617694b747c08fdddc813c9943744a60d925519649537a"
+  "hash": "05136e2c7acb673c00b6f5ffdef3bc1990a33155bc5eb20f0814ced7aa293c4c"
 }

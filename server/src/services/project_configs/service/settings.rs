@@ -36,6 +36,9 @@ impl ProjectConfigsService {
                 config.review_prompt_template.as_deref(),
                 &team.review_prompt_template,
             ),
+            max_in_progress_tasks: config
+                .max_in_progress_tasks
+                .unwrap_or(team.max_in_progress_tasks),
         })
     }
 }

@@ -1,6 +1,7 @@
 import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import {
+  DEFAULT_MAX_IN_PROGRESS_TASKS,
   DEFAULT_REVIEW_MAX_TURNS,
   DEFAULT_REVIEW_PICKUP_COLUMN
 } from '../../../constants/reviewAutomation';
@@ -26,6 +27,7 @@ export const useTeamDefaults = (teamId: string | null) => {
   const reviewPickupColumn = useSignal(DEFAULT_REVIEW_PICKUP_COLUMN);
   const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewPromptTemplate = useSignal('');
+  const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
   const formError = useSignal<string | null>(null);
 
   const { data: team, isLoading } = useApiQuery(
@@ -61,6 +63,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       team.reviewPromptTemplate,
       teamDefaults?.reviewPromptTemplate ?? ''
     );
+    maxInProgressTasks.value = team.maxInProgressTasks;
   }, [teamId, team, teamDefaults]);
 
   const catalogProviders = modelCatalog?.providers ?? [];
@@ -94,6 +97,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       reviewPickupColumn,
       reviewMaxTurns,
       reviewPromptTemplate,
+      maxInProgressTasks,
       connectedProviderItems,
       primaryModelItems,
       smallModelItems
@@ -131,6 +135,12 @@ export const useTeamDefaults = (teamId: string | null) => {
         );
       },
       onReviewPromptTemplateInput: textInputHandler(reviewPromptTemplate),
+      onMaxInProgressTasksInput: (event: Event) => {
+        maxInProgressTasks.value = parsePositiveNumber(
+          (event.target as HTMLInputElement).value,
+          DEFAULT_MAX_IN_PROGRESS_TASKS
+        );
+      },
       onSubmit: async (event: Event) => {
         event.preventDefault();
         if (!teamId) {
@@ -153,7 +163,8 @@ export const useTeamDefaults = (teamId: string | null) => {
               team?.reviewPromptTemplate,
               reviewPromptTemplate.value,
               teamDefaults?.reviewPromptTemplate
-            )
+            ),
+            maxInProgressTasks: maxInProgressTasks.value
           });
         } catch (err) {
           formError.value = err instanceof Error ? err.message : 'Failed to update team defaults';

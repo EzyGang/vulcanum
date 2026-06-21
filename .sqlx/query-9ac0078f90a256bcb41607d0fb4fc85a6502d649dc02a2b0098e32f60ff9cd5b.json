@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!: i64\" FROM work_runs\n             WHERE project_config_id = $1\n               AND work_type = 'implementation'::work_run_type\n               AND status IN ('pending'::work_run_status, 'dispatched'::work_run_status, 'running'::work_run_status)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9ac0078f90a256bcb41607d0fb4fc85a6502d649dc02a2b0098e32f60ff9cd5b"
+}

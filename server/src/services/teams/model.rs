@@ -38,6 +38,7 @@ Repository:
 #[derive(Debug, Clone, Serialize)]
 pub struct TeamDefaultsResponse {
     pub review_prompt_template: &'static str,
+    pub max_in_progress_tasks: i32,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]
@@ -55,6 +56,7 @@ pub struct Team {
     pub review_pickup_column: String,
     pub review_max_turns: i32,
     pub review_prompt_template: String,
+    pub max_in_progress_tasks: i32,
     pub created_at: DateTime<Utc>,
 }
 
@@ -104,6 +106,8 @@ pub struct UpdateTeamRequest {
     pub review_max_turns: Option<i32>,
     #[serde(default)]
     pub review_prompt_template: Option<String>,
+    #[serde(default)]
+    pub max_in_progress_tasks: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize)]

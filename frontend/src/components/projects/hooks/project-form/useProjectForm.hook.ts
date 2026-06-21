@@ -2,6 +2,7 @@ import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 import {
+  DEFAULT_MAX_IN_PROGRESS_TASKS,
   DEFAULT_REVIEW_MAX_TURNS,
   DEFAULT_REVIEW_PICKUP_COLUMN
 } from '../../../../constants/reviewAutomation';
@@ -85,6 +86,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const reviewMaxTurnsOverride = useSignal(false);
   const reviewPromptTemplate = useSignal('');
   const reviewPromptTemplateOverride = useSignal(false);
+  const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
+  const maxInProgressTasksOverride = useSignal(false);
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
@@ -114,6 +117,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     reviewMaxTurnsOverride,
     reviewPromptTemplate,
     reviewPromptTemplateOverride,
+    maxInProgressTasks,
+    maxInProgressTasksOverride,
     providerId,
     externalProjectId,
     workspaceId
@@ -159,6 +164,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       reviewMaxTurnsOverride.value = p.reviewMaxTurns != null;
       reviewPromptTemplate.value = p.reviewPromptTemplate ?? '';
       reviewPromptTemplateOverride.value = p.reviewPromptTemplate != null;
+      maxInProgressTasks.value = p.maxInProgressTasks ?? DEFAULT_MAX_IN_PROGRESS_TASKS;
+      maxInProgressTasksOverride.value = p.maxInProgressTasks != null;
     }
   }, [projectId, existingProject]);
 
@@ -231,7 +238,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     reviewEnabledOverride.value ||
     reviewPickupColumnOverride.value ||
     reviewMaxTurnsOverride.value ||
-    reviewPromptTemplateOverride.value;
+    reviewPromptTemplateOverride.value ||
+    maxInProgressTasksOverride.value;
 
   return {
     meta: {
@@ -336,6 +344,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       reviewMaxTurnsOverride,
       reviewPromptTemplate,
       reviewPromptTemplateOverride,
+      maxInProgressTasks,
+      maxInProgressTasksOverride,
       modelProviders,
       catalogProviders,
       connectedProviderItems,
@@ -445,6 +455,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         reviewMaxTurns.value = DEFAULT_REVIEW_MAX_TURNS;
         reviewPromptTemplateOverride.value = false;
         reviewPromptTemplate.value = '';
+        maxInProgressTasksOverride.value = false;
+        maxInProgressTasks.value = DEFAULT_MAX_IN_PROGRESS_TASKS;
       },
       onResetReviewEnabledOverride: () => {
         reviewEnabledOverride.value = false;
@@ -476,6 +488,17 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       onResetReviewPromptTemplateOverride: () => {
         reviewPromptTemplateOverride.value = false;
         reviewPromptTemplate.value = '';
+      },
+      onMaxInProgressTasksInput: (event: Event) => {
+        maxInProgressTasksOverride.value = true;
+        maxInProgressTasks.value = parsePositiveNumber(
+          (event.target as HTMLInputElement).value,
+          DEFAULT_MAX_IN_PROGRESS_TASKS
+        );
+      },
+      onResetMaxInProgressTasksOverride: () => {
+        maxInProgressTasksOverride.value = false;
+        maxInProgressTasks.value = DEFAULT_MAX_IN_PROGRESS_TASKS;
       }
     }
   };

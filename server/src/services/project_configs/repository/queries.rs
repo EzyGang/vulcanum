@@ -1,3 +1,5 @@
+mod limits;
+
 use uuid::Uuid;
 
 use crate::queryer::Queryer;
@@ -25,7 +27,7 @@ impl ProjectConfigsRepository {
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
              pc.small_model_provider_key, pc.small_model_id,
-             pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,
+             pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
              pc.created_at, pc.provider_id as "provider_id?"
              FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
              WHERE pc.team_id = $1
@@ -54,7 +56,7 @@ impl ProjectConfigsRepository {
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
               pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
               pc.small_model_provider_key, pc.small_model_id,
-              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,
+              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
               pc.created_at, pc.provider_id as "provider_id?"
              FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
              WHERE pc.id = $1
@@ -81,7 +83,7 @@ impl ProjectConfigsRepository {
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
               pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,
               pc.small_model_provider_key, pc.small_model_id,
-              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template,
+              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
               pc.created_at, pc.provider_id as "provider_id?"
              FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
              WHERE pc.enabled = true
@@ -109,11 +111,11 @@ impl ProjectConfigsRepository {
             ProjectConfig,
             r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
              progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, primary_model_provider_key, primary_model_id,
-             small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+             small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template, max_in_progress_tasks)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
               RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
               progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
-              small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
+              small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template, max_in_progress_tasks,
               created_at, provider_id as "provider_id?""#,
             id,
             team_id,
@@ -138,6 +140,7 @@ impl ProjectConfigsRepository {
             params.review_pickup_column.as_deref(),
             params.review_max_turns,
             params.review_prompt_template.as_deref(),
+            params.max_in_progress_tasks,
         )
         .fetch_one(db)
         .await
@@ -175,11 +178,12 @@ impl ProjectConfigsRepository {
               review_enabled = CASE WHEN $24 THEN $25 ELSE review_enabled END,
               review_pickup_column = CASE WHEN $26 THEN $27 ELSE review_pickup_column END,
               review_max_turns = CASE WHEN $28 THEN $29 ELSE review_max_turns END,
-              review_prompt_template = CASE WHEN $30 THEN $31 ELSE review_prompt_template END
+              review_prompt_template = CASE WHEN $30 THEN $31 ELSE review_prompt_template END,
+              max_in_progress_tasks = CASE WHEN $32 THEN $33 ELSE max_in_progress_tasks END
                WHERE id = $1
                RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
                progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md, primary_model_provider_key, primary_model_id,
-              small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template,
+              small_model_provider_key, small_model_id, review_enabled, review_pickup_column, review_max_turns, review_prompt_template, max_in_progress_tasks,
               created_at, provider_id as "provider_id?""#,
             id,
             params.name,
@@ -212,6 +216,8 @@ impl ProjectConfigsRepository {
             params.review_max_turns.flatten(),
             params.review_prompt_template.is_some(),
             params.review_prompt_template.flatten(),
+            params.max_in_progress_tasks.is_some(),
+            params.max_in_progress_tasks.flatten(),
         )
         .fetch_optional(db)
         .await?
@@ -270,25 +276,6 @@ impl ProjectConfigsRepository {
         }
 
         Ok(())
-    }
-
-    pub async fn count_enabled<'c, Q>(
-        &self,
-        db: Q,
-        team_id: Uuid,
-    ) -> Result<i64, ProjectConfigsError>
-    where
-        Q: Queryer<'c>,
-    {
-        let count = sqlx::query_scalar!(
-            "SELECT COUNT(*) as count FROM project_configs WHERE enabled = true AND team_id = $1",
-            team_id,
-        )
-        .fetch_one(db)
-        .await?
-        .unwrap_or(0);
-
-        Ok(count)
     }
 }
 
