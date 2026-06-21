@@ -7,7 +7,9 @@ use crate::util::serde::deserialize_nullable_string;
 
 pub const DEFAULT_REVIEW_PROMPT_TEMPLATE: &str = r#"Review this pull request for the linked task.
 
-Review the solution for correctness, maintainability, and project fit. Make sure the implementation is elegant, avoids duplication, and follows the root AGENTS.md plus any AGENTS.md files that apply to the changed directories. Do not edit files, commit, push, or create pull requests. Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes.
+Review the solution for correctness, maintainability, and project fit. Make sure the implementation is elegant, avoids duplication, and follows the root AGENTS.md plus any AGENTS.md files that apply to the changed directories. Do not edit files, commit, push, or create pull requests.
+
+Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes. If a suitable review already exists for the current PR head commit, do not post a duplicate review. If the PR has new commits after the existing review, post a new review.
 
 The review body must use exactly these Markdown sections in this order:
 ## CRITICAL

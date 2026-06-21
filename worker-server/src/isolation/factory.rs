@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use vulcanum_shared::api_types::JobRepo;
+use vulcanum_shared::api_types::{JobRepo, WorkRunType};
 use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
@@ -42,6 +42,7 @@ impl IsolationProvider for IsolationKind {
         secrets: &HashMap<String, String>,
         env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
+        work_type: WorkRunType,
         agents_md: &str,
         generated_opencode_config: &str,
         repos: &[JobRepo],
@@ -53,6 +54,7 @@ impl IsolationProvider for IsolationKind {
                     secrets,
                     env_vars,
                     limits,
+                    work_type,
                     agents_md,
                     generated_opencode_config,
                     repos,
@@ -65,6 +67,7 @@ impl IsolationProvider for IsolationKind {
                     secrets,
                     env_vars,
                     limits,
+                    work_type,
                     agents_md,
                     generated_opencode_config,
                     repos,
@@ -77,6 +80,7 @@ impl IsolationProvider for IsolationKind {
                     secrets,
                     env_vars,
                     limits,
+                    work_type,
                     agents_md,
                     generated_opencode_config,
                     repos,

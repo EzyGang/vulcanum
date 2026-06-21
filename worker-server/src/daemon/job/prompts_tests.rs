@@ -25,6 +25,8 @@ fn review_initial_prompt_uses_review_artifact_fields() {
     assert!(prompt.contains("`review_url`"));
     assert!(prompt.contains("`review_body`"));
     assert!(prompt.contains("`review_already_exists`"));
+    assert!(prompt.contains("current PR head commit"));
+    assert!(prompt.contains("new commits after the existing review"));
     assert!(prompt.contains("CRITICAL"));
     assert!(prompt.contains("WARNINGS"));
     assert!(prompt.contains("SUGGESTIONS"));

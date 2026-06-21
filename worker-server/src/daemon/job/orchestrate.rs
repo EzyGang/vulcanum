@@ -222,6 +222,7 @@ pub(crate) async fn handle_job(
             &secrets,
             &env_vars,
             &limits,
+            job.work_type,
             &job.agents_md,
             &job.generated_opencode_config,
             &job.repos,

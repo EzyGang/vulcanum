@@ -35,7 +35,8 @@ or `failed` when the task cannot be completed. If pull requests were created, in
             "\n\nBefore ending the review run, call the `finish_run` tool exactly once. \
 Use `completed` when the review was posted or already existed, `blocked` when external input is needed, \
 or `failed` when the review cannot be completed. Put posted review details in `review_url` and `review_body`; \
-set `review_already_exists` only if a suitable review was already present and no duplicate review was posted. \
+set `review_already_exists` only if a suitable review already exists for the current PR head commit. \
+If the PR has new commits after the existing review, post a new review and leave `review_already_exists` false. \
 The review_body must contain CRITICAL, WARNINGS, and SUGGESTIONS sections."
         }
     }
