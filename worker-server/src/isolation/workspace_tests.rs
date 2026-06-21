@@ -1,3 +1,5 @@
+use vulcanum_shared::runtime::types::WorkspaceRepo;
+
 use crate::isolation::workspace;
 
 #[tokio::test]
@@ -50,4 +52,19 @@ fn repo_dir_name_uses_repo_basename() {
 fn repo_dir_name_sanitizes_basename() {
     let result = workspace::repo_dir_name("owner/My Repo.git");
     assert_eq!(result, "my-repo-git");
+}
+
+#[test]
+fn workspace_prompt_prefix_requires_repo_commands_and_agents_chain() {
+    let prompt = workspace::workspace_prompt_prefix(&[WorkspaceRepo {
+        full_name: "owner/repo".to_owned(),
+        url: "https://github.com/owner/repo".to_owned(),
+        relative_path: "repo".to_owned(),
+    }]);
+
+    assert!(prompt.contains("wrapper workspace is not itself a repository"));
+    assert!(prompt.contains("Run commands from the repository directory"));
+    assert!(prompt.contains("aggregated ./AGENTS.md"));
+    assert!(prompt.contains("down to the changed directories"));
+    assert!(prompt.contains("formatter, validation, and test commands"));
 }

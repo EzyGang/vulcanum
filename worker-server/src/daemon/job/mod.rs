@@ -16,3 +16,5 @@ mod finish_tool_tests;
 mod prompts_tests;
 #[cfg(test)]
 mod submit_tests;
+#[cfg(test)]
+mod turn_loop_tests;

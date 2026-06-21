@@ -4,7 +4,9 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
-use crate::services::teams::model::{CreateTeamRequest, UpdateTeamRequest};
+use crate::services::teams::model::{
+    CreateTeamRequest, TeamDefaultsResponse, UpdateTeamRequest, DEFAULT_REVIEW_PROMPT_TEMPLATE,
+};
 
 pub async fn list(
     state: web::Data<AppState>,
@@ -16,6 +18,12 @@ pub async fn list(
         .await?;
 
     Ok(HttpResponse::Ok().json(teams))
+}
+
+pub async fn defaults(_auth: TeamPrincipal) -> Result<HttpResponse, AppError> {
+    Ok(HttpResponse::Ok().json(TeamDefaultsResponse {
+        review_prompt_template: DEFAULT_REVIEW_PROMPT_TEMPLATE,
+    }))
 }
 
 pub async fn get(

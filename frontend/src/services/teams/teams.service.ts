@@ -3,6 +3,7 @@ import type {
   CreateTeamInviteResponse,
   CreateTeamRequest,
   Team,
+  TeamDefaults,
   TeamInvitePreviewResponse,
   TeamMember,
   UpdateTeamRequest
@@ -12,6 +13,7 @@ import { del, get, patch, post } from '../../utils/api/request';
 export const listTeams = () => get<Team[]>('/teams');
 
 export const getTeam = (id: string) => get<Team>(`/teams/${id}`);
+export const getTeamDefaults = () => get<TeamDefaults>('/teams/defaults');
 
 export const createTeam = (input: CreateTeamRequest) => post<Team>('/teams', input);
 

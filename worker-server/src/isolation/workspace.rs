@@ -120,7 +120,7 @@ pub fn workspace_prompt_prefix(repos: &[WorkspaceRepo]) -> String {
         .join("\n");
 
     format!(
-        "Workspace layout:\n{repo_lines}\n\nRun commands from the repository directory that matches the file you are changing. Read the aggregated AGENTS.md in this workspace before making changes.\n\n"
+        "Workspace layout:\n{repo_lines}\n\nThis wrapper workspace is not itself a repository. Run commands from the repository directory that matches the files you are changing. Before making changes, read the aggregated ./AGENTS.md plus any AGENTS.md files from the relevant repository root down to the changed directories. Before finishing, run the formatter, validation, and test commands required by those instructions for every changed repository.\n\n"
     )
 }
 

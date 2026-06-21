@@ -5,4 +5,6 @@ pub mod repository;
 pub mod service;
 
 #[cfg(test)]
+mod model_tests;
+#[cfg(test)]
 mod service_tests;

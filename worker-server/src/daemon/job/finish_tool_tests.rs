@@ -26,6 +26,7 @@ fn implementation_finish_tool_uses_pr_url_fields_only() {
 
     assert!(tool.contains("pr_urls: tool.schema.array"));
     assert!(tool.contains("pr_urls: stringArrayOrEmpty(args.pr_urls)"));
+    assert!(tool.contains("formatter, validation"));
     assert!(tool.contains("review_url: undefined"));
     assert!(tool.contains("review_body: undefined"));
     assert!(tool.contains("review_already_exists: false"));
@@ -42,6 +43,7 @@ fn review_finish_tool_uses_review_fields_only() {
     assert!(tool.contains("review_url: tool.schema.string"));
     assert!(tool.contains("review_body: tool.schema.string"));
     assert!(tool.contains("review_already_exists: tool.schema.boolean"));
+    assert!(tool.contains("missing or failing formatter"));
     assert!(tool.contains("pr_urls: []"));
     assert!(tool.contains("current PR head commit"));
     assert!(tool.contains("new commits after the existing review"));

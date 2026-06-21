@@ -42,6 +42,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 web::scope("/teams")
                     .route("", web::get().to(teams::list))
                     .route("", web::post().to(teams::create))
+                    .route("/defaults", web::get().to(teams::defaults))
                     .route("/{id}", web::get().to(teams::get))
                     .route("/{id}", web::patch().to(teams::update))
                     .route("/{id}", web::delete().to(teams::delete))
@@ -176,6 +177,9 @@ mod auth_tests;
 
 #[cfg(test)]
 mod project_configs_tests;
+
+#[cfg(test)]
+mod teams_tests;
 
 #[cfg(test)]
 mod workers_tests;
