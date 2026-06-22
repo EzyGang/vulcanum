@@ -4050,6 +4050,7 @@ dependencies = [
  "kaneo-cli",
  "log",
  "octocrab",
+ "once_cell",
  "rand 0.8.6",
  "redis",
  "reqwest",

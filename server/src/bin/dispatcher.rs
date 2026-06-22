@@ -13,7 +13,7 @@ async fn main() -> eyre::Result<()> {
     dotenvy::dotenv().ok();
     vulcanum_shared::telemetry::init();
 
-    let cfg = config();
+    let cfg = config()?;
 
     let dispatch_interval_secs = std::env::var("DISPATCH_INTERVAL_SECS")
         .unwrap_or_else(|_| "15".to_owned())

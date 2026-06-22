@@ -44,27 +44,25 @@ impl GithubAppRepository {
         github_installation_id: i64,
         account_login: &str,
     ) -> Result<GithubInstallation, GithubAppError> {
-        let row = sqlx::query_as!(
+        sqlx::query_as!(
             GithubInstallation,
             r#"INSERT INTO github_installations (team_id, installed_by_user_id, github_installation_id, account_login)
                VALUES ($1, $2, $3, $4)
                ON CONFLICT (github_installation_id) DO UPDATE SET
-                   team_id = EXCLUDED.team_id,
                    installed_by_user_id = EXCLUDED.installed_by_user_id,
-                   github_installation_id = EXCLUDED.github_installation_id,
                    account_login = EXCLUDED.account_login,
                    created_at = NOW()
+               WHERE github_installations.team_id = EXCLUDED.team_id
                RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             team_id,
             installed_by_user_id,
             github_installation_id,
             account_login,
         )
-        .fetch_one(db)
+        .fetch_optional(db)
         .await
-        .map_err(GithubAppError::Database)?;
-
-        Ok(row)
+        .map_err(GithubAppError::Database)?
+        .ok_or(GithubAppError::InstallationAlreadyLinked)
     }
 
     pub async fn delete_installation<'c, Q: Queryer<'c>>(

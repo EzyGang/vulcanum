@@ -6,6 +6,8 @@ pub enum GithubAppError {
     NotConfigured,
     #[error("no github installation found")]
     NoInstallation,
+    #[error("github installation is already linked to another team")]
+    InstallationAlreadyLinked,
     #[error("invalid repo_url: {0}")]
     InvalidRepoUrl(String),
     #[error("github api error: {0}")]

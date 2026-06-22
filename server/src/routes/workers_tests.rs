@@ -3,6 +3,7 @@ use actix_web::{test, web, App};
 use crate::app_state::AppState;
 use crate::routes;
 use crate::test_helpers;
+use vulcanum_shared::api_types::ConnectRequest;
 
 const TEST_PASSWORD: &str = "test-password";
 
@@ -103,7 +104,7 @@ async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
         .expect("should generate");
     let connect = state
         .workers
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: code.code,
             worker_name: "rt-handler".to_owned(),
             max_concurrent_jobs: None,
@@ -164,7 +165,7 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
         .expect("should generate");
     let connect = state
         .workers
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: code.code,
             worker_name: "delete-me".to_owned(),
             max_concurrent_jobs: None,

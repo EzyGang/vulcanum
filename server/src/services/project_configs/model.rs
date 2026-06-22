@@ -86,7 +86,7 @@ pub struct CreateProjectConfigRequest {
     pub provider_id: Uuid,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub struct UpdateProjectConfigRequest {
     #[serde(default)]
     pub name: Option<String>,

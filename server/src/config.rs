@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use once_cell::sync::OnceCell;
 
 pub struct AppConfig {
     pub db_url: String,
@@ -73,7 +73,7 @@ impl AppConfig {
     }
 }
 
-pub fn config() -> &'static AppConfig {
-    static CONFIG: OnceLock<AppConfig> = OnceLock::new();
-    CONFIG.get_or_init(|| AppConfig::from_env().expect("Failed to load configuration from env"))
+pub fn config() -> Result<&'static AppConfig, eyre::Error> {
+    static CONFIG: OnceCell<AppConfig> = OnceCell::new();
+    CONFIG.get_or_try_init(AppConfig::from_env)
 }
