@@ -74,11 +74,17 @@ impl AppConfig {
 }
 
 pub fn config() -> Result<&'static AppConfig, eyre::Error> {
-    static CONFIG: OnceLock<Result<AppConfig, String>> = OnceLock::new();
-    let config = CONFIG.get_or_init(|| AppConfig::from_env().map_err(|err| err.to_string()));
+    static CONFIG: OnceLock<AppConfig> = OnceLock::new();
 
-    match config {
-        Ok(config) => Ok(config),
-        Err(err) => Err(eyre::eyre!("Failed to load configuration from env: {err}")),
+    match CONFIG.get() {
+        Some(config) => Ok(config),
+        None => match AppConfig::from_env() {
+            Ok(loaded_config) => match CONFIG.set(loaded_config) {
+                Ok(()) | Err(_) => CONFIG
+                    .get()
+                    .ok_or_else(|| eyre::eyre!("Failed to initialize configuration")),
+            },
+            Err(err) => Err(err),
+        },
     }
 }
