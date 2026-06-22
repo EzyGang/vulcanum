@@ -25,7 +25,11 @@ impl Default for HostIsolation {
 
 fn is_safe_workdir(path: &Path) -> bool {
     let temp = std::env::temp_dir();
-    path.starts_with(&temp) && path.to_string_lossy().contains("vulcanum-work-")
+    path.starts_with(&temp)
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("vulcanum-work-"))
 }
 
 impl IsolationProvider for HostIsolation {

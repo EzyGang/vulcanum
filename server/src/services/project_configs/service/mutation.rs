@@ -28,6 +28,10 @@ impl ProjectConfigsService {
             },
         };
 
+        if params.provider_id.is_some() {
+            self.resolve_client(&provider_id, team_id).await?;
+        }
+
         if has_column_changes(&params) {
             let client = self.resolve_client(&provider_id, team_id).await?;
             let all_columns = client

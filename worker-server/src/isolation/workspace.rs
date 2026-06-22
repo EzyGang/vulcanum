@@ -74,7 +74,10 @@ pub async fn clone_repo(url: &str, dest: &Path) -> Result<(), HarnessError> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(HarnessError::Install(format!("git clone failed: {stderr}")));
+        let safe_stderr = stderr.replace(url, &redact_url_credentials(url));
+        return Err(HarnessError::Install(format!(
+            "git clone failed: {safe_stderr}"
+        )));
     }
 
     Ok(())
@@ -151,6 +154,26 @@ pub async fn write_finish_run_tool(
     .map_err(|e| HarnessError::Crash(format!("failed to write finish_run tool: {e}")))?;
 
     Ok(())
+}
+
+#[must_use]
+pub(crate) fn redact_url_credentials(url: &str) -> String {
+    let Some(rest) = url.strip_prefix("https://") else {
+        return url.to_owned();
+    };
+
+    let (authority, path) = match rest.split_once('/') {
+        Some((authority, path)) => (authority, Some(path)),
+        None => (rest, None),
+    };
+    let Some((_, host)) = authority.rsplit_once('@') else {
+        return url.to_owned();
+    };
+
+    match path {
+        Some(path) => format!("https://<redacted>@{host}/{path}"),
+        None => format!("https://<redacted>@{host}"),
+    }
 }
 
 fn unique_repo_dir(full_name: &str, seen: &mut HashSet<String>) -> String {

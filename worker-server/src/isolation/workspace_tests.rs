@@ -43,6 +43,15 @@ fn authenticated_repo_url_passes_through_non_https() {
 }
 
 #[test]
+fn redact_url_credentials_hides_authenticated_url_token() {
+    let result = workspace::redact_url_credentials(
+        "https://x-access-token:ghp_123@github.com/owner/repo.git",
+    );
+
+    assert_eq!(result, "https://<redacted>@github.com/owner/repo.git");
+}
+
+#[test]
 fn repo_dir_name_uses_repo_basename() {
     let result = workspace::repo_dir_name("ezygang/actavoces");
     assert_eq!(result, "actavoces");

@@ -3,10 +3,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-pub use vulcanum_shared::api_types::{
-    ConnectRequest, ConnectResponse, RefreshRequest, RefreshResponse,
-};
-
 pub const CODE_TTL_MINUTES: i64 = 10;
 pub const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;

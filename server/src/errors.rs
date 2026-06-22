@@ -328,6 +328,7 @@ impl From<GithubAppError> for AppError {
             GithubAppError::NoInstallation => {
                 Self::BadRequest("No GitHub installation configured".to_string())
             }
+            GithubAppError::InstallationAlreadyLinked => Self::Forbidden,
             GithubAppError::NotConfigured => {
                 Self::BadRequest("GitHub App not configured".to_string())
             }

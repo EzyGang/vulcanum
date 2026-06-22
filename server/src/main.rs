@@ -12,7 +12,7 @@ async fn main() -> eyre::Result<()> {
 
     vulcanum_shared::telemetry::init();
 
-    let cfg = config::config();
+    let cfg = config::config()?;
     let app_state = app_state::AppState::new(cfg).await?;
 
     tracing::info!("Applying migrations...");

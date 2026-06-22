@@ -1,13 +1,12 @@
 use chrono::{Duration, Utc};
 use serde_json::json;
-use sha2::Digest;
-use uuid::Uuid;
 
 use crate::services::workers::errors::WorkersError;
 use crate::services::workers::model;
-use crate::services::workers::model::{ConnectRequest, ConnectResponse};
 use crate::services::workers::repository::queries::CreateWorkerParams;
+use crate::services::workers::service::token::{build_jwt, generate_random_token, hash_token};
 use crate::services::workers::service::WorkersService;
+use vulcanum_shared::api_types::{ConnectRequest, ConnectResponse};
 
 impl WorkersService {
     pub async fn connect(&self, req: ConnectRequest) -> Result<ConnectResponse, WorkersError> {
@@ -21,7 +20,7 @@ impl WorkersService {
             return Err(WorkersError::CodeExpired);
         }
 
-        let refresh_token = generate_random_token(model::TOKEN_LENGTH);
+        let refresh_token = generate_random_token();
         let refresh_hash = hash_token(&refresh_token);
         let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
         let max_concurrent_jobs = req
@@ -63,27 +62,4 @@ impl WorkersService {
             max_concurrent_jobs: worker.max_concurrent_jobs,
         })
     }
-}
-
-fn generate_random_token(length: usize) -> String {
-    vulcanum_shared::crypto::generate_alphanumeric_string(length)
-}
-
-fn hash_token(token: &str) -> String {
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(token.as_bytes());
-    hex::encode(hasher.finalize())
-}
-
-fn build_jwt(
-    worker_id: Uuid,
-    secret: &str,
-) -> Result<(String, chrono::DateTime<chrono::Utc>), jsonwebtoken::errors::Error> {
-    let exp = Utc::now() + Duration::minutes(model::ACCESS_TOKEN_TTL_MINUTES);
-    let claims = jsonwebtoken::encode(
-        &jsonwebtoken::Header::default(),
-        &serde_json::json!({"sub": worker_id.to_string(), "typ": "worker", "exp": exp.timestamp()}),
-        &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
-    )?;
-    Ok((claims, exp))
 }

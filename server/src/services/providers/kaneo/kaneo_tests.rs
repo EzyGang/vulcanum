@@ -293,7 +293,7 @@ fn test_kaneo_client_construction() {
 
 #[cfg(test)]
 mod tracing_tests {
-    use super::*;
+    use super::{log_kaneo_result, KaneoError};
     use tracing_test::traced_test;
 
     #[traced_test]

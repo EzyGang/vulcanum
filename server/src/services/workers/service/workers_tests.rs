@@ -8,6 +8,7 @@ use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 use chrono::{Duration, Utc};
+use vulcanum_shared::api_types::{ConnectRequest, RefreshRequest};
 
 fn cfg() -> AppConfig {
     AppConfig {
@@ -62,7 +63,7 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
         .await
         .expect("should generate");
     let resp = svc
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: code.code,
             worker_name: "test-runner".to_owned(),
             max_concurrent_jobs: None,
@@ -87,7 +88,7 @@ async fn connect_with_capacity_creates_worker_with_capacity(pool: sqlx::PgPool) 
         .await
         .expect("should generate");
     let resp = svc
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: code.code,
             worker_name: "capacity-runner".to_owned(),
             max_concurrent_jobs: Some(2),
@@ -102,7 +103,7 @@ async fn connect_with_capacity_creates_worker_with_capacity(pool: sqlx::PgPool) 
 async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
     let svc = svc(pool).await;
     let err = svc
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: "badcode".to_owned(),
             worker_name: "x".to_owned(),
             max_concurrent_jobs: None,
@@ -127,7 +128,7 @@ async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
         .expect("pre-insert should succeed");
 
     let err = svc
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: "expired".to_owned(),
             worker_name: "x".to_owned(),
             max_concurrent_jobs: None,
@@ -146,7 +147,7 @@ async fn refresh_rotates_token(pool: sqlx::PgPool) {
         .await
         .expect("should generate");
     let connect = svc
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: code.code,
             worker_name: "refresh-test".to_owned(),
             max_concurrent_jobs: None,
@@ -157,7 +158,7 @@ async fn refresh_rotates_token(pool: sqlx::PgPool) {
     let old_refresh = connect.refresh_token.clone();
 
     let refresh = svc
-        .refresh(crate::services::workers::model::RefreshRequest {
+        .refresh(RefreshRequest {
             refresh_token: old_refresh,
         })
         .await
@@ -177,7 +178,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
         .await
         .expect("should generate");
     let connect = svc
-        .connect(crate::services::workers::model::ConnectRequest {
+        .connect(ConnectRequest {
             code: code.code,
             worker_name: "rotation-test".to_owned(),
             max_concurrent_jobs: None,
@@ -186,7 +187,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
         .unwrap();
 
     // First refresh consumes the old token
-    svc.refresh(crate::services::workers::model::RefreshRequest {
+    svc.refresh(RefreshRequest {
         refresh_token: connect.refresh_token.clone(),
     })
     .await
@@ -194,7 +195,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
 
     // Reusing the old token should fail
     let err = svc
-        .refresh(crate::services::workers::model::RefreshRequest {
+        .refresh(RefreshRequest {
             refresh_token: connect.refresh_token,
         })
         .await
@@ -207,7 +208,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
 async fn refresh_with_invalid_token_fails(pool: sqlx::PgPool) {
     let svc = svc(pool).await;
     let err = svc
-        .refresh(crate::services::workers::model::RefreshRequest {
+        .refresh(RefreshRequest {
             refresh_token: "garbage".to_owned(),
         })
         .await

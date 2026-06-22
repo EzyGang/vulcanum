@@ -13,6 +13,7 @@ pub mod generate_code;
 pub mod list;
 pub mod refresh;
 pub mod set_status;
+mod token;
 
 #[cfg(test)]
 pub mod workers_tests;
