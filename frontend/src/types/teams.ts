@@ -5,8 +5,10 @@ export interface Team {
   promptTemplate: string;
   agentsMd: string;
   primaryModelProviderKey?: string | null;
+  primaryModelProviderConfigId?: string | null;
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
+  smallModelProviderConfigId?: string | null;
   smallModelId?: string | null;
   reviewEnabled: boolean;
   reviewPickupColumn: string;
@@ -38,8 +40,10 @@ export interface UpdateTeamRequest {
   promptTemplate?: string;
   agentsMd?: string;
   primaryModelProviderKey?: string | null;
+  primaryModelProviderConfigId?: string | null;
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
+  smallModelProviderConfigId?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean;
   reviewPickupColumn?: string;

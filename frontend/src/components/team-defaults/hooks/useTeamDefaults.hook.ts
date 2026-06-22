@@ -52,9 +52,9 @@ export const useTeamDefaults = (teamId: string | null) => {
     }
     promptTemplate.value = team.promptTemplate;
     agentsMd.value = team.agentsMd;
-    primaryModelProviderKey.value = team.primaryModelProviderKey ?? '';
+    primaryModelProviderKey.value = team.primaryModelProviderConfigId ?? '';
     primaryModelId.value = team.primaryModelId ?? '';
-    smallModelProviderKey.value = team.smallModelProviderKey ?? '';
+    smallModelProviderKey.value = team.smallModelProviderConfigId ?? '';
     smallModelId.value = team.smallModelId ?? '';
     reviewEnabled.value = team.reviewEnabled;
     reviewPickupColumn.value = team.reviewPickupColumn;
@@ -152,9 +152,9 @@ export const useTeamDefaults = (teamId: string | null) => {
           await mutation.mutateAsync({
             promptTemplate: promptTemplate.value,
             agentsMd: agentsMd.value,
-            primaryModelProviderKey: primaryModelProviderKey.value || null,
+            primaryModelProviderConfigId: primaryModelProviderKey.value || null,
             primaryModelId: primaryModelId.value || null,
-            smallModelProviderKey: smallModelProviderKey.value || null,
+            smallModelProviderConfigId: smallModelProviderKey.value || null,
             smallModelId: smallModelId.value || null,
             reviewEnabled: reviewEnabled.value,
             reviewPickupColumn: reviewPickupColumn.value || DEFAULT_REVIEW_PICKUP_COLUMN,

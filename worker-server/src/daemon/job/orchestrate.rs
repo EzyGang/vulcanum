@@ -211,6 +211,9 @@ pub(crate) async fn handle_job(
     if let Some(ref token) = job.github_token {
         secrets.insert("GITHUB_TOKEN".to_owned(), token.clone());
     }
+    if let Some(ref auth_content) = job.opencode_auth_content {
+        secrets.insert("OPENCODE_AUTH_CONTENT".to_owned(), auth_content.clone());
+    }
     for (key, value) in &job.model_provider_env {
         secrets.insert(key.clone(), value.clone());
     }

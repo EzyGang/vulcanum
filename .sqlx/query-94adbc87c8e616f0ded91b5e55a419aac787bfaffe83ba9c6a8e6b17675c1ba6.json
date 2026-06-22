@@ -1,0 +1,138 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE teams SET\n             name = COALESCE($2, name),\n             prompt_template = COALESCE($3, prompt_template),\n             agents_md = COALESCE($4, agents_md),\n             primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,\n             primary_model_provider_config_id = CASE WHEN $7 THEN $8 ELSE primary_model_provider_config_id END,\n             primary_model_id = CASE WHEN $9 THEN $10 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $11 THEN $12 ELSE small_model_provider_key END,\n             small_model_provider_config_id = CASE WHEN $13 THEN $14 ELSE small_model_provider_config_id END,\n             small_model_id = CASE WHEN $15 THEN $16 ELSE small_model_id END,\n             review_enabled = COALESCE($17, review_enabled),\n             review_pickup_column = COALESCE($18, review_pickup_column),\n             review_max_turns = COALESCE($19, review_max_turns),\n             review_prompt_template = COALESCE($20, review_prompt_template),\n             max_in_progress_tasks = COALESCE($21, max_in_progress_tasks)\n             WHERE id = $1\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_provider_config_id, primary_model_id, small_model_provider_key,\n              small_model_provider_config_id, small_model_id,\n              review_enabled, review_pickup_column, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "personal_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "primary_model_provider_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "small_model_provider_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "review_pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 14,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "max_in_progress_tasks",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 16,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Uuid",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Uuid",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Int4",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "94adbc87c8e616f0ded91b5e55a419aac787bfaffe83ba9c6a8e6b17675c1ba6"
+}

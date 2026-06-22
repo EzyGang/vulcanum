@@ -3,7 +3,7 @@ use serde_json::json;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::{
-    CatalogModel, CatalogProvider, CatalogResponse, CreateModelProviderRequest,
+    CatalogModel, CatalogProvider, CatalogResponse, CreateModelProviderRequest, AUTH_TYPE_API_KEY,
 };
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
@@ -14,7 +14,7 @@ async fn validate_model_selection_skips_empty_selection(pool: sqlx::PgPool) {
     let service = service(pool).await;
 
     let result = service
-        .validate_model_selection(DEFAULT_TEAM_ID, Some(""), Some(""))
+        .validate_model_selection(DEFAULT_TEAM_ID, None, Some(""))
         .await;
 
     assert!(result.is_ok());
@@ -26,7 +26,7 @@ async fn validate_model_selection_requires_connected_provider(pool: sqlx::PgPool
     let service = service(pool).await;
 
     let result = service
-        .validate_model_selection(team_id, Some("anthropic"), Some("claude-sonnet-4"))
+        .validate_model_selection(team_id, Some(uuid::Uuid::new_v4()), Some("claude-sonnet-4"))
         .await;
 
     match result {
@@ -39,11 +39,12 @@ async fn validate_model_selection_requires_connected_provider(pool: sqlx::PgPool
 async fn validate_model_selection_accepts_connected_catalog_model(pool: sqlx::PgPool) {
     let team_id = insert_team(&pool, "Connected Model Team").await;
     let service = service(pool).await;
-    service
+    let provider = service
         .create(
             team_id,
             CreateModelProviderRequest {
                 provider_key: "anthropic".to_owned(),
+                auth_type: AUTH_TYPE_API_KEY.to_owned(),
                 display_name: "Anthropic".to_owned(),
                 credentials: json!({ "ANTHROPIC_API_KEY": "secret" }),
             },
@@ -52,7 +53,7 @@ async fn validate_model_selection_accepts_connected_catalog_model(pool: sqlx::Pg
         .expect("Should create model provider");
 
     let result = service
-        .validate_model_selection(team_id, Some("anthropic"), Some("claude-sonnet-4"))
+        .validate_model_selection(team_id, Some(provider.id), Some("claude-sonnet-4"))
         .await;
 
     assert!(result.is_ok());
@@ -63,6 +64,7 @@ async fn service(pool: sqlx::PgPool) -> ModelProvidersService {
         ModelProvidersRepository::new(),
         pool,
         ModelCatalogClient::from_catalog(test_catalog()).await,
+        "test-secret",
     )
 }
 

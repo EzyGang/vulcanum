@@ -21,6 +21,7 @@ async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
             ModelProvidersRepository::new(),
             pool.clone(),
             ModelCatalogClient::new(),
+            "test-secret",
         ),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
@@ -45,6 +46,7 @@ async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(poo
             ModelProvidersRepository::new(),
             pool.clone(),
             ModelCatalogClient::new(),
+            "test-secret",
         ),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
@@ -76,6 +78,7 @@ async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
             ModelProvidersRepository::new(),
             pool.clone(),
             ModelCatalogClient::new(),
+            "test-secret",
         ),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
@@ -110,6 +113,7 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
             ModelProvidersRepository::new(),
             pool.clone(),
             ModelCatalogClient::new(),
+            "test-secret",
         ),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );

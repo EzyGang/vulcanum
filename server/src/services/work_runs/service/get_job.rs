@@ -75,17 +75,29 @@ impl WorkRunsService {
             },
         };
 
-        let connected_model_providers = self
-            .model_providers_repo
-            .list_all(&self.db, cfg.team_id)
+        let selected_auth = self
+            .model_providers
+            .selected_auth_material(
+                cfg.team_id,
+                cfg.primary_model_provider_config_id,
+                cfg.small_model_provider_config_id,
+            )
             .await
             .map_err(WorkRunsError::ModelProvider)?;
+        let primary_provider_key = provider_key_for_config(
+            &selected_auth.providers,
+            cfg.primary_model_provider_config_id,
+        )
+        .or(cfg.primary_model_provider_key.as_deref());
+        let small_provider_key =
+            provider_key_for_config(&selected_auth.providers, cfg.small_model_provider_config_id)
+                .or(cfg.small_model_provider_key.as_deref());
         let rendered = render_opencode_config(
-            &connected_model_providers,
+            &selected_auth.providers,
             ModelSelection {
-                primary_provider_key: cfg.primary_model_provider_key.as_deref(),
+                primary_provider_key,
                 primary_model_id: cfg.primary_model_id.as_deref(),
-                small_provider_key: cfg.small_model_provider_key.as_deref(),
+                small_provider_key,
                 small_model_id: cfg.small_model_id.as_deref(),
             },
         );
@@ -96,6 +108,7 @@ impl WorkRunsService {
             repos,
             agents_md: run.agents_md,
             generated_opencode_config: rendered.opencode_config,
+            opencode_auth_content: selected_auth.opencode_auth_content,
             model_provider_env: rendered.env,
             external_task_ref: run.external_task_ref,
             provider_instance_url,
@@ -112,6 +125,17 @@ impl WorkRunsService {
             review_target_repo_full_name: run.review_target_repo_full_name,
         })
     }
+}
+
+fn provider_key_for_config(
+    providers: &[crate::services::model_providers::model::ModelProviderConfig],
+    id: Option<Uuid>,
+) -> Option<&str> {
+    let id = id?;
+    providers
+        .iter()
+        .find(|provider| provider.id == id)
+        .map(|provider| provider.provider_key.as_str())
 }
 
 #[must_use]

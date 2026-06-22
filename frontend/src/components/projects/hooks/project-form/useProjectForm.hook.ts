@@ -148,12 +148,12 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       agentsMd.value = p.agentsMd ?? '';
       agentsMdOverride.value = p.agentsMd != null;
       overridesOpen.value = false;
-      primaryModelProviderKey.value = p.primaryModelProviderKey ?? '';
-      primaryModelProviderOverride.value = p.primaryModelProviderKey != null;
+      primaryModelProviderKey.value = p.primaryModelProviderConfigId ?? '';
+      primaryModelProviderOverride.value = p.primaryModelProviderConfigId != null;
       primaryModelId.value = p.primaryModelId ?? '';
       primaryModelIdOverride.value = p.primaryModelId != null;
-      smallModelProviderKey.value = p.smallModelProviderKey ?? '';
-      smallModelProviderOverride.value = p.smallModelProviderKey != null;
+      smallModelProviderKey.value = p.smallModelProviderConfigId ?? '';
+      smallModelProviderOverride.value = p.smallModelProviderConfigId != null;
       smallModelId.value = p.smallModelId ?? '';
       smallModelIdOverride.value = p.smallModelId != null;
       reviewEnabled.value = p.reviewEnabled ?? false;

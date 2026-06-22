@@ -122,12 +122,12 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               promptTemplate: overrideOrNull(promptTemplate, promptTemplateOverride),
               repoFullNames: repoFullNames.value,
               agentsMd: overrideOrNull(agentsMd, agentsMdOverride),
-              primaryModelProviderKey: overrideOrNull(
+              primaryModelProviderConfigId: overrideOrNull(
                 primaryModelProviderKey,
                 primaryModelProviderOverride
               ),
               primaryModelId: overrideOrNull(primaryModelId, primaryModelIdOverride),
-              smallModelProviderKey: overrideOrNull(
+              smallModelProviderConfigId: overrideOrNull(
                 smallModelProviderKey,
                 smallModelProviderOverride
               ),
@@ -166,12 +166,12 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             promptTemplate: overrideOrUndefined(promptTemplate, promptTemplateOverride),
             repoFullNames: repoFullNames.value,
             agentsMd: overrideOrUndefined(agentsMd, agentsMdOverride),
-            primaryModelProviderKey: overrideOrUndefined(
+            primaryModelProviderConfigId: overrideOrUndefined(
               primaryModelProviderKey,
               primaryModelProviderOverride
             ),
             primaryModelId: overrideOrUndefined(primaryModelId, primaryModelIdOverride),
-            smallModelProviderKey: overrideOrUndefined(
+            smallModelProviderConfigId: overrideOrUndefined(
               smallModelProviderKey,
               smallModelProviderOverride
             ),

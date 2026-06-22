@@ -164,6 +164,7 @@ pub(crate) fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerSer
             ModelProvidersRepository::new(),
             db.clone(),
             ModelCatalogClient::new(),
+            "test-secret",
         ),
         TeamsService::new(TeamsRepository::new(), db.clone()),
     );

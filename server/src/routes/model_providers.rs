@@ -5,7 +5,7 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::model_providers::model::{
-    CreateModelProviderRequest, UpdateModelProviderRequest,
+    CreateModelProviderRequest, StartChatGptAuthRequest, UpdateModelProviderRequest,
 };
 
 pub async fn catalog(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
@@ -72,4 +72,62 @@ pub async fn delete(
         .delete(path.into_inner(), team_id)
         .await?;
     Ok(HttpResponse::NoContent().finish())
+}
+
+pub async fn start_chatgpt_auth(
+    state: web::Data<AppState>,
+    body: web::Json<StartChatGptAuthRequest>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let user_id = principal_user_id(&auth);
+    let response = state
+        .model_providers
+        .start_chatgpt_auth(team_id, &user_id, body.into_inner())
+        .await?;
+    Ok(HttpResponse::Created().json(response))
+}
+
+pub async fn chatgpt_auth_status(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let user_id = principal_user_id(&auth);
+    let response = state
+        .model_providers
+        .chatgpt_auth_status(team_id, &user_id, path.into_inner())
+        .await?;
+    Ok(HttpResponse::Ok().json(response))
+}
+
+pub async fn cancel_chatgpt_auth(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let user_id = principal_user_id(&auth);
+    state
+        .model_providers
+        .cancel_chatgpt_auth(team_id, &user_id, path.into_inner())
+        .await?;
+    Ok(HttpResponse::NoContent().finish())
+}
+
+fn principal_user_id(auth: &TeamPrincipal) -> String {
+    match auth {
+        TeamPrincipal::User { user_id, .. } => user_id.clone(),
+        TeamPrincipal::Instance { .. } => "instance".to_owned(),
+    }
 }

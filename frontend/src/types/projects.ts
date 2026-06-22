@@ -12,8 +12,10 @@ export interface ProjectConfig {
   repoUrls?: string[];
   agentsMd?: string | null;
   primaryModelProviderKey?: string | null;
+  primaryModelProviderConfigId?: string | null;
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
+  smallModelProviderConfigId?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean | null;
   reviewPickupColumn?: string | null;
@@ -37,8 +39,10 @@ export interface CreateProjectRequest {
   repoFullNames?: string[];
   agentsMd?: string | null;
   primaryModelProviderKey?: string | null;
+  primaryModelProviderConfigId?: string | null;
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
+  smallModelProviderConfigId?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean | null;
   reviewPickupColumn?: string | null;
@@ -58,8 +62,10 @@ export interface UpdateProjectRequest {
   repoFullNames?: string[];
   agentsMd?: string | null;
   primaryModelProviderKey?: string | null;
+  primaryModelProviderConfigId?: string | null;
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
+  smallModelProviderConfigId?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean | null;
   reviewPickupColumn?: string | null;

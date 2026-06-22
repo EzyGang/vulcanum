@@ -27,14 +27,21 @@ export interface CatalogResponse {
 export interface ModelProviderConfig {
   id: string;
   providerKey: string;
+  authType: 'api_key' | 'chatgpt_oauth';
   displayName: string;
   credentials: Record<string, string>;
+  oauthMetadata?: {
+    accountId?: string | null;
+    email?: string | null;
+    expiresAt?: string | null;
+  };
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateModelProviderRequest {
   providerKey: string;
+  authType?: 'api_key' | 'chatgpt_oauth';
   displayName?: string;
   credentials: Record<string, string>;
 }
@@ -42,4 +49,22 @@ export interface CreateModelProviderRequest {
 export interface UpdateModelProviderRequest {
   displayName?: string;
   credentials?: Record<string, string>;
+}
+
+export interface StartChatGptAuthRequest {
+  displayName?: string;
+}
+
+export interface ChatGptAuthStartResponse {
+  attemptId: string;
+  verificationUri: string;
+  userCode: string;
+  expiresAt: string;
+  pollIntervalSeconds: number;
+}
+
+export interface ChatGptAuthStatusResponse {
+  status: 'pending' | 'complete' | 'expired' | 'failed';
+  error?: string | null;
+  provider?: ModelProviderConfig | null;
 }

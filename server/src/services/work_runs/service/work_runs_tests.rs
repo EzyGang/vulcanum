@@ -43,7 +43,7 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
     };
     GithubAppManager::new(
         GithubAppRepository::new(),
-        pool,
+        pool.clone(),
         "redis://127.0.0.1:6379",
         &cfg,
     )
@@ -61,6 +61,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
             model_providers_repo.clone(),
             pool.clone(),
             model_catalog.clone(),
+            "test-secret",
         ),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
@@ -69,11 +70,15 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         WorkersRepository::new(),
         project_configs,
         build_github_manager(pool.clone()),
-        pool,
+        pool.clone(),
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
-        model_providers_repo,
-        model_catalog,
+        ModelProvidersService::new(
+            model_providers_repo,
+            pool.clone(),
+            model_catalog,
+            "test-secret",
+        ),
         Arc::new(InMemoryCancelStore::new()),
         3,
     )

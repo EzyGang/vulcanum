@@ -16,17 +16,36 @@ export const useModelItems = ({
   smallModelProviderKey
 }: UseModelItemsParams) => ({
   connectedProviderItems: modelProviders.map((provider) => ({
-    value: provider.providerKey,
-    label: provider.displayName || provider.providerKey
+    value: provider.id,
+    label: providerLabel(provider)
   })),
-  primaryModelItems: modelItemsForProvider(catalogProviders, primaryModelProviderKey.value),
-  smallModelItems: modelItemsForProvider(catalogProviders, smallModelProviderKey.value)
+  primaryModelItems: modelItemsForProvider(
+    catalogProviders,
+    modelProviders,
+    primaryModelProviderKey.value
+  ),
+  smallModelItems: modelItemsForProvider(
+    catalogProviders,
+    modelProviders,
+    smallModelProviderKey.value
+  )
 });
 
 const modelItemsForProvider = (
   catalogProviders: CatalogProvider[],
-  providerKey: string
+  modelProviders: ModelProviderConfig[],
+  providerConfigId: string
 ): SelectOption[] =>
   catalogProviders
-    .find((provider) => provider.id === providerKey)
+    .find((provider) => provider.id === providerKeyForConfig(modelProviders, providerConfigId))
     ?.models.map((model) => ({ value: model.id, label: model.name })) ?? [];
+
+const providerKeyForConfig = (modelProviders: ModelProviderConfig[], providerConfigId: string) =>
+  modelProviders.find((provider) => provider.id === providerConfigId)?.providerKey ??
+  providerConfigId;
+
+const providerLabel = (provider: ModelProviderConfig): string => {
+  const name = provider.displayName || provider.providerKey;
+  const auth = provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key';
+  return `${name} (${auth})`;
+};

@@ -49,8 +49,10 @@ pub struct Team {
     pub prompt_template: String,
     pub agents_md: String,
     pub primary_model_provider_key: Option<String>,
+    pub primary_model_provider_config_id: Option<Uuid>,
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
+    pub small_model_provider_config_id: Option<Uuid>,
     pub small_model_id: Option<String>,
     pub review_enabled: bool,
     pub review_pickup_column: String,
@@ -92,10 +94,14 @@ pub struct UpdateTeamRequest {
     pub agents_md: Option<String>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub primary_model_provider_key: Option<Option<String>>,
+    #[serde(default)]
+    pub primary_model_provider_config_id: Option<Option<Uuid>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub primary_model_id: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub small_model_provider_key: Option<Option<String>>,
+    #[serde(default)]
+    pub small_model_provider_config_id: Option<Option<Uuid>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub small_model_id: Option<Option<String>>,
     #[serde(default)]

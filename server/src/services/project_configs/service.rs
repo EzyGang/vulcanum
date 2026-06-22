@@ -84,15 +84,32 @@ impl ProjectConfigsService {
         params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
         resolve_column_if_set(&all_columns, &mut params.review_pickup_column)?;
 
+        if params.primary_model_provider_config_id.is_none() {
+            params.primary_model_provider_config_id = self
+                .resolve_legacy_model_provider_key(
+                    team_id,
+                    params.primary_model_provider_key.as_deref(),
+                )
+                .await?;
+        }
+        if params.small_model_provider_config_id.is_none() {
+            params.small_model_provider_config_id = self
+                .resolve_legacy_model_provider_key(
+                    team_id,
+                    params.small_model_provider_key.as_deref(),
+                )
+                .await?;
+        }
+
         self.validate_model_selection(
             team_id,
-            params.primary_model_provider_key.as_deref(),
+            params.primary_model_provider_config_id,
             params.primary_model_id.as_deref(),
         )
         .await?;
         self.validate_model_selection(
             team_id,
-            params.small_model_provider_key.as_deref(),
+            params.small_model_provider_config_id,
             params.small_model_id.as_deref(),
         )
         .await?;
@@ -134,12 +151,27 @@ impl ProjectConfigsService {
     pub(super) async fn validate_model_selection(
         &self,
         team_id: Uuid,
-        provider_key: Option<&str>,
+        provider_config_id: Option<Uuid>,
         model_id: Option<&str>,
     ) -> Result<(), ProjectConfigsError> {
         self.model_providers
-            .validate_model_selection(team_id, provider_key, model_id)
+            .validate_model_selection(team_id, provider_config_id, model_id)
             .await
+            .map_err(ProjectConfigsError::ModelProvider)
+    }
+
+    pub(super) async fn resolve_legacy_model_provider_key(
+        &self,
+        team_id: Uuid,
+        provider_key: Option<&str>,
+    ) -> Result<Option<Uuid>, ProjectConfigsError> {
+        let Some(provider_key) = provider_key.filter(|value| !value.is_empty()) else {
+            return Ok(None);
+        };
+        self.model_providers
+            .provider_config_id_for_key(team_id, provider_key)
+            .await
+            .map(Some)
             .map_err(ProjectConfigsError::ModelProvider)
     }
 }

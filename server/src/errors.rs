@@ -287,6 +287,10 @@ impl From<ModelProvidersError> for AppError {
         match err {
             ModelProvidersError::NotFound => Self::ModelProviderNotFound,
             ModelProvidersError::DuplicateProvider => Self::DuplicateModelProvider,
+            ModelProvidersError::InvalidAuthType(auth_type) => {
+                Self::BadRequest(format!("Invalid model provider auth type: {auth_type}"))
+            }
+            ModelProvidersError::InvalidSelection(message) => Self::BadRequest(message),
             ModelProvidersError::UnknownProvider(provider) => {
                 Self::BadRequest(format!("Unknown model provider: {provider}"))
             }
@@ -296,6 +300,14 @@ impl From<ModelProvidersError> for AppError {
             } => Self::BadRequest(format!("Unknown model: {provider_key}/{model_id}")),
             ModelProvidersError::Catalog(e) => {
                 tracing::error!(error = %e, operation = "model_providers", "catalog error");
+                Self::Internal
+            }
+            ModelProvidersError::OAuth(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "oauth error");
+                Self::Internal
+            }
+            ModelProvidersError::Crypto => {
+                tracing::error!(operation = "model_providers", "credential encryption error");
                 Self::Internal
             }
             ModelProvidersError::Database(e) => {

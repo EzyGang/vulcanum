@@ -128,6 +128,7 @@ impl TeamsService {
                     .primary_model_provider_key
                     .as_ref()
                     .map(|value| value.as_deref()),
+                params.primary_model_provider_config_id,
                 params
                     .primary_model_id
                     .as_ref()
@@ -136,6 +137,7 @@ impl TeamsService {
                     .small_model_provider_key
                     .as_ref()
                     .map(|value| value.as_deref()),
+                params.small_model_provider_config_id,
                 params.small_model_id.as_ref().map(|value| value.as_deref()),
                 params.review_enabled,
                 params.review_pickup_column.as_deref(),

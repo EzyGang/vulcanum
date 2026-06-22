@@ -1,0 +1,123 @@
+import { signal } from '@preact/signals';
+import { render } from '@testing-library/preact';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../components/shared/ui/Select.view', () => ({
+  Select: ({
+    items = [],
+    value
+  }: {
+    items?: { label: string; value: string }[];
+    value: string;
+  }) => (
+    <div data-testid='select' data-value={value}>
+      {items.map((item) => (
+        <span key={item.value}>{item.label}</span>
+      ))}
+    </div>
+  )
+}));
+
+import { ModelProvidersView } from '../components/model-providers/ui/ModelProviders.view';
+import type { CatalogProvider, ModelProviderConfig } from '../types/modelProviders';
+
+const catalogProviders: CatalogProvider[] = [
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    doc: '',
+    env: ['OPENAI_API_KEY'],
+    models: []
+  }
+];
+
+const provider: ModelProviderConfig = {
+  id: 'provider-1',
+  providerKey: 'openai',
+  authType: 'chatgpt_oauth',
+  displayName: 'OpenAI ChatGPT Pro/Plus',
+  credentials: {},
+  oauthMetadata: { accountId: 'acct_123' },
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z'
+};
+
+const actions = {
+  onShowCreate: vi.fn(),
+  onShowEdit: vi.fn(),
+  onCancelForm: vi.fn(),
+  onProviderChange: vi.fn(),
+  onAuthTypeChange: vi.fn(),
+  onDisplayNameChange: vi.fn(),
+  onCredentialChange: vi.fn(),
+  onCancelChatGptAuth: vi.fn(),
+  onSave: vi.fn(),
+  onConfirmDelete: vi.fn(),
+  onCancelDelete: vi.fn(),
+  onDelete: vi.fn()
+};
+
+describe('ModelProvidersView', () => {
+  it('shows ChatGPT device login details instead of API key fields', () => {
+    const { getByText, queryByText } = render(
+      <ModelProvidersView
+        data={{
+          catalogProviders,
+          providers: [],
+          selectedCatalogProvider: catalogProviders[0],
+          showForm: signal(true),
+          editId: signal(null),
+          providerKey: signal('openai'),
+          authType: signal('chatgpt_oauth'),
+          displayName: signal(''),
+          credentials: signal({}),
+          chatGptAttempt: signal({
+            attemptId: 'attempt-1',
+            verificationUri: 'https://auth.openai.com/codex/device',
+            userCode: 'ABCD-EFGH',
+            expiresAt: '2026-01-01T00:10:00Z',
+            pollIntervalSeconds: 5
+          }),
+          chatGptAuthStatus: { status: 'pending' },
+          formError: signal(null),
+          formSubmitting: signal(false),
+          deleteConfirmId: signal(null),
+          deleteError: signal(null)
+        }}
+        status={{ loading: false, catalogLoading: false, error: null }}
+        actions={actions}
+      />
+    );
+
+    expect(getByText('ChatGPT Pro/Plus Login')).toBeDefined();
+    expect(getByText('ABCD-EFGH')).toBeDefined();
+    expect(queryByText('Credential fields from models.dev catalog.')).toBeNull();
+  });
+
+  it('labels ChatGPT OAuth providers distinctly in the table', () => {
+    const { getByText } = render(
+      <ModelProvidersView
+        data={{
+          catalogProviders,
+          providers: [provider],
+          showForm: signal(false),
+          editId: signal(null),
+          providerKey: signal(''),
+          authType: signal('api_key'),
+          displayName: signal(''),
+          credentials: signal({}),
+          chatGptAttempt: signal(null),
+          formError: signal(null),
+          formSubmitting: signal(false),
+          deleteConfirmId: signal(null),
+          deleteError: signal(null)
+        }}
+        status={{ loading: false, catalogLoading: false, error: null }}
+        actions={actions}
+      />
+    );
+
+    expect(getByText('ChatGPT Pro/Plus')).toBeDefined();
+    expect(getByText('acct_123')).toBeDefined();
+  });
+});

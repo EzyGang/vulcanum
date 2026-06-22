@@ -45,24 +45,46 @@ impl ProjectConfigsService {
             resolve_nullable_column_if_set(&all_columns, &mut params.review_pickup_column)?;
         }
 
-        let primary_provider_key = resolve_model_field(
-            &params.primary_model_provider_key,
-            existing.primary_model_provider_key.as_deref(),
+        if params.primary_model_provider_config_id.is_none() {
+            params.primary_model_provider_config_id =
+                match params.primary_model_provider_key.as_ref() {
+                    Some(Some(provider_key)) => self
+                        .resolve_legacy_model_provider_key(team_id, Some(provider_key.as_str()))
+                        .await?
+                        .map(Some),
+                    Some(None) => Some(None),
+                    None => None,
+                };
+        }
+        if params.small_model_provider_config_id.is_none() {
+            params.small_model_provider_config_id = match params.small_model_provider_key.as_ref() {
+                Some(Some(provider_key)) => self
+                    .resolve_legacy_model_provider_key(team_id, Some(provider_key.as_str()))
+                    .await?
+                    .map(Some),
+                Some(None) => Some(None),
+                None => None,
+            };
+        }
+
+        let primary_provider_config_id = resolve_uuid_field(
+            &params.primary_model_provider_config_id,
+            existing.primary_model_provider_config_id,
         );
         let primary_model_id = resolve_model_field(
             &params.primary_model_id,
             existing.primary_model_id.as_deref(),
         );
-        let small_provider_key = resolve_model_field(
-            &params.small_model_provider_key,
-            existing.small_model_provider_key.as_deref(),
+        let small_provider_config_id = resolve_uuid_field(
+            &params.small_model_provider_config_id,
+            existing.small_model_provider_config_id,
         );
         let small_model_id =
             resolve_model_field(&params.small_model_id, existing.small_model_id.as_deref());
 
-        self.validate_model_selection(team_id, primary_provider_key, primary_model_id)
+        self.validate_model_selection(team_id, primary_provider_config_id, primary_model_id)
             .await?;
-        self.validate_model_selection(team_id, small_provider_key, small_model_id)
+        self.validate_model_selection(team_id, small_provider_config_id, small_model_id)
             .await?;
 
         let repo_url = params
@@ -97,6 +119,7 @@ impl ProjectConfigsService {
                         .primary_model_provider_key
                         .as_ref()
                         .map(|value| value.as_deref()),
+                    primary_model_provider_config_id: params.primary_model_provider_config_id,
                     primary_model_id: params
                         .primary_model_id
                         .as_ref()
@@ -105,6 +128,7 @@ impl ProjectConfigsService {
                         .small_model_provider_key
                         .as_ref()
                         .map(|value| value.as_deref()),
+                    small_model_provider_config_id: params.small_model_provider_config_id,
                     small_model_id: params.small_model_id.as_ref().map(|value| value.as_deref()),
                     review_enabled: params.review_enabled,
                     review_pickup_column: params
@@ -147,6 +171,13 @@ impl ProjectConfigsService {
             return Err(ProjectConfigsError::NotFound);
         }
         self.repo.delete(&self.db, id).await
+    }
+}
+
+fn resolve_uuid_field(update: &Option<Option<Uuid>>, existing: Option<Uuid>) -> Option<Uuid> {
+    match update {
+        Some(value) => *value,
+        None => existing,
     }
 }
 

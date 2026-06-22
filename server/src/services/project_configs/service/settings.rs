@@ -20,11 +20,17 @@ impl ProjectConfigsService {
                 .primary_model_provider_key
                 .clone()
                 .or(team.primary_model_provider_key),
+            primary_model_provider_config_id: config
+                .primary_model_provider_config_id
+                .or(team.primary_model_provider_config_id),
             primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
             small_model_provider_key: config
                 .small_model_provider_key
                 .clone()
                 .or(team.small_model_provider_key),
+            small_model_provider_config_id: config
+                .small_model_provider_config_id
+                .or(team.small_model_provider_config_id),
             small_model_id: config.small_model_id.clone().or(team.small_model_id),
             review_enabled: config.review_enabled.unwrap_or(team.review_enabled),
             review_pickup_column: config

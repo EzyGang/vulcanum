@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n              pc.small_model_provider_key, pc.small_model_id,\n              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n              pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.enabled = true\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.primary_model_provider_key, pc.primary_model_provider_config_id, pc.primary_model_id,\n             pc.small_model_provider_key, pc.small_model_provider_config_id, pc.small_model_id,\n             pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n             pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.team_id = $1\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -99,57 +99,69 @@
       },
       {
         "ordinal": 17,
+        "name": "primary_model_provider_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 18,
         "name": "primary_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "small_model_provider_key",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
+        "name": "small_model_provider_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 21,
         "name": "small_model_id",
         "type_info": "Text"
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "review_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 21,
+        "ordinal": 23,
         "name": "review_pickup_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 24,
         "name": "review_max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 23,
+        "ordinal": 25,
         "name": "review_prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 25,
+        "ordinal": 27,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 26,
+        "ordinal": 28,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -177,9 +189,11 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       true
     ]
   },
-  "hash": "81e6e4e98a894f1e6de240e6aaba391845c9dfe6a97354a484897a7856ffd7e1"
+  "hash": "69943f1987ab7717c74547739b040c42b3d2e82295b674f75677c6a2c20867ab"
 }

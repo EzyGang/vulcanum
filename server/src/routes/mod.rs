@@ -89,6 +89,18 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/model-providers")
                     .route("/catalog", web::get().to(model_providers::catalog))
+                    .route(
+                        "/openai-chatgpt/auth/start",
+                        web::post().to(model_providers::start_chatgpt_auth),
+                    )
+                    .route(
+                        "/openai-chatgpt/auth/{id}",
+                        web::get().to(model_providers::chatgpt_auth_status),
+                    )
+                    .route(
+                        "/openai-chatgpt/auth/{id}/cancel",
+                        web::post().to(model_providers::cancel_chatgpt_auth),
+                    )
                     .route("", web::get().to(model_providers::list))
                     .route("", web::post().to(model_providers::create))
                     .route("/{id}", web::patch().to(model_providers::update))

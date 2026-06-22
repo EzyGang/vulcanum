@@ -1,4 +1,5 @@
 pub mod catalog;
+pub mod crypto;
 pub mod errors;
 pub mod model;
 pub mod renderer;

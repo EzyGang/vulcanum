@@ -266,6 +266,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         model_providers_repo.clone(),
         pool.clone(),
         model_catalog.clone(),
+        "test-secret",
     );
 
     let cfg = crate::config::AppConfig {
@@ -329,8 +330,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         pool.clone(),
         dispatch_store.clone(),
         providers_repo_clone,
-        model_providers_repo,
-        model_catalog,
+        model_providers.clone(),
         cancel_store.clone(),
         cfg.unhealthy_threshold,
     );

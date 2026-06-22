@@ -1,7 +1,10 @@
 import type {
   CatalogResponse,
+  ChatGptAuthStartResponse,
+  ChatGptAuthStatusResponse,
   CreateModelProviderRequest,
   ModelProviderConfig,
+  StartChatGptAuthRequest,
   UpdateModelProviderRequest
 } from '../../types/modelProviders';
 import { del, get, patch, post } from '../../utils/api/request';
@@ -23,3 +26,14 @@ export const updateModelProvider = (
 
 export const deleteModelProvider = (id: string): Promise<void> =>
   del<void>(`/model-providers/${id}`);
+
+export const startChatGptAuth = (
+  input: StartChatGptAuthRequest
+): Promise<ChatGptAuthStartResponse> =>
+  post<ChatGptAuthStartResponse>('/model-providers/openai-chatgpt/auth/start', input);
+
+export const getChatGptAuthStatus = (attemptId: string): Promise<ChatGptAuthStatusResponse> =>
+  get<ChatGptAuthStatusResponse>(`/model-providers/openai-chatgpt/auth/${attemptId}`);
+
+export const cancelChatGptAuth = (attemptId: string): Promise<void> =>
+  post<void>(`/model-providers/openai-chatgpt/auth/${attemptId}/cancel`, {});
