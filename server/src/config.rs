@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use once_cell::sync::OnceCell;
 
 pub struct AppConfig {
     pub db_url: String,
@@ -74,17 +74,6 @@ impl AppConfig {
 }
 
 pub fn config() -> Result<&'static AppConfig, eyre::Error> {
-    static CONFIG: OnceLock<AppConfig> = OnceLock::new();
-
-    match CONFIG.get() {
-        Some(config) => Ok(config),
-        None => match AppConfig::from_env() {
-            Ok(loaded_config) => match CONFIG.set(loaded_config) {
-                Ok(()) | Err(_) => CONFIG
-                    .get()
-                    .ok_or_else(|| eyre::eyre!("Failed to initialize configuration")),
-            },
-            Err(err) => Err(err),
-        },
-    }
+    static CONFIG: OnceCell<AppConfig> = OnceCell::new();
+    CONFIG.get_or_try_init(AppConfig::from_env)
 }
