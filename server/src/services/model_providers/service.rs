@@ -65,6 +65,12 @@ struct DeviceTokenResponse {
     error_description: Option<String>,
 }
 
+enum DevicePollOutcome {
+    Pending,
+    Authorized(String),
+    Failed(String),
+}
+
 #[derive(Debug, Deserialize)]
 struct OAuthTokenResponse {
     access_token: String,
@@ -192,6 +198,8 @@ impl ModelProvidersService {
             .map_err(|e| {
                 ModelProvidersError::OAuth(format!("parsing device flow response: {e}"))
             })?;
+        let encrypted_device_code = self.cipher.encrypt_json(&body.device_code)?;
+        let display_name = display_name_or_default(&params.display_name);
         let attempt = self
             .repo
             .create_auth_attempt(
@@ -199,18 +207,15 @@ impl ModelProvidersService {
                 team_id,
                 &CreateAuthAttemptParams {
                     user_id,
-                    device_code: &body.device_code,
+                    encrypted_device_code: &encrypted_device_code,
                     user_code: &body.user_code,
                     verification_uri: &body.verification_uri,
+                    display_name: &display_name,
                     interval_seconds: body.interval.unwrap_or(DEFAULT_DEVICE_POLL_SECONDS),
                     expires_at: Utc::now() + chrono::Duration::seconds(body.expires_in),
                 },
             )
             .await?;
-
-        if !params.display_name.trim().is_empty() {
-            tracing::debug!(attempt_id = %attempt.id, "stored requested ChatGPT display name for auth flow");
-        }
 
         Ok(ChatGptAuthStartResponse {
             attempt_id: attempt.id,
@@ -252,12 +257,31 @@ impl ModelProvidersService {
             });
         }
 
-        let Some(code) = self.poll_device_token(&attempt.device_code).await? else {
-            return Ok(ChatGptAuthStatusResponse {
-                status: CHATGPT_AUTH_PENDING.to_owned(),
-                error: None,
-                provider: None,
-            });
+        let device_code: String = self.cipher.decrypt_json(&attempt.encrypted_device_code)?;
+        let code = match self.poll_device_token(&device_code).await? {
+            DevicePollOutcome::Pending => {
+                return Ok(ChatGptAuthStatusResponse {
+                    status: CHATGPT_AUTH_PENDING.to_owned(),
+                    error: None,
+                    provider: None,
+                });
+            }
+            DevicePollOutcome::Failed(message) => {
+                self.repo
+                    .update_auth_attempt_status(
+                        &self.db,
+                        attempt.id,
+                        CHATGPT_AUTH_FAILED,
+                        Some(&message),
+                    )
+                    .await?;
+                return Ok(ChatGptAuthStatusResponse {
+                    status: CHATGPT_AUTH_FAILED.to_owned(),
+                    error: Some(message),
+                    provider: None,
+                });
+            }
+            DevicePollOutcome::Authorized(code) => code,
         };
 
         let token = self.exchange_authorization_code(&code).await?;
@@ -289,7 +313,7 @@ impl ModelProvidersService {
                 &self.db,
                 team_id,
                 &CreateOAuthProviderParams {
-                    display_name: DEFAULT_CHATGPT_DISPLAY_NAME,
+                    display_name: &attempt.display_name,
                     oauth_credentials: &encrypted,
                     oauth_metadata: &metadata_json,
                 },
@@ -358,7 +382,7 @@ impl ModelProvidersService {
     async fn poll_device_token(
         &self,
         device_code: &str,
-    ) -> Result<Option<String>, ModelProvidersError> {
+    ) -> Result<DevicePollOutcome, ModelProvidersError> {
         let response = self
             .client
             .post(DEVICE_TOKEN_URL)
@@ -374,10 +398,12 @@ impl ModelProvidersService {
             ModelProvidersError::OAuth(format!("parsing device token response: {e}"))
         })?;
         match body.error.as_deref() {
-            Some("authorization_pending") | Some("slow_down") => return Ok(None),
+            Some("authorization_pending") | Some("slow_down") => {
+                return Ok(DevicePollOutcome::Pending)
+            }
             Some(error) => {
                 let description = body.error_description.unwrap_or_else(|| error.to_owned());
-                return Err(ModelProvidersError::OAuth(description));
+                return Ok(DevicePollOutcome::Failed(description));
             }
             None => (),
         }
@@ -386,7 +412,7 @@ impl ModelProvidersService {
                 "polling device token returned HTTP {status}"
             )));
         }
-        body.code.map(Some).ok_or_else(|| {
+        body.code.map(DevicePollOutcome::Authorized).ok_or_else(|| {
             ModelProvidersError::OAuth("device token response missing code".to_owned())
         })
     }
@@ -480,6 +506,13 @@ fn selected_ids(primary: Option<Uuid>, small: Option<Uuid>) -> Vec<Uuid> {
         }
     }
     ids
+}
+
+fn display_name_or_default(display_name: &str) -> String {
+    match display_name.trim() {
+        "" => DEFAULT_CHATGPT_DISPLAY_NAME.to_owned(),
+        value => value.to_owned(),
+    }
 }
 
 fn validate_auth_compatibility(

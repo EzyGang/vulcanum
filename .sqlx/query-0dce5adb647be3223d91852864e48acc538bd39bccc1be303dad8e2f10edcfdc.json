@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE model_provider_configs SET\n              display_name = COALESCE($3, display_name),\n              credentials = COALESCE($4, credentials)\n              WHERE id = $1 AND team_id = $2\n              RETURNING id, team_id, provider_key, auth_type, display_name, credentials,\n                oauth_credentials, oauth_metadata, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "auth_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "credentials",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "oauth_credentials",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "oauth_metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0dce5adb647be3223d91852864e48acc538bd39bccc1be303dad8e2f10edcfdc"
+}

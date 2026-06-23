@@ -1,11 +1,11 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type {
-  CatalogProvider,
   ChatGptAuthStartResponse,
   ChatGptAuthStatusResponse,
   ModelProviderConfig
 } from '../../../types/modelProviders';
+import type { SelectOption } from '../../../types/shared';
 import type { ApiError } from '../../../utils/api/client';
 import { Button } from '../../shared/ui/Button.view';
 import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
@@ -19,9 +19,21 @@ import { Table } from '../../shared/ui/Table.view';
 
 interface ModelProvidersViewProps {
   data: {
-    catalogProviders: CatalogProvider[];
-    providers: ModelProviderConfig[];
-    selectedCatalogProvider?: CatalogProvider;
+    catalogProviderItems: SelectOption[];
+    providerRows: {
+      provider: ModelProviderConfig;
+      name: string;
+      providerKey: string;
+      authLabel: string;
+      credentialMetadata: string;
+    }[];
+    credentialFields: string[];
+    authTypeItems: SelectOption[];
+    isChatGptAuth: boolean;
+    showAuthTypeSelect: boolean;
+    showCredentialFields: boolean;
+    submitLabel: string;
+    submitDisabled: boolean;
     showForm: Signal<boolean>;
     editId: Signal<string | null>;
     providerKey: Signal<string>;
@@ -96,14 +108,11 @@ export const ModelProvidersView = ({
             onValueChange={actions.onProviderChange}
             disabled={!!data.editId.value || data.formSubmitting.value}
             placeholder='Select a provider...'
-            items={data.catalogProviders.map((provider) => ({
-              value: provider.id,
-              label: provider.name
-            }))}
+            items={data.catalogProviderItems}
           />
         </div>
 
-        {data.providerKey.value === 'openai' && (
+        {data.showAuthTypeSelect && (
           <div class='flex flex-col gap-2'>
             <Label for='model-provider-auth-type'>Auth Method</Label>
             <Select
@@ -111,10 +120,7 @@ export const ModelProvidersView = ({
               value={data.authType.value}
               onValueChange={actions.onAuthTypeChange}
               disabled={!!data.editId.value || data.formSubmitting.value}
-              items={[
-                { value: 'api_key', label: 'OpenAI API Key' },
-                { value: 'chatgpt_oauth', label: 'ChatGPT Pro/Plus' }
-              ]}
+              items={data.authTypeItems}
             />
           </div>
         )}
@@ -130,10 +136,10 @@ export const ModelProvidersView = ({
           />
         </div>
 
-        {data.selectedCatalogProvider && data.authType.value === 'api_key' && (
+        {data.showCredentialFields && (
           <div class='flex flex-col gap-3'>
             <div class='text-text-muted text-xs'>Credential fields from models.dev catalog.</div>
-            {data.selectedCatalogProvider.env.map((envName) => (
+            {data.credentialFields.map((envName) => (
               <div class='flex flex-col gap-2' key={envName}>
                 <Label for={`credential-${envName}`}>{envName}</Label>
                 <Input
@@ -150,7 +156,7 @@ export const ModelProvidersView = ({
           </div>
         )}
 
-        {data.authType.value === 'chatgpt_oauth' && (
+        {data.isChatGptAuth && (
           <div class='border border-border-base bg-bg-input p-4 flex flex-col gap-3'>
             <div class='flex flex-col gap-1'>
               <span class='text-text-primary text-sm font-medium'>ChatGPT Pro/Plus Login</span>
@@ -187,20 +193,8 @@ export const ModelProvidersView = ({
         {data.formError.value && <ErrorBanner message={data.formError.value} />}
 
         <div class='flex items-center gap-3'>
-          <Button
-            type='submit'
-            variant='primary'
-            disabled={data.formSubmitting.value || !!data.chatGptAttempt.value}
-          >
-            {data.formSubmitting.value
-              ? 'Saving...'
-              : data.authType.value === 'chatgpt_oauth' && !data.editId.value
-                ? data.chatGptAttempt.value
-                  ? 'Waiting for Login'
-                  : 'Start Device Login'
-                : data.editId.value
-                  ? 'Update'
-                  : 'Create'}
+          <Button type='submit' variant='primary' disabled={data.submitDisabled}>
+            {data.submitLabel}
           </Button>
           {data.chatGptAttempt.value && (
             <Button type='button' variant='secondary' onClick={actions.onCancelChatGptAuth}>
@@ -214,14 +208,14 @@ export const ModelProvidersView = ({
       </form>
     )}
 
-    {!status.loading && data.providers.length === 0 && !data.showForm.value && (
+    {!status.loading && data.providerRows.length === 0 && !data.showForm.value && (
       <EmptyState
         title='No model providers connected yet.'
         description='Connect a model provider to select app-managed runtime models for projects.'
       />
     )}
 
-    {!status.loading && data.providers.length > 0 && (
+    {!status.loading && data.providerRows.length > 0 && (
       <Table>
         <Table.Head>
           <Table.HeadCell>Name</Table.HeadCell>
@@ -231,37 +225,29 @@ export const ModelProvidersView = ({
           <Table.HeadCell>Actions</Table.HeadCell>
         </Table.Head>
         <Table.Body>
-          {data.providers.map((provider) => (
-            <Table.Row key={provider.id}>
+          {data.providerRows.map((row) => (
+            <Table.Row key={row.provider.id}>
               <Table.Cell>
-                <span class='text-text-primary text-sm'>
-                  {provider.displayName || provider.providerKey}
-                </span>
+                <span class='text-text-primary text-sm'>{row.name}</span>
               </Table.Cell>
               <Table.Cell>
-                <span class='text-text-secondary text-sm font-mono'>{provider.providerKey}</span>
+                <span class='text-text-secondary text-sm font-mono'>{row.providerKey}</span>
               </Table.Cell>
               <Table.Cell>
-                <span class='text-text-secondary text-sm'>{authTypeLabel(provider)}</span>
+                <span class='text-text-secondary text-sm'>{row.authLabel}</span>
               </Table.Cell>
               <Table.Cell>
-                <span class='text-text-secondary text-sm font-mono'>
-                  {provider.authType === 'chatgpt_oauth'
-                    ? provider.oauthMetadata?.email ||
-                      provider.oauthMetadata?.accountId ||
-                      'Connected'
-                    : Object.keys(provider.credentials ?? {}).join(', ') || '—'}
-                </span>
+                <span class='text-text-secondary text-sm font-mono'>{row.credentialMetadata}</span>
               </Table.Cell>
               <Table.Cell>
                 <ConfirmDelete
-                  itemId={provider.id}
+                  itemId={row.provider.id}
                   deletingId={data.deleteConfirmId}
                   onConfirm={actions.onConfirmDelete}
                   onDelete={actions.onDelete}
                   onCancel={actions.onCancelDelete}
                   editActions={
-                    <Button variant='ghost' onClick={() => actions.onShowEdit(provider)}>
+                    <Button variant='ghost' onClick={() => actions.onShowEdit(row.provider)}>
                       Edit
                     </Button>
                   }
@@ -274,6 +260,3 @@ export const ModelProvidersView = ({
     )}
   </div>
 );
-
-const authTypeLabel = (provider: ModelProviderConfig): string =>
-  provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key';

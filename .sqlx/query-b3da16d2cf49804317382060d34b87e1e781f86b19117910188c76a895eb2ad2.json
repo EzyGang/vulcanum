@@ -1,0 +1,81 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO model_provider_configs (\n                id, team_id, provider_key, auth_type, display_name, credentials\n            ) VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING id, team_id, provider_key, auth_type, display_name, credentials,\n                oauth_credentials, oauth_metadata, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "auth_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "credentials",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "oauth_credentials",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "oauth_metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b3da16d2cf49804317382060d34b87e1e781f86b19117910188c76a895eb2ad2"
+}

@@ -1,0 +1,96 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, team_id, user_id, encrypted_device_code, user_code, verification_uri,\n                display_name, interval_seconds, expires_at, status, error, created_at, updated_at\n              FROM model_provider_auth_attempts\n              WHERE id = $1 AND team_id = $2 AND user_id = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "encrypted_device_code",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "verification_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "interval_seconds",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ac0b81cf0044c33b9e071b099fc585e6ff85ab8926e9d89f8ab5be3375d0c96c"
+}

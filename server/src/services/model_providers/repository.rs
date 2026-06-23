@@ -13,9 +13,10 @@ pub struct CreateOAuthProviderParams<'a> {
 
 pub struct CreateAuthAttemptParams<'a> {
     pub user_id: &'a str,
-    pub device_code: &'a str,
+    pub encrypted_device_code: &'a serde_json::Value,
     pub user_code: &'a str,
     pub verification_uri: &'a str,
+    pub display_name: &'a str,
     pub interval_seconds: i32,
     pub expires_at: chrono::DateTime<chrono::Utc>,
 }

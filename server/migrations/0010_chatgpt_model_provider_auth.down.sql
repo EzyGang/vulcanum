@@ -11,6 +11,9 @@ ALTER TABLE project_configs
 
 DROP INDEX IF EXISTS model_provider_configs_team_provider_auth_type;
 
+DELETE FROM model_provider_configs
+WHERE auth_type <> 'api_key';
+
 CREATE UNIQUE INDEX model_provider_configs_team_provider_key
     ON model_provider_configs(team_id, provider_key);
 

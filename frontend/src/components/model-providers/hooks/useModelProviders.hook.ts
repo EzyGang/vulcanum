@@ -12,6 +12,7 @@ import {
   updateModelProvider
 } from '../../../services/model-providers/model-providers.service';
 import type { ChatGptAuthStartResponse, ModelProviderConfig } from '../../../types/modelProviders';
+import type { SelectOption } from '../../../types/shared';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
@@ -69,6 +70,27 @@ export const useModelProviders = () => {
   }, []);
 
   const selectedCatalogProvider = catalog?.providers.find((p) => p.id === providerKey.value);
+  const isChatGptAuth = authType.value === 'chatgpt_oauth';
+  const providerRows = (providers ?? []).map((provider) => ({
+    provider,
+    name: provider.displayName || provider.providerKey,
+    providerKey: provider.providerKey,
+    authLabel: provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key',
+    credentialMetadata:
+      provider.authType === 'chatgpt_oauth'
+        ? provider.oauthMetadata?.email || provider.oauthMetadata?.accountId || 'Connected'
+        : Object.keys(provider.credentials ?? {}).join(', ') || '—'
+  }));
+  const submitLabel = submitButtonLabel(
+    formSubmitting.value,
+    isChatGptAuth,
+    !!editId.value,
+    !!chatGptAttempt.value
+  );
+  const authTypeItems: SelectOption[] = [
+    { value: 'api_key', label: 'OpenAI API Key' },
+    { value: 'chatgpt_oauth', label: 'ChatGPT Pro/Plus' }
+  ];
   const chatGptAuthQuery = useApiQuery(
     ['chatgpt-auth', chatGptAttempt.value?.attemptId ?? ''],
     () => getChatGptAuthStatus(chatGptAttempt.value?.attemptId ?? ''),
@@ -196,9 +218,18 @@ export const useModelProviders = () => {
 
   return {
     data: {
-      catalogProviders: catalog?.providers ?? [],
-      providers: providers ?? [],
-      selectedCatalogProvider,
+      catalogProviderItems: (catalog?.providers ?? []).map((provider) => ({
+        value: provider.id,
+        label: provider.name
+      })),
+      providerRows,
+      credentialFields: selectedCatalogProvider?.env ?? [],
+      authTypeItems,
+      isChatGptAuth,
+      showAuthTypeSelect: providerKey.value === 'openai',
+      showCredentialFields: !!selectedCatalogProvider && !isChatGptAuth,
+      submitLabel,
+      submitDisabled: formSubmitting.value || !!chatGptAttempt.value,
       showForm,
       editId,
       providerKey,
@@ -234,3 +265,18 @@ export const useModelProviders = () => {
 
 const chatGptAuthQueryStatusIsLive = (attempt: ChatGptAuthStartResponse): boolean =>
   new Date(attempt.expiresAt).getTime() > Date.now();
+
+const submitButtonLabel = (
+  submitting: boolean,
+  isChatGptAuth: boolean,
+  isEdit: boolean,
+  hasChatGptAttempt: boolean
+): string => {
+  if (submitting) {
+    return 'Saving...';
+  }
+  if (isChatGptAuth && !isEdit) {
+    return hasChatGptAttempt ? 'Waiting for Login' : 'Start Device Login';
+  }
+  return isEdit ? 'Update' : 'Create';
+};

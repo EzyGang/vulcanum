@@ -19,16 +19,12 @@ vi.mock('../components/shared/ui/Select.view', () => ({
 }));
 
 import { ModelProvidersView } from '../components/model-providers/ui/ModelProviders.view';
-import type { CatalogProvider, ModelProviderConfig } from '../types/modelProviders';
+import type { ModelProviderConfig } from '../types/modelProviders';
 
-const catalogProviders: CatalogProvider[] = [
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    doc: '',
-    env: ['OPENAI_API_KEY'],
-    models: []
-  }
+const catalogProviderItems = [{ value: 'openai', label: 'OpenAI' }];
+const authTypeItems = [
+  { value: 'api_key', label: 'OpenAI API Key' },
+  { value: 'chatgpt_oauth', label: 'ChatGPT Pro/Plus' }
 ];
 
 const provider: ModelProviderConfig = {
@@ -62,9 +58,15 @@ describe('ModelProvidersView', () => {
     const { getByText, queryByText } = render(
       <ModelProvidersView
         data={{
-          catalogProviders,
-          providers: [],
-          selectedCatalogProvider: catalogProviders[0],
+          catalogProviderItems,
+          providerRows: [],
+          credentialFields: ['OPENAI_API_KEY'],
+          authTypeItems,
+          isChatGptAuth: true,
+          showAuthTypeSelect: true,
+          showCredentialFields: false,
+          submitLabel: 'Waiting for Login',
+          submitDisabled: true,
           showForm: signal(true),
           editId: signal(null),
           providerKey: signal('openai'),
@@ -98,8 +100,23 @@ describe('ModelProvidersView', () => {
     const { getByText } = render(
       <ModelProvidersView
         data={{
-          catalogProviders,
-          providers: [provider],
+          catalogProviderItems,
+          providerRows: [
+            {
+              provider,
+              name: provider.displayName,
+              providerKey: provider.providerKey,
+              authLabel: 'ChatGPT Pro/Plus',
+              credentialMetadata: 'acct_123'
+            }
+          ],
+          credentialFields: [],
+          authTypeItems,
+          isChatGptAuth: false,
+          showAuthTypeSelect: false,
+          showCredentialFields: false,
+          submitLabel: 'Create',
+          submitDisabled: false,
           showForm: signal(false),
           editId: signal(null),
           providerKey: signal(''),

@@ -117,6 +117,10 @@ impl TeamsService {
         };
         self.authorize_owner(team_id, principal, single_user)
             .await?;
+        self.validate_model_provider_config(team_id, params.primary_model_provider_config_id)
+            .await?;
+        self.validate_model_provider_config(team_id, params.small_model_provider_config_id)
+            .await?;
         self.repo
             .update_settings(
                 &self.db,
@@ -146,6 +150,26 @@ impl TeamsService {
                 params.max_in_progress_tasks,
             )
             .await
+    }
+
+    async fn validate_model_provider_config(
+        &self,
+        team_id: Uuid,
+        provider_config_id: Option<Option<Uuid>>,
+    ) -> Result<(), TeamsError> {
+        let Some(Some(provider_config_id)) = provider_config_id else {
+            return Ok(());
+        };
+        match self
+            .repo
+            .model_provider_config_belongs_to_team(&self.db, team_id, provider_config_id)
+            .await?
+        {
+            true => Ok(()),
+            false => Err(TeamsError::InvalidOperation(
+                "Model provider config does not belong to this team".to_owned(),
+            )),
+        }
     }
 
     pub async fn delete_for_principal(
