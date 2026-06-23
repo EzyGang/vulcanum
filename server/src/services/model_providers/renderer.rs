@@ -18,6 +18,7 @@ pub struct ModelSelection<'a> {
     pub small_model_id: Option<&'a str>,
 }
 
+#[must_use]
 pub fn render_opencode_config(
     connected: &[ModelProviderConfig],
     selection: ModelSelection<'_>,

@@ -23,6 +23,8 @@ pub enum ModelProvidersError {
     OAuth(String),
     #[error("credential encryption error")]
     Crypto,
+    #[error("serialization error")]
+    Serialization,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 }

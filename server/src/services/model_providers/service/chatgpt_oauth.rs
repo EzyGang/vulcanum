@@ -152,7 +152,7 @@ impl ModelProvidersService {
         };
         let encrypted = self.cipher.encrypt_json(&credentials)?;
         let metadata_json =
-            serde_json::to_value(metadata).map_err(|_| ModelProvidersError::Crypto)?;
+            serde_json::to_value(metadata).map_err(|_| ModelProvidersError::Serialization)?;
         let provider = self
             .repo
             .upsert_chatgpt_oauth(

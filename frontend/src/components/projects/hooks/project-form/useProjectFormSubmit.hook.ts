@@ -119,30 +119,48 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               pickupColumn: pickupColumn.value || undefined,
               progressColumn: progressColumn.value || undefined,
               targetColumn: targetColumn.value || undefined,
-              promptTemplate: overrideOrNull(promptTemplate, promptTemplateOverride),
+              promptTemplate: overrideOr(
+                promptTemplate,
+                promptTemplateOverride,
+                null,
+                emptyStringAsNull
+              ),
               repoFullNames: repoFullNames.value,
-              agentsMd: overrideOrNull(agentsMd, agentsMdOverride),
-              primaryModelProviderConfigId: overrideOrNull(
+              agentsMd: overrideOr(agentsMd, agentsMdOverride, null, emptyStringAsNull),
+              primaryModelProviderConfigId: overrideOr(
                 primaryModelProviderKey,
-                primaryModelProviderOverride
+                primaryModelProviderOverride,
+                null,
+                emptyStringAsNull
               ),
-              primaryModelId: overrideOrNull(primaryModelId, primaryModelIdOverride),
-              smallModelProviderConfigId: overrideOrNull(
+              primaryModelId: overrideOr(
+                primaryModelId,
+                primaryModelIdOverride,
+                null,
+                emptyStringAsNull
+              ),
+              smallModelProviderConfigId: overrideOr(
                 smallModelProviderKey,
-                smallModelProviderOverride
+                smallModelProviderOverride,
+                null,
+                emptyStringAsNull
               ),
-              smallModelId: overrideOrNull(smallModelId, smallModelIdOverride),
-              reviewEnabled: overrideBoolOrNull(reviewEnabled, reviewEnabledOverride),
-              reviewPickupColumn: overrideOrNull(reviewPickupColumn, reviewPickupColumnOverride),
-              reviewMaxTurns: overrideNumberOrNull(reviewMaxTurns, reviewMaxTurnsOverride),
-              reviewPromptTemplate: overrideOrNull(
+              smallModelId: overrideOr(smallModelId, smallModelIdOverride, null, emptyStringAsNull),
+              reviewEnabled: overrideOr(reviewEnabled, reviewEnabledOverride, null),
+              reviewPickupColumn: overrideOr(
+                reviewPickupColumn,
+                reviewPickupColumnOverride,
+                null,
+                emptyStringAsNull
+              ),
+              reviewMaxTurns: overrideOr(reviewMaxTurns, reviewMaxTurnsOverride, null),
+              reviewPromptTemplate: overrideOr(
                 reviewPromptTemplate,
-                reviewPromptTemplateOverride
+                reviewPromptTemplateOverride,
+                null,
+                emptyStringAsNull
               ),
-              maxInProgressTasks: overrideNumberOrNull(
-                maxInProgressTasks,
-                maxInProgressTasksOverride
-              ),
+              maxInProgressTasks: overrideOr(maxInProgressTasks, maxInProgressTasksOverride, null),
               name: name.value || undefined,
               providerId: providerId.value || undefined,
               externalWorkspaceId: workspaceId.value || undefined
@@ -163,29 +181,56 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             pickupColumn: pickupColumn.value || undefined,
             progressColumn: progressColumn.value || undefined,
             targetColumn: targetColumn.value || undefined,
-            promptTemplate: overrideOrUndefined(promptTemplate, promptTemplateOverride),
+            promptTemplate: overrideOr(
+              promptTemplate,
+              promptTemplateOverride,
+              undefined,
+              emptyStringAsUndefined
+            ),
             repoFullNames: repoFullNames.value,
-            agentsMd: overrideOrUndefined(agentsMd, agentsMdOverride),
-            primaryModelProviderConfigId: overrideOrUndefined(
+            agentsMd: overrideOr(agentsMd, agentsMdOverride, undefined, emptyStringAsUndefined),
+            primaryModelProviderConfigId: overrideOr(
               primaryModelProviderKey,
-              primaryModelProviderOverride
+              primaryModelProviderOverride,
+              undefined,
+              emptyStringAsUndefined
             ),
-            primaryModelId: overrideOrUndefined(primaryModelId, primaryModelIdOverride),
-            smallModelProviderConfigId: overrideOrUndefined(
+            primaryModelId: overrideOr(
+              primaryModelId,
+              primaryModelIdOverride,
+              undefined,
+              emptyStringAsUndefined
+            ),
+            smallModelProviderConfigId: overrideOr(
               smallModelProviderKey,
-              smallModelProviderOverride
+              smallModelProviderOverride,
+              undefined,
+              emptyStringAsUndefined
             ),
-            smallModelId: overrideOrUndefined(smallModelId, smallModelIdOverride),
-            reviewEnabled: overrideBoolOrUndefined(reviewEnabled, reviewEnabledOverride),
-            reviewPickupColumn: overrideOrUndefined(reviewPickupColumn, reviewPickupColumnOverride),
-            reviewMaxTurns: overrideNumberOrUndefined(reviewMaxTurns, reviewMaxTurnsOverride),
-            reviewPromptTemplate: overrideOrUndefined(
+            smallModelId: overrideOr(
+              smallModelId,
+              smallModelIdOverride,
+              undefined,
+              emptyStringAsUndefined
+            ),
+            reviewEnabled: overrideOr(reviewEnabled, reviewEnabledOverride, undefined),
+            reviewPickupColumn: overrideOr(
+              reviewPickupColumn,
+              reviewPickupColumnOverride,
+              undefined,
+              emptyStringAsUndefined
+            ),
+            reviewMaxTurns: overrideOr(reviewMaxTurns, reviewMaxTurnsOverride, undefined),
+            reviewPromptTemplate: overrideOr(
               reviewPromptTemplate,
-              reviewPromptTemplateOverride
+              reviewPromptTemplateOverride,
+              undefined,
+              emptyStringAsUndefined
             ),
-            maxInProgressTasks: overrideNumberOrUndefined(
+            maxInProgressTasks: overrideOr(
               maxInProgressTasks,
-              maxInProgressTasksOverride
+              maxInProgressTasksOverride,
+              undefined
             )
           });
         }
@@ -205,26 +250,13 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
   };
 };
 
-const overrideOrNull = (field: Signal<string>, enabled: Signal<boolean>): string | null =>
-  enabled.value ? field.value || null : null;
+const overrideOr = <T, F>(
+  field: Signal<T>,
+  enabled: Signal<boolean>,
+  fallback: F,
+  valueForSubmit: (value: T) => T | F = (value) => value
+): T | F => (enabled.value ? valueForSubmit(field.value) : fallback);
 
-const overrideOrUndefined = (
-  field: Signal<string>,
-  enabled: Signal<boolean>
-): string | undefined => (enabled.value ? field.value || undefined : undefined);
+const emptyStringAsNull = (value: string): string | null => value || null;
 
-const overrideBoolOrNull = (field: Signal<boolean>, enabled: Signal<boolean>): boolean | null =>
-  enabled.value ? field.value : null;
-
-const overrideBoolOrUndefined = (
-  field: Signal<boolean>,
-  enabled: Signal<boolean>
-): boolean | undefined => (enabled.value ? field.value : undefined);
-
-const overrideNumberOrNull = (field: Signal<number>, enabled: Signal<boolean>): number | null =>
-  enabled.value ? field.value : null;
-
-const overrideNumberOrUndefined = (
-  field: Signal<number>,
-  enabled: Signal<boolean>
-): number | undefined => (enabled.value ? field.value : undefined);
+const emptyStringAsUndefined = (value: string): string | undefined => value || undefined;

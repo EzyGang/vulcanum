@@ -1,4 +1,5 @@
-pub mod queries;
+pub mod auth_attempts;
+pub mod configs;
 
 use crate::services::model_providers::errors::ModelProvidersError;
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, provider_key, auth_type, display_name, credentials,\n                oauth_credentials, oauth_metadata, created_at, updated_at\n              FROM model_provider_configs\n              WHERE team_id = $1 AND provider_key = $2\n              ORDER BY auth_type LIMIT 1",
+  "query": "SELECT id, team_id, provider_key, auth_type, display_name, credentials,\n                oauth_credentials, oauth_metadata, created_at, updated_at\n              FROM model_provider_configs\n              WHERE team_id = $1 AND provider_key = $2\n              ORDER BY CASE WHEN auth_type = $3 THEN 0 ELSE 1 END, created_at DESC, id ASC\n              LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,7 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Text",
         "Text"
       ]
     },
@@ -73,5 +74,5 @@
       false
     ]
   },
-  "hash": "de8778463c24cdfae17a43167c39e4800f7fe50ff0a0f69ae943bc05ae567668"
+  "hash": "35bf6452259fe471d9c56bc81c63d1c2fb05982df00b86d5fec4bd92cdc719fb"
 }

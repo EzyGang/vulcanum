@@ -5,16 +5,8 @@ import {
   DEFAULT_REVIEW_MAX_TURNS,
   DEFAULT_REVIEW_PICKUP_COLUMN
 } from '../../../constants/reviewAutomation';
-import {
-  modelProviderConfigIdForLegacyKey,
-  useModelItems
-} from '../../../hooks/useModelItems.hook';
-import {
-  getModelProviderCatalog,
-  listModelProviders
-} from '../../../services/model-providers/model-providers.service';
+import { useModelProviderSelection } from '../../../hooks/useModelProviderSelection.hook';
 import { getTeam, getTeamDefaults, updateTeam } from '../../../services/teams/teams.service';
-import type { Team } from '../../../types/teams';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
@@ -23,16 +15,15 @@ import { textInputHandler } from '../../../utils/signalInput';
 export const useTeamDefaults = (teamId: string | null) => {
   const promptTemplate = useSignal('');
   const agentsMd = useSignal('');
-  const primaryModelProviderKey = useSignal('');
-  const primaryModelId = useSignal('');
-  const smallModelProviderKey = useSignal('');
-  const smallModelId = useSignal('');
   const reviewEnabled = useSignal(false);
   const reviewPickupColumn = useSignal(DEFAULT_REVIEW_PICKUP_COLUMN);
   const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewPromptTemplate = useSignal('');
   const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
   const formError = useSignal<string | null>(null);
+  const modelSelection = useModelProviderSelection();
+  const { primaryModelProviderKey, primaryModelId, smallModelProviderKey, smallModelId } =
+    modelSelection;
 
   const { data: team, isLoading } = useApiQuery(
     ['team', teamId ?? ''],
@@ -43,31 +34,24 @@ export const useTeamDefaults = (teamId: string | null) => {
     ['team-defaults'],
     getTeamDefaults
   );
-  const { data: modelProviders = [], isLoading: modelProvidersLoading } = useApiQuery(
-    ['model-providers'],
-    () => listModelProviders()
-  );
-  const { data: modelCatalog } = useApiQuery(['model-provider-catalog'], () =>
-    getModelProviderCatalog()
-  );
-
   useEffect(() => {
     if (!team) {
       return;
     }
-    if (modelProvidersLoading && teamNeedsLegacyModelProviderResolution(team)) {
+    if (
+      modelSelection.modelProvidersLoading &&
+      modelSelection.needsLegacyModelProviderResolution(team)
+    ) {
       return;
     }
     promptTemplate.value = team.promptTemplate;
     agentsMd.value = team.agentsMd;
-    primaryModelProviderKey.value = modelProviderConfigIdForLegacyKey(
-      modelProviders,
+    primaryModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
       team.primaryModelProviderConfigId,
       team.primaryModelProviderKey
     );
     primaryModelId.value = team.primaryModelId ?? '';
-    smallModelProviderKey.value = modelProviderConfigIdForLegacyKey(
-      modelProviders,
+    smallModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
       team.smallModelProviderConfigId,
       team.smallModelProviderKey
     );
@@ -80,15 +64,13 @@ export const useTeamDefaults = (teamId: string | null) => {
       teamDefaults?.reviewPromptTemplate ?? ''
     );
     maxInProgressTasks.value = team.maxInProgressTasks;
-  }, [teamId, team, teamDefaults, modelProviders, modelProvidersLoading]);
-
-  const catalogProviders = modelCatalog?.providers ?? [];
-  const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
-    modelProviders,
-    catalogProviders,
-    primaryModelProviderKey,
-    smallModelProviderKey
-  });
+  }, [
+    teamId,
+    team,
+    teamDefaults,
+    modelSelection.modelProviders,
+    modelSelection.modelProvidersLoading
+  ]);
 
   const mutation = useApiMutation(
     (input: Parameters<typeof updateTeam>[1]) => updateTeam(teamId ?? '', input),
@@ -114,32 +96,22 @@ export const useTeamDefaults = (teamId: string | null) => {
       reviewMaxTurns,
       reviewPromptTemplate,
       maxInProgressTasks,
-      connectedProviderItems,
-      primaryModelItems,
-      smallModelItems
+      connectedProviderItems: modelSelection.connectedProviderItems,
+      primaryModelItems: modelSelection.primaryModelItems,
+      smallModelItems: modelSelection.smallModelItems
     },
     status: {
-      loading: isLoading || defaultsLoading || modelProvidersLoading,
+      loading: isLoading || defaultsLoading || modelSelection.modelProvidersLoading,
       saving: mutation.isPending,
       error: formError
     },
     actions: {
       onPromptTemplateInput: textInputHandler(promptTemplate),
       onAgentsMdInput: textInputHandler(agentsMd),
-      onPrimaryProviderChange: (value: string) => {
-        primaryModelProviderKey.value = value;
-        primaryModelId.value = '';
-      },
-      onPrimaryModelChange: (value: string) => {
-        primaryModelId.value = value;
-      },
-      onSmallProviderChange: (value: string) => {
-        smallModelProviderKey.value = value;
-        smallModelId.value = '';
-      },
-      onSmallModelChange: (value: string) => {
-        smallModelId.value = value;
-      },
+      onPrimaryProviderChange: modelSelection.onPrimaryProviderChange,
+      onPrimaryModelChange: modelSelection.onPrimaryModelChange,
+      onSmallProviderChange: modelSelection.onSmallProviderChange,
+      onSmallModelChange: modelSelection.onSmallModelChange,
       onReviewEnabledChange: (checked: boolean) => {
         reviewEnabled.value = checked;
       },
@@ -197,10 +169,6 @@ const reviewPromptTemplateOrDefault = (template: string, defaultTemplate: string
 
   return defaultTemplate;
 };
-
-const teamNeedsLegacyModelProviderResolution = (team: Team): boolean =>
-  (!team.primaryModelProviderConfigId && !!team.primaryModelProviderKey) ||
-  (!team.smallModelProviderConfigId && !!team.smallModelProviderKey);
 
 const reviewPromptTemplateForSubmit = (
   storedTemplate: string | undefined,

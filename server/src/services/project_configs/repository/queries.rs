@@ -6,7 +6,7 @@ use crate::queryer::Queryer;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
 use crate::services::project_configs::repository::{
-    map_sqlx_error, ProjectConfigsRepository, UpdateProjectConfigParams,
+    ensure_rows_affected, map_sqlx_error, ProjectConfigsRepository, UpdateProjectConfigParams,
 };
 use crate::util::github::{github_repo_url, GITHUB_REPO_URL_PREFIX};
 
@@ -279,11 +279,7 @@ impl ProjectConfigsRepository {
             .await?
             .rows_affected();
 
-        if rows == 0 {
-            return Err(ProjectConfigsError::NotFound);
-        }
-
-        Ok(())
+        ensure_rows_affected(rows)
     }
 }
 

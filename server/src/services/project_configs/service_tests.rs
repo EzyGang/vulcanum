@@ -14,18 +14,7 @@ use crate::test_helpers;
 
 #[sqlx::test]
 async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
-    let svc = ProjectConfigsService::new(
-        ProjectConfigsRepository::new(),
-        pool.clone(),
-        IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-            "test-secret",
-        ),
-        TeamsService::new(TeamsRepository::new(), pool.clone()),
-    );
+    let svc = build_service(pool.clone());
     let team_b = test_helpers::insert_team(&pool, "team-b").await;
     let config_id = test_helpers::insert_project_config(&pool, "cross-team-project").await;
 
@@ -39,18 +28,7 @@ async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(pool: sqlx::PgPool) {
-    let svc = ProjectConfigsService::new(
-        ProjectConfigsRepository::new(),
-        pool.clone(),
-        IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-            "test-secret",
-        ),
-        TeamsService::new(TeamsRepository::new(), pool.clone()),
-    );
+    let svc = build_service(pool.clone());
     let config_id = test_helpers::insert_project_config(&pool, "empty-review-prompt").await;
     let config = svc
         .find_by_id(config_id)
@@ -71,18 +49,7 @@ async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(poo
 
 #[sqlx::test]
 async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
-    let svc = ProjectConfigsService::new(
-        ProjectConfigsRepository::new(),
-        pool.clone(),
-        IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-            "test-secret",
-        ),
-        TeamsService::new(TeamsRepository::new(), pool.clone()),
-    );
+    let svc = build_service(pool.clone());
     let config_id = test_helpers::insert_project_config(&pool, "capacity-override").await;
     sqlx::query!(
         "UPDATE project_configs SET max_in_progress_tasks = 3 WHERE id = $1",
@@ -106,18 +73,7 @@ async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
-    let svc = ProjectConfigsService::new(
-        ProjectConfigsRepository::new(),
-        pool.clone(),
-        IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-            "test-secret",
-        ),
-        TeamsService::new(TeamsRepository::new(), pool.clone()),
-    );
+    let svc = build_service(pool.clone());
     test_helpers::ensure_default_team(&pool).await;
     let team_b = test_helpers::insert_team(&pool, "provider-team-b").await;
     let provider_id = uuid::Uuid::new_v4();
@@ -151,18 +107,7 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn update_rejects_cross_team_model_provider_config_without_model(pool: sqlx::PgPool) {
-    let svc = ProjectConfigsService::new(
-        ProjectConfigsRepository::new(),
-        pool.clone(),
-        IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-            "test-secret",
-        ),
-        TeamsService::new(TeamsRepository::new(), pool.clone()),
-    );
+    let svc = build_service(pool.clone());
     let provider_id = insert_default_integration_provider(&pool).await;
     let config_id = test_helpers::insert_project_config_with_provider(
         &pool,
@@ -207,6 +152,21 @@ async fn insert_default_integration_provider(pool: &sqlx::PgPool) -> uuid::Uuid 
     .await
     .expect("provider should insert");
     provider_id
+}
+
+fn build_service(pool: sqlx::PgPool) -> ProjectConfigsService {
+    ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        ModelProvidersService::new(
+            ModelProvidersRepository::new(),
+            pool.clone(),
+            ModelCatalogClient::new(),
+            "test-secret",
+        ),
+        TeamsService::new(TeamsRepository::new(), pool),
+    )
 }
 
 async fn insert_model_provider_config(pool: &sqlx::PgPool, team_id: uuid::Uuid) -> uuid::Uuid {

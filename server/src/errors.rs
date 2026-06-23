@@ -311,6 +311,10 @@ impl From<ModelProvidersError> for AppError {
                 tracing::error!(operation = "model_providers", "credential encryption error");
                 Self::Internal
             }
+            ModelProvidersError::Serialization => {
+                tracing::error!(operation = "model_providers", "serialization error");
+                Self::Internal
+            }
             ModelProvidersError::Database(e) => {
                 tracing::error!(error = %e, operation = "model_providers", "database error");
                 Self::Internal

@@ -85,7 +85,9 @@ impl ModelProvidersService {
     ) -> Result<ModelProviderConfig, ModelProvidersError> {
         self.validate_auth_type(&params.auth_type)?;
         if params.auth_type == AUTH_TYPE_CHATGPT_OAUTH {
-            return Err(ModelProvidersError::InvalidAuthType(params.auth_type));
+            return Err(ModelProvidersError::InvalidSelection(
+                "ChatGPT OAuth providers must be created via device login".to_owned(),
+            ));
         }
         self.catalog.validate_provider(&params.provider_key).await?;
         self.repo.create(&self.db, team_id, &params).await

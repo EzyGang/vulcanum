@@ -19,6 +19,13 @@ fn map_sqlx_error(err: sqlx::Error) -> ProjectConfigsError {
     }
 }
 
+fn ensure_rows_affected(rows: u64) -> Result<(), ProjectConfigsError> {
+    match rows {
+        0 => Err(ProjectConfigsError::NotFound),
+        _ => Ok(()),
+    }
+}
+
 pub struct UpdateProjectConfigParams<'a> {
     pub name: Option<&'a str>,
     pub pickup_column: Option<&'a str>,

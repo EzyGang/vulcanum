@@ -6,17 +6,9 @@ import {
   DEFAULT_REVIEW_MAX_TURNS,
   DEFAULT_REVIEW_PICKUP_COLUMN
 } from '../../../../constants/reviewAutomation';
-import {
-  modelProviderConfigIdForLegacyKey,
-  useModelItems
-} from '../../../../hooks/useModelItems.hook';
-import {
-  getModelProviderCatalog,
-  listModelProviders
-} from '../../../../services/model-providers/model-providers.service';
+import { useModelProviderSelection } from '../../../../hooks/useModelProviderSelection.hook';
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
-import type { ProjectConfig } from '../../../../types/projects';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../../utils/numbers';
 import {
@@ -52,13 +44,6 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     listProviders()
   );
   const { repos, reposLoading } = useGitHubApp();
-  const { data: modelProviders = [], isLoading: modelProvidersLoading } = useApiQuery(
-    ['model-providers'],
-    () => listModelProviders()
-  );
-  const { data: modelCatalog } = useApiQuery(['model-provider-catalog'], () =>
-    getModelProviderCatalog()
-  );
 
   const providerId = useSignal('');
   const externalProjectId = useSignal(projectId ? '' : '');
@@ -74,13 +59,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const agentsMd = useSignal('');
   const agentsMdOverride = useSignal(false);
   const overridesOpen = useSignal(false);
-  const primaryModelProviderKey = useSignal('');
   const primaryModelProviderOverride = useSignal(false);
-  const primaryModelId = useSignal('');
   const primaryModelIdOverride = useSignal(false);
-  const smallModelProviderKey = useSignal('');
   const smallModelProviderOverride = useSignal(false);
-  const smallModelId = useSignal('');
   const smallModelIdOverride = useSignal(false);
   const reviewEnabled = useSignal(false);
   const reviewEnabledOverride = useSignal(false);
@@ -92,6 +73,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const reviewPromptTemplateOverride = useSignal(false);
   const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
   const maxInProgressTasksOverride = useSignal(false);
+  const modelSelection = useModelProviderSelection();
+  const { primaryModelProviderKey, primaryModelId, smallModelProviderKey, smallModelId } =
+    modelSelection;
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
     projectId,
@@ -138,7 +122,10 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   useEffect(() => {
     if (projectId && existingProject) {
       const p = existingProject;
-      if (modelProvidersLoading && projectNeedsLegacyModelProviderResolution(p)) {
+      if (
+        modelSelection.modelProvidersLoading &&
+        modelSelection.needsLegacyModelProviderResolution(p)
+      ) {
         return;
       }
       externalProjectId.value = p.externalProjectId;
@@ -155,8 +142,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       agentsMd.value = p.agentsMd ?? '';
       agentsMdOverride.value = p.agentsMd != null;
       overridesOpen.value = false;
-      primaryModelProviderKey.value = modelProviderConfigIdForLegacyKey(
-        modelProviders,
+      primaryModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
         p.primaryModelProviderConfigId,
         p.primaryModelProviderKey
       );
@@ -164,8 +150,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         p.primaryModelProviderConfigId != null || p.primaryModelProviderKey != null;
       primaryModelId.value = p.primaryModelId ?? '';
       primaryModelIdOverride.value = p.primaryModelId != null;
-      smallModelProviderKey.value = modelProviderConfigIdForLegacyKey(
-        modelProviders,
+      smallModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
         p.smallModelProviderConfigId,
         p.smallModelProviderKey
       );
@@ -184,7 +169,12 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       maxInProgressTasks.value = p.maxInProgressTasks ?? DEFAULT_MAX_IN_PROGRESS_TASKS;
       maxInProgressTasksOverride.value = p.maxInProgressTasks != null;
     }
-  }, [projectId, existingProject, modelProviders, modelProvidersLoading]);
+  }, [
+    projectId,
+    existingProject,
+    modelSelection.modelProviders,
+    modelSelection.modelProvidersLoading
+  ]);
 
   useEffect(() => {
     if (
@@ -230,21 +220,14 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const hasProjectSelection = !!workspaceId.value && !!externalProjectId.value;
   const hasColumns = lookup.lookedUp.value && lookup.columns.value.length > 0;
   const setupWarning =
-    providersLoading || modelProvidersLoading
+    providersLoading || modelSelection.modelProvidersLoading
       ? ''
       : getProjectSetupHelpText(
           getProjectSetupMissingMessages({
             hasTaskTrackerProvider: providers.length > 0,
-            hasModelProvider: modelProviders.length > 0
+            hasModelProvider: modelSelection.modelProviders.length > 0
           })
         );
-  const catalogProviders = modelCatalog?.providers ?? [];
-  const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
-    modelProviders,
-    catalogProviders,
-    primaryModelProviderKey,
-    smallModelProviderKey
-  });
   const hasOverrides =
     promptTemplateOverride.value ||
     agentsMdOverride.value ||
@@ -363,11 +346,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       reviewPromptTemplateOverride,
       maxInProgressTasks,
       maxInProgressTasksOverride,
-      modelProviders,
-      catalogProviders,
-      connectedProviderItems,
-      primaryModelItems,
-      smallModelItems,
+      modelProviders: modelSelection.modelProviders,
+      catalogProviders: modelSelection.catalogProviders,
+      connectedProviderItems: modelSelection.connectedProviderItems,
+      primaryModelItems: modelSelection.primaryModelItems,
+      smallModelItems: modelSelection.smallModelItems,
       repoItems: repos.map((repo) => ({
         fullName: repo,
         checked: repoFullNames.value.includes(repo),
@@ -421,9 +404,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onPrimaryModelProviderChange: (value: string) => {
         primaryModelProviderOverride.value = true;
-        primaryModelProviderKey.value = value;
+        modelSelection.onPrimaryProviderChange(value);
         primaryModelIdOverride.value = false;
-        primaryModelId.value = '';
       },
       onResetPrimaryModelProviderOverride: () => {
         primaryModelProviderOverride.value = false;
@@ -433,7 +415,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onPrimaryModelChange: (value: string) => {
         primaryModelIdOverride.value = true;
-        primaryModelId.value = value;
+        modelSelection.onPrimaryModelChange(value);
       },
       onResetPrimaryModelOverride: () => {
         primaryModelIdOverride.value = false;
@@ -441,9 +423,8 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onSmallModelProviderChange: (value: string) => {
         smallModelProviderOverride.value = true;
-        smallModelProviderKey.value = value;
+        modelSelection.onSmallProviderChange(value);
         smallModelIdOverride.value = false;
-        smallModelId.value = '';
       },
       onResetSmallModelProviderOverride: () => {
         smallModelProviderOverride.value = false;
@@ -453,7 +434,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onSmallModelChange: (value: string) => {
         smallModelIdOverride.value = true;
-        smallModelId.value = value;
+        modelSelection.onSmallModelChange(value);
       },
       onResetSmallModelOverride: () => {
         smallModelIdOverride.value = false;
@@ -520,7 +501,3 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     }
   };
 };
-
-const projectNeedsLegacyModelProviderResolution = (project: ProjectConfig): boolean =>
-  (!project.primaryModelProviderConfigId && !!project.primaryModelProviderKey) ||
-  (!project.smallModelProviderConfigId && !!project.smallModelProviderKey);
