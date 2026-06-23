@@ -6,6 +6,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::routes::team_auth::TeamPrincipal;
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::teams::errors::TeamsError;
 use crate::services::teams::invite_store::{InMemoryTeamInviteStore, TeamInviteStore};
 use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo, UpdateTeamRequest};
@@ -16,6 +19,7 @@ pub struct TeamsService {
     pub repo: TeamsRepository,
     pub db: PgPool,
     pub invite_store: Arc<dyn TeamInviteStore>,
+    model_providers: ModelProvidersService,
 }
 
 impl TeamsService {
@@ -28,10 +32,21 @@ impl TeamsService {
         db: PgPool,
         invite_store: Arc<dyn TeamInviteStore>,
     ) -> Self {
+        let model_providers = default_model_providers(db.clone());
+        Self::new_with_model_providers(repo, db, invite_store, model_providers)
+    }
+
+    pub fn new_with_model_providers(
+        repo: TeamsRepository,
+        db: PgPool,
+        invite_store: Arc<dyn TeamInviteStore>,
+        model_providers: ModelProvidersService,
+    ) -> Self {
         Self {
             repo,
             db,
             invite_store,
+            model_providers,
         }
     }
 
@@ -117,10 +132,28 @@ impl TeamsService {
         };
         self.authorize_owner(team_id, principal, single_user)
             .await?;
-        self.validate_model_provider_config(team_id, params.primary_model_provider_config_id)
-            .await?;
-        self.validate_model_provider_config(team_id, params.small_model_provider_config_id)
-            .await?;
+        let current = self.repo.get_by_id(&self.db, team_id).await?;
+        self.validate_model_selection(
+            team_id,
+            resolve_model_provider_config_id(
+                params.primary_model_provider_config_id,
+                current.primary_model_provider_config_id,
+            ),
+            resolve_model_id(
+                &params.primary_model_id,
+                current.primary_model_id.as_deref(),
+            ),
+        )
+        .await?;
+        self.validate_model_selection(
+            team_id,
+            resolve_model_provider_config_id(
+                params.small_model_provider_config_id,
+                current.small_model_provider_config_id,
+            ),
+            resolve_model_id(&params.small_model_id, current.small_model_id.as_deref()),
+        )
+        .await?;
         self.repo
             .update_settings(
                 &self.db,
@@ -152,24 +185,16 @@ impl TeamsService {
             .await
     }
 
-    async fn validate_model_provider_config(
+    async fn validate_model_selection(
         &self,
         team_id: Uuid,
-        provider_config_id: Option<Option<Uuid>>,
+        provider_config_id: Option<Uuid>,
+        model_id: Option<&str>,
     ) -> Result<(), TeamsError> {
-        let Some(Some(provider_config_id)) = provider_config_id else {
-            return Ok(());
-        };
-        match self
-            .repo
-            .model_provider_config_belongs_to_team(&self.db, team_id, provider_config_id)
-            .await?
-        {
-            true => Ok(()),
-            false => Err(TeamsError::InvalidOperation(
-                "Model provider config does not belong to this team".to_owned(),
-            )),
-        }
+        self.model_providers
+            .validate_model_selection(team_id, provider_config_id, model_id)
+            .await
+            .map_err(TeamsError::ModelProvider)
     }
 
     pub async fn delete_for_principal(
@@ -264,6 +289,18 @@ impl TeamsService {
         }
     }
 
+    #[must_use = "resolved team id should be used"]
+    pub async fn resolve_team_for_owner(
+        &self,
+        principal: &TeamPrincipal,
+        single_user: bool,
+    ) -> Result<Uuid, TeamsError> {
+        let team_id = self.resolve_team(principal, single_user).await?;
+        self.authorize_owner(team_id, principal, single_user)
+            .await?;
+        Ok(team_id)
+    }
+
     pub async fn ensure_personal_team(
         &self,
         user_id: &str,
@@ -344,4 +381,33 @@ fn validate_team_name(name: &str) -> Result<&str, TeamsError> {
         ));
     }
     Ok(trimmed)
+}
+
+fn default_model_providers(db: PgPool) -> ModelProvidersService {
+    ModelProvidersService::new(
+        ModelProvidersRepository::new(),
+        db,
+        ModelCatalogClient::new(),
+        "team-model-provider-validation",
+    )
+}
+
+fn resolve_model_provider_config_id(
+    field: Option<Option<Uuid>>,
+    existing: Option<Uuid>,
+) -> Option<Uuid> {
+    match field {
+        Some(value) => value,
+        None => existing,
+    }
+}
+
+fn resolve_model_id<'a>(
+    field: &'a Option<Option<String>>,
+    existing: Option<&'a str>,
+) -> Option<&'a str> {
+    match field {
+        Some(value) => value.as_deref(),
+        None => existing,
+    }
 }

@@ -68,10 +68,11 @@ impl AppState {
             &cfg.jwt_secret,
         );
         let invite_store = RedisTeamInviteStore::new(&cfg.redis_url)?;
-        let teams = TeamsService::new_with_invite_store(
+        let teams = TeamsService::new_with_model_providers(
             TeamsRepository::new(),
             db_pool.clone(),
             Arc::new(invite_store),
+            model_providers.clone(),
         );
 
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());

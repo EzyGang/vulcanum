@@ -8,6 +8,8 @@ use sha2::{Digest, Sha256};
 
 use crate::services::model_providers::errors::ModelProvidersError;
 
+const NONCE_LEN: usize = 12;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedPayload {
     pub nonce: String,
@@ -33,7 +35,7 @@ impl CredentialCipher {
         T: Serialize,
     {
         let plaintext = serde_json::to_vec(value).map_err(|_| ModelProvidersError::Crypto)?;
-        let mut nonce_bytes = [0_u8; 12];
+        let mut nonce_bytes = [0_u8; NONCE_LEN];
         rand::thread_rng().fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
         let ciphertext = self
@@ -56,6 +58,9 @@ impl CredentialCipher {
         let nonce_bytes = STANDARD
             .decode(payload.nonce)
             .map_err(|_| ModelProvidersError::Crypto)?;
+        if nonce_bytes.len() != NONCE_LEN {
+            return Err(ModelProvidersError::Crypto);
+        }
         let ciphertext = STANDARD
             .decode(payload.ciphertext)
             .map_err(|_| ModelProvidersError::Crypto)?;

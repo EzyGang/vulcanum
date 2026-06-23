@@ -188,6 +188,7 @@ impl From<TeamsError> for AppError {
                 tracing::error!(error = %e, operation = "teams", "invite store error");
                 Self::Internal
             }
+            TeamsError::ModelProvider(e) => Self::from(e),
             TeamsError::Database(e) => {
                 tracing::error!(error = %e, operation = "teams", "database error");
                 Self::Internal

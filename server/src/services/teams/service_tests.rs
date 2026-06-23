@@ -2,9 +2,17 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use chrono::{Duration, Utc};
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::routes::team_auth::TeamPrincipal;
+use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::errors::ModelProvidersError;
+use crate::services::model_providers::model::{
+    CatalogModel, CatalogProvider, CatalogResponse, CreateModelProviderRequest, AUTH_TYPE_API_KEY,
+};
+use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::teams::errors::TeamsError;
 use crate::services::teams::invite_store::{
     hash_token, invite_redis_key, InMemoryTeamInviteStore, TeamInvitePayload, TeamInviteStore,
@@ -252,6 +260,79 @@ async fn member_cannot_rename_team(pool: sqlx::PgPool) {
         .await;
 
     assert!(result.is_err());
+}
+
+#[sqlx::test]
+async fn resolve_team_for_owner_rejects_member(pool: sqlx::PgPool) {
+    let owner_id = "resolve-owner";
+    let member_id = "resolve-member";
+    test_helpers::insert_user(&pool, owner_id).await;
+    test_helpers::insert_user(&pool, member_id).await;
+    let team_id = test_helpers::insert_team(&pool, "resolve-owner-team").await;
+    let repo = TeamsRepository::new();
+    repo.add_member(&pool, team_id, owner_id, "owner")
+        .await
+        .expect("owner membership should be added");
+    repo.add_member(&pool, team_id, member_id, "member")
+        .await
+        .expect("member membership should be added");
+    let svc = TeamsService::new(repo, pool);
+
+    let result = svc
+        .resolve_team_for_owner(
+            &TeamPrincipal::User {
+                user_id: member_id.to_owned(),
+                team_id: Some(team_id),
+            },
+            false,
+        )
+        .await;
+
+    assert!(matches!(result, Err(TeamsError::AccessDenied)));
+}
+
+#[sqlx::test]
+async fn update_rejects_invalid_team_default_model_for_provider(pool: sqlx::PgPool) {
+    let owner_id = "team-default-model-owner";
+    test_helpers::insert_user(&pool, owner_id).await;
+    let team_id = test_helpers::insert_team(&pool, "team-default-model-team").await;
+    let repo = TeamsRepository::new();
+    repo.add_member(&pool, team_id, owner_id, "owner")
+        .await
+        .expect("owner membership should be added");
+    let model_providers = test_model_providers(pool.clone()).await;
+    let provider = model_providers
+        .create(
+            team_id,
+            CreateModelProviderRequest {
+                provider_key: "anthropic".to_owned(),
+                auth_type: AUTH_TYPE_API_KEY.to_owned(),
+                display_name: "Anthropic".to_owned(),
+                credentials: json!({ "ANTHROPIC_API_KEY": "secret" }),
+            },
+        )
+        .await
+        .expect("model provider should be created");
+    let svc = TeamsService::new_with_model_providers(
+        repo,
+        pool,
+        Arc::new(InMemoryTeamInviteStore::new()),
+        model_providers,
+    );
+    let mut request = empty_update_request();
+    request.primary_model_provider_config_id = Some(Some(provider.id));
+    request.primary_model_id = Some(Some("missing-model".to_owned()));
+
+    let result = svc
+        .update_for_principal(team_id, &request, &user_principal(owner_id), false)
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(TeamsError::ModelProvider(
+            ModelProvidersError::UnknownModel { .. }
+        ))
+    ));
 }
 
 #[sqlx::test]
@@ -507,6 +588,58 @@ fn user_principal(user_id: &str) -> TeamPrincipal {
     TeamPrincipal::User {
         user_id: user_id.to_owned(),
         team_id: None,
+    }
+}
+
+async fn test_model_providers(pool: sqlx::PgPool) -> ModelProvidersService {
+    ModelProvidersService::new(
+        ModelProvidersRepository::new(),
+        pool,
+        ModelCatalogClient::from_catalog(team_test_catalog()).await,
+        "test-secret",
+    )
+}
+
+fn team_test_catalog() -> CatalogResponse {
+    CatalogResponse {
+        providers: vec![CatalogProvider {
+            id: "anthropic".to_owned(),
+            name: "Anthropic".to_owned(),
+            doc: String::new(),
+            env: vec!["ANTHROPIC_API_KEY".to_owned()],
+            models: vec![CatalogModel {
+                id: "claude-sonnet-4".to_owned(),
+                name: "Claude Sonnet 4".to_owned(),
+                status: None,
+                context_limit: None,
+                output_limit: None,
+                input_cost: None,
+                output_cost: None,
+                attachment: false,
+                reasoning: true,
+                tool_call: true,
+                structured_output: true,
+            }],
+        }],
+    }
+}
+
+fn empty_update_request() -> UpdateTeamRequest {
+    UpdateTeamRequest {
+        name: None,
+        prompt_template: None,
+        agents_md: None,
+        primary_model_provider_key: None,
+        primary_model_provider_config_id: None,
+        primary_model_id: None,
+        small_model_provider_key: None,
+        small_model_provider_config_id: None,
+        small_model_id: None,
+        review_enabled: None,
+        review_pickup_column: None,
+        review_max_turns: None,
+        review_prompt_template: None,
+        max_in_progress_tasks: None,
     }
 }
 

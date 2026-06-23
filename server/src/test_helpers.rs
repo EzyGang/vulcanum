@@ -295,7 +295,12 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();
-    let teams = TeamsService::new(TeamsRepository::new(), pool.clone());
+    let teams = TeamsService::new_with_model_providers(
+        TeamsRepository::new(),
+        pool.clone(),
+        Arc::new(crate::services::teams::invite_store::InMemoryTeamInviteStore::new()),
+        model_providers.clone(),
+    );
     let project_configs = ProjectConfigsService::new(
         project_configs_repo.clone(),
         pool.clone(),

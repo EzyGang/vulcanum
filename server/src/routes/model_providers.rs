@@ -32,7 +32,7 @@ pub async fn create(
 ) -> Result<HttpResponse, AppError> {
     let team_id = state
         .teams
-        .resolve_team(&auth, state.is_single_user)
+        .resolve_team_for_owner(&auth, state.is_single_user)
         .await?;
     let provider = state
         .model_providers
@@ -49,7 +49,7 @@ pub async fn update(
 ) -> Result<HttpResponse, AppError> {
     let team_id = state
         .teams
-        .resolve_team(&auth, state.is_single_user)
+        .resolve_team_for_owner(&auth, state.is_single_user)
         .await?;
     let provider = state
         .model_providers
@@ -65,7 +65,7 @@ pub async fn delete(
 ) -> Result<HttpResponse, AppError> {
     let team_id = state
         .teams
-        .resolve_team(&auth, state.is_single_user)
+        .resolve_team_for_owner(&auth, state.is_single_user)
         .await?;
     state
         .model_providers
@@ -81,7 +81,7 @@ pub async fn start_chatgpt_auth(
 ) -> Result<HttpResponse, AppError> {
     let team_id = state
         .teams
-        .resolve_team(&auth, state.is_single_user)
+        .resolve_team_for_owner(&auth, state.is_single_user)
         .await?;
     let user_id = principal_user_id(&auth);
     let response = state

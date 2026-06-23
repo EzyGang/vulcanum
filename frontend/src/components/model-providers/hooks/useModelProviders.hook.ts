@@ -95,7 +95,9 @@ export const useModelProviders = () => {
         ) {
           return false;
         }
-        return chatGptAttempt.value.pollIntervalSeconds * 1000;
+        return (
+          (query.state.data?.pollIntervalSeconds ?? chatGptAttempt.value.pollIntervalSeconds) * 1000
+        );
       }
     }
   );
@@ -130,7 +132,11 @@ export const useModelProviders = () => {
       formError.value = chatGptAuthQuery.data?.error ?? 'ChatGPT login failed';
       chatGptAttempt.value = null;
     }
-  }, [chatGptAuthQuery.data?.status]);
+  }, [
+    chatGptAuthQuery.data?.status,
+    chatGptAuthQuery.data?.pollIntervalSeconds,
+    chatGptAuthQuery.data?.error
+  ]);
 
   const handleShowCreate = useCallback(() => {
     resetForm();
