@@ -71,16 +71,6 @@ export const useModelProviders = () => {
 
   const selectedCatalogProvider = catalog?.providers.find((p) => p.id === providerKey.value);
   const isChatGptAuth = authType.value === 'chatgpt_oauth';
-  const providerRows = (providers ?? []).map((provider) => ({
-    provider,
-    name: provider.displayName || provider.providerKey,
-    providerKey: provider.providerKey,
-    authLabel: provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key',
-    credentialMetadata:
-      provider.authType === 'chatgpt_oauth'
-        ? provider.oauthMetadata?.email || provider.oauthMetadata?.accountId || 'Connected'
-        : Object.keys(provider.credentials ?? {}).join(', ') || '—'
-  }));
   const submitLabel = submitButtonLabel(
     formSubmitting.value,
     isChatGptAuth,
@@ -96,10 +86,17 @@ export const useModelProviders = () => {
     () => getChatGptAuthStatus(chatGptAttempt.value?.attemptId ?? ''),
     {
       enabled: !!chatGptAttempt.value,
-      refetchInterval:
-        chatGptAttempt.value && chatGptAuthQueryStatusIsLive(chatGptAttempt.value)
-          ? chatGptAttempt.value.pollIntervalSeconds * 1000
-          : false
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        if (
+          !chatGptAttempt.value ||
+          chatGptAuthStatusIsTerminal(status) ||
+          !chatGptAuthQueryStatusIsLive(chatGptAttempt.value)
+        ) {
+          return false;
+        }
+        return chatGptAttempt.value.pollIntervalSeconds * 1000;
+      }
     }
   );
 
@@ -122,6 +119,7 @@ export const useModelProviders = () => {
     }
     if (status === 'expired' || status === 'failed') {
       formError.value = chatGptAuthQuery.data?.error ?? 'ChatGPT login failed';
+      chatGptAttempt.value = null;
     }
   }, [chatGptAuthQuery.data?.status]);
 
@@ -158,6 +156,27 @@ export const useModelProviders = () => {
   const handleCredentialChange = useCallback((key: string, value: string) => {
     credentials.value = { ...credentials.value, [key]: value };
   }, []);
+
+  const handleDisplayNameInput = useCallback((e: Event) => {
+    displayName.value = (e.target as HTMLInputElement).value;
+  }, []);
+
+  const providerRows = (providers ?? []).map((provider) => ({
+    provider,
+    name: provider.displayName || provider.providerKey,
+    providerKey: provider.providerKey,
+    authLabel: provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key',
+    credentialMetadata:
+      provider.authType === 'chatgpt_oauth'
+        ? provider.oauthMetadata?.email || provider.oauthMetadata?.accountId || 'Connected'
+        : Object.keys(provider.credentials ?? {}).join(', ') || '—',
+    onEdit: () => handleShowEdit(provider)
+  }));
+  const credentialFields = (selectedCatalogProvider?.env ?? []).map((envName) => ({
+    name: envName,
+    value: credentials.value[envName] ?? '',
+    onInput: (e: Event) => handleCredentialChange(envName, (e.target as HTMLInputElement).value)
+  }));
 
   const handleSave = useCallback(
     async (e: Event) => {
@@ -223,7 +242,7 @@ export const useModelProviders = () => {
         label: provider.name
       })),
       providerRows,
-      credentialFields: selectedCatalogProvider?.env ?? [],
+      credentialFields,
       authTypeItems,
       isChatGptAuth,
       showAuthTypeSelect: providerKey.value === 'openai',
@@ -235,7 +254,6 @@ export const useModelProviders = () => {
       providerKey,
       authType,
       displayName,
-      credentials,
       chatGptAttempt,
       chatGptAuthStatus: chatGptAuthQuery.data,
       formError,
@@ -246,14 +264,10 @@ export const useModelProviders = () => {
     status: { loading, catalogLoading, error },
     actions: {
       onShowCreate: handleShowCreate,
-      onShowEdit: handleShowEdit,
       onCancelForm: resetForm,
       onProviderChange: handleProviderChange,
       onAuthTypeChange: handleAuthTypeChange,
-      onDisplayNameChange: (value: string) => {
-        displayName.value = value;
-      },
-      onCredentialChange: handleCredentialChange,
+      onDisplayNameInput: handleDisplayNameInput,
       onCancelChatGptAuth: handleCancelChatGptAuth,
       onSave: handleSave,
       onConfirmDelete: handleConfirmDelete,
@@ -265,6 +279,9 @@ export const useModelProviders = () => {
 
 const chatGptAuthQueryStatusIsLive = (attempt: ChatGptAuthStartResponse): boolean =>
   new Date(attempt.expiresAt).getTime() > Date.now();
+
+const chatGptAuthStatusIsTerminal = (status?: string): boolean =>
+  status === 'complete' || status === 'failed' || status === 'expired';
 
 const submitButtonLabel = (
   submitting: boolean,

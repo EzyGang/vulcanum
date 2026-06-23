@@ -26,8 +26,13 @@ interface ModelProvidersViewProps {
       providerKey: string;
       authLabel: string;
       credentialMetadata: string;
+      onEdit: () => void;
     }[];
-    credentialFields: string[];
+    credentialFields: {
+      name: string;
+      value: string;
+      onInput: (e: Event) => void;
+    }[];
     authTypeItems: SelectOption[];
     isChatGptAuth: boolean;
     showAuthTypeSelect: boolean;
@@ -39,7 +44,6 @@ interface ModelProvidersViewProps {
     providerKey: Signal<string>;
     authType: Signal<'api_key' | 'chatgpt_oauth'>;
     displayName: Signal<string>;
-    credentials: Signal<Record<string, string>>;
     chatGptAttempt: Signal<ChatGptAuthStartResponse | null>;
     chatGptAuthStatus?: ChatGptAuthStatusResponse;
     formError: Signal<string | null>;
@@ -54,12 +58,10 @@ interface ModelProvidersViewProps {
   };
   actions: {
     onShowCreate: () => void;
-    onShowEdit: (provider: ModelProviderConfig) => void;
     onCancelForm: () => void;
     onProviderChange: (value: string) => void;
     onAuthTypeChange: (value: string) => void;
-    onDisplayNameChange: (value: string) => void;
-    onCredentialChange: (key: string, value: string) => void;
+    onDisplayNameInput: (e: Event) => void;
     onCancelChatGptAuth: () => void;
     onSave: (e: Event) => void;
     onConfirmDelete: (id: string) => void;
@@ -130,7 +132,7 @@ export const ModelProvidersView = ({
           <Input
             id='model-provider-display-name'
             value={data.displayName.value}
-            onInput={(e) => actions.onDisplayNameChange((e.target as HTMLInputElement).value)}
+            onInput={actions.onDisplayNameInput}
             disabled={data.formSubmitting.value}
             placeholder='Production Anthropic'
           />
@@ -139,16 +141,14 @@ export const ModelProvidersView = ({
         {data.showCredentialFields && (
           <div class='flex flex-col gap-3'>
             <div class='text-text-muted text-xs'>Credential fields from models.dev catalog.</div>
-            {data.credentialFields.map((envName) => (
-              <div class='flex flex-col gap-2' key={envName}>
-                <Label for={`credential-${envName}`}>{envName}</Label>
+            {data.credentialFields.map((field) => (
+              <div class='flex flex-col gap-2' key={field.name}>
+                <Label for={`credential-${field.name}`}>{field.name}</Label>
                 <Input
-                  id={`credential-${envName}`}
+                  id={`credential-${field.name}`}
                   type='password'
-                  value={data.credentials.value[envName] ?? ''}
-                  onInput={(e) =>
-                    actions.onCredentialChange(envName, (e.target as HTMLInputElement).value)
-                  }
+                  value={field.value}
+                  onInput={field.onInput}
                   disabled={data.formSubmitting.value}
                 />
               </div>
@@ -247,7 +247,7 @@ export const ModelProvidersView = ({
                   onDelete={actions.onDelete}
                   onCancel={actions.onCancelDelete}
                   editActions={
-                    <Button variant='ghost' onClick={() => actions.onShowEdit(row.provider)}>
+                    <Button variant='ghost' onClick={row.onEdit}>
                       Edit
                     </Button>
                   }

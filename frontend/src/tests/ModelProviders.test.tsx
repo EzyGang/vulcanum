@@ -40,12 +40,10 @@ const provider: ModelProviderConfig = {
 
 const actions = {
   onShowCreate: vi.fn(),
-  onShowEdit: vi.fn(),
   onCancelForm: vi.fn(),
   onProviderChange: vi.fn(),
   onAuthTypeChange: vi.fn(),
-  onDisplayNameChange: vi.fn(),
-  onCredentialChange: vi.fn(),
+  onDisplayNameInput: vi.fn(),
   onCancelChatGptAuth: vi.fn(),
   onSave: vi.fn(),
   onConfirmDelete: vi.fn(),
@@ -60,7 +58,13 @@ describe('ModelProvidersView', () => {
         data={{
           catalogProviderItems,
           providerRows: [],
-          credentialFields: ['OPENAI_API_KEY'],
+          credentialFields: [
+            {
+              name: 'OPENAI_API_KEY',
+              value: '',
+              onInput: vi.fn()
+            }
+          ],
           authTypeItems,
           isChatGptAuth: true,
           showAuthTypeSelect: true,
@@ -72,7 +76,6 @@ describe('ModelProvidersView', () => {
           providerKey: signal('openai'),
           authType: signal('chatgpt_oauth'),
           displayName: signal(''),
-          credentials: signal({}),
           chatGptAttempt: signal({
             attemptId: 'attempt-1',
             verificationUri: 'https://auth.openai.com/codex/device',
@@ -107,7 +110,8 @@ describe('ModelProvidersView', () => {
               name: provider.displayName,
               providerKey: provider.providerKey,
               authLabel: 'ChatGPT Pro/Plus',
-              credentialMetadata: 'acct_123'
+              credentialMetadata: 'acct_123',
+              onEdit: vi.fn()
             }
           ],
           credentialFields: [],
@@ -122,7 +126,6 @@ describe('ModelProvidersView', () => {
           providerKey: signal(''),
           authType: signal('api_key'),
           displayName: signal(''),
-          credentials: signal({}),
           chatGptAttempt: signal(null),
           formError: signal(null),
           formSubmitting: signal(false),

@@ -6,6 +6,10 @@ use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::crypto::CredentialCipher;
+use crate::services::model_providers::model::{
+    OAuthCredentials, AUTH_TYPE_CHATGPT_OAUTH, OPENAI_PROVIDER_KEY,
+};
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::repository::ProjectConfigsRepository;
@@ -441,6 +445,43 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn get_job_includes_selected_chatgpt_auth_content(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "get-job-chatgpt-worker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-chatgpt").await;
+    let provider_id = insert_chatgpt_oauth_provider(&pool).await;
+    sqlx::query!(
+        "UPDATE project_configs SET primary_model_provider_config_id = $1 WHERE id = $2",
+        provider_id,
+        project_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should select ChatGPT OAuth provider");
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get-chatgpt").await;
+    sqlx::query!(
+        "UPDATE work_runs SET worker_id = $1 WHERE id = $2",
+        worker_id,
+        wr_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should assign worker");
+
+    let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
+    let auth_content = job
+        .opencode_auth_content
+        .expect("Should include auth content");
+    let auth: serde_json::Value =
+        serde_json::from_str(&auth_content).expect("Should parse auth content");
+
+    assert_eq!(auth[OPENAI_PROVIDER_KEY]["type"], "oauth");
+    assert_eq!(auth[OPENAI_PROVIDER_KEY]["access"], "access-token");
+    assert_eq!(auth[OPENAI_PROVIDER_KEY]["refresh"], "refresh-token");
+    assert_eq!(auth[OPENAI_PROVIDER_KEY]["accountId"], "acct_123");
+}
+
+#[sqlx::test]
 async fn get_job_returns_not_found(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "missing-job-worker").await;
@@ -498,4 +539,34 @@ async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
         matches!(err, WorkRunsError::GithubApp(_)),
         "Expected GithubApp error, got {err:?}"
     );
+}
+
+async fn insert_chatgpt_oauth_provider(pool: &sqlx::PgPool) -> Uuid {
+    let id = Uuid::new_v4();
+    let encrypted_credentials = CredentialCipher::new("test-secret")
+        .encrypt_json(&OAuthCredentials {
+            access: "access-token".to_owned(),
+            refresh: "refresh-token".to_owned(),
+            expires: 123_456,
+            account_id: Some("acct_123".to_owned()),
+        })
+        .expect("Should encrypt OAuth credentials");
+    sqlx::query!(
+        r#"INSERT INTO model_provider_configs (
+            id, team_id, provider_key, auth_type, display_name, credentials,
+            oauth_credentials, oauth_metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+        id,
+        test_helpers::DEFAULT_TEAM_ID,
+        OPENAI_PROVIDER_KEY,
+        AUTH_TYPE_CHATGPT_OAUTH,
+        "ChatGPT OAuth",
+        serde_json::json!({}),
+        encrypted_credentials,
+        serde_json::json!({}),
+    )
+    .execute(pool)
+    .await
+    .expect("Should insert ChatGPT OAuth provider");
+    id
 }
