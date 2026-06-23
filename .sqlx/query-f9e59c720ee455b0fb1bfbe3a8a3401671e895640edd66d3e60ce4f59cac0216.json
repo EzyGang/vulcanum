@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE model_provider_auth_attempts SET interval_seconds = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f9e59c720ee455b0fb1bfbe3a8a3401671e895640edd66d3e60ce4f59cac0216"
+}

@@ -95,13 +95,25 @@ impl ModelProvidersService {
         &self,
         id: Uuid,
         team_id: Uuid,
-        params: UpdateModelProviderRequest,
+        mut params: UpdateModelProviderRequest,
     ) -> Result<ModelProviderConfig, ModelProvidersError> {
         let provider = self.repo.find_by_id(&self.db, id, team_id).await?;
-        if provider.auth_type == AUTH_TYPE_CHATGPT_OAUTH && params.credentials.is_some() {
-            return Err(ModelProvidersError::InvalidSelection(
-                "ChatGPT OAuth credentials can only be updated by reconnecting".to_owned(),
-            ));
+        if provider.auth_type == AUTH_TYPE_CHATGPT_OAUTH {
+            match params.credentials.as_ref() {
+                Some(credentials)
+                    if credentials
+                        .as_object()
+                        .is_some_and(|object| object.is_empty()) =>
+                {
+                    params.credentials = None;
+                }
+                Some(_) => {
+                    return Err(ModelProvidersError::InvalidSelection(
+                        "ChatGPT OAuth credentials can only be updated by reconnecting".to_owned(),
+                    ));
+                }
+                None => (),
+            }
         }
         self.repo.update(&self.db, id, team_id, &params).await
     }
@@ -119,14 +131,14 @@ impl ModelProvidersService {
         let Some(provider_config_id) = provider_config_id else {
             return Ok(());
         };
-        let Some(model_id) = model_id.filter(|value| !value.is_empty()) else {
-            return Ok(());
-        };
 
         let provider = self
             .repo
             .find_by_id(&self.db, provider_config_id, team_id)
             .await?;
+        let Some(model_id) = model_id.filter(|value| !value.is_empty()) else {
+            return Ok(());
+        };
         self.catalog
             .validate_model(&provider.provider_key, model_id)
             .await

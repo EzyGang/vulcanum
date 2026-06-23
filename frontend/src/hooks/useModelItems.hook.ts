@@ -44,6 +44,26 @@ const providerKeyForConfig = (modelProviders: ModelProviderConfig[], providerCon
   modelProviders.find((provider) => provider.id === providerConfigId)?.providerKey ??
   providerConfigId;
 
+export const modelProviderConfigIdForLegacyKey = (
+  modelProviders: ModelProviderConfig[],
+  providerConfigId?: string | null,
+  providerKey?: string | null
+): string => {
+  if (providerConfigId) {
+    return providerConfigId;
+  }
+  if (!providerKey) {
+    return '';
+  }
+  return (
+    modelProviders.find(
+      (provider) => provider.providerKey === providerKey && provider.authType === 'api_key'
+    )?.id ??
+    modelProviders.find((provider) => provider.providerKey === providerKey)?.id ??
+    ''
+  );
+};
+
 const providerLabel = (provider: ModelProviderConfig): string => {
   const name = provider.displayName || provider.providerKey;
   const auth = provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key';

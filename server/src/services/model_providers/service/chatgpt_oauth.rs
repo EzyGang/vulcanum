@@ -19,6 +19,7 @@ const CHATGPT_AUTH_EXPIRED: &str = "expired";
 const CHATGPT_AUTH_FAILED: &str = "failed";
 const DEFAULT_CHATGPT_DISPLAY_NAME: &str = "OpenAI ChatGPT Pro/Plus";
 const DEFAULT_DEVICE_POLL_SECONDS: i32 = 5;
+const DEVICE_POLL_SLOW_DOWN_SECONDS: i32 = 5;
 
 impl ModelProvidersService {
     pub async fn start_chatgpt_auth(
@@ -83,6 +84,7 @@ impl ModelProvidersService {
             return Ok(ChatGptAuthStatusResponse {
                 status: CHATGPT_AUTH_EXPIRED.to_owned(),
                 error: Some("Device login expired".to_owned()),
+                poll_interval_seconds: None,
                 provider: None,
             });
         }
@@ -93,6 +95,19 @@ impl ModelProvidersService {
                 return Ok(ChatGptAuthStatusResponse {
                     status: CHATGPT_AUTH_PENDING.to_owned(),
                     error: None,
+                    poll_interval_seconds: Some(attempt.interval_seconds),
+                    provider: None,
+                });
+            }
+            DevicePollOutcome::SlowDown => {
+                let interval_seconds = attempt.interval_seconds + DEVICE_POLL_SLOW_DOWN_SECONDS;
+                self.repo
+                    .update_auth_attempt_interval(&self.db, attempt.id, interval_seconds)
+                    .await?;
+                return Ok(ChatGptAuthStatusResponse {
+                    status: CHATGPT_AUTH_PENDING.to_owned(),
+                    error: None,
+                    poll_interval_seconds: Some(interval_seconds),
                     provider: None,
                 });
             }
@@ -108,6 +123,7 @@ impl ModelProvidersService {
                 return Ok(ChatGptAuthStatusResponse {
                     status: CHATGPT_AUTH_FAILED.to_owned(),
                     error: Some(message),
+                    poll_interval_seconds: None,
                     provider: None,
                 });
             }
@@ -156,6 +172,7 @@ impl ModelProvidersService {
         Ok(ChatGptAuthStatusResponse {
             status: CHATGPT_AUTH_COMPLETE.to_owned(),
             error: None,
+            poll_interval_seconds: None,
             provider: Some(provider),
         })
     }
@@ -170,6 +187,9 @@ impl ModelProvidersService {
             .repo
             .find_auth_attempt(&self.db, attempt_id, team_id, user_id)
             .await?;
+        if attempt.status != CHATGPT_AUTH_PENDING {
+            return Ok(());
+        }
         self.repo
             .update_auth_attempt_status(
                 &self.db,
@@ -202,6 +222,7 @@ impl ModelProvidersService {
         Ok(ChatGptAuthStatusResponse {
             status: status.to_owned(),
             error,
+            poll_interval_seconds: None,
             provider,
         })
     }

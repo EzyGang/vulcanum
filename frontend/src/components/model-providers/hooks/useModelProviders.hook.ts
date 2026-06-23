@@ -117,6 +117,15 @@ export const useModelProviders = () => {
       invalidate('model-providers');
       resetForm();
     }
+    const pollIntervalSeconds = chatGptAuthQuery.data?.pollIntervalSeconds;
+    if (
+      status === 'pending' &&
+      chatGptAttempt.value &&
+      pollIntervalSeconds &&
+      chatGptAttempt.value.pollIntervalSeconds !== pollIntervalSeconds
+    ) {
+      chatGptAttempt.value = { ...chatGptAttempt.value, pollIntervalSeconds };
+    }
     if (status === 'expired' || status === 'failed') {
       formError.value = chatGptAuthQuery.data?.error ?? 'ChatGPT login failed';
       chatGptAttempt.value = null;
@@ -202,12 +211,16 @@ export const useModelProviders = () => {
       formSubmitting.value = true;
       try {
         if (editId.value) {
+          const input =
+            authType.value === 'chatgpt_oauth'
+              ? { displayName: displayName.value || undefined }
+              : {
+                  displayName: displayName.value || undefined,
+                  credentials: credentials.value
+                };
           await updateMutation.mutateAsync({
             id: editId.value,
-            input: {
-              displayName: displayName.value || undefined,
-              credentials: credentials.value
-            }
+            input
           });
         } else {
           await createMutation.mutateAsync({

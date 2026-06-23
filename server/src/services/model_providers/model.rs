@@ -90,6 +90,7 @@ pub struct ChatGptAuthStartResponse {
 pub struct ChatGptAuthStatusResponse {
     pub status: String,
     pub error: Option<String>,
+    pub poll_interval_seconds: Option<i32>,
     pub provider: Option<ModelProviderConfig>,
 }
 

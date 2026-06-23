@@ -6,13 +6,17 @@ import {
   DEFAULT_REVIEW_MAX_TURNS,
   DEFAULT_REVIEW_PICKUP_COLUMN
 } from '../../../../constants/reviewAutomation';
-import { useModelItems } from '../../../../hooks/useModelItems.hook';
+import {
+  modelProviderConfigIdForLegacyKey,
+  useModelItems
+} from '../../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
   listModelProviders
 } from '../../../../services/model-providers/model-providers.service';
 import { getProject } from '../../../../services/projects/projects.service';
 import { listProviders, lookupProject } from '../../../../services/providers/providers.service';
+import type { ProjectConfig } from '../../../../types/projects';
 import { useApiQuery } from '../../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../../utils/numbers';
 import {
@@ -134,6 +138,9 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   useEffect(() => {
     if (projectId && existingProject) {
       const p = existingProject;
+      if (modelProvidersLoading && projectNeedsLegacyModelProviderResolution(p)) {
+        return;
+      }
       externalProjectId.value = p.externalProjectId;
       workspaceId.value = p.externalWorkspaceId;
       name.value = p.name || '';
@@ -148,12 +155,22 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       agentsMd.value = p.agentsMd ?? '';
       agentsMdOverride.value = p.agentsMd != null;
       overridesOpen.value = false;
-      primaryModelProviderKey.value = p.primaryModelProviderConfigId ?? '';
-      primaryModelProviderOverride.value = p.primaryModelProviderConfigId != null;
+      primaryModelProviderKey.value = modelProviderConfigIdForLegacyKey(
+        modelProviders,
+        p.primaryModelProviderConfigId,
+        p.primaryModelProviderKey
+      );
+      primaryModelProviderOverride.value =
+        p.primaryModelProviderConfigId != null || p.primaryModelProviderKey != null;
       primaryModelId.value = p.primaryModelId ?? '';
       primaryModelIdOverride.value = p.primaryModelId != null;
-      smallModelProviderKey.value = p.smallModelProviderConfigId ?? '';
-      smallModelProviderOverride.value = p.smallModelProviderConfigId != null;
+      smallModelProviderKey.value = modelProviderConfigIdForLegacyKey(
+        modelProviders,
+        p.smallModelProviderConfigId,
+        p.smallModelProviderKey
+      );
+      smallModelProviderOverride.value =
+        p.smallModelProviderConfigId != null || p.smallModelProviderKey != null;
       smallModelId.value = p.smallModelId ?? '';
       smallModelIdOverride.value = p.smallModelId != null;
       reviewEnabled.value = p.reviewEnabled ?? false;
@@ -167,7 +184,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       maxInProgressTasks.value = p.maxInProgressTasks ?? DEFAULT_MAX_IN_PROGRESS_TASKS;
       maxInProgressTasksOverride.value = p.maxInProgressTasks != null;
     }
-  }, [projectId, existingProject]);
+  }, [projectId, existingProject, modelProviders, modelProvidersLoading]);
 
   useEffect(() => {
     if (
@@ -503,3 +520,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     }
   };
 };
+
+const projectNeedsLegacyModelProviderResolution = (project: ProjectConfig): boolean =>
+  (!project.primaryModelProviderConfigId && !!project.primaryModelProviderKey) ||
+  (!project.smallModelProviderConfigId && !!project.smallModelProviderKey);

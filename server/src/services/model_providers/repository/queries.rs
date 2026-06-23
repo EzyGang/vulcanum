@@ -318,4 +318,24 @@ impl ModelProvidersRepository {
         .rows_affected();
         ensure_rows_affected(rows)
     }
+
+    pub async fn update_auth_attempt_interval<'c, Q>(
+        &self,
+        db: Q,
+        id: Uuid,
+        interval_seconds: i32,
+    ) -> Result<(), ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        let rows = sqlx::query!(
+            "UPDATE model_provider_auth_attempts SET interval_seconds = $2 WHERE id = $1",
+            id,
+            interval_seconds,
+        )
+        .execute(db)
+        .await?
+        .rows_affected();
+        ensure_rows_affected(rows)
+    }
 }

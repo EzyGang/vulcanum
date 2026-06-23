@@ -66,5 +66,6 @@ export interface ChatGptAuthStartResponse {
 export interface ChatGptAuthStatusResponse {
   status: 'pending' | 'complete' | 'expired' | 'failed';
   error?: string | null;
+  pollIntervalSeconds?: number | null;
   provider?: ModelProviderConfig | null;
 }

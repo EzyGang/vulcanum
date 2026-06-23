@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO model_provider_configs (\n            id, team_id, provider_key, display_name, credentials\n        ) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6644c5bc8d2bf6900c588cc72c65e687e1e86bfdf7828f611bad0447feb6f624"
+}

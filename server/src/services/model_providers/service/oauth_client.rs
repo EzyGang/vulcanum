@@ -41,6 +41,7 @@ struct DeviceTokenResponse {
 #[derive(Debug, Clone)]
 pub(crate) enum DevicePollOutcome {
     Pending,
+    SlowDown,
     Authorized(String),
     Failed(String),
 }
@@ -141,9 +142,10 @@ impl ChatGptOAuthClient for OpenAiChatGptOAuthClient {
             ModelProvidersError::OAuth(format!("parsing device token response: {e}"))
         })?;
         match body.error.as_deref() {
-            Some("authorization_pending") | Some("slow_down") => {
+            Some("authorization_pending") => {
                 return Ok(DevicePollOutcome::Pending);
             }
+            Some("slow_down") => return Ok(DevicePollOutcome::SlowDown),
             Some(error) => {
                 let description = body.error_description.unwrap_or_else(|| error.to_owned());
                 return Ok(DevicePollOutcome::Failed(description));

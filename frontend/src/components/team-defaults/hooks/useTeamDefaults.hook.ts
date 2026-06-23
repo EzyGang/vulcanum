@@ -5,12 +5,16 @@ import {
   DEFAULT_REVIEW_MAX_TURNS,
   DEFAULT_REVIEW_PICKUP_COLUMN
 } from '../../../constants/reviewAutomation';
-import { useModelItems } from '../../../hooks/useModelItems.hook';
+import {
+  modelProviderConfigIdForLegacyKey,
+  useModelItems
+} from '../../../hooks/useModelItems.hook';
 import {
   getModelProviderCatalog,
   listModelProviders
 } from '../../../services/model-providers/model-providers.service';
 import { getTeam, getTeamDefaults, updateTeam } from '../../../services/teams/teams.service';
+import type { Team } from '../../../types/teams';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
@@ -39,8 +43,9 @@ export const useTeamDefaults = (teamId: string | null) => {
     ['team-defaults'],
     getTeamDefaults
   );
-  const { data: modelProviders = [] } = useApiQuery(['model-providers'], () =>
-    listModelProviders()
+  const { data: modelProviders = [], isLoading: modelProvidersLoading } = useApiQuery(
+    ['model-providers'],
+    () => listModelProviders()
   );
   const { data: modelCatalog } = useApiQuery(['model-provider-catalog'], () =>
     getModelProviderCatalog()
@@ -50,11 +55,22 @@ export const useTeamDefaults = (teamId: string | null) => {
     if (!team) {
       return;
     }
+    if (modelProvidersLoading && teamNeedsLegacyModelProviderResolution(team)) {
+      return;
+    }
     promptTemplate.value = team.promptTemplate;
     agentsMd.value = team.agentsMd;
-    primaryModelProviderKey.value = team.primaryModelProviderConfigId ?? '';
+    primaryModelProviderKey.value = modelProviderConfigIdForLegacyKey(
+      modelProviders,
+      team.primaryModelProviderConfigId,
+      team.primaryModelProviderKey
+    );
     primaryModelId.value = team.primaryModelId ?? '';
-    smallModelProviderKey.value = team.smallModelProviderConfigId ?? '';
+    smallModelProviderKey.value = modelProviderConfigIdForLegacyKey(
+      modelProviders,
+      team.smallModelProviderConfigId,
+      team.smallModelProviderKey
+    );
     smallModelId.value = team.smallModelId ?? '';
     reviewEnabled.value = team.reviewEnabled;
     reviewPickupColumn.value = team.reviewPickupColumn;
@@ -64,7 +80,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       teamDefaults?.reviewPromptTemplate ?? ''
     );
     maxInProgressTasks.value = team.maxInProgressTasks;
-  }, [teamId, team, teamDefaults]);
+  }, [teamId, team, teamDefaults, modelProviders, modelProvidersLoading]);
 
   const catalogProviders = modelCatalog?.providers ?? [];
   const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
@@ -103,7 +119,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       smallModelItems
     },
     status: {
-      loading: isLoading || defaultsLoading,
+      loading: isLoading || defaultsLoading || modelProvidersLoading,
       saving: mutation.isPending,
       error: formError
     },
@@ -181,6 +197,10 @@ const reviewPromptTemplateOrDefault = (template: string, defaultTemplate: string
 
   return defaultTemplate;
 };
+
+const teamNeedsLegacyModelProviderResolution = (team: Team): boolean =>
+  (!team.primaryModelProviderConfigId && !!team.primaryModelProviderKey) ||
+  (!team.smallModelProviderConfigId && !!team.smallModelProviderKey);
 
 const reviewPromptTemplateForSubmit = (
   storedTemplate: string | undefined,

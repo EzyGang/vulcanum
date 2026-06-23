@@ -1,4 +1,5 @@
 use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::errors::ProjectConfigsError;
@@ -146,4 +147,82 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
         .expect_err("team A must not attach team B provider");
 
     assert!(matches!(err, ProjectConfigsError::NoProvider));
+}
+
+#[sqlx::test]
+async fn update_rejects_cross_team_model_provider_config_without_model(pool: sqlx::PgPool) {
+    let svc = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        ModelProvidersService::new(
+            ModelProvidersRepository::new(),
+            pool.clone(),
+            ModelCatalogClient::new(),
+            "test-secret",
+        ),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
+    let provider_id = insert_default_integration_provider(&pool).await;
+    let config_id = test_helpers::insert_project_config_with_provider(
+        &pool,
+        "foreign-model-provider",
+        provider_id,
+    )
+    .await;
+    let team_b = test_helpers::insert_team(&pool, "model-provider-team-b").await;
+    let foreign_model_provider_id = insert_model_provider_config(&pool, team_b).await;
+
+    let err = svc
+        .update(
+            config_id,
+            test_helpers::DEFAULT_TEAM_ID,
+            UpdateProjectConfigRequest {
+                primary_model_provider_config_id: Some(Some(foreign_model_provider_id)),
+                primary_model_id: Some(None),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect_err("team A must not attach team B model provider config");
+
+    assert!(matches!(
+        err,
+        ProjectConfigsError::ModelProvider(ModelProvidersError::NotFound)
+    ));
+}
+
+async fn insert_default_integration_provider(pool: &sqlx::PgPool) -> uuid::Uuid {
+    let provider_id = uuid::Uuid::new_v4();
+    test_helpers::ensure_default_team(pool).await;
+    sqlx::query!(
+        "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
+        provider_id,
+        test_helpers::DEFAULT_TEAM_ID,
+        "default-provider",
+        "cloud.kaneo.app",
+        "default-key",
+    )
+    .execute(pool)
+    .await
+    .expect("provider should insert");
+    provider_id
+}
+
+async fn insert_model_provider_config(pool: &sqlx::PgPool, team_id: uuid::Uuid) -> uuid::Uuid {
+    let id = uuid::Uuid::new_v4();
+    sqlx::query!(
+        r#"INSERT INTO model_provider_configs (
+            id, team_id, provider_key, display_name, credentials
+        ) VALUES ($1, $2, $3, $4, $5)"#,
+        id,
+        team_id,
+        "anthropic",
+        "Anthropic",
+        serde_json::json!({ "ANTHROPIC_API_KEY": "secret" }),
+    )
+    .execute(pool)
+    .await
+    .expect("model provider should insert");
+    id
 }
