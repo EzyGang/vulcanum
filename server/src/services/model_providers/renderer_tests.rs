@@ -160,6 +160,49 @@ fn render_opencode_config_materializes_chatgpt_oauth_content() {
     assert_eq!(auth_content["openai"]["accountId"], "acct");
 }
 
+#[test]
+fn render_opencode_config_skips_unsupported_oauth_providers() {
+    let cipher = test_cipher();
+    let credentials = encrypted_oauth_credentials(
+        &OAuthCredential {
+            provider: "future_provider".to_owned(),
+            account_id: Some("acct".to_owned()),
+            email: None,
+            expires: 1782942233000,
+            refresh: "refresh".to_owned(),
+            access: "access".to_owned(),
+        },
+        &cipher,
+    )
+    .expect("encrypt oauth");
+    let unsupported = ModelProviderConfig {
+        id: Uuid::new_v4(),
+        team_id: Uuid::new_v4(),
+        provider_key: "future-provider".to_owned(),
+        display_name: "Future Provider".to_owned(),
+        credentials,
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
+    };
+
+    let rendered = render_opencode_config(
+        &[unsupported],
+        &cipher,
+        ModelSelection {
+            primary_provider_key: None,
+            primary_model_id: None,
+            small_provider_key: None,
+            small_model_id: None,
+        },
+    )
+    .expect("render config");
+
+    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
+        .expect("rendered config should be valid json");
+    assert!(config.get("provider").is_none());
+    assert!(rendered.opencode_auth_content.is_none());
+}
+
 fn test_cipher() -> SecretCipher {
     SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher")
 }

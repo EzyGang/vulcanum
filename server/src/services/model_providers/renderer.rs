@@ -52,12 +52,7 @@ pub fn render_opencode_config(
                 opencode_auth_content = Some(openai_auth_content(&credential)?);
                 provider_json.insert(provider.provider_key.clone(), json!({ "options": options }));
             }
-            ParsedAuth::DeviceOAuth(_) => {
-                return Err(ModelProvidersError::InvalidAuthConfig(format!(
-                    "unsupported OAuth provider: {}",
-                    provider.provider_key
-                )));
-            }
+            ParsedAuth::DeviceOAuth(_) => (),
             ParsedAuth::None => (),
         }
     }

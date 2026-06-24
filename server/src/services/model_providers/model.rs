@@ -113,6 +113,7 @@ pub struct CatalogModel {
     pub reasoning: bool,
     pub tool_call: bool,
     pub structured_output: bool,
+    pub opencode_chatgpt_compatible: bool,
 }
 
 fn default_api_key_auth_type() -> ModelProviderAuthType {

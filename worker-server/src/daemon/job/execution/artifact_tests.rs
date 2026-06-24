@@ -3,7 +3,7 @@ use std::fs;
 use uuid::Uuid;
 use vulcanum_shared::runtime::types::FinishStatus;
 
-use crate::daemon::job::artifact::read_finish_artifact;
+use crate::daemon::job::execution::artifact::read_finish_artifact;
 
 #[test]
 fn parses_review_finish_artifact_fields() {

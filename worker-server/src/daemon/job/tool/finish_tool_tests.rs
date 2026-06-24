@@ -1,6 +1,6 @@
 use vulcanum_shared::api_types::WorkRunType;
 
-use crate::daemon::job::finish_tool::finish_run_tool_ts;
+use crate::daemon::job::tool::finish_tool::finish_run_tool_ts;
 
 #[test]
 fn finish_tool_returns_plain_string_result() {

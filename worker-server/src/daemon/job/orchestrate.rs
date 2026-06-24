@@ -15,8 +15,9 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
 
-use super::event_reporter::EventReporter;
-use super::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
+use super::execution::event_reporter::EventReporter;
+use super::execution::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
+use super::prompts::text::initial_prompt;
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::factory::create_isolation_provider;
@@ -294,7 +295,7 @@ pub(crate) async fn handle_job(
         }
     }
 
-    let prompt_text = super::prompts::initial_prompt(
+    let prompt_text = initial_prompt(
         job.work_type,
         &crate::isolation::workspace::workspace_prompt_prefix(&isolated_env.repos),
         &job.prompt_text,

@@ -95,6 +95,7 @@ fn test_catalog() -> CatalogResponse {
                 reasoning: true,
                 tool_call: true,
                 structured_output: true,
+                opencode_chatgpt_compatible: false,
             }],
         }],
     }

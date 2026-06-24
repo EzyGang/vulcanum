@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
+use crate::services::model_providers::auth::credentials::OPENAI_PROVIDER_KEY;
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::{CatalogModel, CatalogProvider, CatalogResponse};
 
@@ -197,26 +198,32 @@ fn parse_catalog(raw: HashMap<String, RawProvider>) -> CatalogResponse {
     let mut providers: Vec<CatalogProvider> = raw
         .into_values()
         .map(|provider| {
+            let provider_id = provider.id;
             let mut models: Vec<CatalogModel> = provider
                 .models
                 .into_values()
-                .map(|model| CatalogModel {
-                    id: model.id,
-                    name: model.name,
-                    status: model.status,
-                    context_limit: model.limit.as_ref().and_then(|l| l.context),
-                    output_limit: model.limit.as_ref().and_then(|l| l.output),
-                    input_cost: model.cost.as_ref().and_then(|c| c.input),
-                    output_cost: model.cost.as_ref().and_then(|c| c.output),
-                    attachment: model.attachment,
-                    reasoning: model.reasoning,
-                    tool_call: model.tool_call,
-                    structured_output: model.structured_output,
+                .map(|model| {
+                    let opencode_chatgpt_compatible = provider_id == OPENAI_PROVIDER_KEY
+                        && is_codex_compatible_openai_model(&model.id);
+                    CatalogModel {
+                        id: model.id,
+                        name: model.name,
+                        status: model.status,
+                        context_limit: model.limit.as_ref().and_then(|l| l.context),
+                        output_limit: model.limit.as_ref().and_then(|l| l.output),
+                        input_cost: model.cost.as_ref().and_then(|c| c.input),
+                        output_cost: model.cost.as_ref().and_then(|c| c.output),
+                        attachment: model.attachment,
+                        reasoning: model.reasoning,
+                        tool_call: model.tool_call,
+                        structured_output: model.structured_output,
+                        opencode_chatgpt_compatible,
+                    }
                 })
                 .collect();
             models.sort_by(|a, b| a.name.cmp(&b.name));
             CatalogProvider {
-                id: provider.id,
+                id: provider_id,
                 name: provider.name,
                 doc: provider.doc,
                 env: provider.env,

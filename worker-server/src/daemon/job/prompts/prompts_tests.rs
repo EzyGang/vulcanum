@@ -1,6 +1,6 @@
 use vulcanum_shared::api_types::WorkRunType;
 
-use crate::daemon::job::prompts::{
+use crate::daemon::job::prompts::text::{
     continuation_prompt, initial_prompt, review_after_fix_prompt, review_fix_prompt,
 };
 

@@ -10,6 +10,7 @@ export interface CatalogModel {
   reasoning: boolean;
   toolCall: boolean;
   structuredOutput: boolean;
+  opencodeChatgptCompatible: boolean;
 }
 
 export interface CatalogProvider {

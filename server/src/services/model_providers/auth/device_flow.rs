@@ -189,9 +189,11 @@ impl DeviceFlowStore for InMemoryDeviceFlowStore {
         &self,
         attempt_id: Uuid,
     ) -> Result<Option<PendingDeviceFlow>, ModelProvidersError> {
-        let mut attempts = self.attempts.lock().await;
-        attempts.retain(|_, attempt| attempt.expires_at > Utc::now());
-        Ok(attempts.get(&attempt_id).cloned())
+        let attempt = self.attempts.lock().await.get(&attempt_id).cloned();
+        match attempt.filter(|attempt| attempt.expires_at > Utc::now()) {
+            Some(attempt) => Ok(Some(attempt)),
+            None => Ok(None),
+        }
     }
 
     async fn update_next_poll(
