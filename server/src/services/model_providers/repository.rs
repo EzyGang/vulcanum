@@ -3,15 +3,17 @@ pub mod configs;
 
 use crate::services::model_providers::errors::ModelProvidersError;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelProvidersRepository {}
 
+#[derive(Debug)]
 pub struct CreateOAuthProviderParams<'a> {
     pub display_name: &'a str,
     pub oauth_credentials: &'a serde_json::Value,
     pub oauth_metadata: &'a serde_json::Value,
 }
 
+#[derive(Debug)]
 pub struct CreateAuthAttemptParams<'a> {
     pub user_id: &'a str,
     pub encrypted_device_code: &'a serde_json::Value,
@@ -23,6 +25,7 @@ pub struct CreateAuthAttemptParams<'a> {
 }
 
 impl ModelProvidersRepository {
+    #[must_use]
     pub fn new() -> Self {
         Self {}
     }

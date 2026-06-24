@@ -16,6 +16,7 @@ use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::model_providers::service_tests::test_catalog;
 use crate::test_helpers::insert_team;
 
+#[derive(Debug)]
 struct FakeChatGptOAuthClient {
     polls: Mutex<VecDeque<DevicePollOutcome>>,
 }

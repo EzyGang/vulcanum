@@ -7,26 +7,6 @@ use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo, User
 use crate::services::teams::repository::TeamsRepository;
 
 impl TeamsRepository {
-    pub async fn model_provider_config_belongs_to_team<'c, Q>(
-        &self,
-        db: Q,
-        team_id: Uuid,
-        provider_config_id: Uuid,
-    ) -> Result<bool, TeamsError>
-    where
-        Q: Queryer<'c>,
-    {
-        sqlx::query_scalar!(
-            "SELECT EXISTS(SELECT 1 FROM model_provider_configs WHERE id = $1 AND team_id = $2)",
-            provider_config_id,
-            team_id,
-        )
-        .fetch_one(db)
-        .await
-        .map(|exists| exists.unwrap_or(false))
-        .map_err(TeamsError::from)
-    }
-
     pub async fn list_members<'c, Q>(
         &self,
         db: Q,

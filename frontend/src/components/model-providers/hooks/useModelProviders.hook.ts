@@ -113,13 +113,14 @@ export const useModelProviders = () => {
 
   const cancelChatGptMutation = useApiMutation((attemptId: string) => cancelChatGptAuth(attemptId));
 
+  const chatGptAuthData = chatGptAuthQuery.data;
   useEffect(() => {
-    const status = chatGptAuthQuery.data?.status;
+    const { status, pollIntervalSeconds, error } = chatGptAuthData ?? {};
     if (status === 'complete') {
       invalidate('model-providers');
       resetForm();
+      return;
     }
-    const pollIntervalSeconds = chatGptAuthQuery.data?.pollIntervalSeconds;
     if (
       status === 'pending' &&
       chatGptAttempt.value &&
@@ -129,14 +130,10 @@ export const useModelProviders = () => {
       chatGptAttempt.value = { ...chatGptAttempt.value, pollIntervalSeconds };
     }
     if (status === 'expired' || status === 'failed') {
-      formError.value = chatGptAuthQuery.data?.error ?? 'ChatGPT login failed';
+      formError.value = error ?? 'ChatGPT login failed';
       chatGptAttempt.value = null;
     }
-  }, [
-    chatGptAuthQuery.data?.status,
-    chatGptAuthQuery.data?.pollIntervalSeconds,
-    chatGptAuthQuery.data?.error
-  ]);
+  }, [chatGptAuthData, resetForm]);
 
   const handleShowCreate = useCallback(() => {
     resetForm();

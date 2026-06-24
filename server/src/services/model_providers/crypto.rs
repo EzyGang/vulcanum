@@ -1,3 +1,5 @@
+use std::fmt;
+
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use base64::engine::general_purpose::STANDARD;
@@ -19,6 +21,12 @@ pub struct EncryptedPayload {
 #[derive(Clone)]
 pub struct CredentialCipher {
     cipher: Aes256Gcm,
+}
+
+impl fmt::Debug for CredentialCipher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CredentialCipher").finish_non_exhaustive()
+    }
 }
 
 impl CredentialCipher {

@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
+use crate::services::model_providers::renderer::{ModelSelection, RenderedModelConfig};
 use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunType;
@@ -92,7 +92,7 @@ impl WorkRunsService {
         let small_provider_key =
             provider_key_for_config(&selected_auth.providers, cfg.small_model_provider_config_id)
                 .or(cfg.small_model_provider_key.as_deref());
-        let rendered = render_opencode_config(
+        let rendered = RenderedModelConfig::from_connected(
             &selected_auth.providers,
             ModelSelection {
                 primary_provider_key,

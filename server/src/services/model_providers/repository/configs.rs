@@ -10,6 +10,9 @@ use crate::services::model_providers::repository::{
     ensure_rows_affected, map_sqlx_error, CreateOAuthProviderParams, ModelProvidersRepository,
 };
 
+const CONFIG_COLUMNS: &str = "id, team_id, provider_key, auth_type, display_name, credentials, \
+    oauth_credentials, oauth_metadata, created_at, updated_at";
+
 impl ModelProvidersRepository {
     pub async fn list_all<'c, Q>(
         &self,
@@ -19,13 +22,10 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as!(
-            ModelProviderConfig,
-            r#"SELECT id, team_id, provider_key, auth_type, display_name, credentials,
-                oauth_credentials, oauth_metadata, created_at, updated_at
-              FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC"#,
-            team_id,
-        )
+        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
+            "WHERE team_id = $1 ORDER BY created_at DESC",
+        ))
+        .bind(team_id)
         .fetch_all(db)
         .await
         .map_err(ModelProvidersError::from)
@@ -40,14 +40,11 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as!(
-            ModelProviderConfig,
-            r#"SELECT id, team_id, provider_key, auth_type, display_name, credentials,
-                oauth_credentials, oauth_metadata, created_at, updated_at
-              FROM model_provider_configs WHERE id = $1 AND team_id = $2"#,
-            id,
-            team_id,
-        )
+        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
+            "WHERE id = $1 AND team_id = $2",
+        ))
+        .bind(id)
+        .bind(team_id)
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
@@ -62,18 +59,14 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as!(
-            ModelProviderConfig,
-            r#"SELECT id, team_id, provider_key, auth_type, display_name, credentials,
-                oauth_credentials, oauth_metadata, created_at, updated_at
-              FROM model_provider_configs
-              WHERE team_id = $1 AND provider_key = $2
-              ORDER BY CASE WHEN auth_type = $3 THEN 0 ELSE 1 END, created_at DESC, id ASC
-              LIMIT 1"#,
-            team_id,
-            provider_key,
-            AUTH_TYPE_API_KEY,
-        )
+        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
+            "WHERE team_id = $1 AND provider_key = $2
+             ORDER BY CASE WHEN auth_type = $3 THEN 0 ELSE 1 END, created_at DESC, id ASC
+             LIMIT 1",
+        ))
+        .bind(team_id)
+        .bind(provider_key)
+        .bind(AUTH_TYPE_API_KEY)
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
@@ -89,16 +82,12 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as!(
-            ModelProviderConfig,
-            r#"SELECT id, team_id, provider_key, auth_type, display_name, credentials,
-                oauth_credentials, oauth_metadata, created_at, updated_at
-              FROM model_provider_configs
-              WHERE team_id = $1 AND provider_key = $2 AND auth_type = $3"#,
-            team_id,
-            provider_key,
-            auth_type,
-        )
+        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
+            "WHERE team_id = $1 AND provider_key = $2 AND auth_type = $3",
+        ))
+        .bind(team_id)
+        .bind(provider_key)
+        .bind(auth_type)
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
@@ -113,14 +102,11 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as!(
-            ModelProviderConfig,
-            r#"SELECT id, team_id, provider_key, auth_type, display_name, credentials,
-                oauth_credentials, oauth_metadata, created_at, updated_at
-              FROM model_provider_configs WHERE team_id = $1 AND id = ANY($2)"#,
-            team_id,
-            ids,
-        )
+        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
+            "WHERE team_id = $1 AND id = ANY($2)",
+        ))
+        .bind(team_id)
+        .bind(ids)
         .fetch_all(db)
         .await
         .map_err(ModelProvidersError::from)
@@ -239,4 +225,8 @@ impl ModelProvidersRepository {
         .rows_affected();
         ensure_rows_affected(rows)
     }
+}
+
+fn select_configs_sql(suffix: &str) -> String {
+    format!("SELECT {CONFIG_COLUMNS} FROM model_provider_configs {suffix}")
 }

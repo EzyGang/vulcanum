@@ -11,12 +11,13 @@ use crate::services::model_providers::model::{CatalogModel, CatalogProvider, Cat
 const MODELS_DEV_URL: &str = "https://models.dev/api.json";
 const CATALOG_TTL: Duration = Duration::from_secs(60 * 60);
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ModelCatalogClient {
     client: reqwest::Client,
     cache: Arc<RwLock<Option<CachedCatalog>>>,
 }
 
+#[derive(Debug)]
 struct CachedCatalog {
     fetched_at: Instant,
     catalog: CatalogResponse,
@@ -70,6 +71,7 @@ struct RawCost {
 }
 
 impl ModelCatalogClient {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             client: reqwest::Client::new(),

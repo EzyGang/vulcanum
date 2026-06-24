@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde::Deserialize;
 use serde_json::json;
 
@@ -7,6 +9,7 @@ const OPENAI_OAUTH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const DEVICE_USER_CODE_URL: &str = "https://auth.openai.com/api/accounts/deviceauth/usercode";
 const DEVICE_TOKEN_URL: &str = "https://auth.openai.com/api/accounts/deviceauth/token";
 const OAUTH_TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
 pub(crate) struct DeviceUserCodeResponse {
@@ -65,7 +68,7 @@ struct OpenAiOAuthTokenResponse {
 }
 
 #[async_trait::async_trait]
-pub(crate) trait ChatGptOAuthClient: Send + Sync {
+pub(crate) trait ChatGptOAuthClient: std::fmt::Debug + Send + Sync {
     async fn start_device_flow(&self) -> Result<DeviceUserCodeResponse, ModelProvidersError>;
 
     async fn poll_device_token(
@@ -79,16 +82,29 @@ pub(crate) trait ChatGptOAuthClient: Send + Sync {
     ) -> Result<OAuthTokenResponse, ModelProvidersError>;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct OpenAiChatGptOAuthClient {
     client: reqwest::Client,
 }
 
+impl OpenAiChatGptOAuthClient {
+    #[must_use]
+    pub fn new() -> Self {
+        let client = reqwest::Client::builder()
+            .connect_timeout(REQUEST_TIMEOUT)
+            .timeout(REQUEST_TIMEOUT)
+            .build()
+            .unwrap_or_else(|err| {
+                tracing::warn!(error = %err, "Falling back to default OpenAI OAuth HTTP client");
+                reqwest::Client::new()
+            });
+        Self { client }
+    }
+}
+
 impl Default for OpenAiChatGptOAuthClient {
     fn default() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+        Self::new()
     }
 }
 

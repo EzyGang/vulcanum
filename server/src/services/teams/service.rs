@@ -1,4 +1,6 @@
+mod auth;
 pub mod invites;
+mod model_settings;
 
 use std::sync::Arc;
 
@@ -6,13 +8,13 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::routes::team_auth::TeamPrincipal;
-use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::teams::errors::TeamsError;
 use crate::services::teams::invite_store::{InMemoryTeamInviteStore, TeamInviteStore};
-use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo, UpdateTeamRequest};
+use crate::services::teams::model::{ProviderIdentity, Team, TeamMemberInfo};
 use crate::services::teams::repository::TeamsRepository;
+
+use self::model_settings::default_model_providers;
 
 #[derive(Clone)]
 pub struct TeamsService {
@@ -119,84 +121,6 @@ impl TeamsService {
         Ok(team)
     }
 
-    pub async fn update_for_principal(
-        &self,
-        team_id: Uuid,
-        params: &UpdateTeamRequest,
-        principal: &TeamPrincipal,
-        single_user: bool,
-    ) -> Result<Team, TeamsError> {
-        let name = match params.name.as_deref() {
-            Some(name) => Some(validate_team_name(name)?),
-            None => None,
-        };
-        self.authorize_owner(team_id, principal, single_user)
-            .await?;
-        let current = self.repo.get_by_id(&self.db, team_id).await?;
-        self.validate_model_selection(
-            team_id,
-            resolve_model_provider_config_id(
-                params.primary_model_provider_config_id,
-                current.primary_model_provider_config_id,
-            ),
-            resolve_model_id(
-                &params.primary_model_id,
-                current.primary_model_id.as_deref(),
-            ),
-        )
-        .await?;
-        self.validate_model_selection(
-            team_id,
-            resolve_model_provider_config_id(
-                params.small_model_provider_config_id,
-                current.small_model_provider_config_id,
-            ),
-            resolve_model_id(&params.small_model_id, current.small_model_id.as_deref()),
-        )
-        .await?;
-        self.repo
-            .update_settings(
-                &self.db,
-                team_id,
-                name,
-                params.prompt_template.as_deref(),
-                params.agents_md.as_deref(),
-                params
-                    .primary_model_provider_key
-                    .as_ref()
-                    .map(|value| value.as_deref()),
-                params.primary_model_provider_config_id,
-                params
-                    .primary_model_id
-                    .as_ref()
-                    .map(|value| value.as_deref()),
-                params
-                    .small_model_provider_key
-                    .as_ref()
-                    .map(|value| value.as_deref()),
-                params.small_model_provider_config_id,
-                params.small_model_id.as_ref().map(|value| value.as_deref()),
-                params.review_enabled,
-                params.review_pickup_column.as_deref(),
-                params.review_max_turns,
-                params.review_prompt_template.as_deref(),
-                params.max_in_progress_tasks,
-            )
-            .await
-    }
-
-    async fn validate_model_selection(
-        &self,
-        team_id: Uuid,
-        provider_config_id: Option<Uuid>,
-        model_id: Option<&str>,
-    ) -> Result<(), TeamsError> {
-        self.model_providers
-            .validate_model_selection(team_id, provider_config_id, model_id)
-            .await
-            .map_err(TeamsError::ModelProvider)
-    }
-
     pub async fn delete_for_principal(
         &self,
         team_id: Uuid,
@@ -254,53 +178,6 @@ impl TeamsService {
         self.repo.list_identities_for_user(&self.db, user_id).await
     }
 
-    #[must_use = "resolved team id should be used"]
-    pub async fn resolve_team(
-        &self,
-        principal: &TeamPrincipal,
-        single_user: bool,
-    ) -> Result<Uuid, TeamsError> {
-        match principal {
-            TeamPrincipal::Instance { team_id } => {
-                if !single_user {
-                    return Err(TeamsError::AccessDenied);
-                }
-                match team_id {
-                    Some(team_id) => Ok(self.repo.get_by_id(&self.db, *team_id).await?.id),
-                    None => Ok(self.repo.get_default_team(&self.db).await?.id),
-                }
-            }
-            TeamPrincipal::User { user_id, team_id } => match team_id {
-                Some(team_id) => {
-                    self.repo
-                        .verify_membership(&self.db, *team_id, user_id)
-                        .await?;
-                    Ok(*team_id)
-                }
-                None => Ok(self
-                    .repo
-                    .list_for_user(&self.db, user_id)
-                    .await?
-                    .into_iter()
-                    .next()
-                    .ok_or(TeamsError::NotFound)?
-                    .id),
-            },
-        }
-    }
-
-    #[must_use = "resolved team id should be used"]
-    pub async fn resolve_team_for_owner(
-        &self,
-        principal: &TeamPrincipal,
-        single_user: bool,
-    ) -> Result<Uuid, TeamsError> {
-        let team_id = self.resolve_team(principal, single_user).await?;
-        self.authorize_owner(team_id, principal, single_user)
-            .await?;
-        Ok(team_id)
-    }
-
     pub async fn ensure_personal_team(
         &self,
         user_id: &str,
@@ -328,49 +205,6 @@ impl TeamsService {
 
         Ok(team)
     }
-
-    async fn authorize_team_read(
-        &self,
-        team_id: Uuid,
-        principal: &TeamPrincipal,
-        single_user: bool,
-    ) -> Result<(), TeamsError> {
-        match principal {
-            TeamPrincipal::Instance { .. } => match single_user {
-                true => self.repo.get_by_id(&self.db, team_id).await.map(|_| ()),
-                false => Err(TeamsError::AccessDenied),
-            },
-            TeamPrincipal::User { user_id, .. } => {
-                self.repo
-                    .verify_membership(&self.db, team_id, user_id)
-                    .await
-            }
-        }
-    }
-
-    async fn authorize_owner(
-        &self,
-        team_id: Uuid,
-        principal: &TeamPrincipal,
-        single_user: bool,
-    ) -> Result<(), TeamsError> {
-        match principal {
-            TeamPrincipal::Instance { .. } => match single_user {
-                true => self.repo.get_by_id(&self.db, team_id).await.map(|_| ()),
-                false => Err(TeamsError::AccessDenied),
-            },
-            TeamPrincipal::User { user_id, .. } => {
-                let role = self
-                    .repo
-                    .get_member_role(&self.db, team_id, user_id)
-                    .await?;
-                match role.as_str() {
-                    "owner" => Ok(()),
-                    _ => Err(TeamsError::AccessDenied),
-                }
-            }
-        }
-    }
 }
 
 fn validate_team_name(name: &str) -> Result<&str, TeamsError> {
@@ -381,33 +215,4 @@ fn validate_team_name(name: &str) -> Result<&str, TeamsError> {
         ));
     }
     Ok(trimmed)
-}
-
-fn default_model_providers(db: PgPool) -> ModelProvidersService {
-    ModelProvidersService::new(
-        ModelProvidersRepository::new(),
-        db,
-        ModelCatalogClient::new(),
-        "team-model-provider-validation",
-    )
-}
-
-fn resolve_model_provider_config_id(
-    field: Option<Option<Uuid>>,
-    existing: Option<Uuid>,
-) -> Option<Uuid> {
-    match field {
-        Some(value) => value,
-        None => existing,
-    }
-}
-
-fn resolve_model_id<'a>(
-    field: &'a Option<Option<String>>,
-    existing: Option<&'a str>,
-) -> Option<&'a str> {
-    match field {
-        Some(value) => value.as_deref(),
-        None => existing,
-    }
 }

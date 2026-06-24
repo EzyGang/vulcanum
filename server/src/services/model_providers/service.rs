@@ -19,7 +19,7 @@ use crate::services::model_providers::service::oauth_client::{
     ChatGptOAuthClient, OpenAiChatGptOAuthClient,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ModelProvidersService {
     pub repo: ModelProvidersRepository,
     pub db: PgPool,
@@ -35,6 +35,7 @@ pub struct SelectedModelProviderAuth {
 }
 
 impl ModelProvidersService {
+    #[must_use]
     pub fn new(
         repo: ModelProvidersRepository,
         db: PgPool,

@@ -2,7 +2,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::services::model_providers::model::ModelProviderConfig;
-use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
+use crate::services::model_providers::renderer::{ModelSelection, RenderedModelConfig};
 
 #[test]
 fn render_opencode_config_extracts_env_and_models() {
@@ -19,7 +19,7 @@ fn render_opencode_config_extracts_env_and_models() {
         updated_at: Utc::now(),
     };
 
-    let rendered = render_opencode_config(
+    let rendered = RenderedModelConfig::from_connected(
         &[provider],
         ModelSelection {
             primary_provider_key: Some("anthropic"),
@@ -47,7 +47,7 @@ fn render_opencode_config_extracts_env_and_models() {
 
 #[test]
 fn render_opencode_config_includes_permissions_without_model_config() {
-    let rendered = render_opencode_config(
+    let rendered = RenderedModelConfig::from_connected(
         &[],
         ModelSelection {
             primary_provider_key: None,
@@ -79,7 +79,7 @@ fn render_opencode_config_restores_legacy_snake_cased_env_keys() {
         updated_at: Utc::now(),
     };
 
-    let rendered = render_opencode_config(
+    let rendered = RenderedModelConfig::from_connected(
         &[provider],
         ModelSelection {
             primary_provider_key: Some("deepseek"),
@@ -116,7 +116,7 @@ fn render_opencode_config_does_not_inject_chatgpt_oauth_as_api_key() {
         updated_at: Utc::now(),
     };
 
-    let rendered = render_opencode_config(
+    let rendered = RenderedModelConfig::from_connected(
         &[provider],
         ModelSelection {
             primary_provider_key: Some("openai"),
