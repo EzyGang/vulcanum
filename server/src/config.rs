@@ -11,6 +11,7 @@ pub struct AppConfig {
     pub instance_password: String,
     pub is_single_user: bool,
     pub redis_url: String,
+    pub model_provider_secret_key: String,
     pub github_app_id: Option<u64>,
     pub github_app_private_key: Option<String>,
     pub github_app_slug: Option<String>,
@@ -43,6 +44,7 @@ impl AppConfig {
             std::env::var("IS_SINGLE_USER").unwrap_or_else(|_| "true".to_owned()) == "true";
         let redis_url =
             std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_owned());
+        let model_provider_secret_key = std::env::var("MODEL_PROVIDER_SECRET_KEY")?;
         let github_app_id = std::env::var("GITHUB_APP_ID")
             .ok()
             .and_then(|v| v.parse::<u64>().ok());
@@ -63,6 +65,7 @@ impl AppConfig {
             instance_password,
             is_single_user,
             redis_url,
+            model_provider_secret_key,
             github_app_id,
             github_app_private_key,
             github_app_slug,

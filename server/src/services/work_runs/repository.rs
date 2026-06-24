@@ -16,4 +16,5 @@ impl WorkRunsRepository {
 }
 
 #[cfg(test)]
+#[path = "repository/tests/work_runs_tests.rs"]
 mod work_runs_tests;

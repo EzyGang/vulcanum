@@ -8,7 +8,7 @@ import {
   getProjectSetupHelpText,
   getProjectSetupMissingMessages,
   isProjectSetupComplete
-} from '../../../utils/projectSetup';
+} from '../../../utils/project-setup';
 
 export const useProjects = () => {
   const {

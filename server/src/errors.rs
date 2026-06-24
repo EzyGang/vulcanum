@@ -298,8 +298,35 @@ impl From<ModelProvidersError> for AppError {
                 tracing::error!(error = %e, operation = "model_providers", "catalog error");
                 Self::Internal
             }
+            ModelProvidersError::InvalidAuthConfig(message) => Self::BadRequest(message),
+            ModelProvidersError::DeviceFlowExpired => {
+                Self::BadRequest("Device flow expired".to_owned())
+            }
+            ModelProvidersError::DeviceFlowPending { next_poll_at } => {
+                Self::BadRequest(format!("Device flow pending until {next_poll_at}"))
+            }
+            ModelProvidersError::DeviceFlowFailed(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "device flow error");
+                Self::Internal
+            }
+            ModelProvidersError::SecretEncryption(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "secret encryption error");
+                Self::Internal
+            }
+            ModelProvidersError::SecretDecryption => {
+                tracing::error!(operation = "model_providers", "secret decryption error");
+                Self::Internal
+            }
+            ModelProvidersError::OAuthRefreshFailed(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "oauth refresh error");
+                Self::Internal
+            }
             ModelProvidersError::Database(e) => {
                 tracing::error!(error = %e, operation = "model_providers", "database error");
+                Self::Internal
+            }
+            ModelProvidersError::Redis(e) => {
+                tracing::error!(error = %e, operation = "model_providers", "redis error");
                 Self::Internal
             }
         }

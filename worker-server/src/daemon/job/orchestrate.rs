@@ -214,6 +214,9 @@ pub(crate) async fn handle_job(
     for (key, value) in &job.model_provider_env {
         secrets.insert(key.clone(), value.clone());
     }
+    if let Some(auth_content) = job.opencode_auth_content {
+        secrets.insert("OPENCODE_AUTH_CONTENT".to_owned(), auth_content);
+    }
     let env_vars = HashMap::new();
 
     let isolated_env = match provider

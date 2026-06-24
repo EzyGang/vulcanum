@@ -10,7 +10,7 @@ import {
   getProjectSetupHelpText,
   getProjectSetupMissingMessages,
   isProjectSetupComplete
-} from '../../../utils/projectSetup';
+} from '../../../utils/project-setup';
 import { useGitHubApp } from '../../github/hooks/useGitHubApp.hook';
 
 interface DashboardStats {

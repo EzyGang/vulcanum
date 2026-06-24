@@ -1,3 +1,8 @@
+use std::sync::Arc;
+
+use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
+use crate::services::model_providers::auth::encryption::SecretCipher;
+use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
@@ -17,11 +22,7 @@ async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-        ),
+        model_providers_service(pool.clone()),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     let team_b = test_helpers::insert_team(&pool, "team-b").await;
@@ -41,11 +42,7 @@ async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(poo
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-        ),
+        model_providers_service(pool.clone()),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     let config_id = test_helpers::insert_project_config(&pool, "empty-review-prompt").await;
@@ -72,11 +69,7 @@ async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-        ),
+        model_providers_service(pool.clone()),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     let config_id = test_helpers::insert_project_config(&pool, "capacity-override").await;
@@ -106,11 +99,7 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            pool.clone(),
-            ModelCatalogClient::new(),
-        ),
+        model_providers_service(pool.clone()),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     test_helpers::ensure_default_team(&pool).await;
@@ -142,4 +131,15 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
         .expect_err("team A must not attach team B provider");
 
     assert!(matches!(err, ProjectConfigsError::NoProvider));
+}
+
+fn model_providers_service(pool: sqlx::PgPool) -> ModelProvidersService {
+    ModelProvidersService::new(
+        ModelProvidersRepository::new(),
+        pool,
+        ModelCatalogClient::new(),
+        SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
+        Arc::new(InMemoryDeviceFlowStore::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
+    )
 }

@@ -2,8 +2,11 @@ import type {
   CatalogResponse,
   CreateModelProviderRequest,
   ModelProviderConfig,
+  PollDeviceFlowResponse,
+  StartDeviceFlowRequest,
+  StartDeviceFlowResponse,
   UpdateModelProviderRequest
-} from '../../types/modelProviders';
+} from '../../types/model-providers';
 import { del, get, patch, post } from '../../utils/api/request';
 
 export const getModelProviderCatalog = (): Promise<CatalogResponse> =>
@@ -23,3 +26,11 @@ export const updateModelProvider = (
 
 export const deleteModelProvider = (id: string): Promise<void> =>
   del<void>(`/model-providers/${id}`);
+
+export const startModelProviderDeviceFlow = (
+  input: StartDeviceFlowRequest
+): Promise<StartDeviceFlowResponse> =>
+  post<StartDeviceFlowResponse>('/model-providers/device-flows', input);
+
+export const pollModelProviderDeviceFlow = (attemptId: string): Promise<PollDeviceFlowResponse> =>
+  post<PollDeviceFlowResponse>(`/model-providers/device-flows/${attemptId}/poll`, {});

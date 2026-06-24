@@ -1,4 +1,6 @@
-use crate::services::model_providers::catalog::ModelCatalogClient;
+use crate::services::model_providers::catalog::{
+    is_codex_compatible_openai_model, ModelCatalogClient,
+};
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::{CatalogModel, CatalogProvider, CatalogResponse};
 
@@ -44,6 +46,16 @@ async fn validate_model_rejects_unknown_model() {
         }
         _ => panic!("Expected unknown model error"),
     }
+}
+
+#[test]
+fn codex_compatible_model_predicate_matches_policy() {
+    assert!(is_codex_compatible_openai_model("gpt-5.5"));
+    assert!(is_codex_compatible_openai_model("gpt-5.4"));
+    assert!(is_codex_compatible_openai_model("gpt-5.6"));
+    assert!(is_codex_compatible_openai_model("gpt-6.0"));
+    assert!(!is_codex_compatible_openai_model("gpt-5.5-pro"));
+    assert!(!is_codex_compatible_openai_model("gpt-5.3"));
 }
 
 fn test_catalog() -> CatalogResponse {

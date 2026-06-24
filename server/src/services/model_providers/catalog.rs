@@ -10,11 +10,43 @@ use crate::services::model_providers::model::{CatalogModel, CatalogProvider, Cat
 
 const MODELS_DEV_URL: &str = "https://models.dev/api.json";
 const CATALOG_TTL: Duration = Duration::from_secs(60 * 60);
+const CODEX_ALLOWED_OPENAI_MODELS: &[&str] =
+    &["gpt-5.5", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-mini"];
+const CODEX_DISALLOWED_OPENAI_MODELS: &[&str] = &["gpt-5.5-pro"];
 
 #[derive(Clone)]
 pub struct ModelCatalogClient {
     client: reqwest::Client,
     cache: Arc<RwLock<Option<CachedCatalog>>>,
+}
+
+#[must_use]
+pub fn is_codex_compatible_openai_model(model_id: &str) -> bool {
+    if CODEX_DISALLOWED_OPENAI_MODELS.contains(&model_id) {
+        return false;
+    }
+    if CODEX_ALLOWED_OPENAI_MODELS.contains(&model_id) {
+        return true;
+    }
+
+    let Some(version) = model_id.strip_prefix("gpt-") else {
+        return false;
+    };
+    let Some((major, minor)) = parse_major_minor(version) else {
+        return false;
+    };
+
+    major > 5 || major == 5 && minor > 4
+}
+
+fn parse_major_minor(value: &str) -> Option<(u32, u32)> {
+    let mut parts = value.split('.');
+    let major = parts.next()?.parse::<u32>().ok()?;
+    let minor = parts.next()?.parse::<u32>().ok()?;
+    match parts.next() {
+        Some(_) => None,
+        None => Some((major, minor)),
+    }
 }
 
 struct CachedCatalog {

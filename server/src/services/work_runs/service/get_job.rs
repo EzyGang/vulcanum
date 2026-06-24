@@ -75,20 +75,27 @@ impl WorkRunsService {
             },
         };
 
-        let connected_model_providers = self
-            .model_providers_repo
+        let mut connected_model_providers = self
+            .model_providers
+            .repo
             .list_all(&self.db, cfg.team_id)
             .await
             .map_err(WorkRunsError::ModelProvider)?;
+        for provider in &mut connected_model_providers {
+            self.model_providers
+                .refresh_provider_if_needed(provider)
+                .await?;
+        }
         let rendered = render_opencode_config(
             &connected_model_providers,
+            &self.model_providers.cipher,
             ModelSelection {
                 primary_provider_key: cfg.primary_model_provider_key.as_deref(),
                 primary_model_id: cfg.primary_model_id.as_deref(),
                 small_provider_key: cfg.small_model_provider_key.as_deref(),
                 small_model_id: cfg.small_model_id.as_deref(),
             },
-        );
+        )?;
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),
@@ -97,6 +104,7 @@ impl WorkRunsService {
             agents_md: run.agents_md,
             generated_opencode_config: rendered.opencode_config,
             model_provider_env: rendered.env,
+            opencode_auth_content: rendered.opencode_auth_content,
             external_task_ref: run.external_task_ref,
             provider_instance_url,
             provider_api_key,

@@ -5,7 +5,7 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::routes::team_auth::TeamPrincipal;
 use crate::services::model_providers::model::{
-    CreateModelProviderRequest, UpdateModelProviderRequest,
+    CreateModelProviderRequest, StartDeviceFlowRequest, UpdateModelProviderRequest,
 };
 
 pub async fn catalog(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
@@ -72,4 +72,51 @@ pub async fn delete(
         .delete(path.into_inner(), team_id)
         .await?;
     Ok(HttpResponse::NoContent().finish())
+}
+
+pub async fn start_device_flow(
+    state: web::Data<AppState>,
+    body: web::Json<StartDeviceFlowRequest>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let response = state
+        .model_providers
+        .start_device_flow(team_id, principal_user_id(&auth), body.into_inner())
+        .await?;
+    Ok(HttpResponse::Ok().json(response))
+}
+
+pub async fn poll_device_flow(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let user_id = principal_user_id_ref(&auth);
+    let response = state
+        .model_providers
+        .poll_device_flow(team_id, user_id, path.into_inner())
+        .await?;
+    Ok(HttpResponse::Ok().json(response))
+}
+
+fn principal_user_id(auth: &TeamPrincipal) -> Option<String> {
+    match auth {
+        TeamPrincipal::User { user_id, .. } => Some(user_id.clone()),
+        TeamPrincipal::Instance { .. } => None,
+    }
+}
+
+fn principal_user_id_ref(auth: &TeamPrincipal) -> Option<&str> {
+    match auth {
+        TeamPrincipal::User { user_id, .. } => Some(user_id.as_str()),
+        TeamPrincipal::Instance { .. } => None,
+    }
 }

@@ -22,6 +22,7 @@ fn cfg() -> AppConfig {
         instance_password: "test-password".to_owned(),
         is_single_user: true,
         redis_url: "redis://127.0.0.1:6379".to_owned(),
+        model_provider_secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_owned(),
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,

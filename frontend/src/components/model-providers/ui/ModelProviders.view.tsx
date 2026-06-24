@@ -1,6 +1,10 @@
 import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
-import type { CatalogProvider, ModelProviderConfig } from '../../../types/modelProviders';
+import type {
+  CatalogProvider,
+  ModelProviderConfig,
+  StartDeviceFlowResponse
+} from '../../../types/model-providers';
 import type { ApiError } from '../../../utils/api/client';
 import { Button } from '../../shared/ui/Button.view';
 import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
@@ -21,7 +25,11 @@ interface ModelProvidersViewProps {
     editId: Signal<string | null>;
     providerKey: Signal<string>;
     displayName: Signal<string>;
+    authMethod: Signal<'api_key' | 'device_oauth'>;
     credentials: Signal<Record<string, string>>;
+    deviceFlow: Signal<StartDeviceFlowResponse | null>;
+    deviceFlowStatus: Signal<'idle' | 'pending' | 'connected'>;
+    nextPollAt: Signal<string | null>;
     formError: Signal<string | null>;
     formSubmitting: Signal<boolean>;
     deleteConfirmId: Signal<string | null>;
@@ -37,6 +45,7 @@ interface ModelProvidersViewProps {
     onShowEdit: (provider: ModelProviderConfig) => void;
     onCancelForm: () => void;
     onProviderChange: (value: string) => void;
+    onAuthMethodChange: (value: 'api_key' | 'device_oauth') => void;
     onDisplayNameChange: (value: string) => void;
     onCredentialChange: (key: string, value: string) => void;
     onSave: (e: Event) => void;
@@ -104,7 +113,25 @@ export const ModelProvidersView = ({
           />
         </div>
 
-        {data.selectedCatalogProvider && (
+        {data.providerKey.value === 'openai' && (
+          <div class='flex flex-col gap-2'>
+            <Label for='model-provider-auth-method'>Auth Method</Label>
+            <Select
+              id='model-provider-auth-method'
+              value={data.authMethod.value}
+              onValueChange={(value) =>
+                actions.onAuthMethodChange(value as 'api_key' | 'device_oauth')
+              }
+              disabled={data.formSubmitting.value}
+              items={[
+                { value: 'api_key', label: 'API Key' },
+                { value: 'device_oauth', label: 'ChatGPT Pro/Plus' }
+              ]}
+            />
+          </div>
+        )}
+
+        {data.selectedCatalogProvider && data.authMethod.value === 'api_key' && (
           <div class='flex flex-col gap-3'>
             <div class='text-text-muted text-xs'>Credential fields from models.dev catalog.</div>
             {data.selectedCatalogProvider.env.map((envName) => (
@@ -124,11 +151,51 @@ export const ModelProvidersView = ({
           </div>
         )}
 
+        {data.providerKey.value === 'openai' && data.authMethod.value === 'device_oauth' && (
+          <div class='border border-border-base bg-bg-input p-4 flex flex-col gap-3'>
+            <div class='flex flex-col gap-1'>
+              <div class='text-text-primary text-sm font-medium'>ChatGPT Pro/Plus device login</div>
+              <div class='text-text-muted text-xs'>
+                Save to start the OpenAI device flow. Tokens are stored encrypted and are never
+                shown here.
+              </div>
+            </div>
+            {data.deviceFlow.value && (
+              <div class='flex flex-col gap-2 text-sm'>
+                <a
+                  href={data.deviceFlow.value.verificationUri}
+                  target='_blank'
+                  rel='noreferrer'
+                  class='text-text-primary underline underline-offset-4'
+                >
+                  {data.deviceFlow.value.verificationUri}
+                </a>
+                <div class='font-mono text-lg text-text-primary tracking-wide'>
+                  {data.deviceFlow.value.userCode}
+                </div>
+                <div class='text-text-muted text-xs'>
+                  {data.nextPollAt.value
+                    ? `Waiting for approval. Next poll: ${data.nextPollAt.value}`
+                    : 'Waiting for approval in your browser.'}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {data.formError.value && <ErrorBanner message={data.formError.value} />}
 
         <div class='flex items-center gap-3'>
           <Button type='submit' variant='primary' disabled={data.formSubmitting.value}>
-            {data.formSubmitting.value ? 'Saving...' : data.editId.value ? 'Update' : 'Create'}
+            {data.formSubmitting.value
+              ? data.deviceFlowStatus.value === 'pending'
+                ? 'Waiting...'
+                : 'Saving...'
+              : data.authMethod.value === 'device_oauth'
+                ? 'Connect ChatGPT'
+                : data.editId.value
+                  ? 'Update'
+                  : 'Create'}
           </Button>
           <Button type='button' variant='secondary' onClick={actions.onCancelForm}>
             Cancel
@@ -149,7 +216,9 @@ export const ModelProvidersView = ({
         <Table.Head>
           <Table.HeadCell>Name</Table.HeadCell>
           <Table.HeadCell>Provider</Table.HeadCell>
+          <Table.HeadCell>Auth</Table.HeadCell>
           <Table.HeadCell>Credential Fields</Table.HeadCell>
+          <Table.HeadCell>OAuth Account</Table.HeadCell>
           <Table.HeadCell>Actions</Table.HeadCell>
         </Table.Head>
         <Table.Body>
@@ -164,8 +233,16 @@ export const ModelProvidersView = ({
                 <span class='text-text-secondary text-sm font-mono'>{provider.providerKey}</span>
               </Table.Cell>
               <Table.Cell>
+                <span class='text-text-secondary text-sm font-mono'>{provider.authType}</span>
+              </Table.Cell>
+              <Table.Cell>
                 <span class='text-text-secondary text-sm font-mono'>
-                  {Object.keys(provider.credentials ?? {}).join(', ') || '—'}
+                  {provider.credentialFields.join(', ') || '—'}
+                </span>
+              </Table.Cell>
+              <Table.Cell>
+                <span class='text-text-secondary text-sm'>
+                  {provider.oauth?.email || provider.oauth?.accountId || '—'}
                 </span>
               </Table.Cell>
               <Table.Cell>

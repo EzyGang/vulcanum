@@ -2,12 +2,19 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
+use crate::services::model_providers::auth::credentials::{
+    parse_auth, ParsedAuth, OPENAI_PROVIDER_KEY,
+};
+use crate::services::model_providers::auth::encryption::SecretCipher;
+use crate::services::model_providers::auth::opencode_auth::openai_auth_content;
+use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::ModelProviderConfig;
 
 #[derive(Debug, Default)]
 pub struct RenderedModelConfig {
     pub opencode_config: String,
     pub env: HashMap<String, String>,
+    pub opencode_auth_content: Option<String>,
 }
 
 #[derive(Debug)]
@@ -20,31 +27,39 @@ pub struct ModelSelection<'a> {
 
 pub fn render_opencode_config(
     connected: &[ModelProviderConfig],
+    cipher: &SecretCipher,
     selection: ModelSelection<'_>,
-) -> RenderedModelConfig {
+) -> Result<RenderedModelConfig, ModelProvidersError> {
     let mut env: HashMap<String, String> = HashMap::new();
     let mut provider_json = serde_json::Map::new();
+    let mut opencode_auth_content: Option<String> = None;
 
     for provider in connected {
         let mut options = serde_json::Map::new();
-        if let Some(credentials) = provider.credentials.as_object() {
-            for (key, value) in credentials {
-                match value.as_str() {
-                    Some(secret) if !secret.is_empty() => {
-                        let env_key = credential_env_key(key);
-                        env.insert(env_key.clone(), secret.to_owned());
-                        options.insert("apiKey".to_owned(), json!(format!("{{env:{env_key}}}")));
+        match parse_auth(&provider.credentials, cipher)? {
+            ParsedAuth::ApiKey(credentials) => {
+                for (key, secret) in credentials {
+                    if secret.is_empty() {
+                        continue;
                     }
-                    Some(_) => (),
-                    None => tracing::warn!(
-                        provider_key = %provider.provider_key,
-                        credential_key = %key,
-                        "Skipping non-string model provider credential"
-                    ),
+                    let env_key = credential_env_key(&key);
+                    env.insert(env_key.clone(), secret);
+                    options.insert("apiKey".to_owned(), json!(format!("{{env:{env_key}}}")));
                 }
+                provider_json.insert(provider.provider_key.clone(), json!({ "options": options }));
             }
+            ParsedAuth::DeviceOAuth(credential) if provider.provider_key == OPENAI_PROVIDER_KEY => {
+                opencode_auth_content = Some(openai_auth_content(&credential)?);
+                provider_json.insert(provider.provider_key.clone(), json!({ "options": options }));
+            }
+            ParsedAuth::DeviceOAuth(_) => {
+                return Err(ModelProvidersError::InvalidAuthConfig(format!(
+                    "unsupported OAuth provider: {}",
+                    provider.provider_key
+                )));
+            }
+            ParsedAuth::None => (),
         }
-        provider_json.insert(provider.provider_key.clone(), json!({ "options": options }));
     }
 
     let primary = model_ref(selection.primary_provider_key, selection.primary_model_id);
@@ -65,10 +80,11 @@ pub fn render_opencode_config(
         root.insert("small_model".to_owned(), json!(value));
     }
 
-    RenderedModelConfig {
+    Ok(RenderedModelConfig {
         opencode_config: serde_json::Value::Object(root).to_string(),
         env,
-    }
+        opencode_auth_content,
+    })
 }
 
 fn model_ref(provider_key: Option<&str>, model_id: Option<&str>) -> Option<String> {
