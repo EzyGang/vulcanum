@@ -5,6 +5,7 @@ use serde_json::json;
 
 use crate::services::model_providers::errors::ModelProvidersError;
 
+// Public OAuth client identifier used by ChatGPT device auth. It is not a secret.
 const OPENAI_OAUTH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const DEVICE_USER_CODE_URL: &str = "https://auth.openai.com/api/accounts/deviceauth/usercode";
 const DEVICE_TOKEN_URL: &str = "https://auth.openai.com/api/accounts/deviceauth/token";

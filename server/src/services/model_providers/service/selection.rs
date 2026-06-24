@@ -1,4 +1,5 @@
 use chrono::Utc;
+use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -134,7 +135,7 @@ fn credentials_need_refresh(expires: i64) -> bool {
 }
 
 fn stored_oauth_metadata(metadata: &serde_json::Value) -> (Option<String>, Option<String>) {
-    match serde_json::from_value::<OAuthMetadata>(metadata.clone()).ok() {
+    match OAuthMetadata::deserialize(metadata).ok() {
         Some(metadata) => (metadata.account_id, metadata.email),
         None => (None, None),
     }
