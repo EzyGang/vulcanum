@@ -1,10 +1,14 @@
 import { useSignal } from '@preact/signals';
+import { useCallback } from 'preact/hooks';
 import {
   getModelProviderCatalog,
   listModelProviders
 } from '../services/model-providers/model-providers.service';
 import { useApiQuery } from '../utils/api/query/hooks';
-import { modelProviderConfigIdForLegacyKey, useModelItems } from './useModelItems.hook';
+import {
+  modelProviderConfigIdForLegacyKey as resolveModelProviderConfigIdForLegacyKey,
+  useModelItems
+} from './useModelItems.hook';
 
 interface LegacyModelProviderSelection {
   primaryModelProviderConfigId?: string | null;
@@ -32,6 +36,25 @@ export const useModelProviderSelection = () => {
     primaryModelProviderKey,
     smallModelProviderKey
   });
+  const onPrimaryProviderChange = useCallback((value: string) => {
+    primaryModelProviderKey.value = value;
+    primaryModelId.value = '';
+  }, []);
+  const onPrimaryModelChange = useCallback((value: string) => {
+    primaryModelId.value = value;
+  }, []);
+  const onSmallProviderChange = useCallback((value: string) => {
+    smallModelProviderKey.value = value;
+    smallModelId.value = '';
+  }, []);
+  const onSmallModelChange = useCallback((value: string) => {
+    smallModelId.value = value;
+  }, []);
+  const modelProviderConfigIdForLegacyKey = useCallback(
+    (providerConfigId?: string | null, providerKey?: string | null) =>
+      resolveModelProviderConfigIdForLegacyKey(modelProviders, providerConfigId, providerKey),
+    [modelProviders]
+  );
 
   return {
     modelProviders,
@@ -44,24 +67,11 @@ export const useModelProviderSelection = () => {
     connectedProviderItems,
     primaryModelItems,
     smallModelItems,
-    onPrimaryProviderChange: (value: string) => {
-      primaryModelProviderKey.value = value;
-      primaryModelId.value = '';
-    },
-    onPrimaryModelChange: (value: string) => {
-      primaryModelId.value = value;
-    },
-    onSmallProviderChange: (value: string) => {
-      smallModelProviderKey.value = value;
-      smallModelId.value = '';
-    },
-    onSmallModelChange: (value: string) => {
-      smallModelId.value = value;
-    },
-    modelProviderConfigIdForLegacyKey: (
-      providerConfigId?: string | null,
-      providerKey?: string | null
-    ) => modelProviderConfigIdForLegacyKey(modelProviders, providerConfigId, providerKey),
+    onPrimaryProviderChange,
+    onPrimaryModelChange,
+    onSmallProviderChange,
+    onSmallModelChange,
+    modelProviderConfigIdForLegacyKey,
     needsLegacyModelProviderResolution
   };
 };

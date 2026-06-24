@@ -19,6 +19,7 @@ import type {
 import type { SelectOption } from '../../../types/shared';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { modelProviderAuthLabel } from '../../../utils/modelProviderAuth';
 
 export const useModelProviders = () => {
   const { data: catalog, isLoading: catalogLoading } = useApiQuery(['model-provider-catalog'], () =>
@@ -82,8 +83,8 @@ export const useModelProviders = () => {
     !!chatGptAttempt.value
   );
   const authTypeItems: SelectOption[] = [
-    { value: 'api_key', label: 'OpenAI API Key' },
-    { value: 'chatgpt_oauth', label: 'ChatGPT Pro/Plus' }
+    { value: 'api_key', label: `OpenAI ${modelProviderAuthLabel('api_key')}` },
+    { value: 'chatgpt_oauth', label: modelProviderAuthLabel('chatgpt_oauth') }
   ];
   const chatGptAuthQuery = useApiQuery(
     ['chatgpt-auth', chatGptAttempt.value?.attemptId ?? ''],
@@ -169,7 +170,7 @@ export const useModelProviders = () => {
     provider,
     name: provider.displayName || provider.providerKey,
     providerKey: provider.providerKey,
-    authLabel: provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key',
+    authLabel: modelProviderAuthLabel(provider.authType),
     credentialMetadata:
       provider.authType === 'chatgpt_oauth'
         ? provider.oauthMetadata?.email || provider.oauthMetadata?.accountId || 'Connected'

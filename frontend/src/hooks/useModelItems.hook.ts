@@ -1,6 +1,7 @@
 import type { Signal } from '@preact/signals';
 import type { CatalogProvider, ModelProviderConfig } from '../types/modelProviders';
 import type { SelectOption } from '../types/shared';
+import { modelProviderLabel } from '../utils/modelProviderAuth';
 
 interface UseModelItemsParams {
   modelProviders: ModelProviderConfig[];
@@ -17,7 +18,7 @@ export const useModelItems = ({
 }: UseModelItemsParams) => ({
   connectedProviderItems: modelProviders.map((provider) => ({
     value: provider.id,
-    label: providerLabel(provider)
+    label: modelProviderLabel(provider)
   })),
   primaryModelItems: modelItemsForProvider(
     catalogProviders,
@@ -62,10 +63,4 @@ export const modelProviderConfigIdForLegacyKey = (
     modelProviders.find((provider) => provider.providerKey === providerKey)?.id ??
     ''
   );
-};
-
-const providerLabel = (provider: ModelProviderConfig): string => {
-  const name = provider.displayName || provider.providerKey;
-  const auth = provider.authType === 'chatgpt_oauth' ? 'ChatGPT Pro/Plus' : 'API Key';
-  return `${name} (${auth})`;
 };
