@@ -7,7 +7,7 @@ use vulcanum_shared::api_types::{JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 
-use crate::daemon::job::finish_tool::finish_run_tool_ts;
+use crate::daemon::job::tool::finish_tool::finish_run_tool_ts;
 
 #[must_use]
 pub fn container_name(workdir: &Path) -> String {

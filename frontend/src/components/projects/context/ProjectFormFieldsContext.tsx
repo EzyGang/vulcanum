@@ -1,7 +1,7 @@
 import type { Signal } from '@preact/signals';
 import { createContext } from 'preact';
 import { useContext } from 'preact/hooks';
-import type { CatalogProvider, ModelProviderConfig } from '../../../types/modelProviders';
+import type { CatalogProvider, ModelProviderConfig } from '../../../types/model-providers';
 import type { ColumnInfo } from '../../../types/projects';
 import type { SelectOption } from '../../../types/shared';
 

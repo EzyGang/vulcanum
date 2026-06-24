@@ -89,6 +89,14 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/model-providers")
                     .route("/catalog", web::get().to(model_providers::catalog))
+                    .route(
+                        "/device-flows",
+                        web::post().to(model_providers::start_device_flow),
+                    )
+                    .route(
+                        "/device-flows/{attempt_id}/poll",
+                        web::post().to(model_providers::poll_device_flow),
+                    )
                     .route("", web::get().to(model_providers::list))
                     .route("", web::post().to(model_providers::create))
                     .route("/{id}", web::patch().to(model_providers::update))

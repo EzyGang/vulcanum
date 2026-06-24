@@ -20,6 +20,7 @@ path = "src/bin/dispatcher.rs"
 
 [dependencies]
 vulcanum-shared = { path = "../shared" }
+aes-gcm = "0.10"
 actix-web = "4"
 actix-cors = "0.7"
 kaneo-cli = { git = "https://github.com/EzyGang/kaneo-cli.git", branch = "main" }

@@ -18,8 +18,8 @@ import { parsePositiveNumber } from '../../../../utils/numbers';
 import {
   getProjectSetupHelpText,
   getProjectSetupMissingMessages
-} from '../../../../utils/projectSetup';
-import { textInputHandler } from '../../../../utils/signalInput';
+} from '../../../../utils/project-setup';
+import { textInputHandler } from '../../../../utils/signal-input';
 import { useGitHubApp } from '../../../github/hooks/useGitHubApp.hook';
 import type { ProjectFormFieldsContextValue } from '../../context/ProjectFormFieldsContext';
 import type { ProjectFormLookupContextValue } from '../../context/ProjectFormLookupContext';

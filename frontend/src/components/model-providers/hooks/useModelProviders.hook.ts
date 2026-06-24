@@ -8,9 +8,34 @@ import {
   listModelProviders,
   updateModelProvider
 } from '../../../services/model-providers/model-providers.service';
-import type { ModelProviderConfig } from '../../../types/modelProviders';
+import type { ModelProviderConfig } from '../../../types/model-providers';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { useOpenAiDeviceAuth } from './useOpenAiDeviceAuth.hook';
+
+type AuthMethod = 'api_key' | 'device_oauth';
+
+interface SaveButtonLabelInput {
+  formSubmitting: boolean;
+  deviceFlowPending: boolean;
+  deviceOauth: boolean;
+  editing: boolean;
+}
+
+const saveButtonLabel = ({
+  formSubmitting,
+  deviceFlowPending,
+  deviceOauth,
+  editing
+}: SaveButtonLabelInput): string => {
+  if (formSubmitting) {
+    return deviceFlowPending ? 'Waiting...' : 'Saving...';
+  }
+  if (deviceOauth) {
+    return 'Connect ChatGPT';
+  }
+  return editing ? 'Update' : 'Create';
+};
 
 export const useModelProviders = () => {
   const { data: catalog, isLoading: catalogLoading } = useApiQuery(['model-provider-catalog'], () =>
@@ -34,6 +59,10 @@ export const useModelProviders = () => {
   const deleteMutation = useApiMutation((id: string) => deleteModelProvider(id), {
     onSuccess: () => invalidate('model-providers')
   });
+  const {
+    data: { deviceFlow, deviceFlowStatus, nextPollAt },
+    actions: { resetDeviceFlow, startOpenAiDeviceAuth }
+  } = useOpenAiDeviceAuth();
 
   const {
     deletingId: deleteConfirmId,
@@ -47,6 +76,7 @@ export const useModelProviders = () => {
   const editId = useSignal<string | null>(null);
   const providerKey = useSignal('');
   const displayName = useSignal('');
+  const authMethod = useSignal<AuthMethod>('api_key');
   const credentials = useSignal<Record<string, string>>({});
   const formError = useSignal<string | null>(null);
   const formSubmitting = useSignal(false);
@@ -58,33 +88,59 @@ export const useModelProviders = () => {
     editId.value = null;
     providerKey.value = '';
     displayName.value = '';
+    authMethod.value = 'api_key';
     credentials.value = {};
+    resetDeviceFlow();
     formError.value = null;
     formSubmitting.value = false;
-  }, []);
+  }, [resetDeviceFlow]);
 
   const handleShowCreate = useCallback(() => {
     resetForm();
     showForm.value = true;
   }, [resetForm]);
 
-  const handleShowEdit = useCallback((provider: ModelProviderConfig) => {
-    editId.value = provider.id;
-    providerKey.value = provider.providerKey;
-    displayName.value = provider.displayName;
-    credentials.value = provider.credentials ?? {};
-    formError.value = null;
-    showForm.value = true;
-  }, []);
+  const handleShowEdit = useCallback(
+    (provider: ModelProviderConfig) => {
+      editId.value = provider.id;
+      providerKey.value = provider.providerKey;
+      displayName.value = provider.displayName;
+      authMethod.value = provider.authType === 'device_oauth' ? 'device_oauth' : 'api_key';
+      credentials.value = {};
+      resetDeviceFlow();
+      formError.value = null;
+      showForm.value = true;
+    },
+    [resetDeviceFlow]
+  );
 
-  const handleProviderChange = useCallback((value: string) => {
-    providerKey.value = value;
-    credentials.value = {};
-  }, []);
+  const handleProviderChange = useCallback(
+    (value: string) => {
+      providerKey.value = value;
+      authMethod.value = 'api_key';
+      credentials.value = {};
+      resetDeviceFlow();
+    },
+    [resetDeviceFlow]
+  );
+
+  const handleAuthMethodChange = useCallback(
+    (value: AuthMethod) => {
+      authMethod.value = value;
+      credentials.value = {};
+      resetDeviceFlow();
+    },
+    [resetDeviceFlow]
+  );
 
   const handleCredentialChange = useCallback((key: string, value: string) => {
     credentials.value = { ...credentials.value, [key]: value };
   }, []);
+
+  const nonEmptyCredentials = (): Record<string, string> =>
+    Object.fromEntries(
+      Object.entries(credentials.value).filter(([, value]) => value.trim() !== '')
+    );
 
   const handleSave = useCallback(
     async (e: Event) => {
@@ -97,29 +153,55 @@ export const useModelProviders = () => {
 
       formSubmitting.value = true;
       try {
+        if (providerKey.value === 'openai' && authMethod.value === 'device_oauth') {
+          await startOpenAiDeviceAuth({
+            displayName: displayName.value || undefined,
+            onConnected: async () => {
+              await invalidate('model-providers');
+              resetForm();
+            },
+            onPollingError: (message: string) => {
+              formError.value = message;
+              formSubmitting.value = false;
+            }
+          });
+          return;
+        }
+
+        const sanitizedCredentials = nonEmptyCredentials();
+        if (!editId.value && Object.keys(sanitizedCredentials).length === 0) {
+          formError.value = 'At least one credential is required';
+          return;
+        }
+
         if (editId.value) {
+          const hasCredentials = Object.keys(sanitizedCredentials).length > 0;
           await updateMutation.mutateAsync({
             id: editId.value,
             input: {
               displayName: displayName.value || undefined,
-              credentials: credentials.value
+              authType: hasCredentials ? 'api_key' : undefined,
+              credentials: hasCredentials ? sanitizedCredentials : undefined
             }
           });
         } else {
           await createMutation.mutateAsync({
             providerKey: providerKey.value,
             displayName: displayName.value || undefined,
-            credentials: credentials.value
+            authType: 'api_key',
+            credentials: sanitizedCredentials
           });
         }
         resetForm();
       } catch (err) {
         formError.value = err instanceof Error ? err.message : 'Failed to save model provider';
       } finally {
-        formSubmitting.value = false;
+        if (deviceFlowStatus.value !== 'pending') {
+          formSubmitting.value = false;
+        }
       }
     },
-    [createMutation, updateMutation, resetForm]
+    [createMutation, updateMutation, startOpenAiDeviceAuth, deviceFlowStatus, resetForm]
   );
 
   return {
@@ -131,9 +213,19 @@ export const useModelProviders = () => {
       editId,
       providerKey,
       displayName,
+      authMethod,
       credentials,
+      deviceFlow,
+      deviceFlowStatus,
+      nextPollAt,
       formError,
       formSubmitting,
+      saveButtonLabel: saveButtonLabel({
+        formSubmitting: formSubmitting.value,
+        deviceFlowPending: deviceFlowStatus.value === 'pending',
+        deviceOauth: authMethod.value === 'device_oauth',
+        editing: !!editId.value
+      }),
       deleteConfirmId,
       deleteError
     },
@@ -143,6 +235,7 @@ export const useModelProviders = () => {
       onShowEdit: handleShowEdit,
       onCancelForm: resetForm,
       onProviderChange: handleProviderChange,
+      onAuthMethodChange: handleAuthMethodChange,
       onDisplayNameChange: (value: string) => {
         displayName.value = value;
       },

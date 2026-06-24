@@ -12,12 +12,16 @@ pub mod submit_result;
 pub(crate) mod sync_task_tracker;
 
 #[cfg(test)]
+#[path = "service/tests/record_review_tests.rs"]
 mod record_review_tests;
 #[cfg(test)]
+#[path = "service/tests/spawn_review_tests.rs"]
 mod spawn_review_tests;
 #[cfg(test)]
+#[path = "service/tests/sync_task_tracker_tests.rs"]
 mod sync_task_tracker_tests;
 #[cfg(test)]
+#[path = "service/tests/work_runs_tests.rs"]
 mod work_runs_tests;
 
 use std::sync::Arc;
@@ -27,8 +31,7 @@ use sqlx::PgPool;
 use crate::services::dispatcher::cancel_store::CancelStore;
 use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
-use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
+use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::work_runs::repository::WorkRunsRepository;
@@ -43,8 +46,7 @@ pub struct WorkRunsService {
     pub dispatch_store: Arc<dyn DispatchStore>,
     pub cancel_store: Arc<dyn CancelStore>,
     pub providers_repo: IntegrationProvidersRepository,
-    pub model_providers_repo: ModelProvidersRepository,
-    pub model_catalog: ModelCatalogClient,
+    pub model_providers: ModelProvidersService,
     pub unhealthy_threshold: i32,
 }
 
@@ -59,8 +61,7 @@ impl Clone for WorkRunsService {
             dispatch_store: self.dispatch_store.clone(),
             cancel_store: self.cancel_store.clone(),
             providers_repo: self.providers_repo.clone(),
-            model_providers_repo: self.model_providers_repo.clone(),
-            model_catalog: self.model_catalog.clone(),
+            model_providers: self.model_providers.clone(),
             unhealthy_threshold: self.unhealthy_threshold,
         }
     }
@@ -76,8 +77,7 @@ impl WorkRunsService {
         db: PgPool,
         dispatch_store: Arc<dyn DispatchStore>,
         providers_repo: IntegrationProvidersRepository,
-        model_providers_repo: ModelProvidersRepository,
-        model_catalog: ModelCatalogClient,
+        model_providers: ModelProvidersService,
         cancel_store: Arc<dyn CancelStore>,
         unhealthy_threshold: i32,
     ) -> Self {
@@ -90,8 +90,7 @@ impl WorkRunsService {
             dispatch_store,
             cancel_store,
             providers_repo,
-            model_providers_repo,
-            model_catalog,
+            model_providers,
             unhealthy_threshold,
         }
     }

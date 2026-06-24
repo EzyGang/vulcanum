@@ -9,6 +9,9 @@ use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
+use crate::services::model_providers::auth::encryption::SecretCipher;
+use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
@@ -266,6 +269,9 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         model_providers_repo.clone(),
         pool.clone(),
         model_catalog.clone(),
+        SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
+        Arc::new(InMemoryDeviceFlowStore::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
     );
 
     let cfg = crate::config::AppConfig {
@@ -278,6 +284,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         stalled_running_threshold_secs: 1800,
         instance_password: "test-password".to_owned(),
         redis_url: "redis://127.0.0.1:6379".to_owned(),
+        model_provider_secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_owned(),
         is_single_user: true,
         github_app_id: None,
         github_app_private_key: None,
@@ -329,8 +336,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         pool.clone(),
         dispatch_store.clone(),
         providers_repo_clone,
-        model_providers_repo,
-        model_catalog,
+        model_providers.clone(),
         cancel_store.clone(),
         cfg.unhealthy_threshold,
     );

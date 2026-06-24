@@ -9,7 +9,7 @@ use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
-use crate::daemon::job::submit::{submit_result_request, SubmitResultParams};
+use crate::daemon::job::execution::submit::{submit_result_request, SubmitResultParams};
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::providers::host::HostIsolation;
 use crate::providers::opencode::events;
@@ -87,11 +87,13 @@ pub(crate) async fn recover_session_task(
     );
 
     let mut boxed: Box<dyn RunningSession> = Box::new(running_session);
-    let reporter = Arc::new(crate::daemon::job::event_reporter::EventReporter::new(
-        api_client.clone(),
-        worker_state.clone(),
-        entry.job_id,
-    ));
+    let reporter = Arc::new(
+        crate::daemon::job::execution::event_reporter::EventReporter::new(
+            api_client.clone(),
+            worker_state.clone(),
+            entry.job_id,
+        ),
+    );
     reporter.emit(
         "session.recovered",
         serde_json::json!({"initial_turn": initial_turn}),

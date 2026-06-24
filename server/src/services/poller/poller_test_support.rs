@@ -6,6 +6,9 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
+use crate::services::model_providers::auth::encryption::SecretCipher;
+use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
@@ -156,15 +159,19 @@ pub(crate) async fn insert_active_run(pool: &PgPool, project_config_id: Uuid, ta
 
 pub(crate) fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
     let repo = ProjectConfigsRepository::new();
+    let model_providers = ModelProvidersService::new(
+        ModelProvidersRepository::new(),
+        db.clone(),
+        ModelCatalogClient::new(),
+        SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
+        Arc::new(InMemoryDeviceFlowStore::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
+    );
     let project_configs = ProjectConfigsService::new(
         repo.clone(),
         db.clone(),
         crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            ModelProvidersRepository::new(),
-            db.clone(),
-            ModelCatalogClient::new(),
-        ),
+        model_providers,
         TeamsService::new(TeamsRepository::new(), db.clone()),
     );
     let service = PollerService::new(

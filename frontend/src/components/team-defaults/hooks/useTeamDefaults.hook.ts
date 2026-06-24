@@ -14,7 +14,7 @@ import { getTeam, getTeamDefaults, updateTeam } from '../../../services/teams/te
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
-import { textInputHandler } from '../../../utils/signalInput';
+import { textInputHandler } from '../../../utils/signal-input';
 
 export const useTeamDefaults = (teamId: string | null) => {
   const promptTemplate = useSignal('');

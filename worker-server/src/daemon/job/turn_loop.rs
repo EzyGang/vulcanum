@@ -10,11 +10,11 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 use vulcanum_shared::worker_state::WorkerState;
 
-use super::artifact::read_finish_artifact;
-use super::event_reporter::EventReporter;
-use super::prompts::continuation_prompt;
-use super::review_loop::ReviewLoopState;
-use super::submit::{submit_failed_result, submit_turn_result, FailedResult};
+use super::execution::artifact::read_finish_artifact;
+use super::execution::event_reporter::EventReporter;
+use super::execution::submit::{submit_failed_result, submit_turn_result, FailedResult};
+use super::prompts::text::continuation_prompt;
+use super::review::review_loop::ReviewLoopState;
 use crate::state::journal::Journal;
 
 pub(crate) struct TurnLoopCtx {

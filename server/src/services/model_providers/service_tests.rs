@@ -1,5 +1,10 @@
+use std::sync::Arc;
+
 use serde_json::json;
 
+use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
+use crate::services::model_providers::auth::encryption::SecretCipher;
+use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::{
@@ -45,6 +50,8 @@ async fn validate_model_selection_accepts_connected_catalog_model(pool: sqlx::Pg
             CreateModelProviderRequest {
                 provider_key: "anthropic".to_owned(),
                 display_name: "Anthropic".to_owned(),
+                auth_type:
+                    crate::services::model_providers::auth::credentials::ModelProviderAuthType::ApiKey,
                 credentials: json!({ "ANTHROPIC_API_KEY": "secret" }),
             },
         )
@@ -63,6 +70,9 @@ async fn service(pool: sqlx::PgPool) -> ModelProvidersService {
         ModelProvidersRepository::new(),
         pool,
         ModelCatalogClient::from_catalog(test_catalog()).await,
+        SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
+        Arc::new(InMemoryDeviceFlowStore::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
     )
 }
 
@@ -85,6 +95,7 @@ fn test_catalog() -> CatalogResponse {
                 reasoning: true,
                 tool_call: true,
                 structured_output: true,
+                opencode_chatgpt_compatible: false,
             }],
         }],
     }

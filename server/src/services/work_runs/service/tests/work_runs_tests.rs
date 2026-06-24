@@ -5,6 +5,9 @@ use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
 use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
+use crate::services::model_providers::auth::encryption::SecretCipher;
+use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
@@ -34,6 +37,7 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
         instance_password: String::new(),
         is_single_user: true,
         redis_url: "redis://127.0.0.1:6379".to_owned(),
+        model_provider_secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=".to_owned(),
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
@@ -53,15 +57,19 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     let model_catalog = ModelCatalogClient::new();
     let model_providers_repo = ModelProvidersRepository::new();
+    let model_providers = ModelProvidersService::new(
+        model_providers_repo.clone(),
+        pool.clone(),
+        model_catalog,
+        SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
+        Arc::new(InMemoryDeviceFlowStore::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
+    );
     let project_configs = ProjectConfigsService::new(
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
-        ModelProvidersService::new(
-            model_providers_repo.clone(),
-            pool.clone(),
-            model_catalog.clone(),
-        ),
+        model_providers.clone(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     WorkRunsService::new(
@@ -72,8 +80,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         IntegrationProvidersRepository::new(),
-        model_providers_repo,
-        model_catalog,
+        model_providers,
         Arc::new(InMemoryCancelStore::new()),
         3,
     )

@@ -2,7 +2,7 @@ use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::review_feedback::review_requires_implementation;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 
-use super::prompts::{review_after_fix_prompt, review_fix_prompt};
+use crate::daemon::job::prompts::text::{review_after_fix_prompt, review_fix_prompt};
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum ReviewLoopPhase {

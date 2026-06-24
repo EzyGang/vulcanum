@@ -51,7 +51,8 @@ const SENSITIVE_FIELDS = new Set([
   'return_to',
   'returnTo',
   'secret',
-  'api_key'
+  'api_key',
+  'credentials'
 ]);
 
 const clearStoredTokens = (): void => {
@@ -102,7 +103,8 @@ const sanitizeLogBody = (body: unknown): unknown => {
 
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
-    sanitized[key] = SENSITIVE_FIELDS.has(key) ? '***' : sanitizeLogBody(value);
+    sanitized[key] =
+      SENSITIVE_FIELDS.has(key) || key.endsWith('_KEY') ? '***' : sanitizeLogBody(value);
   }
   return sanitized;
 };

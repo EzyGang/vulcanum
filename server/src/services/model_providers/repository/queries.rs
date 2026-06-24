@@ -95,6 +95,61 @@ impl ModelProvidersRepository {
         .map_err(map_sqlx_error)
     }
 
+    pub async fn upsert_by_provider_key<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider_key: &str,
+        display_name: &str,
+        credentials: &serde_json::Value,
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        let id = Uuid::new_v4();
+        sqlx::query_as!(
+            ModelProviderConfig,
+            r#"INSERT INTO model_provider_configs (id, team_id, provider_key, display_name, credentials)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (team_id, provider_key) DO UPDATE SET
+               display_name = EXCLUDED.display_name,
+               credentials = EXCLUDED.credentials
+             RETURNING id, team_id, provider_key, display_name, credentials, created_at, updated_at"#,
+            id,
+            team_id,
+            provider_key,
+            display_name,
+            credentials,
+        )
+        .fetch_one(db)
+        .await
+        .map_err(ModelProvidersError::from)
+    }
+
+    pub async fn update_credentials<'c, Q>(
+        &self,
+        db: Q,
+        id: Uuid,
+        team_id: Uuid,
+        credentials: &serde_json::Value,
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ModelProviderConfig,
+            r#"UPDATE model_provider_configs SET credentials = $3
+              WHERE id = $1 AND team_id = $2
+              RETURNING id, team_id, provider_key, display_name, credentials, created_at, updated_at"#,
+            id,
+            team_id,
+            credentials,
+        )
+        .fetch_optional(db)
+        .await?
+        .ok_or(ModelProvidersError::NotFound)
+    }
+
     pub async fn update<'c, Q>(
         &self,
         db: Q,

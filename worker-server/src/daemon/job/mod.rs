@@ -1,21 +1,8 @@
-pub(crate) mod artifact;
-pub(crate) mod event_reporter;
-pub(crate) mod finish_tool;
+pub(crate) mod execution;
 pub(crate) mod orchestrate;
 mod prompts;
-pub(crate) mod review_loop;
-pub(crate) mod submit;
+pub(crate) mod review;
+pub(crate) mod tool;
 pub(crate) mod turn_loop;
 
 pub(crate) use orchestrate::handle_job;
-
-#[cfg(test)]
-mod artifact_tests;
-#[cfg(test)]
-mod finish_tool_tests;
-#[cfg(test)]
-mod prompts_tests;
-#[cfg(test)]
-mod review_loop_tests;
-#[cfg(test)]
-mod submit_tests;
