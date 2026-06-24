@@ -15,6 +15,28 @@ import { useOpenAiDeviceAuth } from './useOpenAiDeviceAuth.hook';
 
 type AuthMethod = 'api_key' | 'device_oauth';
 
+interface SaveButtonLabelInput {
+  formSubmitting: boolean;
+  deviceFlowPending: boolean;
+  deviceOauth: boolean;
+  editing: boolean;
+}
+
+const saveButtonLabel = ({
+  formSubmitting,
+  deviceFlowPending,
+  deviceOauth,
+  editing
+}: SaveButtonLabelInput): string => {
+  if (formSubmitting) {
+    return deviceFlowPending ? 'Waiting...' : 'Saving...';
+  }
+  if (deviceOauth) {
+    return 'Connect ChatGPT';
+  }
+  return editing ? 'Update' : 'Create';
+};
+
 export const useModelProviders = () => {
   const { data: catalog, isLoading: catalogLoading } = useApiQuery(['model-provider-catalog'], () =>
     getModelProviderCatalog()
@@ -198,6 +220,12 @@ export const useModelProviders = () => {
       nextPollAt,
       formError,
       formSubmitting,
+      saveButtonLabel: saveButtonLabel({
+        formSubmitting: formSubmitting.value,
+        deviceFlowPending: deviceFlowStatus.value === 'pending',
+        deviceOauth: authMethod.value === 'device_oauth',
+        editing: !!editId.value
+      }),
       deleteConfirmId,
       deleteError
     },

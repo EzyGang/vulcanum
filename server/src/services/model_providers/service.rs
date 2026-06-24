@@ -5,9 +5,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::services::model_providers::auth::credentials::{
-    encrypted_api_key_credentials, encrypted_oauth_credentials, parse_auth, should_refresh,
-    to_response, ModelProviderAuthType, ParsedAuth, OPENAI_CHATGPT_PROVIDER_ID,
-    OPENAI_PROVIDER_KEY,
+    encrypted_api_key_credentials, encrypted_oauth_credentials, parse_auth, to_response,
+    ModelProviderAuthType, ParsedAuth, OPENAI_CHATGPT_PROVIDER_ID, OPENAI_PROVIDER_KEY,
 };
 use crate::services::model_providers::auth::device_flow::{
     DeviceAuthProvider, DeviceFlowStore, DevicePoll, PendingDeviceFlow,
@@ -18,8 +17,9 @@ use crate::services::model_providers::catalog::{
 };
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::{
-    CatalogResponse, CreateModelProviderRequest, ModelProviderResponse, PollDeviceFlowResponse,
-    StartDeviceFlowRequest, StartDeviceFlowResponse, UpdateModelProviderRequest,
+    CatalogResponse, CreateModelProviderRequest, ModelProviderConfig, ModelProviderResponse,
+    PollDeviceFlowResponse, StartDeviceFlowRequest, StartDeviceFlowResponse,
+    UpdateModelProviderRequest,
 };
 use crate::services::model_providers::renderer::{
     render_opencode_config, ModelSelection, RenderedModelConfig,
@@ -121,7 +121,7 @@ impl ModelProvidersService {
     pub async fn start_device_flow(
         &self,
         team_id: Uuid,
-        user_id: Option<String>,
+        user_id: Option<&str>,
         params: StartDeviceFlowRequest,
     ) -> Result<StartDeviceFlowResponse, ModelProvidersError> {
         if params.provider_key != OPENAI_PROVIDER_KEY
@@ -141,7 +141,7 @@ impl ModelProvidersService {
             .insert(PendingDeviceFlow {
                 attempt_id,
                 team_id,
-                user_id,
+                user_id: user_id.map(str::to_owned),
                 provider_key: params.provider_key,
                 device_provider: params.device_provider,
                 display_name: match params.display_name.is_empty() {
@@ -255,13 +255,13 @@ impl ModelProvidersService {
 
     pub async fn refresh_provider_if_needed(
         &self,
-        provider: &mut crate::services::model_providers::model::ModelProviderConfig,
+        provider: &mut ModelProviderConfig,
     ) -> Result<(), ModelProvidersError> {
         let ParsedAuth::DeviceOAuth(credential) = parse_auth(&provider.credentials, &self.cipher)?
         else {
             return Ok(());
         };
-        if !should_refresh(&credential, Utc::now()) {
+        if !credential.should_refresh(Utc::now()) {
             return Ok(());
         }
 

@@ -32,6 +32,7 @@ interface ModelProvidersViewProps {
     nextPollAt: Signal<string | null>;
     formError: Signal<string | null>;
     formSubmitting: Signal<boolean>;
+    saveButtonLabel: string;
     deleteConfirmId: Signal<string | null>;
     deleteError: Signal<string | null>;
   };
@@ -187,15 +188,7 @@ export const ModelProvidersView = ({
 
         <div class='flex items-center gap-3'>
           <Button type='submit' variant='primary' disabled={data.formSubmitting.value}>
-            {data.formSubmitting.value
-              ? data.deviceFlowStatus.value === 'pending'
-                ? 'Waiting...'
-                : 'Saving...'
-              : data.authMethod.value === 'device_oauth'
-                ? 'Connect ChatGPT'
-                : data.editId.value
-                  ? 'Update'
-                  : 'Create'}
+            {data.saveButtonLabel}
           </Button>
           <Button type='button' variant='secondary' onClick={actions.onCancelForm}>
             Cancel

@@ -30,6 +30,13 @@ pub struct OAuthCredential {
     pub access: String,
 }
 
+impl OAuthCredential {
+    #[must_use]
+    pub fn should_refresh(&self, now: DateTime<Utc>) -> bool {
+        self.expires <= (now + chrono::Duration::hours(1)).timestamp_millis()
+    }
+}
+
 #[derive(Debug)]
 pub enum ParsedAuth {
     ApiKey(HashMap<String, String>),
@@ -63,6 +70,7 @@ struct StoredOAuthAuth {
     access: EncryptedSecret,
 }
 
+#[must_use = "encrypted credentials must be persisted"]
 pub fn encrypted_api_key_credentials(
     credentials: &serde_json::Value,
     cipher: &SecretCipher,
@@ -85,6 +93,7 @@ pub fn encrypted_api_key_credentials(
     .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
 }
 
+#[must_use = "encrypted credentials must be persisted"]
 pub fn encrypted_oauth_credentials(
     credential: &OAuthCredential,
     cipher: &SecretCipher,
@@ -105,6 +114,7 @@ pub fn encrypted_oauth_credentials(
     .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
 }
 
+#[must_use = "parsed auth must be handled"]
 pub fn parse_auth(
     credentials: &serde_json::Value,
     cipher: &SecretCipher,
@@ -119,6 +129,7 @@ pub fn parse_auth(
     }
 }
 
+#[must_use = "safe response must be returned"]
 pub fn to_response(
     provider: ModelProviderConfig,
     cipher: &SecretCipher,
@@ -153,10 +164,6 @@ pub fn to_response(
         created_at: provider.created_at,
         updated_at: provider.updated_at,
     })
-}
-
-pub fn should_refresh(credential: &OAuthCredential, now: DateTime<Utc>) -> bool {
-    credential.expires <= (now + chrono::Duration::hours(1)).timestamp_millis()
 }
 
 fn parse_stored_auth(

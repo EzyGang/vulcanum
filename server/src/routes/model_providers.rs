@@ -99,7 +99,7 @@ pub async fn poll_device_flow(
         .teams
         .resolve_team(&auth, state.is_single_user)
         .await?;
-    let user_id = principal_user_id_ref(&auth);
+    let user_id = principal_user_id(&auth);
     let response = state
         .model_providers
         .poll_device_flow(team_id, user_id, path.into_inner())
@@ -107,14 +107,7 @@ pub async fn poll_device_flow(
     Ok(HttpResponse::Ok().json(response))
 }
 
-fn principal_user_id(auth: &TeamPrincipal) -> Option<String> {
-    match auth {
-        TeamPrincipal::User { user_id, .. } => Some(user_id.clone()),
-        TeamPrincipal::Instance { .. } => None,
-    }
-}
-
-fn principal_user_id_ref(auth: &TeamPrincipal) -> Option<&str> {
+fn principal_user_id(auth: &TeamPrincipal) -> Option<&str> {
     match auth {
         TeamPrincipal::User { user_id, .. } => Some(user_id.as_str()),
         TeamPrincipal::Instance { .. } => None,
