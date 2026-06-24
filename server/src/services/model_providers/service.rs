@@ -1,5 +1,7 @@
 pub(crate) mod chatgpt_oauth;
+mod chatgpt_oauth_status;
 pub(crate) mod oauth_client;
+pub(crate) mod oauth_tokens;
 mod selection;
 
 use std::sync::Arc;

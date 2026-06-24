@@ -65,7 +65,7 @@ impl AppState {
             model_providers_repo.clone(),
             db_pool.clone(),
             model_catalog.clone(),
-            &cfg.jwt_secret,
+            &cfg.encryption_secret,
         );
         let invite_store = RedisTeamInviteStore::new(&cfg.redis_url)?;
         let teams = TeamsService::new_with_model_providers(

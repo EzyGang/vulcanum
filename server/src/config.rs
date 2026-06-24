@@ -5,6 +5,7 @@ pub struct AppConfig {
     pub max_conns: u32,
     pub poll_period_secs: u64,
     pub jwt_secret: String,
+    pub encryption_secret: String,
     pub stale_worker_threshold_secs: u64,
     pub unhealthy_threshold: i32,
     pub stalled_running_threshold_secs: u64,
@@ -29,6 +30,7 @@ impl AppConfig {
             .unwrap_or_else(|_| "30".to_owned())
             .parse::<u64>()?;
         let jwt_secret = std::env::var("JWT_SECRET")?;
+        let encryption_secret = std::env::var("ENCRYPTION_SECRET")?;
         let stale_worker_threshold_secs = std::env::var("STALE_WORKER_THRESHOLD_SECS")
             .unwrap_or_else(|_| "120".to_owned())
             .parse::<u64>()?;
@@ -57,6 +59,7 @@ impl AppConfig {
             max_conns,
             poll_period_secs,
             jwt_secret,
+            encryption_secret,
             stale_worker_threshold_secs,
             unhealthy_threshold,
             stalled_running_threshold_secs,

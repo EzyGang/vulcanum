@@ -1,26 +1,27 @@
-use base64::Engine;
 use chrono::Utc;
 use uuid::Uuid;
 
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::{
     ChatGptAuthStartResponse, ChatGptAuthStatusResponse, OAuthCredentials, OAuthMetadata,
-    StartChatGptAuthRequest, AUTH_TYPE_CHATGPT_OAUTH, OPENAI_PROVIDER_KEY,
+    StartChatGptAuthRequest,
 };
 use crate::services::model_providers::repository::{
     CreateAuthAttemptParams, CreateOAuthProviderParams,
 };
 use crate::services::model_providers::service::oauth_client::DevicePollOutcome;
+use crate::services::model_providers::service::oauth_tokens::{
+    extract_account_id, extract_email, oauth_expires_at,
+};
 use crate::services::model_providers::service::ModelProvidersService;
 
 const CHATGPT_AUTH_PENDING: &str = "pending";
-const CHATGPT_AUTH_COMPLETE: &str = "complete";
+pub(super) const CHATGPT_AUTH_COMPLETE: &str = "complete";
 const CHATGPT_AUTH_EXPIRED: &str = "expired";
 const CHATGPT_AUTH_FAILED: &str = "failed";
 const DEFAULT_CHATGPT_DISPLAY_NAME: &str = "OpenAI ChatGPT Pro/Plus";
 const DEFAULT_DEVICE_POLL_SECONDS: i32 = 5;
 const DEVICE_POLL_SLOW_DOWN_SECONDS: i32 = 5;
-const DEFAULT_TOKEN_EXPIRES_SECONDS: i64 = 60 * 60 * 24;
 
 impl ModelProvidersService {
     pub async fn start_chatgpt_auth(
@@ -32,10 +33,19 @@ impl ModelProvidersService {
         let body = self.oauth_client.start_device_flow().await?;
         let encrypted_device_code = self.cipher.encrypt_json(&body.device_code)?;
         let display_name = display_name_or_default(&params.display_name);
+        let mut tx = self.db.begin().await?;
+        self.repo
+            .fail_pending_auth_attempts_for_user(
+                &mut *tx,
+                team_id,
+                user_id,
+                "Superseded by a newer device login",
+            )
+            .await?;
         let attempt = self
             .repo
             .create_auth_attempt(
-                &self.db,
+                &mut *tx,
                 team_id,
                 &CreateAuthAttemptParams {
                     user_id,
@@ -48,6 +58,7 @@ impl ModelProvidersService {
                 },
             )
             .await?;
+        tx.commit().await?;
 
         Ok(ChatGptAuthStartResponse {
             attempt_id: attempt.id,
@@ -74,14 +85,21 @@ impl ModelProvidersService {
                 .await;
         }
         if attempt.expires_at <= Utc::now() {
-            self.repo
-                .update_auth_attempt_status(
+            let updated = self
+                .repo
+                .try_update_auth_attempt_status_from(
                     &self.db,
                     attempt.id,
+                    CHATGPT_AUTH_PENDING,
                     CHATGPT_AUTH_EXPIRED,
                     Some("Device login expired"),
                 )
                 .await?;
+            if !updated {
+                return self
+                    .auth_status_from_current_attempt(team_id, user_id, attempt.id)
+                    .await;
+            }
             return Ok(ChatGptAuthStatusResponse {
                 status: CHATGPT_AUTH_EXPIRED.to_owned(),
                 error: Some("Device login expired".to_owned()),
@@ -102,9 +120,20 @@ impl ModelProvidersService {
             }
             DevicePollOutcome::SlowDown => {
                 let interval_seconds = attempt.interval_seconds + DEVICE_POLL_SLOW_DOWN_SECONDS;
-                self.repo
-                    .update_auth_attempt_interval(&self.db, attempt.id, interval_seconds)
+                let updated = self
+                    .repo
+                    .try_update_auth_attempt_interval_from(
+                        &self.db,
+                        attempt.id,
+                        CHATGPT_AUTH_PENDING,
+                        interval_seconds,
+                    )
                     .await?;
+                if !updated {
+                    return self
+                        .auth_status_from_current_attempt(team_id, user_id, attempt.id)
+                        .await;
+                }
                 return Ok(ChatGptAuthStatusResponse {
                     status: CHATGPT_AUTH_PENDING.to_owned(),
                     error: None,
@@ -113,14 +142,21 @@ impl ModelProvidersService {
                 });
             }
             DevicePollOutcome::Failed(message) => {
-                self.repo
-                    .update_auth_attempt_status(
+                let updated = self
+                    .repo
+                    .try_update_auth_attempt_status_from(
                         &self.db,
                         attempt.id,
+                        CHATGPT_AUTH_PENDING,
                         CHATGPT_AUTH_FAILED,
                         Some(&message),
                     )
                     .await?;
+                if !updated {
+                    return self
+                        .auth_status_from_current_attempt(team_id, user_id, attempt.id)
+                        .await;
+                }
                 return Ok(ChatGptAuthStatusResponse {
                     status: CHATGPT_AUTH_FAILED.to_owned(),
                     error: Some(message),
@@ -153,10 +189,28 @@ impl ModelProvidersService {
         let encrypted = self.cipher.encrypt_json(&credentials)?;
         let metadata_json =
             serde_json::to_value(metadata).map_err(|_| ModelProvidersError::Serialization)?;
+
+        let mut tx = self.db.begin().await?;
+        let updated = self
+            .repo
+            .try_update_auth_attempt_status_from(
+                &mut *tx,
+                attempt.id,
+                CHATGPT_AUTH_PENDING,
+                CHATGPT_AUTH_COMPLETE,
+                None,
+            )
+            .await?;
+        if !updated {
+            tx.rollback().await?;
+            return self
+                .auth_status_from_current_attempt(team_id, user_id, attempt.id)
+                .await;
+        }
         let provider = self
             .repo
             .upsert_chatgpt_oauth(
-                &self.db,
+                &mut *tx,
                 team_id,
                 &CreateOAuthProviderParams {
                     display_name: &attempt.display_name,
@@ -165,9 +219,7 @@ impl ModelProvidersService {
                 },
             )
             .await?;
-        self.repo
-            .update_auth_attempt_status(&self.db, attempt.id, CHATGPT_AUTH_COMPLETE, None)
-            .await?;
+        tx.commit().await?;
 
         Ok(ChatGptAuthStatusResponse {
             status: CHATGPT_AUTH_COMPLETE.to_owned(),
@@ -191,45 +243,16 @@ impl ModelProvidersService {
             return Ok(());
         }
         self.repo
-            .update_auth_attempt_status(
+            .try_update_auth_attempt_status_from(
                 &self.db,
                 attempt.id,
+                CHATGPT_AUTH_PENDING,
                 CHATGPT_AUTH_FAILED,
                 Some("Device login cancelled"),
             )
-            .await
+            .await?;
+        Ok(())
     }
-
-    async fn auth_status_from_attempt(
-        &self,
-        team_id: Uuid,
-        status: &str,
-        error: Option<String>,
-    ) -> Result<ChatGptAuthStatusResponse, ModelProvidersError> {
-        let provider = match status {
-            CHATGPT_AUTH_COMPLETE => self
-                .repo
-                .find_by_provider_auth(
-                    &self.db,
-                    team_id,
-                    OPENAI_PROVIDER_KEY,
-                    AUTH_TYPE_CHATGPT_OAUTH,
-                )
-                .await
-                .ok(),
-            _ => None,
-        };
-        Ok(ChatGptAuthStatusResponse {
-            status: status.to_owned(),
-            error,
-            poll_interval_seconds: None,
-            provider,
-        })
-    }
-}
-
-pub(crate) fn oauth_expires_at(expires_in: Option<i64>) -> chrono::DateTime<Utc> {
-    Utc::now() + chrono::Duration::seconds(expires_in.unwrap_or(DEFAULT_TOKEN_EXPIRES_SECONDS))
 }
 
 fn display_name_or_default(display_name: &str) -> String {
@@ -237,31 +260,4 @@ fn display_name_or_default(display_name: &str) -> String {
         "" => DEFAULT_CHATGPT_DISPLAY_NAME.to_owned(),
         value => value.to_owned(),
     }
-}
-
-pub(crate) fn extract_account_id(token: &str) -> Option<String> {
-    jwt_payload(token).and_then(|payload| {
-        payload
-            .get("chatgpt_account_id")
-            .or_else(|| payload.get("account_id"))
-            .and_then(|value| value.as_str())
-            .map(str::to_owned)
-    })
-}
-
-pub(crate) fn extract_email(token: &str) -> Option<String> {
-    jwt_payload(token).and_then(|payload| {
-        payload
-            .get("email")
-            .and_then(|value| value.as_str())
-            .map(str::to_owned)
-    })
-}
-
-fn jwt_payload(token: &str) -> Option<serde_json::Value> {
-    let payload = token.split('.').nth(1)?;
-    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(payload)
-        .ok()?;
-    serde_json::from_slice(&decoded).ok()
 }

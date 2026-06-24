@@ -8,7 +8,7 @@ use crate::services::model_providers::model::{
     ModelProviderConfig, OAuthCredentials, OAuthMetadata, AUTH_TYPE_CHATGPT_OAUTH,
     OPENAI_PROVIDER_KEY,
 };
-use crate::services::model_providers::service::chatgpt_oauth::{
+use crate::services::model_providers::service::oauth_tokens::{
     extract_account_id, extract_email, oauth_expires_at,
 };
 use crate::services::model_providers::service::{ModelProvidersService, SelectedModelProviderAuth};
@@ -130,10 +130,12 @@ impl ModelProvidersService {
     }
 }
 
+#[must_use]
 fn credentials_need_refresh(expires: i64) -> bool {
     expires <= Utc::now().timestamp_millis() + TOKEN_REFRESH_SKEW_MILLIS
 }
 
+#[must_use]
 fn stored_oauth_metadata(metadata: &serde_json::Value) -> (Option<String>, Option<String>) {
     match OAuthMetadata::deserialize(metadata).ok() {
         Some(metadata) => (metadata.account_id, metadata.email),
@@ -141,6 +143,7 @@ fn stored_oauth_metadata(metadata: &serde_json::Value) -> (Option<String>, Optio
     }
 }
 
+#[must_use]
 fn selected_ids(primary: Option<Uuid>, small: Option<Uuid>) -> Vec<Uuid> {
     let mut ids = Vec::new();
     for id in [primary, small].into_iter().flatten() {

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE model_provider_configs SET oauth_credentials = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b4bc7bb82f410d212dbb60744309620fc1efedc5cf40651a021a35b450d4618d"
+}

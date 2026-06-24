@@ -115,6 +115,7 @@ src/services/<domain>/
 ## Supported .env Variables
 
 - `DATABASE_URL`
+- `ENCRYPTION_SECRET`
 - `MAX_CONNS` - max db connections (default: `32`)
 - `IS_SINGLE_USER` - `true` keeps instance-password auth; `false` enables GitHub OAuth user auth
 - `GITHUB_OAUTH_CLIENT_ID`

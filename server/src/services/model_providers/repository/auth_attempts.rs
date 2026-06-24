@@ -6,7 +6,6 @@ use crate::services::model_providers::model::ChatGptAuthAttempt;
 use crate::services::model_providers::repository::{
     CreateAuthAttemptParams, ModelProvidersRepository,
 };
-use crate::util::db::ensure_rows_affected;
 
 impl ModelProvidersRepository {
     pub async fn create_auth_attempt<'c, Q>(
@@ -67,45 +66,76 @@ impl ModelProvidersRepository {
         .ok_or(ModelProvidersError::NotFound)
     }
 
-    pub async fn update_auth_attempt_status<'c, Q>(
+    pub async fn fail_pending_auth_attempts_for_user<'c, Q>(
         &self,
         db: Q,
-        id: Uuid,
-        status: &str,
-        error: Option<&str>,
+        team_id: Uuid,
+        user_id: &str,
+        error: &str,
     ) -> Result<(), ModelProvidersError>
     where
         Q: Queryer<'c>,
     {
+        sqlx::query!(
+            r#"UPDATE model_provider_auth_attempts
+               SET status = 'failed', error = $3
+               WHERE team_id = $1 AND user_id = $2 AND status = 'pending'"#,
+            team_id,
+            user_id,
+            error,
+        )
+        .execute(db)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn try_update_auth_attempt_status_from<'c, Q>(
+        &self,
+        db: Q,
+        id: Uuid,
+        expected_status: &str,
+        status: &str,
+        error: Option<&str>,
+    ) -> Result<bool, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
         let rows = sqlx::query!(
-            "UPDATE model_provider_auth_attempts SET status = $2, error = $3 WHERE id = $1",
+            r#"UPDATE model_provider_auth_attempts
+               SET status = $3, error = $4
+               WHERE id = $1 AND status = $2"#,
             id,
+            expected_status,
             status,
             error,
         )
         .execute(db)
         .await?
         .rows_affected();
-        ensure_rows_affected(rows, ModelProvidersError::NotFound)
+        Ok(rows > 0)
     }
 
-    pub async fn update_auth_attempt_interval<'c, Q>(
+    pub async fn try_update_auth_attempt_interval_from<'c, Q>(
         &self,
         db: Q,
         id: Uuid,
+        expected_status: &str,
         interval_seconds: i32,
-    ) -> Result<(), ModelProvidersError>
+    ) -> Result<bool, ModelProvidersError>
     where
         Q: Queryer<'c>,
     {
         let rows = sqlx::query!(
-            "UPDATE model_provider_auth_attempts SET interval_seconds = $2 WHERE id = $1",
+            r#"UPDATE model_provider_auth_attempts
+               SET interval_seconds = $3
+               WHERE id = $1 AND status = $2"#,
             id,
+            expected_status,
             interval_seconds,
         )
         .execute(db)
         .await?
         .rows_affected();
-        ensure_rows_affected(rows, ModelProvidersError::NotFound)
+        Ok(rows > 0)
     }
 }

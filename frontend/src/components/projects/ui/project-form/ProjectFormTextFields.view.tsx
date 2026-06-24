@@ -98,7 +98,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
               </div>
               <Select
                 id='field-primary-model-provider'
-                value={f.primaryModelProviderKey.value}
+                value={f.primaryModelProviderConfigId.value}
                 onValueChange={f.onPrimaryModelProviderChange}
                 disabled={m.submitting.value}
                 placeholder='Select a connected model provider...'
@@ -137,7 +137,7 @@ export const ProjectFormTextFields = (): JSX.Element => {
                 </div>
                 <Select
                   id='field-small-model-provider'
-                  value={f.smallModelProviderKey.value}
+                  value={f.smallModelProviderConfigId.value}
                   onValueChange={f.onSmallModelProviderChange}
                   disabled={m.submitting.value}
                   placeholder='Optional provider...'

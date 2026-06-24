@@ -74,7 +74,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
   const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
   const maxInProgressTasksOverride = useSignal(false);
   const modelSelection = useModelProviderSelection();
-  const { primaryModelProviderKey, primaryModelId, smallModelProviderKey, smallModelId } =
+  const { primaryModelProviderConfigId, primaryModelId, smallModelProviderConfigId, smallModelId } =
     modelSelection;
 
   const { formError, submitting, handleSubmit } = useProjectFormSubmit({
@@ -89,11 +89,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
     repoFullNames,
     agentsMd,
     agentsMdOverride,
-    primaryModelProviderKey,
+    primaryModelProviderConfigId,
     primaryModelProviderOverride,
     primaryModelId,
     primaryModelIdOverride,
-    smallModelProviderKey,
+    smallModelProviderConfigId,
     smallModelProviderOverride,
     smallModelId,
     smallModelIdOverride,
@@ -142,7 +142,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       agentsMd.value = p.agentsMd ?? '';
       agentsMdOverride.value = p.agentsMd != null;
       overridesOpen.value = false;
-      primaryModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
+      primaryModelProviderConfigId.value = modelSelection.modelProviderConfigIdForLegacyKey(
         p.primaryModelProviderConfigId,
         p.primaryModelProviderKey
       );
@@ -150,7 +150,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
         p.primaryModelProviderConfigId != null || p.primaryModelProviderKey != null;
       primaryModelId.value = p.primaryModelId ?? '';
       primaryModelIdOverride.value = p.primaryModelId != null;
-      smallModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
+      smallModelProviderConfigId.value = modelSelection.modelProviderConfigIdForLegacyKey(
         p.smallModelProviderConfigId,
         p.smallModelProviderKey
       );
@@ -328,11 +328,11 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       agentsMd,
       agentsMdOverride,
       overridesOpen,
-      primaryModelProviderKey,
+      primaryModelProviderConfigId,
       primaryModelProviderOverride,
       primaryModelId,
       primaryModelIdOverride,
-      smallModelProviderKey,
+      smallModelProviderConfigId,
       smallModelProviderOverride,
       smallModelId,
       smallModelIdOverride,
@@ -409,7 +409,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onResetPrimaryModelProviderOverride: () => {
         primaryModelProviderOverride.value = false;
-        primaryModelProviderKey.value = '';
+        primaryModelProviderConfigId.value = '';
         primaryModelIdOverride.value = false;
         primaryModelId.value = '';
       },
@@ -428,7 +428,7 @@ export const useProjectForm = (projectId: string | null): UseProjectFormResult =
       },
       onResetSmallModelProviderOverride: () => {
         smallModelProviderOverride.value = false;
-        smallModelProviderKey.value = '';
+        smallModelProviderConfigId.value = '';
         smallModelIdOverride.value = false;
         smallModelId.value = '';
       },

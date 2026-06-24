@@ -23,11 +23,11 @@ export interface ProjectFormFieldsContextValue {
   repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
   agentsMdOverride: Signal<boolean>;
-  primaryModelProviderKey: Signal<string>;
+  primaryModelProviderConfigId: Signal<string>;
   primaryModelProviderOverride: Signal<boolean>;
   primaryModelId: Signal<string>;
   primaryModelIdOverride: Signal<boolean>;
-  smallModelProviderKey: Signal<string>;
+  smallModelProviderConfigId: Signal<string>;
   smallModelProviderOverride: Signal<boolean>;
   smallModelId: Signal<string>;
   smallModelIdOverride: Signal<boolean>;

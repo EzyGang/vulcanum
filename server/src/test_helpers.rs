@@ -274,6 +274,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         max_conns: 1,
         poll_period_secs: 30,
         jwt_secret: "test-secret".to_owned(),
+        encryption_secret: "test-encryption-secret".to_owned(),
         stale_worker_threshold_secs: 120,
         unhealthy_threshold: 3,
         stalled_running_threshold_secs: 1800,

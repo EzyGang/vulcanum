@@ -13,9 +13,9 @@ interface TeamDefaultsViewProps {
   data: {
     promptTemplate: Signal<string>;
     agentsMd: Signal<string>;
-    primaryModelProviderKey: Signal<string>;
+    primaryModelProviderConfigId: Signal<string>;
     primaryModelId: Signal<string>;
-    smallModelProviderKey: Signal<string>;
+    smallModelProviderConfigId: Signal<string>;
     smallModelId: Signal<string>;
     reviewEnabled: Signal<boolean>;
     reviewPickupColumn: Signal<string>;
@@ -77,7 +77,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             <Label for='team-primary-provider'>Primary Model Provider</Label>
             <Select
               id='team-primary-provider'
-              value={data.primaryModelProviderKey.value}
+              value={data.primaryModelProviderConfigId.value}
               onValueChange={actions.onPrimaryProviderChange}
               disabled={status.saving}
               placeholder='Select a connected model provider...'
@@ -99,7 +99,7 @@ export const TeamDefaultsView = ({ data, status, actions }: TeamDefaultsViewProp
             <Label for='team-small-provider'>Small Model Provider</Label>
             <Select
               id='team-small-provider'
-              value={data.smallModelProviderKey.value}
+              value={data.smallModelProviderConfigId.value}
               onValueChange={actions.onSmallProviderChange}
               disabled={status.saving}
               placeholder='Optional provider...'

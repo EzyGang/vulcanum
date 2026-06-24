@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE model_provider_auth_attempts\n               SET status = 'failed', error = $3\n               WHERE team_id = $1 AND user_id = $2 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a12b58a1ce3dad52b61cc1dcac33df1d845bfa4a36bd068cf74f22c65c437b6"
+}

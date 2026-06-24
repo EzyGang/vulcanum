@@ -164,7 +164,7 @@ All packages are managed via **pnpm workspaces** and **Turborepo**. Rust crates 
 # Clone and install
 pnpm install
 
-# Set up .env with DATABASE_URL, REDIS_URL, JWT_SECRET, INSTANCE_PASSWORD, KANEO_INSTANCE, KANEO_API_KEY
+# Set up .env with DATABASE_URL, REDIS_URL, JWT_SECRET, ENCRYPTION_SECRET, INSTANCE_PASSWORD, KANEO_INSTANCE, KANEO_API_KEY
 # See server/AGENTS.md for all supported env vars
 
 # Run migrations

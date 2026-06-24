@@ -22,7 +22,7 @@ export const useTeamDefaults = (teamId: string | null) => {
   const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
   const formError = useSignal<string | null>(null);
   const modelSelection = useModelProviderSelection();
-  const { primaryModelProviderKey, primaryModelId, smallModelProviderKey, smallModelId } =
+  const { primaryModelProviderConfigId, primaryModelId, smallModelProviderConfigId, smallModelId } =
     modelSelection;
 
   const { data: team, isLoading } = useApiQuery(
@@ -46,12 +46,12 @@ export const useTeamDefaults = (teamId: string | null) => {
     }
     promptTemplate.value = team.promptTemplate;
     agentsMd.value = team.agentsMd;
-    primaryModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
+    primaryModelProviderConfigId.value = modelSelection.modelProviderConfigIdForLegacyKey(
       team.primaryModelProviderConfigId,
       team.primaryModelProviderKey
     );
     primaryModelId.value = team.primaryModelId ?? '';
-    smallModelProviderKey.value = modelSelection.modelProviderConfigIdForLegacyKey(
+    smallModelProviderConfigId.value = modelSelection.modelProviderConfigIdForLegacyKey(
       team.smallModelProviderConfigId,
       team.smallModelProviderKey
     );
@@ -87,9 +87,9 @@ export const useTeamDefaults = (teamId: string | null) => {
     data: {
       promptTemplate,
       agentsMd,
-      primaryModelProviderKey,
+      primaryModelProviderConfigId,
       primaryModelId,
-      smallModelProviderKey,
+      smallModelProviderConfigId,
       smallModelId,
       reviewEnabled,
       reviewPickupColumn,
@@ -140,9 +140,9 @@ export const useTeamDefaults = (teamId: string | null) => {
           await mutation.mutateAsync({
             promptTemplate: promptTemplate.value,
             agentsMd: agentsMd.value,
-            primaryModelProviderConfigId: primaryModelProviderKey.value || null,
+            primaryModelProviderConfigId: primaryModelProviderConfigId.value || null,
             primaryModelId: primaryModelId.value || null,
-            smallModelProviderConfigId: smallModelProviderKey.value || null,
+            smallModelProviderConfigId: smallModelProviderConfigId.value || null,
             smallModelId: smallModelId.value || null,
             reviewEnabled: reviewEnabled.value,
             reviewPickupColumn: reviewPickupColumn.value || DEFAULT_REVIEW_PICKUP_COLUMN,

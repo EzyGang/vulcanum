@@ -177,6 +177,10 @@ export const useModelProviders = () => {
         : Object.keys(provider.credentials ?? {}).join(', ') || '—',
     onEdit: () => handleShowEdit(provider)
   }));
+  const catalogProviderItems = (catalog?.providers ?? []).map((provider) => ({
+    value: provider.id,
+    label: provider.name
+  }));
   const credentialFields = (selectedCatalogProvider?.env ?? []).map((envName) => ({
     name: envName,
     value: credentials.value[envName] ?? '',
@@ -246,10 +250,7 @@ export const useModelProviders = () => {
 
   return {
     data: {
-      catalogProviderItems: (catalog?.providers ?? []).map((provider) => ({
-        value: provider.id,
-        label: provider.name
-      })),
+      catalogProviderItems,
       providerRows,
       credentialFields,
       authTypeItems,

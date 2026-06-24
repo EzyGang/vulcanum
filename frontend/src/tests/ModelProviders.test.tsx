@@ -140,4 +140,45 @@ describe('ModelProvidersView', () => {
     expect(getByText('ChatGPT Pro/Plus')).toBeDefined();
     expect(getByText('acct_123')).toBeDefined();
   });
+
+  it('shows OAuth edit mode without API credential fields', () => {
+    const { getByText, queryByText } = render(
+      <ModelProvidersView
+        data={{
+          catalogProviderItems,
+          providerRows: [],
+          credentialFields: [
+            {
+              name: 'OPENAI_API_KEY',
+              value: '',
+              onInput: vi.fn()
+            }
+          ],
+          authTypeItems,
+          isChatGptAuth: true,
+          showAuthTypeSelect: true,
+          showCredentialFields: false,
+          submitLabel: 'Update',
+          submitDisabled: false,
+          showForm: signal(true),
+          editId: signal(provider.id),
+          providerKey: signal('openai'),
+          authType: signal('chatgpt_oauth'),
+          displayName: signal(provider.displayName),
+          chatGptAttempt: signal(null),
+          formError: signal(null),
+          formSubmitting: signal(false),
+          deleteConfirmId: signal(null),
+          deleteError: signal(null)
+        }}
+        status={{ loading: false, catalogLoading: false, error: null }}
+        actions={actions}
+      />
+    );
+
+    expect(getByText('ChatGPT Pro/Plus Login')).toBeDefined();
+    expect(getByText('Update')).toBeDefined();
+    expect(queryByText('Credential fields from models.dev catalog.')).toBeNull();
+    expect(queryByText('User Code')).toBeNull();
+  });
 });

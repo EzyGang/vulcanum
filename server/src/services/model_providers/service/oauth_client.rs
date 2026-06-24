@@ -169,28 +169,21 @@ impl ChatGptOAuthClient for OpenAiChatGptOAuthClient {
             .await
             .map_err(|e| ModelProvidersError::OAuth(format!("polling device token: {e}")))?;
         let status = response.status();
-        let body = response.json::<DeviceTokenResponse>().await.map_err(|e| {
+        let body_text = response.text().await.map_err(|e| {
+            ModelProvidersError::OAuth(format!("reading device token response: {e}"))
+        })?;
+        if !status.is_success() {
+            return match serde_json::from_str::<DeviceTokenResponse>(&body_text) {
+                Ok(body) => device_poll_outcome_from_body(status, body),
+                Err(_) => Err(ModelProvidersError::OAuth(format!(
+                    "polling device token returned HTTP {status}"
+                ))),
+            };
+        }
+        let body = serde_json::from_str::<DeviceTokenResponse>(&body_text).map_err(|e| {
             ModelProvidersError::OAuth(format!("parsing device token response: {e}"))
         })?;
-        match body.error.as_deref() {
-            Some("authorization_pending") => {
-                return Ok(DevicePollOutcome::Pending);
-            }
-            Some("slow_down") => return Ok(DevicePollOutcome::SlowDown),
-            Some(error) => {
-                let description = body.error_description.unwrap_or_else(|| error.to_owned());
-                return Ok(DevicePollOutcome::Failed(description));
-            }
-            None => (),
-        }
-        if !status.is_success() {
-            return Err(ModelProvidersError::OAuth(format!(
-                "polling device token returned HTTP {status}"
-            )));
-        }
-        body.code.map(DevicePollOutcome::Authorized).ok_or_else(|| {
-            ModelProvidersError::OAuth("device token response missing code".to_owned())
-        })
+        device_poll_outcome_from_body(status, body)
     }
 
     async fn exchange_authorization_code(
@@ -264,4 +257,29 @@ impl ChatGptOAuthClient for OpenAiChatGptOAuthClient {
             id_token: body.id_token,
         })
     }
+}
+
+fn device_poll_outcome_from_body(
+    status: reqwest::StatusCode,
+    body: DeviceTokenResponse,
+) -> Result<DevicePollOutcome, ModelProvidersError> {
+    match body.error.as_deref() {
+        Some("authorization_pending") => {
+            return Ok(DevicePollOutcome::Pending);
+        }
+        Some("slow_down") => return Ok(DevicePollOutcome::SlowDown),
+        Some(error) => {
+            let description = body.error_description.unwrap_or_else(|| error.to_owned());
+            return Ok(DevicePollOutcome::Failed(description));
+        }
+        None => (),
+    }
+    if !status.is_success() {
+        return Err(ModelProvidersError::OAuth(format!(
+            "polling device token returned HTTP {status}"
+        )));
+    }
+    body.code
+        .map(DevicePollOutcome::Authorized)
+        .ok_or_else(|| ModelProvidersError::OAuth("device token response missing code".to_owned()))
 }

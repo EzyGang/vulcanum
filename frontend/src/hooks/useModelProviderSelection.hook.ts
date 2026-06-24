@@ -18,9 +18,9 @@ interface LegacyModelProviderSelection {
 }
 
 export const useModelProviderSelection = () => {
-  const primaryModelProviderKey = useSignal('');
+  const primaryModelProviderConfigId = useSignal('');
   const primaryModelId = useSignal('');
-  const smallModelProviderKey = useSignal('');
+  const smallModelProviderConfigId = useSignal('');
   const smallModelId = useSignal('');
   const { data: modelProviders = [], isLoading: modelProvidersLoading } = useApiQuery(
     ['model-providers'],
@@ -33,18 +33,18 @@ export const useModelProviderSelection = () => {
   const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
     modelProviders,
     catalogProviders,
-    primaryModelProviderKey,
-    smallModelProviderKey
+    primaryModelProviderConfigId,
+    smallModelProviderConfigId
   });
   const onPrimaryProviderChange = useCallback((value: string) => {
-    primaryModelProviderKey.value = value;
+    primaryModelProviderConfigId.value = value;
     primaryModelId.value = '';
   }, []);
   const onPrimaryModelChange = useCallback((value: string) => {
     primaryModelId.value = value;
   }, []);
   const onSmallProviderChange = useCallback((value: string) => {
-    smallModelProviderKey.value = value;
+    smallModelProviderConfigId.value = value;
     smallModelId.value = '';
   }, []);
   const onSmallModelChange = useCallback((value: string) => {
@@ -60,9 +60,9 @@ export const useModelProviderSelection = () => {
     modelProviders,
     modelProvidersLoading,
     catalogProviders,
-    primaryModelProviderKey,
+    primaryModelProviderConfigId,
     primaryModelId,
-    smallModelProviderKey,
+    smallModelProviderConfigId,
     smallModelId,
     connectedProviderItems,
     primaryModelItems,

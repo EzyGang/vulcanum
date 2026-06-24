@@ -18,11 +18,11 @@ interface UseProjectFormSubmitOptions {
   repoFullNames: Signal<string[]>;
   agentsMd: Signal<string>;
   agentsMdOverride: Signal<boolean>;
-  primaryModelProviderKey: Signal<string>;
+  primaryModelProviderConfigId: Signal<string>;
   primaryModelProviderOverride: Signal<boolean>;
   primaryModelId: Signal<string>;
   primaryModelIdOverride: Signal<boolean>;
-  smallModelProviderKey: Signal<string>;
+  smallModelProviderConfigId: Signal<string>;
   smallModelProviderOverride: Signal<boolean>;
   smallModelId: Signal<string>;
   smallModelIdOverride: Signal<boolean>;
@@ -54,11 +54,11 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
     repoFullNames,
     agentsMd,
     agentsMdOverride,
-    primaryModelProviderKey,
+    primaryModelProviderConfigId,
     primaryModelProviderOverride,
     primaryModelId,
     primaryModelIdOverride,
-    smallModelProviderKey,
+    smallModelProviderConfigId,
     smallModelProviderOverride,
     smallModelId,
     smallModelIdOverride,
@@ -128,7 +128,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               repoFullNames: repoFullNames.value,
               agentsMd: overrideOr(agentsMd, agentsMdOverride, null, emptyStringAsNull),
               primaryModelProviderConfigId: overrideOr(
-                primaryModelProviderKey,
+                primaryModelProviderConfigId,
                 primaryModelProviderOverride,
                 null,
                 emptyStringAsNull
@@ -140,7 +140,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
                 emptyStringAsNull
               ),
               smallModelProviderConfigId: overrideOr(
-                smallModelProviderKey,
+                smallModelProviderConfigId,
                 smallModelProviderOverride,
                 null,
                 emptyStringAsNull
@@ -190,7 +190,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
             repoFullNames: repoFullNames.value,
             agentsMd: overrideOr(agentsMd, agentsMdOverride, undefined, emptyStringAsUndefined),
             primaryModelProviderConfigId: overrideOr(
-              primaryModelProviderKey,
+              primaryModelProviderConfigId,
               primaryModelProviderOverride,
               undefined,
               emptyStringAsUndefined
@@ -202,7 +202,7 @@ export const useProjectFormSubmit = (options: UseProjectFormSubmitOptions) => {
               emptyStringAsUndefined
             ),
             smallModelProviderConfigId: overrideOr(
-              smallModelProviderKey,
+              smallModelProviderConfigId,
               smallModelProviderOverride,
               undefined,
               emptyStringAsUndefined

@@ -6,15 +6,15 @@ import { modelProviderLabel } from '../utils/modelProviderAuth';
 interface UseModelItemsParams {
   modelProviders: ModelProviderConfig[];
   catalogProviders: CatalogProvider[];
-  primaryModelProviderKey: Signal<string>;
-  smallModelProviderKey: Signal<string>;
+  primaryModelProviderConfigId: Signal<string>;
+  smallModelProviderConfigId: Signal<string>;
 }
 
 export const useModelItems = ({
   modelProviders,
   catalogProviders,
-  primaryModelProviderKey,
-  smallModelProviderKey
+  primaryModelProviderConfigId,
+  smallModelProviderConfigId
 }: UseModelItemsParams) => ({
   connectedProviderItems: modelProviders.map((provider) => ({
     value: provider.id,
@@ -23,12 +23,12 @@ export const useModelItems = ({
   primaryModelItems: modelItemsForProvider(
     catalogProviders,
     modelProviders,
-    primaryModelProviderKey.value
+    primaryModelProviderConfigId.value
   ),
   smallModelItems: modelItemsForProvider(
     catalogProviders,
     modelProviders,
-    smallModelProviderKey.value
+    smallModelProviderConfigId.value
   )
 });
 

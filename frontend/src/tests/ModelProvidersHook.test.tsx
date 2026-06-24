@@ -68,6 +68,13 @@ const HookProbe = ({ onValue }: { onValue: (value: ModelProvidersState) => void 
       <button type='submit' data-testid='save-button'>
         Save
       </button>
+      <button
+        type='button'
+        data-testid='cancel-chatgpt-button'
+        onClick={value.actions.onCancelChatGptAuth}
+      >
+        Cancel ChatGPT
+      </button>
       <span data-testid='attempt-id'>{value.data.chatGptAttempt.value?.attemptId ?? ''}</span>
       <span data-testid='form-error'>{value.data.formError.value ?? ''}</span>
       <span data-testid='poll-interval'>
@@ -84,6 +91,7 @@ describe('useModelProviders ChatGPT OAuth polling', () => {
     queryClient.clear();
     vi.mocked(modelProvidersService.getModelProviderCatalog).mockResolvedValue(catalog);
     vi.mocked(modelProvidersService.listModelProviders).mockResolvedValue([]);
+    vi.mocked(modelProvidersService.cancelChatGptAuth).mockResolvedValue(undefined);
     vi.mocked(modelProvidersService.startChatGptAuth).mockResolvedValue({
       attemptId: 'attempt-1',
       verificationUri: 'https://auth.example/device',
@@ -160,6 +168,27 @@ describe('useModelProviders ChatGPT OAuth polling', () => {
     await waitFor(() => expect(getByTestId('attempt-id').textContent).toBe(''));
     expect(getByTestId('form-error').textContent).toBe(error);
     expect(getByTestId('submit-label').textContent).toBe('Start Device Login');
+  });
+
+  it('cancels the active OAuth attempt and clears local attempt state', async () => {
+    vi.mocked(modelProvidersService.getChatGptAuthStatus).mockResolvedValue({
+      status: 'pending',
+      pollIntervalSeconds: 5
+    });
+    const { getByTestId } = render(
+      <QueryClientProvider client={queryClient}>
+        <HookProbe onValue={() => undefined} />
+      </QueryClientProvider>
+    );
+
+    startChatGptAuth(getByTestId);
+    await waitFor(() => expect(getByTestId('attempt-id').textContent).toBe('attempt-1'));
+    fireEvent.click(getByTestId('cancel-chatgpt-button'));
+
+    await waitFor(() =>
+      expect(modelProvidersService.cancelChatGptAuth).toHaveBeenCalledWith('attempt-1')
+    );
+    await waitFor(() => expect(getByTestId('attempt-id').textContent).toBe(''));
   });
 });
 

@@ -3,7 +3,9 @@ use uuid::Uuid;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
 use crate::services::project_configs::repository::UpdateProjectConfigParams;
-use crate::services::project_configs::service::{resolve_column_if_set, ProjectConfigsService};
+use crate::services::project_configs::service::{
+    resolve_column_if_set, resolve_nullable_column_if_set, ProjectConfigsService,
+};
 use crate::util::github::github_repo_url;
 use crate::util::option::{resolve_update_deref, resolve_update_option};
 
@@ -178,19 +180,4 @@ fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
         || params.progress_column.is_some()
         || params.target_column.is_some()
         || params.review_pickup_column.is_some()
-}
-
-fn resolve_nullable_column_if_set(
-    columns: &[crate::services::providers::model::IntegrationColumn],
-    column: &mut Option<Option<String>>,
-) -> Result<(), ProjectConfigsError> {
-    match column {
-        Some(Some(input)) => {
-            *column = Some(Some(
-                crate::services::project_configs::service::resolve_column_slug(columns, input)?,
-            ));
-            Ok(())
-        }
-        Some(None) | None => Ok(()),
-    }
 }

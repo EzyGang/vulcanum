@@ -4,23 +4,34 @@ use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use pbkdf2::pbkdf2_hmac;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 
 use crate::services::model_providers::errors::ModelProvidersError;
 
 const NONCE_LEN: usize = 12;
+const SALT_LEN: usize = 16;
+const KDF_ITERATIONS: u32 = 100_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedPayload {
+    pub salt: String,
     pub nonce: String,
     pub ciphertext: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct EncryptedPayloadRef<'a> {
+    salt: &'a str,
+    nonce: &'a str,
+    ciphertext: &'a str,
+}
+
 #[derive(Clone)]
 pub struct CredentialCipher {
-    cipher: Aes256Gcm,
+    secret: String,
 }
 
 impl fmt::Debug for CredentialCipher {
@@ -32,9 +43,8 @@ impl fmt::Debug for CredentialCipher {
 impl CredentialCipher {
     #[must_use]
     pub fn new(secret: &str) -> Self {
-        let key = Sha256::digest(secret.as_bytes());
         Self {
-            cipher: Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key)),
+            secret: secret.to_owned(),
         }
     }
 
@@ -43,14 +53,17 @@ impl CredentialCipher {
         T: Serialize,
     {
         let plaintext = serde_json::to_vec(value).map_err(|_| ModelProvidersError::Crypto)?;
+        let mut salt_bytes = [0_u8; SALT_LEN];
+        rand::thread_rng().fill_bytes(&mut salt_bytes);
         let mut nonce_bytes = [0_u8; NONCE_LEN];
         rand::thread_rng().fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let ciphertext = self
-            .cipher
+        let cipher = self.cipher_for_salt(&salt_bytes);
+        let ciphertext = cipher
             .encrypt(nonce, plaintext.as_ref())
             .map_err(|_| ModelProvidersError::Crypto)?;
         serde_json::to_value(EncryptedPayload {
+            salt: STANDARD.encode(salt_bytes),
             nonce: STANDARD.encode(nonce_bytes),
             ciphertext: STANDARD.encode(ciphertext),
         })
@@ -61,8 +74,14 @@ impl CredentialCipher {
     where
         T: for<'de> Deserialize<'de>,
     {
-        let payload = serde_json::from_value::<EncryptedPayload>(value.clone())
+        let payload =
+            EncryptedPayloadRef::deserialize(value).map_err(|_| ModelProvidersError::Crypto)?;
+        let salt_bytes = STANDARD
+            .decode(payload.salt)
             .map_err(|_| ModelProvidersError::Crypto)?;
+        if salt_bytes.len() != SALT_LEN {
+            return Err(ModelProvidersError::Crypto);
+        }
         let nonce_bytes = STANDARD
             .decode(payload.nonce)
             .map_err(|_| ModelProvidersError::Crypto)?;
@@ -72,10 +91,17 @@ impl CredentialCipher {
         let ciphertext = STANDARD
             .decode(payload.ciphertext)
             .map_err(|_| ModelProvidersError::Crypto)?;
-        let plaintext = self
-            .cipher
+        let cipher = self.cipher_for_salt(&salt_bytes);
+        let plaintext = cipher
             .decrypt(Nonce::from_slice(&nonce_bytes), ciphertext.as_ref())
             .map_err(|_| ModelProvidersError::Crypto)?;
         serde_json::from_slice(&plaintext).map_err(|_| ModelProvidersError::Crypto)
+    }
+
+    #[must_use]
+    fn cipher_for_salt(&self, salt: &[u8]) -> Aes256Gcm {
+        let mut key = [0_u8; 32];
+        pbkdf2_hmac::<Sha256>(self.secret.as_bytes(), salt, KDF_ITERATIONS, &mut key);
+        Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key))
     }
 }

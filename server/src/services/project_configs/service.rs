@@ -191,11 +191,25 @@ pub(super) fn resolve_column_if_set(
     columns: &[IntegrationColumn],
     column: &mut Option<String>,
 ) -> Result<(), ProjectConfigsError> {
+    if column.is_none() {
+        return Ok(());
+    }
+
+    let mut nullable = column.take().map(Some);
+    let result = resolve_nullable_column_if_set(columns, &mut nullable);
+    *column = nullable.flatten();
+    result
+}
+
+pub(super) fn resolve_nullable_column_if_set(
+    columns: &[IntegrationColumn],
+    column: &mut Option<Option<String>>,
+) -> Result<(), ProjectConfigsError> {
     match column {
-        Some(ref input) => {
-            *column = Some(resolve_column_slug(columns, input)?);
+        Some(Some(input)) => {
+            *column = Some(Some(resolve_column_slug(columns, input)?));
             Ok(())
         }
-        None => Ok(()),
+        Some(None) | None => Ok(()),
     }
 }
