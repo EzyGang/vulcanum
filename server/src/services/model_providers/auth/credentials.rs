@@ -67,21 +67,12 @@ pub fn encrypted_api_key_credentials(
     credentials: &serde_json::Value,
     cipher: &SecretCipher,
 ) -> Result<serde_json::Value, ModelProvidersError> {
-    let object = credentials.as_object().ok_or_else(|| {
-        ModelProvidersError::InvalidAuthConfig("credentials must be an object".to_owned())
-    })?;
-    let mut fields: Vec<String> = Vec::new();
+    let api_keys = parse_api_key_credentials(credentials)?;
+    let mut fields = api_keys.keys().cloned().collect::<Vec<String>>();
     let mut secrets: HashMap<String, EncryptedSecret> = HashMap::new();
 
-    for (key, value) in object {
-        let secret = value.as_str().ok_or_else(|| {
-            ModelProvidersError::InvalidAuthConfig("credential values must be strings".to_owned())
-        })?;
-        if secret.is_empty() {
-            continue;
-        }
-        fields.push(key.to_owned());
-        secrets.insert(key.to_owned(), cipher.encrypt(secret)?);
+    for (key, secret) in api_keys {
+        secrets.insert(key, cipher.encrypt(&secret)?);
     }
     fields.sort();
 
@@ -211,6 +202,17 @@ fn parse_stored_auth(
 fn parse_legacy_api_key_auth(
     credentials: &serde_json::Value,
 ) -> Result<ParsedAuth, ModelProvidersError> {
+    let api_keys = parse_api_key_credentials(credentials)?;
+
+    match api_keys.is_empty() {
+        true => Ok(ParsedAuth::None),
+        false => Ok(ParsedAuth::ApiKey(api_keys)),
+    }
+}
+
+fn parse_api_key_credentials(
+    credentials: &serde_json::Value,
+) -> Result<HashMap<String, String>, ModelProvidersError> {
     let object = credentials.as_object().ok_or_else(|| {
         ModelProvidersError::InvalidAuthConfig("credentials must be an object".to_owned())
     })?;
@@ -228,9 +230,5 @@ fn parse_legacy_api_key_auth(
             }
         }
     }
-
-    match api_keys.is_empty() {
-        true => Ok(ParsedAuth::None),
-        false => Ok(ParsedAuth::ApiKey(api_keys)),
-    }
+    Ok(api_keys)
 }

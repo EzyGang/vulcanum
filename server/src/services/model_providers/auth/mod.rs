@@ -7,6 +7,8 @@ pub mod opencode_auth;
 #[cfg(test)]
 mod credentials_tests;
 #[cfg(test)]
+mod device_flow_tests;
+#[cfg(test)]
 mod encryption_tests;
 #[cfg(test)]
 mod openai_chatgpt_tests;

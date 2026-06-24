@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::services::model_providers::renderer::{render_opencode_config, ModelSelection};
+use crate::services::model_providers::renderer::ModelSelection;
 use crate::services::project_configs::model::JobConfigFields;
 use crate::services::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::model::WorkRunType;
@@ -75,27 +75,18 @@ impl WorkRunsService {
             },
         };
 
-        let mut connected_model_providers = self
+        let rendered = self
             .model_providers
-            .repo
-            .list_all(&self.db, cfg.team_id)
-            .await
-            .map_err(WorkRunsError::ModelProvider)?;
-        for provider in &mut connected_model_providers {
-            self.model_providers
-                .refresh_provider_if_needed(provider)
-                .await?;
-        }
-        let rendered = render_opencode_config(
-            &connected_model_providers,
-            &self.model_providers.cipher,
-            ModelSelection {
-                primary_provider_key: cfg.primary_model_provider_key.as_deref(),
-                primary_model_id: cfg.primary_model_id.as_deref(),
-                small_provider_key: cfg.small_model_provider_key.as_deref(),
-                small_model_id: cfg.small_model_id.as_deref(),
-            },
-        )?;
+            .render_opencode_config_for_team(
+                cfg.team_id,
+                ModelSelection {
+                    primary_provider_key: cfg.primary_model_provider_key.as_deref(),
+                    primary_model_id: cfg.primary_model_id.as_deref(),
+                    small_provider_key: cfg.small_model_provider_key.as_deref(),
+                    small_model_id: cfg.small_model_id.as_deref(),
+                },
+            )
+            .await?;
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),

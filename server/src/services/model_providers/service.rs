@@ -21,14 +21,17 @@ use crate::services::model_providers::model::{
     CatalogResponse, CreateModelProviderRequest, ModelProviderResponse, PollDeviceFlowResponse,
     StartDeviceFlowRequest, StartDeviceFlowResponse, UpdateModelProviderRequest,
 };
+use crate::services::model_providers::renderer::{
+    render_opencode_config, ModelSelection, RenderedModelConfig,
+};
 use crate::services::model_providers::repository::ModelProvidersRepository;
 
 #[derive(Clone)]
 pub struct ModelProvidersService {
-    pub repo: ModelProvidersRepository,
+    repo: ModelProvidersRepository,
     pub db: PgPool,
     pub catalog: ModelCatalogClient,
-    pub cipher: SecretCipher,
+    cipher: SecretCipher,
     pub device_flow_store: Arc<dyn DeviceFlowStore>,
     pub device_auth_provider: Arc<dyn DeviceAuthProvider>,
 }
@@ -65,6 +68,18 @@ impl ModelProvidersService {
             .into_iter()
             .map(|provider| to_response(provider, &self.cipher))
             .collect()
+    }
+
+    pub async fn render_opencode_config_for_team(
+        &self,
+        team_id: Uuid,
+        selection: ModelSelection<'_>,
+    ) -> Result<RenderedModelConfig, ModelProvidersError> {
+        let mut providers = self.repo.list_all(&self.db, team_id).await?;
+        for provider in &mut providers {
+            self.refresh_provider_if_needed(provider).await?;
+        }
+        render_opencode_config(&providers, &self.cipher, selection)
     }
 
     pub async fn create(

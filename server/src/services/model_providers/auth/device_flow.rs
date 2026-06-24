@@ -127,12 +127,7 @@ impl DeviceFlowStore for RedisDeviceFlowStore {
             .arg(device_flow_key(attempt_id))
             .query_async(&mut conn)
             .await?;
-        value
-            .map(|value| {
-                serde_json::from_str::<PendingDeviceFlow>(&value)
-                    .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
-            })
-            .transpose()
+        parse_pending_device_flow(value)
     }
 
     async fn update_next_poll(
@@ -140,11 +135,34 @@ impl DeviceFlowStore for RedisDeviceFlowStore {
         attempt_id: Uuid,
         next_poll_at: DateTime<Utc>,
     ) -> Result<(), ModelProvidersError> {
-        let Some(mut attempt) = self.get(attempt_id).await? else {
-            return Err(ModelProvidersError::DeviceFlowExpired);
-        };
-        attempt.next_poll_at = next_poll_at;
-        self.insert(attempt).await
+        let mut conn = self.client.get_multiplexed_async_connection().await?;
+        let script = redis::Script::new(
+            r#"
+            local v = redis.call("GET", KEYS[1])
+            if not v then
+                return nil
+            end
+            local ttl = redis.call("TTL", KEYS[1])
+            local attempt = cjson.decode(v)
+            attempt["next_poll_at"] = ARGV[1]
+            local updated = cjson.encode(attempt)
+            if ttl > 0 then
+                redis.call("SETEX", KEYS[1], ttl, updated)
+            else
+                redis.call("SET", KEYS[1], updated)
+            end
+            return updated
+        "#,
+        );
+        let value: Option<String> = script
+            .key(device_flow_key(attempt_id))
+            .arg(next_poll_at.to_rfc3339())
+            .invoke_async(&mut conn)
+            .await?;
+        match value {
+            Some(_) => Ok(()),
+            None => Err(ModelProvidersError::DeviceFlowExpired),
+        }
     }
 
     async fn consume(
@@ -166,12 +184,7 @@ impl DeviceFlowStore for RedisDeviceFlowStore {
             .invoke_async(&mut conn)
             .await?;
 
-        value
-            .map(|value| {
-                serde_json::from_str::<PendingDeviceFlow>(&value)
-                    .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
-            })
-            .transpose()
+        parse_pending_device_flow(value)
     }
 }
 
@@ -216,6 +229,17 @@ impl DeviceFlowStore for InMemoryDeviceFlowStore {
     ) -> Result<Option<PendingDeviceFlow>, ModelProvidersError> {
         Ok(self.attempts.lock().await.remove(&attempt_id))
     }
+}
+
+fn parse_pending_device_flow(
+    value: Option<String>,
+) -> Result<Option<PendingDeviceFlow>, ModelProvidersError> {
+    value
+        .map(|value| {
+            serde_json::from_str::<PendingDeviceFlow>(&value)
+                .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
+        })
+        .transpose()
 }
 
 fn device_flow_key(attempt_id: Uuid) -> String {
