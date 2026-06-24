@@ -4,8 +4,9 @@ use crate::queryer::Queryer;
 use crate::services::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::model::ChatGptAuthAttempt;
 use crate::services::model_providers::repository::{
-    ensure_rows_affected, CreateAuthAttemptParams, ModelProvidersRepository,
+    CreateAuthAttemptParams, ModelProvidersRepository,
 };
+use crate::util::db::ensure_rows_affected;
 
 impl ModelProvidersRepository {
     pub async fn create_auth_attempt<'c, Q>(
@@ -85,7 +86,7 @@ impl ModelProvidersRepository {
         .execute(db)
         .await?
         .rows_affected();
-        ensure_rows_affected(rows)
+        ensure_rows_affected(rows, ModelProvidersError::NotFound)
     }
 
     pub async fn update_auth_attempt_interval<'c, Q>(
@@ -105,6 +106,6 @@ impl ModelProvidersRepository {
         .execute(db)
         .await?
         .rows_affected();
-        ensure_rows_affected(rows)
+        ensure_rows_affected(rows, ModelProvidersError::NotFound)
     }
 }

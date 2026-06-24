@@ -107,7 +107,7 @@ cargo run --bin vulcanum-web
 - The length of a single file should not be more than 300 lines; if it exceeds that, split it, unless it is logically correct to keep this as a single file and splitting it will introduce complexity rather than simplificity.
 - You should strive to write as low amount of code as possible, not in a cutting corners way, but if something can be achieved with fewer LOC - it should always be a preferred implementation path.
 - Must follow `dry` (do not repeat yourself) principle. No code repetition should exist for ANY reason.
-- No `unwrap()`, `expect()`, or `panic!()` in production code — use proper error handling with `Result`.
+- No `unwrap()`, `expect()`, or `panic!()` in production code — use proper error handling with `Result`, or alternatives that don't panic, like `unwrap_or`, `unwrap_or_else`, etc.
 - No `pub use` re-exports — use direct imports of what is needed.
 - No glob imports (`use module::*`) — always be explicit.
 - No `Vec<HashMap<String, Value>>` or raw collection returns — use proper structs/vectors of structs.

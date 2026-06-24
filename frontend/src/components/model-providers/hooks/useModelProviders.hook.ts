@@ -11,7 +11,11 @@ import {
   startChatGptAuth,
   updateModelProvider
 } from '../../../services/model-providers/model-providers.service';
-import type { ChatGptAuthStartResponse, ModelProviderConfig } from '../../../types/modelProviders';
+import type {
+  ChatGptAuthStartResponse,
+  ChatGptAuthStatusResponse,
+  ModelProviderConfig
+} from '../../../types/modelProviders';
 import type { SelectOption } from '../../../types/shared';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
@@ -86,19 +90,7 @@ export const useModelProviders = () => {
     () => getChatGptAuthStatus(chatGptAttempt.value?.attemptId ?? ''),
     {
       enabled: !!chatGptAttempt.value,
-      refetchInterval: (query) => {
-        const status = query.state.data?.status;
-        if (
-          !chatGptAttempt.value ||
-          chatGptAuthStatusIsTerminal(status) ||
-          !chatGptAuthQueryStatusIsLive(chatGptAttempt.value)
-        ) {
-          return false;
-        }
-        return (
-          (query.state.data?.pollIntervalSeconds ?? chatGptAttempt.value.pollIntervalSeconds) * 1000
-        );
-      }
+      refetchInterval: (query) => chatGptAuthRefetchInterval(query.state.data, chatGptAttempt.value)
     }
   );
 
@@ -298,6 +290,17 @@ const chatGptAuthQueryStatusIsLive = (attempt: ChatGptAuthStartResponse): boolea
 
 const chatGptAuthStatusIsTerminal = (status?: string): boolean =>
   status === 'complete' || status === 'failed' || status === 'expired';
+
+const chatGptAuthRefetchInterval = (
+  data: ChatGptAuthStatusResponse | undefined,
+  attempt: ChatGptAuthStartResponse | null
+): false | number => {
+  const status = data?.status;
+  if (!attempt || chatGptAuthStatusIsTerminal(status) || !chatGptAuthQueryStatusIsLive(attempt)) {
+    return false;
+  }
+  return (data?.pollIntervalSeconds ?? attempt.pollIntervalSeconds) * 1000;
+};
 
 const submitButtonLabel = (
   submitting: boolean,

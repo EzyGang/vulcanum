@@ -20,6 +20,7 @@ const CHATGPT_AUTH_FAILED: &str = "failed";
 const DEFAULT_CHATGPT_DISPLAY_NAME: &str = "OpenAI ChatGPT Pro/Plus";
 const DEFAULT_DEVICE_POLL_SECONDS: i32 = 5;
 const DEVICE_POLL_SLOW_DOWN_SECONDS: i32 = 5;
+const DEFAULT_TOKEN_EXPIRES_SECONDS: i64 = 60 * 60 * 24;
 
 impl ModelProvidersService {
     pub async fn start_chatgpt_auth(
@@ -131,8 +132,7 @@ impl ModelProvidersService {
         };
 
         let token = self.oauth_client.exchange_authorization_code(&code).await?;
-        let expires_at =
-            Utc::now() + chrono::Duration::seconds(token.expires_in.unwrap_or(60 * 60 * 24));
+        let expires_at = oauth_expires_at(token.expires_in);
         let account_id = token
             .id_token
             .as_deref()
@@ -228,6 +228,10 @@ impl ModelProvidersService {
     }
 }
 
+pub(crate) fn oauth_expires_at(expires_in: Option<i64>) -> chrono::DateTime<Utc> {
+    Utc::now() + chrono::Duration::seconds(expires_in.unwrap_or(DEFAULT_TOKEN_EXPIRES_SECONDS))
+}
+
 fn display_name_or_default(display_name: &str) -> String {
     match display_name.trim() {
         "" => DEFAULT_CHATGPT_DISPLAY_NAME.to_owned(),
@@ -235,7 +239,7 @@ fn display_name_or_default(display_name: &str) -> String {
     }
 }
 
-fn extract_account_id(token: &str) -> Option<String> {
+pub(crate) fn extract_account_id(token: &str) -> Option<String> {
     jwt_payload(token).and_then(|payload| {
         payload
             .get("chatgpt_account_id")
@@ -245,7 +249,7 @@ fn extract_account_id(token: &str) -> Option<String> {
     })
 }
 
-fn extract_email(token: &str) -> Option<String> {
+pub(crate) fn extract_email(token: &str) -> Option<String> {
     jwt_payload(token).and_then(|payload| {
         payload
             .get("email")

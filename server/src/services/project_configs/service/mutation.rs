@@ -3,10 +3,9 @@ use uuid::Uuid;
 use crate::services::project_configs::errors::ProjectConfigsError;
 use crate::services::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
 use crate::services::project_configs::repository::UpdateProjectConfigParams;
-use crate::services::project_configs::service::{
-    resolve_column_if_set, resolve_model_field, ProjectConfigsService,
-};
+use crate::services::project_configs::service::{resolve_column_if_set, ProjectConfigsService};
 use crate::util::github::github_repo_url;
+use crate::util::option::{resolve_update_deref, resolve_update_option};
 
 impl ProjectConfigsService {
     pub async fn update(
@@ -67,20 +66,20 @@ impl ProjectConfigsService {
             };
         }
 
-        let primary_provider_config_id = resolve_uuid_field(
+        let primary_provider_config_id = resolve_update_option(
             &params.primary_model_provider_config_id,
             existing.primary_model_provider_config_id,
         );
-        let primary_model_id = resolve_model_field(
+        let primary_model_id = resolve_update_deref(
             &params.primary_model_id,
             existing.primary_model_id.as_deref(),
         );
-        let small_provider_config_id = resolve_uuid_field(
+        let small_provider_config_id = resolve_update_option(
             &params.small_model_provider_config_id,
             existing.small_model_provider_config_id,
         );
         let small_model_id =
-            resolve_model_field(&params.small_model_id, existing.small_model_id.as_deref());
+            resolve_update_deref(&params.small_model_id, existing.small_model_id.as_deref());
 
         self.validate_model_selection(team_id, primary_provider_config_id, primary_model_id)
             .await?;
@@ -171,13 +170,6 @@ impl ProjectConfigsService {
             return Err(ProjectConfigsError::NotFound);
         }
         self.repo.delete(&self.db, id).await
-    }
-}
-
-fn resolve_uuid_field(update: &Option<Option<Uuid>>, existing: Option<Uuid>) -> Option<Uuid> {
-    match update {
-        Some(value) => *value,
-        None => existing,
     }
 }
 

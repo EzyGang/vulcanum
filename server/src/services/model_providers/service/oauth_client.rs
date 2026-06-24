@@ -57,10 +57,19 @@ pub(crate) struct OAuthTokenResponse {
     pub id_token: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct OAuthRefreshTokenResponse {
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_in: Option<i64>,
+    pub id_token: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 struct OpenAiOAuthTokenResponse {
     access_token: String,
-    refresh_token: String,
+    #[serde(default)]
+    refresh_token: Option<String>,
     #[serde(default)]
     expires_in: Option<i64>,
     #[serde(default)]
@@ -80,6 +89,11 @@ pub(crate) trait ChatGptOAuthClient: std::fmt::Debug + Send + Sync {
         &self,
         code: &str,
     ) -> Result<OAuthTokenResponse, ModelProvidersError>;
+
+    async fn refresh_access_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<OAuthRefreshTokenResponse, ModelProvidersError>;
 }
 
 #[derive(Debug, Clone)]
@@ -206,6 +220,43 @@ impl ChatGptOAuthClient for OpenAiChatGptOAuthClient {
                 ModelProvidersError::OAuth(format!("parsing oauth token response: {e}"))
             })?;
         Ok(OAuthTokenResponse {
+            access_token: body.access_token,
+            refresh_token: body.refresh_token.ok_or_else(|| {
+                ModelProvidersError::OAuth("oauth token response missing refresh token".to_owned())
+            })?,
+            expires_in: body.expires_in,
+            id_token: body.id_token,
+        })
+    }
+
+    async fn refresh_access_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<OAuthRefreshTokenResponse, ModelProvidersError> {
+        let response = self
+            .client
+            .post(OAUTH_TOKEN_URL)
+            .form(&[
+                ("client_id", OPENAI_OAUTH_CLIENT_ID),
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token),
+            ])
+            .send()
+            .await
+            .map_err(|e| ModelProvidersError::OAuth(format!("refreshing oauth token: {e}")))?;
+        if !response.status().is_success() {
+            return Err(ModelProvidersError::OAuth(format!(
+                "refreshing oauth token returned HTTP {}",
+                response.status()
+            )));
+        }
+        let body = response
+            .json::<OpenAiOAuthTokenResponse>()
+            .await
+            .map_err(|e| {
+                ModelProvidersError::OAuth(format!("parsing oauth refresh response: {e}"))
+            })?;
+        Ok(OAuthRefreshTokenResponse {
             access_token: body.access_token,
             refresh_token: body.refresh_token,
             expires_in: body.expires_in,

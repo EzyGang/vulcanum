@@ -176,16 +176,6 @@ impl ProjectConfigsService {
     }
 }
 
-pub(super) fn resolve_model_field<'a>(
-    field: &'a Option<Option<String>>,
-    existing: Option<&'a str>,
-) -> Option<&'a str> {
-    match field {
-        Some(value) => value.as_deref(),
-        None => existing,
-    }
-}
-
 pub(super) fn resolve_column_slug(
     columns: &[IntegrationColumn],
     input: &str,

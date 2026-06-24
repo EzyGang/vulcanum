@@ -8,6 +8,7 @@ use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::teams::errors::TeamsError;
 use crate::services::teams::model::{Team, UpdateTeamRequest};
 use crate::services::teams::service::{validate_team_name, TeamsService};
+use crate::util::option::{resolve_update_deref, resolve_update_option};
 
 impl TeamsService {
     pub async fn update_for_principal(
@@ -26,11 +27,11 @@ impl TeamsService {
         let current = self.repo.get_by_id(&self.db, team_id).await?;
         self.validate_model_selection(
             team_id,
-            resolve_model_provider_config_id(
-                params.primary_model_provider_config_id,
+            resolve_update_option(
+                &params.primary_model_provider_config_id,
                 current.primary_model_provider_config_id,
             ),
-            resolve_model_id(
+            resolve_update_deref(
                 &params.primary_model_id,
                 current.primary_model_id.as_deref(),
             ),
@@ -38,11 +39,11 @@ impl TeamsService {
         .await?;
         self.validate_model_selection(
             team_id,
-            resolve_model_provider_config_id(
-                params.small_model_provider_config_id,
+            resolve_update_option(
+                &params.small_model_provider_config_id,
                 current.small_model_provider_config_id,
             ),
-            resolve_model_id(&params.small_model_id, current.small_model_id.as_deref()),
+            resolve_update_deref(&params.small_model_id, current.small_model_id.as_deref()),
         )
         .await?;
         self.repo
@@ -96,24 +97,4 @@ pub(super) fn default_model_providers(db: PgPool) -> ModelProvidersService {
         ModelCatalogClient::new(),
         "team-model-provider-validation",
     )
-}
-
-fn resolve_model_provider_config_id(
-    field: Option<Option<Uuid>>,
-    existing: Option<Uuid>,
-) -> Option<Uuid> {
-    match field {
-        Some(value) => value,
-        None => existing,
-    }
-}
-
-fn resolve_model_id<'a>(
-    field: &'a Option<Option<String>>,
-    existing: Option<&'a str>,
-) -> Option<&'a str> {
-    match field {
-        Some(value) => value.as_deref(),
-        None => existing,
-    }
 }

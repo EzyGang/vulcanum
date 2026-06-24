@@ -48,10 +48,3 @@ fn map_sqlx_error(err: sqlx::Error) -> ModelProvidersError {
         ModelProvidersError::Database(err)
     }
 }
-
-fn ensure_rows_affected(rows: u64) -> Result<(), ModelProvidersError> {
-    match rows {
-        0 => Err(ModelProvidersError::NotFound),
-        _ => Ok(()),
-    }
-}

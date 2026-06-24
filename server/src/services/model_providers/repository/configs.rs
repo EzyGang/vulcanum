@@ -7,11 +7,9 @@ use crate::services::model_providers::model::{
     AUTH_TYPE_CHATGPT_OAUTH, OPENAI_PROVIDER_KEY,
 };
 use crate::services::model_providers::repository::{
-    ensure_rows_affected, map_sqlx_error, CreateOAuthProviderParams, ModelProvidersRepository,
+    map_sqlx_error, CreateOAuthProviderParams, ModelProvidersRepository,
 };
-
-const CONFIG_COLUMNS: &str = "id, team_id, provider_key, auth_type, display_name, credentials, \
-    oauth_credentials, oauth_metadata, created_at, updated_at";
+use crate::util::db::ensure_rows_affected;
 
 impl ModelProvidersRepository {
     pub async fn list_all<'c, Q>(
@@ -22,10 +20,11 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
-            "WHERE team_id = $1 ORDER BY created_at DESC",
-        ))
-        .bind(team_id)
+        sqlx::query_as!(
+            ModelProviderConfig,
+            "SELECT * FROM model_provider_configs WHERE team_id = $1 ORDER BY created_at DESC",
+            team_id,
+        )
         .fetch_all(db)
         .await
         .map_err(ModelProvidersError::from)
@@ -40,11 +39,12 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
-            "WHERE id = $1 AND team_id = $2",
-        ))
-        .bind(id)
-        .bind(team_id)
+        sqlx::query_as!(
+            ModelProviderConfig,
+            "SELECT * FROM model_provider_configs WHERE id = $1 AND team_id = $2",
+            id,
+            team_id,
+        )
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
@@ -59,14 +59,16 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
-            "WHERE team_id = $1 AND provider_key = $2
-             ORDER BY CASE WHEN auth_type = $3 THEN 0 ELSE 1 END, created_at DESC, id ASC
-             LIMIT 1",
-        ))
-        .bind(team_id)
-        .bind(provider_key)
-        .bind(AUTH_TYPE_API_KEY)
+        sqlx::query_as!(
+            ModelProviderConfig,
+            r#"SELECT * FROM model_provider_configs
+              WHERE team_id = $1 AND provider_key = $2
+              ORDER BY CASE WHEN auth_type = $3 THEN 0 ELSE 1 END, created_at DESC, id ASC
+              LIMIT 1"#,
+            team_id,
+            provider_key,
+            AUTH_TYPE_API_KEY,
+        )
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
@@ -82,12 +84,14 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
-            "WHERE team_id = $1 AND provider_key = $2 AND auth_type = $3",
-        ))
-        .bind(team_id)
-        .bind(provider_key)
-        .bind(auth_type)
+        sqlx::query_as!(
+            ModelProviderConfig,
+            r#"SELECT * FROM model_provider_configs
+              WHERE team_id = $1 AND provider_key = $2 AND auth_type = $3"#,
+            team_id,
+            provider_key,
+            auth_type,
+        )
         .fetch_optional(db)
         .await?
         .ok_or(ModelProvidersError::NotFound)
@@ -102,11 +106,12 @@ impl ModelProvidersRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as::<_, ModelProviderConfig>(&select_configs_sql(
-            "WHERE team_id = $1 AND id = ANY($2)",
-        ))
-        .bind(team_id)
-        .bind(ids)
+        sqlx::query_as!(
+            ModelProviderConfig,
+            "SELECT * FROM model_provider_configs WHERE team_id = $1 AND id = ANY($2)",
+            team_id,
+            ids,
+        )
         .fetch_all(db)
         .await
         .map_err(ModelProvidersError::from)
@@ -206,6 +211,36 @@ impl ModelProvidersRepository {
         .ok_or(ModelProvidersError::NotFound)
     }
 
+    pub async fn update_chatgpt_oauth_credentials<'c, Q>(
+        &self,
+        db: Q,
+        id: Uuid,
+        team_id: Uuid,
+        oauth_credentials: &serde_json::Value,
+        oauth_metadata: &serde_json::Value,
+    ) -> Result<ModelProviderConfig, ModelProvidersError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ModelProviderConfig,
+            r#"UPDATE model_provider_configs SET
+              oauth_credentials = $3,
+              oauth_metadata = $4
+              WHERE id = $1 AND team_id = $2 AND auth_type = $5
+              RETURNING id, team_id, provider_key, auth_type, display_name, credentials,
+                oauth_credentials, oauth_metadata, created_at, updated_at"#,
+            id,
+            team_id,
+            oauth_credentials,
+            oauth_metadata,
+            AUTH_TYPE_CHATGPT_OAUTH,
+        )
+        .fetch_optional(db)
+        .await?
+        .ok_or(ModelProvidersError::NotFound)
+    }
+
     pub async fn delete<'c, Q>(
         &self,
         db: Q,
@@ -223,10 +258,6 @@ impl ModelProvidersRepository {
         .execute(db)
         .await?
         .rows_affected();
-        ensure_rows_affected(rows)
+        ensure_rows_affected(rows, ModelProvidersError::NotFound)
     }
-}
-
-fn select_configs_sql(suffix: &str) -> String {
-    format!("SELECT {CONFIG_COLUMNS} FROM model_provider_configs {suffix}")
 }

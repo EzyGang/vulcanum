@@ -1,4 +1,6 @@
 use std::sync::Arc;
+
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
@@ -543,11 +545,12 @@ async fn get_job_with_repo_url_and_no_installation_fails(pool: sqlx::PgPool) {
 
 async fn insert_chatgpt_oauth_provider(pool: &sqlx::PgPool) -> Uuid {
     let id = Uuid::new_v4();
+    let expires = (Utc::now() + chrono::Duration::hours(1)).timestamp_millis();
     let encrypted_credentials = CredentialCipher::new("test-secret")
         .encrypt_json(&OAuthCredentials {
             access: "access-token".to_owned(),
             refresh: "refresh-token".to_owned(),
-            expires: 123_456,
+            expires,
             account_id: Some("acct_123".to_owned()),
         })
         .expect("Should encrypt OAuth credentials");
