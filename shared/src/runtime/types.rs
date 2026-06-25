@@ -40,7 +40,7 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_duration_secs: 1_800,
+            max_duration_secs: 3_120,
             vcpu_count: 2,
             memory_mib: 1_024,
         }

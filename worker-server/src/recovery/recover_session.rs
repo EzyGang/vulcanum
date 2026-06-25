@@ -6,6 +6,7 @@ use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
+use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
@@ -68,7 +69,7 @@ pub(crate) async fn recover_session_task(
         client: oc_client,
         session_id: session_id.clone(),
         event_stream,
-        max_duration_secs: 1800,
+        max_duration_secs: ResourceLimits::default().max_duration_secs,
         container_name,
         server_process: None,
         host_pid: entry.host_pid.map(|v| v as u32),
@@ -124,7 +125,7 @@ fn cleanup_recovery(entry: &JournalEntry) {
     if entry.harness_type == "host" {
         kill_host_process_group(entry);
         let provider = HostIsolation::new();
-        let env = vulcanum_shared::runtime::types::IsolatedEnvironment {
+        let env = IsolatedEnvironment {
             workdir: std::path::PathBuf::from(&entry.workdir),
             workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
             repos: Vec::new(),
@@ -134,7 +135,7 @@ fn cleanup_recovery(entry: &JournalEntry) {
             runtime: None,
             image: None,
             server_host_port: None,
-            limits: vulcanum_shared::runtime::types::ResourceLimits::default(),
+            limits: ResourceLimits::default(),
         };
         tokio::spawn(async move {
             provider.cleanup(&env).await;
