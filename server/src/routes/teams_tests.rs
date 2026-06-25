@@ -1,7 +1,7 @@
 use actix_web::{test, web, App};
 
+use crate::models::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 use crate::routes;
-use crate::services::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 use crate::test_helpers;
 
 #[sqlx::test]

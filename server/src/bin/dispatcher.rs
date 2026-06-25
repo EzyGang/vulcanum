@@ -2,11 +2,11 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::signal;
 
 use vulcanum_server::config::config;
+use vulcanum_server::db::dispatcher::DispatchRepository;
+use vulcanum_server::db::work_runs::WorkRunsRepository;
+use vulcanum_server::db::workers::WorkersRepository;
 use vulcanum_server::services::dispatcher::dispatch_store::RedisDispatchStore;
-use vulcanum_server::services::dispatcher::repository::DispatchRepository;
 use vulcanum_server::services::dispatcher::service::DispatcherService;
-use vulcanum_server::services::work_runs::repository::WorkRunsRepository;
-use vulcanum_server::services::workers::repository::WorkersRepository;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

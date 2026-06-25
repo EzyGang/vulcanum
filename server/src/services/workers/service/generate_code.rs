@@ -2,9 +2,9 @@ use chrono::{Duration, Utc};
 use rand::Rng;
 use uuid::Uuid;
 
-use crate::services::workers::errors::WorkersError;
-use crate::services::workers::model;
-use crate::services::workers::model::CodeResponse;
+use crate::models::workers::errors::WorkersError;
+use crate::models::workers::model;
+use crate::models::workers::model::CodeResponse;
 use crate::services::workers::service::WorkersService;
 
 impl WorkersService {

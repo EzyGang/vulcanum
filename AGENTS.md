@@ -135,11 +135,13 @@ All web service crates (e.g. `server`, future `agent-server`) must follow a stri
 
 ### Layers
 
-| Layer      | Responsibility                                           | Location                            |
-| ---------- | -------------------------------------------------------- | ----------------------------------- |
-| HTTP       | Routing, handlers, request/response serialization        | `src/routes/` or `src/handlers/`    |
-| Service    | Business logic, auth, validation, caching, orchestration | `src/services/<domain>/service/`    |
-| Repository | Database queries, SQLx execution                         | `src/services/<domain>/repository/` |
+| Layer      | Responsibility                                           | Location                         |
+| ---------- | -------------------------------------------------------- | -------------------------------- |
+| HTTP       | Routing, handlers, request/response serialization        | `src/routes/` or `src/handlers/` |
+| Service    | Business logic, auth, validation, caching, orchestration | `src/services/<domain>/`         |
+| Repository | Database queries, SQLx execution                         | `src/db/<domain>.rs`             |
+| Models     | Domain rows, DTOs, enums, errors, shared principals      | `src/models/<domain>/`           |
+| Utilities  | Cross-domain helpers with no business state              | `src/util/`                      |
 
 Rules:
 
@@ -149,27 +151,52 @@ Rules:
 
 ### File Organization
 
-Domain logic is organized under `src/services/<domain>/`:
+The `server` crate is organized by architectural role first, then by domain. This keeps layer boundaries visible at the top level and avoids mixing HTTP, business logic, SQL, and DTOs in one domain directory.
 
 ```
-src/services/<domain>/
-  model.rs          # Domain types and constants
-  errors.rs         # Domain errors (thiserror)
-  repository.rs     # Repository struct definition
-  repository/
-    <table>.rs      # Query implementations per table
-  service.rs          # Service struct definition
-  service/
-    <operation>.rs  # Individual business operations
+server/src/
+  routes/                    # HTTP route registration, handlers, extractors
+    jobs.rs
+    jobs_tests.rs
+  services/                  # Business logic and infrastructure owned by services
+    work_runs/
+      mod.rs
+      service.rs             # WorkRunsService type and constructor
+      service/               # One file per larger service operation
+        poll.rs
+        submit_result.rs
+  db/                        # Repository structs and SQLx query implementations
+    work_runs.rs             # WorkRunsRepository type
+    work_runs/
+      queries.rs
+      queries/
+        limits.rs
+  models/                    # Domain rows, DTOs, enums, errors, shared principals
+    work_runs/
+      mod.rs
+      model.rs
+      errors.rs
+  tests/                     # Shared helpers, e2e tests, and cross-module service tests
+    helpers.rs
+    e2e_integration_tests.rs
+    work_runs_service/
+      mod.rs
+      work_runs_tests.rs
+  util/                      # Cross-domain helpers with no business state
 ```
 
-- Keep the HTTP layer in `src/routes/` or `src/handlers/`.
+- Put HTTP concerns in `src/routes/`. Route tests can live beside the route file as `*_tests.rs` when they only exercise that route module.
+- Put business logic in `src/services/<domain>/`. Split large service methods into `src/services/<domain>/service/<operation>.rs` and keep workflow stores beside the service that owns them.
+- Put repository structs in `src/db/<domain>.rs` and SQLx query modules under `src/db/<domain>/`.
+- Put database row structs, request/response DTOs, enums, shared principals, and domain errors in `src/models/<domain>/`.
+- Put reusable server test helpers, e2e tests, and cross-module service tests under `src/tests/` instead of using `#[path]` from production modules.
 - Split files when they exceed 200 lines.
 - Large domains may be extracted to separate workspace crates under `services/<domain>/`.
 
 ### Repository Conventions
 
 - Repositories are thin, stateless wrappers around SQLx queries (one per domain/table).
+- The shared `Queryer<'c>` trait lives in `src/db/queryer.rs`.
 - Use a `Queryer<'c>` trait so methods accept both `&PgPool` and `&mut PgConnection` for transaction support:
   ```rust
   pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
@@ -196,83 +223,6 @@ src/services/<domain>/
 
 Tasks for this project live in Kaneo (project `k5s7dwb5f89anmaui2d814h9`, slug `vulcanum`).
 The local `.kaneo-conf.json` is pinned to the project — `kaneo task` commands work from this directory without extra flags.
-
-### Skills to Load
-
-When creating or updating tasks, always load these skills first:
-
-- `skill name="kaneo"` — CLI reference (list, create, update, status, labels, comments, etc.)
-- `skill name="kaneo-task-template"` — required structure: Goal, Requirements, Dependencies, Validation, Actions Log
-
-### Column Statuses
-
-| Slug          | Status      | Meaning                                   |
-| ------------- | ----------- | ----------------------------------------- |
-| `planned`     | Planned     | Backlog — accepted but not ready to start |
-| `to-do`       | To Do       | Ready for implementation                  |
-| `in-progress` | In Progress | Currently being worked on                 |
-| `in-review`   | In Review   | Implementation done, awaiting review      |
-| `done`        | Done        | Validated and complete (final)            |
-
-### Task Lifecycle
-
-```
-planned → to-do → in-progress → in-review → done
-```
-
-- **planned**: Task exists but may be blocked by dependencies.
-- **to-do**: Dependencies resolved, ready to pick up.
-- **in-progress**: Move here at the start of implementation.
-- **in-review**: Tests pass, PR submitted — move here, not directly to done. The reviewer (user) validates.
-- **done**: Only after explicit user validation.
-
-### Priority Conventions
-
-| Tier | Kaneo Priority | When to Use                                       |
-| ---- | -------------- | ------------------------------------------------- |
-| P0   | `high`         | Core infrastructure — nothing works without these |
-| P1   | `medium`       | Feature work that depends on P0                   |
-| P2   | `low`          | Reliability, optimizations, CLI polish            |
-| P3   | `low`          | Developer experience, tooling, documentation      |
-
-### Creating a Task
-
-```bash
-kaneo task create \
-  --title "Short imperative title" \
-  --status planned \
-  --description "# Full markdown body with Goal, Requirements, Dependencies, Validation, Actions Log"
-```
-
-Never guess requirements. If context is insufficient, ask before creating.
-
-### Updating a Task
-
-```bash
-# Move status
-kaneo task update <id> --status "in-progress"
-
-# Update description (always pass the complete body — Kaneo replaces the entire field)
-kaneo task update <id> --description "<full updated body>"
-
-# Set priority
-kaneo task update <id> --priority medium
-```
-
-### Listing Tasks
-
-```bash
-kaneo task list                           # all tasks in the project
-kaneo task list --status planned          # filter by status
-kaneo task list --priority high           # filter by priority
-```
-
-### Valid Status Values
-
-When using `--status`, always use the **slug** form (lowercase, hyphenated):
-`planned`, `to-do`, `in-progress`, `in-review`, `done`
-
-Do NOT use display names (`"To Do"`, `"In Progress"`) — these will fail with a 400 error.
 
 ## Module-Specific Conventions
 

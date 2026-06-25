@@ -1,5 +1,5 @@
-use crate::services::workers::errors::WorkersError;
-use crate::services::workers::model::WorkerResponse;
+use crate::models::workers::errors::WorkersError;
+use crate::models::workers::model::WorkerResponse;
 use crate::services::workers::service::WorkersService;
 
 impl WorkersService {

@@ -1,8 +1,8 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
+use crate::models::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::auth::credentials::{OAuthCredential, OPENAI_PROVIDER_KEY};
-use crate::services::model_providers::errors::ModelProvidersError;
 
 #[derive(Serialize)]
 struct OpenCodeOAuthEntry<'a> {

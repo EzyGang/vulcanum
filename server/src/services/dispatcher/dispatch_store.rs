@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::services::dispatcher::errors::DispatchError;
+use crate::models::dispatcher::errors::DispatchError;
 
 const DISPATCH_KEY_TTL_SECS: u64 = 300;
 

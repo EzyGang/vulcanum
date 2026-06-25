@@ -1,8 +1,8 @@
 use uuid::Uuid;
 
-use crate::services::project_configs::errors::ProjectConfigsError;
-use crate::services::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
-use crate::services::project_configs::repository::UpdateProjectConfigParams;
+use crate::db::project_configs::UpdateProjectConfigParams;
+use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
 use crate::services::project_configs::service::{
     resolve_column_if_set, resolve_model_field, ProjectConfigsService,
 };
@@ -158,7 +158,7 @@ fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
 }
 
 fn resolve_nullable_column_if_set(
-    columns: &[crate::services::providers::model::IntegrationColumn],
+    columns: &[crate::models::providers::model::IntegrationColumn],
     column: &mut Option<Option<String>>,
 ) -> Result<(), ProjectConfigsError> {
     match column {

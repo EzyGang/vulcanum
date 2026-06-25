@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::services::work_run_events::errors::WorkRunEventsError;
-use crate::services::work_run_events::model::WorkRunEvent;
+use crate::models::work_run_events::errors::WorkRunEventsError;
+use crate::models::work_run_events::model::WorkRunEvent;
 use crate::services::work_run_events::service::{map_work_runs_error, WorkRunEventsService};
 
 const MAX_LIMIT: i64 = 500;

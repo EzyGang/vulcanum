@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use crate::config::AppConfig;
-use crate::services::workers::errors::WorkersError;
+use crate::db::workers::queries::CreateWorkerParams;
+use crate::db::workers::WorkersRepository;
+use crate::models::workers::errors::WorkersError;
+use crate::models::workers::model::DEFAULT_MAX_CONCURRENT_JOBS;
 use crate::services::workers::registration_code_store::InMemoryCodeStore;
-use crate::services::workers::repository::queries::CreateWorkerParams;
-use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 use chrono::{Duration, Utc};
@@ -38,7 +39,7 @@ async fn svc(pool: sqlx::PgPool) -> WorkersService {
     let c = cfg();
     WorkersService::new(
         WorkersRepository::new(),
-        crate::services::work_runs::repository::WorkRunsRepository::new(),
+        crate::db::work_runs::WorkRunsRepository::new(),
         pool,
         &c,
         Arc::new(InMemoryCodeStore::new()),
@@ -75,10 +76,7 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
     assert_eq!(resp.name, "test-runner");
     assert_eq!(resp.refresh_token.len(), 64);
     assert!(!resp.access_token.is_empty());
-    assert_eq!(
-        resp.max_concurrent_jobs,
-        crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS
-    );
+    assert_eq!(resp.max_concurrent_jobs, DEFAULT_MAX_CONCURRENT_JOBS);
 }
 
 #[sqlx::test]
@@ -233,7 +231,7 @@ async fn list_all_returns_workers(pool: sqlx::PgPool) {
                 refresh_token_hash: "h1",
                 refresh_expires_at: expiry,
                 capabilities: &capabilities,
-                max_concurrent_jobs: crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS,
+                max_concurrent_jobs: DEFAULT_MAX_CONCURRENT_JOBS,
             },
         )
         .await
@@ -247,7 +245,7 @@ async fn list_all_returns_workers(pool: sqlx::PgPool) {
                 refresh_token_hash: "h2",
                 refresh_expires_at: expiry,
                 capabilities: &capabilities,
-                max_concurrent_jobs: crate::services::workers::model::DEFAULT_MAX_CONCURRENT_JOBS,
+                max_concurrent_jobs: DEFAULT_MAX_CONCURRENT_JOBS,
             },
         )
         .await

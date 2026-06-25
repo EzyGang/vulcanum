@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::config::AppConfig;
-use crate::services::github_app::errors::GithubAppError;
-use crate::services::github_app::model::GithubInstallation;
-use crate::services::github_app::repository::GithubAppRepository;
+use crate::db::github_app::GithubAppRepository;
+use crate::models::github_app::errors::GithubAppError;
+use crate::models::github_app::model::GithubInstallation;
 use crate::util::github::parse_github_repo;
 
 pub struct GithubAppManager {

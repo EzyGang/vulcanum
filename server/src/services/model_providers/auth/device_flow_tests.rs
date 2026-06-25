@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use crate::models::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::auth::device_flow::{
     DeviceFlowStore, InMemoryDeviceFlowStore, PendingDeviceFlow, RedisDeviceFlowStore,
 };
-use crate::services::model_providers::errors::ModelProvidersError;
 
 #[tokio::test]
 async fn in_memory_store_round_trips_updates_and_consumes_attempts() {

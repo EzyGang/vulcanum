@@ -3,8 +3,8 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::teams::model::{
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::teams::model::{
     CreateTeamRequest, TeamDefaultsResponse, UpdateTeamRequest, DEFAULT_REVIEW_PROMPT_TEMPLATE,
 };
 

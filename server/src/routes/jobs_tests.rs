@@ -3,8 +3,8 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
+use crate::db::dispatcher::DispatchRepository;
 use crate::routes;
-use crate::services::dispatcher::repository::DispatchRepository;
 use crate::test_helpers;
 
 async fn build_state(pool: sqlx::PgPool) -> AppState {
@@ -44,7 +44,8 @@ async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-poll-test").await;
 
     state
-        .dispatch_store
+        .jobs
+        .dispatch_store()
         .set_dispatched(worker_id, wr_id)
         .await
         .expect("Should set dispatched");
@@ -469,7 +470,7 @@ async fn post_runs_cancel_returns_204(pool: sqlx::PgPool) {
     let wr_id =
         test_helpers::insert_running_work_run(&pool, project_id, "cancel-1-task", worker_id).await;
 
-    let cancel_store = state.cancel_store.clone();
+    let cancel_store = state.jobs.cancel_store();
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(state))

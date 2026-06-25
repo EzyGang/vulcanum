@@ -16,7 +16,7 @@ async fn main() -> eyre::Result<()> {
     let app_state = app_state::AppState::new(cfg).await?;
 
     tracing::info!("Applying migrations...");
-    sqlx::migrate!().run(&app_state.db_pool).await?;
+    app_state.run_migrations().await?;
 
     let poller = app_state.clone().into_poller(cfg.poll_period_secs);
     tokio::spawn(poller.run());

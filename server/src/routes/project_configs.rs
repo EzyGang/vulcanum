@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::project_configs::model::{
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::project_configs::model::{
     CreateProjectConfigRequest, UpdateProjectConfigRequest,
 };
 

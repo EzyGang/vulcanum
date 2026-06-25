@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::services::auth::errors::AuthError;
-use crate::services::auth::model::GithubCallbackResult;
+use crate::models::auth::errors::AuthError;
+use crate::models::auth::model::GithubCallbackResult;
 use crate::services::auth::service::AuthService;
 const GITHUB_OAUTH_STATE_TTL_MINUTES: i64 = 10;
 const DEFAULT_GITHUB_RETURN_TO: &str = "/login";

@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 
-use crate::services::workers::errors::WorkersError;
-use crate::services::workers::model;
+use crate::models::workers::errors::WorkersError;
+use crate::models::workers::model;
 use crate::services::workers::service::token::{build_jwt, generate_random_token, hash_token};
 use crate::services::workers::service::WorkersService;
 use vulcanum_shared::api_types::{RefreshRequest, RefreshResponse};

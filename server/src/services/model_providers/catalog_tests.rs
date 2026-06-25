@@ -1,8 +1,8 @@
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::model::{CatalogModel, CatalogProvider, CatalogResponse};
 use crate::services::model_providers::catalog::{
     is_codex_compatible_openai_model, ModelCatalogClient,
 };
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::model_providers::model::{CatalogModel, CatalogProvider, CatalogResponse};
 
 #[tokio::test]
 async fn validate_provider_accepts_known_provider() {

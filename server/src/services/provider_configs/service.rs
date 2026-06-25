@@ -1,12 +1,12 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::services::provider_configs::errors::IntegrationProvidersError;
-use crate::services::provider_configs::model::{
+use crate::db::provider_configs::queries::UpdateProviderParams;
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::models::provider_configs::errors::IntegrationProvidersError;
+use crate::models::provider_configs::model::{
     CreateProviderRequest, IntegrationProvider, UpdateProviderRequest,
 };
-use crate::services::provider_configs::repository::queries::UpdateProviderParams;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 
 #[derive(Clone)]
 pub struct IntegrationProvidersService {

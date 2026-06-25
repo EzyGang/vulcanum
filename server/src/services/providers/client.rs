@@ -3,11 +3,12 @@ mod client_tests;
 
 use async_trait::async_trait;
 
-use crate::services::provider_configs::model::IntegrationProvider;
+use crate::models::provider_configs::model::IntegrationProvider;
+use crate::models::providers::errors::IntegrationError;
+use crate::models::providers::model::{
+    IntegrationColumn, IntegrationProject, IntegrationTask, IntegrationType, IntegrationWorkspace,
+};
 use crate::services::providers::kaneo::client::KaneoClient;
-
-use super::errors::IntegrationError;
-use super::model::{IntegrationColumn, IntegrationProject, IntegrationTask, IntegrationWorkspace};
 
 #[derive(Clone)]
 pub enum IntegrationClient {
@@ -17,9 +18,7 @@ pub enum IntegrationClient {
 impl IntegrationClient {
     pub fn from_provider(provider: IntegrationProvider) -> Self {
         match provider.provider_type {
-            super::model::IntegrationType::Kaneo => {
-                Self::new_kaneo(provider.instance_url, provider.api_key)
-            }
+            IntegrationType::Kaneo => Self::new_kaneo(provider.instance_url, provider.api_key),
         }
     }
 

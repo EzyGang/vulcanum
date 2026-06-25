@@ -1,15 +1,14 @@
 pub mod app_state;
 pub mod config;
+pub mod db;
 pub mod errors;
-pub mod queryer;
+pub mod models;
 pub mod routes;
 pub mod services;
 pub mod util;
 
 #[cfg(test)]
-pub mod test_helpers;
+pub mod tests;
 
 #[cfg(test)]
-mod e2e_integration_tests;
-#[cfg(test)]
-mod e2e_worker_flow_tests;
+pub use tests::helpers as test_helpers;

@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
+use crate::db::model_providers::ModelProvidersRepository;
+use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::teams::TeamsRepository;
+use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::project_configs::model::UpdateProjectConfigRequest;
+use crate::models::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
-use crate::services::project_configs::errors::ProjectConfigsError;
-use crate::services::project_configs::model::UpdateProjectConfigRequest;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
-use crate::services::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
-use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
 use crate::test_helpers;
 

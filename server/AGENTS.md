@@ -54,7 +54,7 @@ This crate follows the **Web Service Architecture** defined in the root `AGENTS.
 
 - Use `query!` and `query_as!` macros when possible.
 - Repository methods must map `sqlx::Error` to domain errors; never leak raw SQL errors into the service or HTTP layers.
-- Use the `Queryer<'c>` trait pattern for transaction support:
+- Use the `Queryer<'c>` trait pattern from `src/db/queryer.rs` for transaction support:
   ```rust
   pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
   impl<'c> Queryer<'c> for &PgPool {}
@@ -63,6 +63,50 @@ This crate follows the **Web Service Architecture** defined in the root `AGENTS.
 
 ## Module Layout
 
+`src/` is role-first, then domain-specific. Do not create a domain root such as `src/work_runs/` that contains routes, services, models, and SQL together. Instead, put each piece in the layer that owns it.
+
+```
+src/
+  routes/                    # Actix route registration, handlers, extractors
+    jobs.rs                  # Thin HTTP handlers for job endpoints
+    jobs_tests.rs            # Route tests scoped to the jobs routes module
+  services/                  # Business logic, orchestration, caches, external clients
+    work_runs/
+      mod.rs                 # Domain service module declarations
+      service.rs             # WorkRunsService type, constructor, shared deps
+      service/               # Larger service methods split by operation
+        poll.rs
+        submit_result.rs
+        record_review.rs
+    dispatcher/
+      dispatch_store.rs      # Service-owned workflow store abstraction
+      cancel_store.rs
+  db/                        # Repository structs and SQLx query implementations
+    work_runs.rs             # WorkRunsRepository type
+    work_runs/
+      queries.rs             # Query module declarations or small query impls
+      queries/
+        limits.rs            # Focused SQLx query implementations
+  models/                    # Domain data types and domain errors
+    work_runs/
+      mod.rs
+      model.rs               # Rows, DTOs, enums
+      errors.rs              # WorkRunsError and related domain errors
+  tests/                     # Shared helpers, e2e tests, cross-module service tests
+    helpers.rs
+    e2e_integration_tests.rs
+    e2e_worker_flow_tests.rs
+    work_runs_service/
+      mod.rs
+      work_runs_tests.rs
+      record_review_tests.rs
+  util/                      # Cross-domain helpers with no business state
+```
+
+When adding or changing a domain, place each concern by layer: route handlers in `src/routes/`, business behavior in `src/services/<domain>/`, persistence in `src/db/<domain>.rs` and `src/db/<domain>/`, and data/error types in `src/models/<domain>/`. For example, a `work_runs` API change usually touches `routes/work_runs.rs`, one or more files under `services/work_runs/`, `db/work_runs.rs` or `db/work_runs/queries/`, and `models/work_runs/model.rs` or `models/work_runs/errors.rs`.
+
+Keep reusable test fixtures in `src/tests/helpers.rs`. Put e2e-style tests and service tests that need cross-module access under `src/tests/`. Route tests may stay next to route modules as `src/routes/<route>_tests.rs`. Do not use `#[path]` attributes from production modules to pull in test files.
+
 ### Provider Namespace (`src/services/providers/`)
 
 All external-provider client code lives under a single `providers/` directory so adding a future alternative only requires adding one sibling directory.
@@ -70,31 +114,33 @@ All external-provider client code lives under a single `providers/` directory so
 ```
 src/services/providers/
   client.rs      # Dispatcher enum + TaskFetcher trait (e.g. IntegrationClient)
-  errors.rs      # Shared provider error types
-  model.rs       # Shared provider model types (e.g. IntegrationType)
   kaneo/         # Kaneo-specific HTTP client
     client.rs
     errors.rs
+
+src/models/providers/
+  errors.rs      # Shared provider error types
+  model.rs       # Shared provider model types (e.g. IntegrationType)
 ```
 
-### Provider Configuration (`src/services/provider_configs/`)
+### Provider Configuration
 
-Stores provider **configuration rows** (name, URL, API key) in Postgres. Named `provider_configs` to avoid colliding with the `providers/` client namespace.
+Provider configuration rows (name, URL, API key) are stored through `src/db/provider_configs.rs`. The domain remains named `provider_configs` to avoid colliding with the `providers` external-client namespace.
 
 ### Repository Conventions
 
-Each domain keeps query module declarations in `repository/queries.rs`. Small modules may keep all query implementations there, but split modules should keep `queries.rs` declaration-only and place implementations in named child files. Do not put implementation code in `mod.rs`. Example:
+Each domain keeps query module declarations in `src/db/<domain>/queries.rs`. Small modules may keep all query implementations there, but split modules should keep `queries.rs` declaration-only and place implementations in named child files. Do not put implementation code in `mod.rs`. Example:
 
 ```
-src/services/<domain>/
-  repository.rs
-  repository/
+src/db/
+  <domain>.rs
+  <domain>/
     queries.rs        # SQLx query implementations for small modules
 
 # or, when split:
-src/services/<domain>/
-  repository.rs
-  repository/
+src/db/
+  <domain>.rs
+  <domain>/
     queries.rs        # Module declarations only
     queries/
       <area>.rs       # Focused query implementations

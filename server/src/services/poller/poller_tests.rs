@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::models::providers::errors::IntegrationError;
 use crate::services::poller::poller_test_support::{
     build_service, insert_active_run, insert_project_config, insert_provider, make_task,
     MockTaskFetcher,
 };
-use crate::services::providers::errors::IntegrationError;
 
 #[sqlx::test]
 async fn poller_inserts_tasks(pool: PgPool) {

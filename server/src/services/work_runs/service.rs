@@ -11,31 +11,18 @@ pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;
 
-#[cfg(test)]
-#[path = "service/tests/record_review_tests.rs"]
-mod record_review_tests;
-#[cfg(test)]
-#[path = "service/tests/spawn_review_tests.rs"]
-mod spawn_review_tests;
-#[cfg(test)]
-#[path = "service/tests/sync_task_tracker_tests.rs"]
-mod sync_task_tracker_tests;
-#[cfg(test)]
-#[path = "service/tests/work_runs_tests.rs"]
-mod work_runs_tests;
-
 use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::db::workers::WorkersRepository;
 use crate::services::dispatcher::cancel_store::CancelStore;
 use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
-use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::services::workers::repository::WorkersRepository;
 
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
@@ -43,8 +30,8 @@ pub struct WorkRunsService {
     pub project_configs: ProjectConfigsService,
     pub github: GithubAppManager,
     pub db: PgPool,
-    pub dispatch_store: Arc<dyn DispatchStore>,
-    pub cancel_store: Arc<dyn CancelStore>,
+    dispatch_store: Arc<dyn DispatchStore>,
+    cancel_store: Arc<dyn CancelStore>,
     pub providers_repo: IntegrationProvidersRepository,
     pub model_providers: ModelProvidersService,
     pub unhealthy_threshold: i32,
@@ -93,5 +80,17 @@ impl WorkRunsService {
             model_providers,
             unhealthy_threshold,
         }
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn dispatch_store(&self) -> Arc<dyn DispatchStore> {
+        self.dispatch_store.clone()
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn cancel_store(&self) -> Arc<dyn CancelStore> {
+        self.cancel_store.clone()
     }
 }

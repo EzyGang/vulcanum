@@ -6,23 +6,24 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+use crate::db::model_providers::ModelProvidersRepository;
+use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::teams::TeamsRepository;
+use crate::db::work_runs::queries::InsertWorkRunParams;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::models::providers::errors::IntegrationError;
+use crate::models::providers::model::IntegrationTask;
+use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::poller::service::PollerService;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::providers::client::TaskFetcher;
-use crate::services::providers::errors::IntegrationError;
-use crate::services::providers::model::IntegrationTask;
-use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
-use crate::services::work_runs::model::{WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::InsertWorkRunParams;
-use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 
 pub(crate) struct MockTaskFetcher {
@@ -170,14 +171,14 @@ pub(crate) fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerSer
     let project_configs = ProjectConfigsService::new(
         repo.clone(),
         db.clone(),
-        crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
+        IntegrationProvidersRepository::new(),
         model_providers,
         TeamsService::new(TeamsRepository::new(), db.clone()),
     );
     let service = PollerService::new(
         project_configs,
         WorkRunsRepository::new(),
-        crate::services::provider_configs::repository::IntegrationProvidersRepository::new(),
+        IntegrationProvidersRepository::new(),
         db,
         30,
     );

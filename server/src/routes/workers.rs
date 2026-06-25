@@ -3,9 +3,9 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::workers::model::UpdateWorkerStatusRequest;
 use crate::routes::worker_auth::WorkerAuth;
-use crate::services::workers::model::UpdateWorkerStatusRequest;
 use vulcanum_shared::api_types::{ConnectRequest, RefreshRequest};
 
 pub async fn generate_code(

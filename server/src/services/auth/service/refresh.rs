@@ -3,8 +3,8 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 use sha2::Digest;
 
-use crate::services::auth::errors::AuthError;
-use crate::services::auth::model::AuthTokenResponse;
+use crate::models::auth::errors::AuthError;
+use crate::models::auth::model::AuthTokenResponse;
 use crate::services::auth::service::AuthService;
 
 const USER_ACCESS_TOKEN_TTL_MINUTES: i64 = 15;

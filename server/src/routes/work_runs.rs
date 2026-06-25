@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::work_runs::model::WorkRunStatus;
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::work_runs::model::WorkRunStatus;
 use vulcanum_shared::api_types::{BulkDeleteRunsRequest, BulkDeleteRunsResponse, WireEvent};
 
 #[derive(Deserialize)]

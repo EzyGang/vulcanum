@@ -1,37 +1,35 @@
 use std::sync::Arc;
 
-use sqlx::PgPool;
-
 use crate::config::AppConfig;
-use crate::services::auth::repository::AuthRepository;
+use crate::db::auth::AuthRepository;
+use crate::db::github_app::GithubAppRepository;
+use crate::db::model_providers::ModelProvidersRepository;
+use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::teams::TeamsRepository;
+use crate::db::users::UsersRepository;
+use crate::db::work_run_events::WorkRunEventsRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::db::workers::WorkersRepository;
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::{
     CancelStore, InMemoryCancelStore, RedisCancelStore,
 };
 use crate::services::dispatcher::dispatch_store::DispatchStore;
-use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::auth::device_flow::RedisDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::provider_configs::service::IntegrationProvidersService;
 use crate::services::teams::invite_store::RedisTeamInviteStore;
-use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
-use crate::services::users::repository::UsersRepository;
 use crate::services::users::service::UsersService;
-use crate::services::work_run_events::repository::WorkRunEventsRepository;
 use crate::services::work_run_events::service::WorkRunEventsService;
-use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::services::workers::registration_code_store::RedisCodeStore;
-use crate::services::workers::repository::WorkersRepository;
 use crate::services::workers::service::WorkersService;
 
 #[derive(Clone)]
@@ -45,10 +43,6 @@ pub struct AppState {
     pub events: WorkRunEventsService,
     pub github: GithubAppManager,
     pub teams: TeamsService,
-    pub db_pool: PgPool,
-    pub work_runs: WorkRunsRepository,
-    pub dispatch_store: Arc<dyn DispatchStore>,
-    pub cancel_store: Arc<dyn CancelStore>,
     pub jwt_secret: String,
     pub is_single_user: bool,
 }
@@ -152,13 +146,13 @@ impl AppState {
             events,
             github,
             teams,
-            db_pool,
-            work_runs,
-            dispatch_store,
-            cancel_store,
             jwt_secret,
             is_single_user: cfg.is_single_user,
         })
+    }
+
+    pub async fn run_migrations(&self) -> Result<(), sqlx::migrate::MigrateError> {
+        sqlx::migrate!().run(&self.jobs.db).await
     }
 
     pub fn into_poller(
@@ -167,9 +161,9 @@ impl AppState {
     ) -> crate::services::poller::service::PollerService {
         crate::services::poller::service::PollerService::new(
             self.project_configs.clone(),
-            self.work_runs.clone(),
+            self.jobs.work_runs_repo.clone(),
             self.providers.repo.clone(),
-            self.db_pool.clone(),
+            self.jobs.db.clone(),
             poll_period_secs,
         )
     }

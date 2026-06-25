@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 
+use crate::db::work_run_events::WorkRunEventsRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::models::work_run_events::errors::WorkRunEventsError;
 use crate::services::dispatcher::cancel_store::{CancelStore, InMemoryCancelStore};
-use crate::services::work_run_events::errors::WorkRunEventsError;
-use crate::services::work_run_events::repository::WorkRunEventsRepository;
 use crate::services::work_run_events::service::WorkRunEventsService;
-use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::test_helpers;
 use vulcanum_shared::api_types::WireEvent;
 

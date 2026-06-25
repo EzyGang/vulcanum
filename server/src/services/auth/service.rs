@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::services::auth::repository::AuthRepository;
+use crate::db::auth::AuthRepository;
 use crate::services::auth::token_store::TokenStore;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::service::UsersService;

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::services::workers::errors::WorkersError;
+use crate::models::workers::errors::WorkersError;
 
 /// Abstract storage for ephemeral worker registration codes.
 #[async_trait]

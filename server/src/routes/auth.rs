@@ -2,11 +2,10 @@ use actix_web::{web, HttpResponse};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::auth::model::{
+use crate::models::auth::model::{
     AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, GithubStartQuery,
     InstanceLoginRequest, InstanceLoginResponse, LoginRequest, LoginResponse, LogoutRequest,
-    MeResponse, RefreshRequest, TeamInfo, UserInfo, VerifyQuery, VerifyResponse,
+    MeResponse, RefreshRequest, TeamInfo, TeamPrincipal, UserInfo, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
