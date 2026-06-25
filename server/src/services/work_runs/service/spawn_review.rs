@@ -12,16 +12,20 @@ const PR_BLOCK_START: &str = "<!-- vulcanum:prs:start -->";
 const PR_BLOCK_END: &str = "<!-- vulcanum:prs:end -->";
 
 impl WorkRunsService {
-    pub(crate) async fn attach_prs_and_spawn_reviews(&self, run: &WorkRun, pr_urls: &[String]) {
+    pub(crate) async fn attach_prs_and_spawn_reviews(
+        &self,
+        run: &WorkRun,
+        pr_urls: &[String],
+    ) -> bool {
         if pr_urls.is_empty() || !matches!(run.work_type, WorkRunType::Implementation) {
-            return;
+            return false;
         }
 
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(config) => config,
             Err(e) => {
                 tracing::warn!(work_run_id = %run.id, error = %e, "failed to load project config for review spawn");
-                return;
+                return false;
             }
         };
         let settings = match self
@@ -32,7 +36,7 @@ impl WorkRunsService {
             Ok(settings) => settings,
             Err(e) => {
                 tracing::warn!(work_run_id = %run.id, error = %e, "failed to load effective settings for review spawn");
-                return;
+                return false;
             }
         };
 
@@ -73,13 +77,13 @@ impl WorkRunsService {
         }
 
         if task_prs.is_empty() {
-            return;
+            return false;
         }
 
         self.update_task_pr_block(run, &task_prs).await;
 
         if !settings.review_enabled {
-            return;
+            return false;
         }
 
         for task_pr in &task_prs {
@@ -124,6 +128,8 @@ impl WorkRunsService {
                 tracing::warn!(work_run_id = %run.id, pr_url = %task_pr.pr_url, error = %e, "failed to insert review run");
             }
         }
+
+        true
     }
 
     async fn update_task_pr_block(&self, run: &WorkRun, task_prs: &[TaskPr]) {

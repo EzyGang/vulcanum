@@ -83,13 +83,21 @@ Stores provider **configuration rows** (name, URL, API key) in Postgres. Named `
 
 ### Repository Conventions
 
-Each domain keeps per-table query logic in `repository/queries.rs` (previously named after the table, which was vague). Example:
+Each domain keeps query module declarations in `repository/queries.rs`. Small modules may keep all query implementations there, but split modules should keep `queries.rs` declaration-only and place implementations in named child files. Do not put implementation code in `mod.rs`. Example:
 
 ```
 src/services/<domain>/
   repository.rs
   repository/
-    queries.rs        # SQLx query implementations
+    queries.rs        # SQLx query implementations for small modules
+
+# or, when split:
+src/services/<domain>/
+  repository.rs
+  repository/
+    queries.rs        # Module declarations only
+    queries/
+      <area>.rs       # Focused query implementations
 ```
 
 ### Service Conventions

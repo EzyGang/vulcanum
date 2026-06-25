@@ -10,6 +10,7 @@ import {
 import type { IntegrationProvider } from '../../../types/projects';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { formatDateTime } from '../../../utils/format';
 
 export const useProviders = () => {
   const {
@@ -140,7 +141,11 @@ export const useProviders = () => {
   );
 
   return {
-    providers: providers ?? [],
+    providers:
+      providers?.map((provider) => ({
+        ...provider,
+        formattedCreatedAt: formatDateTime(provider.createdAt)
+      })) ?? [],
     loading,
     error,
     deleteConfirmId,

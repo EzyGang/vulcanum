@@ -11,6 +11,7 @@ import {
 import type { ModelProviderConfig } from '../../../types/model-providers';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { formatDateTime } from '../../../utils/format';
 import { useOpenAiDeviceAuth } from './useOpenAiDeviceAuth.hook';
 
 type AuthMethod = 'api_key' | 'device_oauth';
@@ -35,6 +36,13 @@ const saveButtonLabel = ({
     return 'Connect ChatGPT';
   }
   return editing ? 'Update' : 'Create';
+};
+
+const deviceFlowApprovalMessage = (nextPollAt: string | null): string => {
+  if (!nextPollAt) {
+    return 'Waiting for approval in your browser.';
+  }
+  return `Waiting for approval. Next poll: ${formatDateTime(nextPollAt)}`;
 };
 
 export const useModelProviders = () => {
@@ -217,7 +225,7 @@ export const useModelProviders = () => {
       credentials,
       deviceFlow,
       deviceFlowStatus,
-      nextPollAt,
+      deviceFlowApprovalMessage: deviceFlowApprovalMessage(nextPollAt.value),
       formError,
       formSubmitting,
       saveButtonLabel: saveButtonLabel({

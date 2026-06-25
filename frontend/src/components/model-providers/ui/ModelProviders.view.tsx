@@ -29,7 +29,7 @@ interface ModelProvidersViewProps {
     credentials: Signal<Record<string, string>>;
     deviceFlow: Signal<StartDeviceFlowResponse | null>;
     deviceFlowStatus: Signal<'idle' | 'pending' | 'connected'>;
-    nextPollAt: Signal<string | null>;
+    deviceFlowApprovalMessage: string;
     formError: Signal<string | null>;
     formSubmitting: Signal<boolean>;
     saveButtonLabel: string;
@@ -174,11 +174,7 @@ export const ModelProvidersView = ({
                 <div class='font-mono text-lg text-text-primary tracking-wide'>
                   {data.deviceFlow.value.userCode}
                 </div>
-                <div class='text-text-muted text-xs'>
-                  {data.nextPollAt.value
-                    ? `Waiting for approval. Next poll: ${data.nextPollAt.value}`
-                    : 'Waiting for approval in your browser.'}
-                </div>
+                <div class='text-text-muted text-xs'>{data.deviceFlowApprovalMessage}</div>
               </div>
             )}
           </div>

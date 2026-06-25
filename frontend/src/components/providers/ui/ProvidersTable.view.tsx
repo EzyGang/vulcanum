@@ -9,8 +9,10 @@ const PROVIDER_TYPE_LABELS: Record<string, string> = {
   kaneo: 'Kaneo'
 };
 
+type ProviderRow = IntegrationProvider & { formattedCreatedAt: string };
+
 interface ProvidersTableProps {
-  providers: IntegrationProvider[];
+  providers: ProviderRow[];
   deleteConfirmId: Signal<string | null>;
   onShowEdit: (provider: IntegrationProvider) => void;
   onConfirmDelete: (id: string) => void;
@@ -49,7 +51,7 @@ export const ProvidersTable = ({
             <span class='text-text-secondary text-sm font-mono'>{provider.instanceUrl}</span>
           </Table.Cell>
           <Table.Cell>
-            <span class='text-text-secondary text-sm'>{provider.createdAt}</span>
+            <span class='text-text-secondary text-sm'>{provider.formattedCreatedAt}</span>
           </Table.Cell>
           <Table.Cell>
             <ConfirmDelete
