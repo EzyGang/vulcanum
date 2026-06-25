@@ -3,9 +3,9 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::config::AppConfig;
-use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::db::workers::WorkersRepository;
 use crate::services::workers::registration_code_store::CodeStore;
-use crate::services::workers::repository::WorkersRepository;
 
 pub mod connect;
 pub mod delete;

@@ -4,7 +4,7 @@ use serde::Serialize;
 use sha2::Digest;
 use uuid::Uuid;
 
-use crate::services::workers::model;
+use crate::models::workers::model;
 
 #[derive(Serialize)]
 struct WorkerClaims {

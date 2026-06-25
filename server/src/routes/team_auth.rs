@@ -1,20 +1,9 @@
 use actix_web::{dev::Payload, Error, FromRequest, HttpRequest};
 use serde::Deserialize;
-use uuid::Uuid;
 
 use crate::errors::AppError;
+use crate::models::auth::model::TeamPrincipal;
 use crate::routes::{decode_jwt, parse_team_header};
-
-#[derive(Clone)]
-pub enum TeamPrincipal {
-    User {
-        user_id: String,
-        team_id: Option<Uuid>,
-    },
-    Instance {
-        team_id: Option<Uuid>,
-    },
-}
 
 #[derive(Deserialize)]
 struct Claims {

@@ -4,13 +4,13 @@ use std::sync::Arc;
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::teams::errors::TeamsError;
+use crate::db::teams::TeamsRepository;
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::teams::errors::TeamsError;
+use crate::models::teams::model::{UpdateTeamRequest, DEFAULT_REVIEW_PROMPT_TEMPLATE};
 use crate::services::teams::invite_store::{
     hash_token, invite_redis_key, InMemoryTeamInviteStore, TeamInvitePayload, TeamInviteStore,
 };
-use crate::services::teams::model::{UpdateTeamRequest, DEFAULT_REVIEW_PROMPT_TEMPLATE};
-use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
 use crate::test_helpers;
 

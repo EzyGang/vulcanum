@@ -1,8 +1,8 @@
 use sqlx::PgPool;
 
-use crate::services::users::errors::UsersError;
-use crate::services::users::model::User;
-use crate::services::users::repository::UsersRepository;
+use crate::db::users::UsersRepository;
+use crate::models::users::errors::UsersError;
+use crate::models::users::model::User;
 
 #[derive(Clone)]
 pub struct UsersService {

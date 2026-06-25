@@ -2,7 +2,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 
-use crate::services::auth::errors::AuthError;
+use crate::models::auth::errors::AuthError;
 use crate::services::auth::service::AuthService;
 
 const INSTANCE_TOKEN_TTL_HOURS: i64 = 24;

@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::model::ModelProviderConfig;
 use crate::services::model_providers::auth::credentials::{
     parse_auth, ParsedAuth, OPENAI_PROVIDER_KEY,
 };
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::opencode_auth::openai_auth_content;
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::model_providers::model::ModelProviderConfig;
 
 #[derive(Debug, Default)]
 pub struct RenderedModelConfig {

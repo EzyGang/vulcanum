@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::services::workers::errors::WorkersError;
+use crate::models::workers::errors::WorkersError;
 use crate::services::workers::service::WorkersService;
 
 impl WorkersService {

@@ -1,7 +1,7 @@
-use crate::services::project_configs::errors::ProjectConfigsError;
-use crate::services::project_configs::model::{EffectiveProjectSettings, ProjectConfig};
+use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::project_configs::model::{EffectiveProjectSettings, ProjectConfig};
+use crate::models::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
 
 impl ProjectConfigsService {
     pub async fn effective_settings(

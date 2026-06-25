@@ -5,9 +5,9 @@ use std::time::{Duration, Instant};
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::model::{CatalogModel, CatalogProvider, CatalogResponse};
 use crate::services::model_providers::auth::credentials::OPENAI_PROVIDER_KEY;
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::model_providers::model::{CatalogModel, CatalogProvider, CatalogResponse};
 
 const MODELS_DEV_URL: &str = "https://models.dev/api.json";
 const CATALOG_TTL: Duration = Duration::from_secs(60 * 60);

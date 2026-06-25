@@ -9,11 +9,11 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::db::work_run_events::WorkRunEventsRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::models::work_run_events::errors::WorkRunEventsError;
+use crate::models::work_runs::errors::WorkRunsError;
 use crate::services::dispatcher::cancel_store::CancelStore;
-use crate::services::work_run_events::errors::WorkRunEventsError;
-use crate::services::work_run_events::repository::WorkRunEventsRepository;
-use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::repository::WorkRunsRepository;
 
 #[derive(Clone)]
 pub struct WorkRunEventsService {

@@ -2,9 +2,9 @@ use chrono::Utc;
 use uuid::Uuid;
 use vulcanum_shared::api_types::SubmitResultRequest;
 
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::InsertWorkRunParams;
-use crate::services::work_runs::repository::WorkRunsRepository;
+use crate::db::work_runs::queries::InsertWorkRunParams;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::models::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::record_review::review_comment;
 use crate::test_helpers;
 

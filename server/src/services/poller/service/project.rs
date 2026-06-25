@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use crate::db::work_runs::queries::InsertWorkRunParams;
+use crate::models::project_configs::model::ProjectConfig;
+use crate::models::providers::model::{IntegrationTask, IntegrationType};
+use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
-use crate::services::project_configs::model::ProjectConfig;
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
-use crate::services::providers::model::{IntegrationTask, IntegrationType};
-use crate::services::work_runs::model::{WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 
 use super::{PollError, PollerService};
 

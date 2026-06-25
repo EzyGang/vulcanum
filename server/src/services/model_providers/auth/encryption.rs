@@ -3,7 +3,7 @@ use aes_gcm::{Aes256Gcm, Nonce};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 
-use crate::services::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::errors::ModelProvidersError;
 
 const KEY_LEN: usize = 32;
 const NONCE_LEN: usize = 12;

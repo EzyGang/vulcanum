@@ -1,7 +1,7 @@
 use vulcanum_shared::api_types::SubmitResultRequest;
 
-use crate::services::work_runs::model::WorkRun;
-use crate::services::work_runs::repository::queries::prs::InsertReviewResultParams;
+use crate::db::work_runs::queries::prs::InsertReviewResultParams;
+use crate::models::work_runs::model::WorkRun;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {

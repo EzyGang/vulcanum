@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
+use crate::models::auth::model::TeamPrincipal;
 use crate::services::github_app::service::GithubInstallState;
 
 pub async fn auth_redirect(

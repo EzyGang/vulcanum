@@ -1,12 +1,12 @@
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::teams::errors::TeamsError;
-use crate::services::teams::invite_store::TeamInvitePayload;
-use crate::services::teams::model::{
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::teams::errors::TeamsError;
+use crate::models::teams::model::{
     AcceptTeamInviteResponse, CreateTeamInviteResponse, TeamInvitePreviewResponse,
 };
+use crate::services::teams::invite_store::TeamInvitePayload;
 use crate::services::teams::service::TeamsService;
 
 const TEAM_INVITE_TTL_MINUTES: i64 = 30;

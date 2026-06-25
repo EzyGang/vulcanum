@@ -1,6 +1,6 @@
 use actix_web::HttpResponse;
 
-use crate::services::workers::model;
+use crate::models::workers::model;
 use vulcanum_shared::api_types::StatusResponse;
 
 pub async fn get() -> HttpResponse {

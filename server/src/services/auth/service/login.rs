@@ -1,7 +1,7 @@
-use crate::services::auth::errors::AuthError;
-use crate::services::auth::model::LoginRequest;
+use crate::models::auth::errors::AuthError;
+use crate::models::auth::model::LoginRequest;
+use crate::models::workers::model::ACCESS_TOKEN_TTL_MINUTES;
 use crate::services::auth::service::AuthService;
-use crate::services::workers::model::ACCESS_TOKEN_TTL_MINUTES;
 
 impl AuthService {
     pub async fn login(&self, req: LoginRequest) -> Result<String, AuthError> {

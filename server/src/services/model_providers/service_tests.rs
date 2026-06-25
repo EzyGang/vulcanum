@@ -2,15 +2,16 @@ use std::sync::Arc;
 
 use serde_json::json;
 
+use crate::db::model_providers::ModelProvidersRepository;
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::model::{
+    CatalogModel, CatalogProvider, CatalogResponse, CreateModelProviderRequest,
+    ModelProviderAuthType,
+};
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::model_providers::model::{
-    CatalogModel, CatalogProvider, CatalogResponse, CreateModelProviderRequest,
-};
-use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::test_helpers::{insert_team, DEFAULT_TEAM_ID};
 
@@ -50,8 +51,7 @@ async fn validate_model_selection_accepts_connected_catalog_model(pool: sqlx::Pg
             CreateModelProviderRequest {
                 provider_key: "anthropic".to_owned(),
                 display_name: "Anthropic".to_owned(),
-                auth_type:
-                    crate::services::model_providers::auth::credentials::ModelProviderAuthType::ApiKey,
+                auth_type: ModelProviderAuthType::ApiKey,
                 credentials: json!({ "ANTHROPIC_API_KEY": "secret" }),
             },
         )

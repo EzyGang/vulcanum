@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use uuid::Uuid;
 
-use crate::services::teams::errors::TeamsError;
+use crate::models::teams::errors::TeamsError;
 
 const INVITE_KEY_PREFIX: &str = "vulcanum:team_invite";
 

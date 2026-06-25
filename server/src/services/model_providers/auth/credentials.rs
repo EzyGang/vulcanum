@@ -3,22 +3,14 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::services::model_providers::auth::encryption::{EncryptedSecret, SecretCipher};
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::model_providers::model::{
-    ModelProviderConfig, ModelProviderOAuthStatus, ModelProviderResponse,
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::model::{
+    ModelProviderAuthType, ModelProviderConfig, ModelProviderOAuthStatus, ModelProviderResponse,
 };
+use crate::services::model_providers::auth::encryption::{EncryptedSecret, SecretCipher};
 
 pub const OPENAI_PROVIDER_KEY: &str = "openai";
 pub const OPENAI_CHATGPT_PROVIDER_ID: &str = "openai_chatgpt";
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModelProviderAuthType {
-    ApiKey,
-    DeviceOauth,
-    None,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OAuthCredential {

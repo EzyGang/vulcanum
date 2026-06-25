@@ -4,13 +4,13 @@ use base64::Engine;
 use chrono::Utc;
 use serde::Deserialize;
 
+use crate::models::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::auth::credentials::{
     OAuthCredential, OPENAI_CHATGPT_PROVIDER_ID, OPENAI_PROVIDER_KEY,
 };
 use crate::services::model_providers::auth::device_flow::{
     DeviceAuthProvider, DevicePoll, DeviceStart, PendingDeviceFlow,
 };
-use crate::services::model_providers::errors::ModelProvidersError;
 
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const ISSUER: &str = "https://auth.openai.com";

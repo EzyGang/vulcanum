@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
-use crate::services::work_run_events::errors::WorkRunEventsError;
-use crate::services::work_run_events::model::WorkRunEvent;
+use crate::models::work_run_events::errors::WorkRunEventsError;
+use crate::models::work_run_events::model::WorkRunEvent;
 use crate::services::work_run_events::service::WorkRunEventsService;
 
 const RECENT_LIMIT: i64 = 20;

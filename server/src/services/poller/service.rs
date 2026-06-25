@@ -6,11 +6,11 @@ use std::time::Duration;
 
 use sqlx::PgPool;
 
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::models::providers::errors::IntegrationError;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::TaskFetcher;
-use crate::services::providers::errors::IntegrationError;
-use crate::services::work_runs::repository::WorkRunsRepository;
 
 #[derive(Debug)]
 pub(super) enum PollError {

@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::db::dispatcher::DispatchRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::db::workers::WorkersRepository;
+use crate::models::dispatcher::errors::DispatchError;
 use crate::services::dispatcher::dispatch_store::DispatchStore;
-use crate::services::dispatcher::errors::DispatchError;
-use crate::services::dispatcher::repository::DispatchRepository;
-use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::services::workers::repository::WorkersRepository;
 
 const ORPHAN_THRESHOLD_SECS: i64 = 120;
 

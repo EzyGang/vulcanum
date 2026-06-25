@@ -1,8 +1,9 @@
 use uuid::Uuid;
 
-use crate::services::workers::errors::WorkersError;
-use crate::services::workers::model::UpdateWorkerStatusRequest;
-use crate::services::workers::model::{WorkerResponse, WorkerStatus, WorkerStatusOverride};
+use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::workers::errors::WorkersError;
+use crate::models::workers::model::UpdateWorkerStatusRequest;
+use crate::models::workers::model::{WorkerResponse, WorkerStatus, WorkerStatusOverride};
 use crate::services::workers::service::WorkersService;
 
 impl WorkersService {
@@ -30,9 +31,7 @@ impl WorkersService {
                     .reset_worker_active_jobs(&mut *tx, worker_id)
                     .await
                     .map_err(|e| match e {
-                        crate::services::work_runs::errors::WorkRunsError::Database(e) => {
-                            WorkersError::Database(e)
-                        }
+                        WorkRunsError::Database(e) => WorkersError::Database(e),
                         _ => WorkersError::WorkerNotFound,
                     })?;
 

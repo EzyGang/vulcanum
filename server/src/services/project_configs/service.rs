@@ -5,13 +5,13 @@ mod settings;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
+use crate::models::providers::model::{IntegrationColumn, IntegrationType};
 use crate::services::model_providers::service::ModelProvidersService;
-use crate::services::project_configs::errors::ProjectConfigsError;
-use crate::services::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
-use crate::services::project_configs::repository::ProjectConfigsRepository;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
 use crate::services::providers::client::IntegrationClient;
-use crate::services::providers::model::{IntegrationColumn, IntegrationType};
 use crate::services::teams::service::TeamsService;
 
 #[derive(Clone)]

@@ -4,9 +4,16 @@ use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::db::model_providers::ModelProvidersRepository;
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::model_providers::model::{
+    CatalogResponse, CreateModelProviderRequest, ModelProviderAuthType, ModelProviderConfig,
+    ModelProviderResponse, PollDeviceFlowResponse, StartDeviceFlowRequest, StartDeviceFlowResponse,
+    UpdateModelProviderRequest,
+};
 use crate::services::model_providers::auth::credentials::{
     encrypted_api_key_credentials, encrypted_oauth_credentials, parse_auth, to_response,
-    ModelProviderAuthType, ParsedAuth, OPENAI_CHATGPT_PROVIDER_ID, OPENAI_PROVIDER_KEY,
+    ParsedAuth, OPENAI_CHATGPT_PROVIDER_ID, OPENAI_PROVIDER_KEY,
 };
 use crate::services::model_providers::auth::device_flow::{
     DeviceAuthProvider, DeviceFlowStore, DevicePoll, PendingDeviceFlow,
@@ -15,16 +22,9 @@ use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::catalog::{
     is_codex_compatible_openai_model, ModelCatalogClient,
 };
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::model_providers::model::{
-    CatalogResponse, CreateModelProviderRequest, ModelProviderConfig, ModelProviderResponse,
-    PollDeviceFlowResponse, StartDeviceFlowRequest, StartDeviceFlowResponse,
-    UpdateModelProviderRequest,
-};
 use crate::services::model_providers::renderer::{
     render_opencode_config, ModelSelection, RenderedModelConfig,
 };
-use crate::services::model_providers::repository::ModelProvidersRepository;
 
 #[derive(Clone)]
 pub struct ModelProvidersService {

@@ -1,27 +1,27 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::db::github_app::GithubAppRepository;
+use crate::db::model_providers::ModelProvidersRepository;
+use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::teams::TeamsRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::db::workers::WorkersRepository;
+use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::work_runs::model::WorkRunStatus;
+use crate::models::workers::model::WorkerStatus;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
-use crate::services::github_app::repository::GithubAppRepository;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::repository::ModelProvidersRepository;
 use crate::services::model_providers::service::ModelProvidersService;
-use crate::services::project_configs::repository::ProjectConfigsRepository;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
-use crate::services::teams::repository::TeamsRepository;
 use crate::services::teams::service::TeamsService;
-use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::WorkRunStatus;
-use crate::services::work_runs::repository::WorkRunsRepository;
 use crate::services::work_runs::service::WorkRunsService;
-use crate::services::workers::model::WorkerStatus;
-use crate::services::workers::repository::WorkersRepository;
 use crate::test_helpers;
 use vulcanum_shared::api_types::SubmitResultRequest;
 
@@ -225,7 +225,7 @@ async fn ack_transitions_dispatched_to_running(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-ack").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -247,7 +247,7 @@ async fn ack_fails_when_already_claimed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-ack-2").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-race").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_a)
         .await
@@ -272,7 +272,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -317,7 +317,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-fail-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-fail").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
@@ -387,7 +387,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-owner-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-owner").await;
 
-    let dispatch_repo = crate::services::dispatcher::repository::DispatchRepository;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
     dispatch_repo
         .dispatch_to_worker(&pool, wr_id, worker_a)
         .await

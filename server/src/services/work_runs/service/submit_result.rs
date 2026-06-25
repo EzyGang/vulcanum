@@ -2,9 +2,9 @@ use uuid::Uuid;
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::runtime::types::FinishStatus;
 
-use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::SetResultParams;
+use crate::db::work_runs::queries::SetResultParams;
+use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {

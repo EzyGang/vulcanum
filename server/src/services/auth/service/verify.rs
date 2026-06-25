@@ -1,7 +1,7 @@
-use crate::services::auth::errors::AuthError;
-use crate::services::auth::model::VerifyQuery;
+use crate::models::auth::errors::AuthError;
+use crate::models::auth::model::VerifyQuery;
+use crate::models::users::model::User;
 use crate::services::auth::service::AuthService;
-use crate::services::users::model::User;
 
 impl AuthService {
     pub async fn verify(&self, query: VerifyQuery) -> Result<User, AuthError> {

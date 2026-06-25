@@ -54,7 +54,7 @@ This crate follows the **Web Service Architecture** defined in the root `AGENTS.
 
 - Use `query!` and `query_as!` macros when possible.
 - Repository methods must map `sqlx::Error` to domain errors; never leak raw SQL errors into the service or HTTP layers.
-- Use the `Queryer<'c>` trait pattern for transaction support:
+- Use the `Queryer<'c>` trait pattern from `src/db/queryer.rs` for transaction support:
   ```rust
   pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
   impl<'c> Queryer<'c> for &PgPool {}
@@ -63,6 +63,21 @@ This crate follows the **Web Service Architecture** defined in the root `AGENTS.
 
 ## Module Layout
 
+Top-level source directories are split by role:
+
+```
+src/routes/              # Actix route registration, handlers, extractors
+src/services/<domain>/   # Service structs, business operations, workflow stores, external clients
+src/db/<domain>.rs       # Repository struct definition
+src/db/<domain>/         # SQLx query implementations and repository tests
+src/models/<domain>/     # model.rs, errors.rs, DTOs, enums, shared principals
+src/tests/               # Shared test helpers and e2e-style server tests
+src/util/                # Cross-domain helpers
+```
+
+Put request/response DTOs, database row structs, domain enums, shared principals, and domain errors under `src/models/<domain>/`. Put SQLx repositories and queries under `src/db/`. Put business logic, validation, orchestration, Redis/in-memory workflow stores, and external API clients under `src/services/`.
+Keep reusable test fixtures in `src/tests/helpers.rs` and larger e2e-style test files under `src/tests/`.
+
 ### Provider Namespace (`src/services/providers/`)
 
 All external-provider client code lives under a single `providers/` directory so adding a future alternative only requires adding one sibling directory.
@@ -70,31 +85,33 @@ All external-provider client code lives under a single `providers/` directory so
 ```
 src/services/providers/
   client.rs      # Dispatcher enum + TaskFetcher trait (e.g. IntegrationClient)
-  errors.rs      # Shared provider error types
-  model.rs       # Shared provider model types (e.g. IntegrationType)
   kaneo/         # Kaneo-specific HTTP client
     client.rs
     errors.rs
+
+src/models/providers/
+  errors.rs      # Shared provider error types
+  model.rs       # Shared provider model types (e.g. IntegrationType)
 ```
 
-### Provider Configuration (`src/services/provider_configs/`)
+### Provider Configuration
 
-Stores provider **configuration rows** (name, URL, API key) in Postgres. Named `provider_configs` to avoid colliding with the `providers/` client namespace.
+Provider configuration rows (name, URL, API key) are stored through `src/db/provider_configs.rs`. The domain remains named `provider_configs` to avoid colliding with the `providers` external-client namespace.
 
 ### Repository Conventions
 
-Each domain keeps query module declarations in `repository/queries.rs`. Small modules may keep all query implementations there, but split modules should keep `queries.rs` declaration-only and place implementations in named child files. Do not put implementation code in `mod.rs`. Example:
+Each domain keeps query module declarations in `src/db/<domain>/queries.rs`. Small modules may keep all query implementations there, but split modules should keep `queries.rs` declaration-only and place implementations in named child files. Do not put implementation code in `mod.rs`. Example:
 
 ```
-src/services/<domain>/
-  repository.rs
-  repository/
+src/db/
+  <domain>.rs
+  <domain>/
     queries.rs        # SQLx query implementations for small modules
 
 # or, when split:
-src/services/<domain>/
-  repository.rs
-  repository/
+src/db/
+  <domain>.rs
+  <domain>/
     queries.rs        # Module declarations only
     queries/
       <area>.rs       # Focused query implementations

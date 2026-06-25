@@ -28,14 +28,14 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::work_runs::WorkRunsRepository;
+use crate::db::workers::WorkersRepository;
 use crate::services::dispatcher::cancel_store::CancelStore;
 use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
-use crate::services::provider_configs::repository::IntegrationProvidersRepository;
-use crate::services::work_runs::repository::WorkRunsRepository;
-use crate::services::workers::repository::WorkersRepository;
 
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,

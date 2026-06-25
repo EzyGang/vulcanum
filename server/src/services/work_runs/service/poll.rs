@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::services::work_runs::errors::WorkRunsError;
+use crate::models::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {

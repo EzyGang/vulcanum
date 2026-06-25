@@ -1,16 +1,16 @@
 use actix_web::{HttpResponse, ResponseError};
 use thiserror::Error;
 
-use crate::services::auth::errors::AuthError;
-use crate::services::github_app::errors::GithubAppError;
-use crate::services::model_providers::errors::ModelProvidersError;
-use crate::services::project_configs::errors::ProjectConfigsError;
-use crate::services::provider_configs::errors::IntegrationProvidersError;
-use crate::services::teams::errors::TeamsError;
-use crate::services::users::errors::UsersError;
-use crate::services::work_run_events::errors::WorkRunEventsError;
-use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::workers::errors::WorkersError;
+use crate::models::auth::errors::AuthError;
+use crate::models::github_app::errors::GithubAppError;
+use crate::models::model_providers::errors::ModelProvidersError;
+use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::provider_configs::errors::IntegrationProvidersError;
+use crate::models::teams::errors::TeamsError;
+use crate::models::users::errors::UsersError;
+use crate::models::work_run_events::errors::WorkRunEventsError;
+use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::workers::errors::WorkersError;
 
 #[derive(Debug, Error)]
 pub enum AppError {

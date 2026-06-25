@@ -1,10 +1,10 @@
+use crate::db::work_runs::queries::prs::UpsertTaskPrParams;
+use crate::db::work_runs::queries::InsertWorkRunParams;
+use crate::models::providers::model::IntegrationType;
+use crate::models::work_runs::model::{TaskPr, WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::poller::service::repo_layout;
 use crate::services::poller::template::{render_template, TemplateVars};
 use crate::services::providers::client::IntegrationClient;
-use crate::services::providers::model::IntegrationType;
-use crate::services::work_runs::model::{TaskPr, WorkRun, WorkRunStatus, WorkRunType};
-use crate::services::work_runs::repository::queries::prs::UpsertTaskPrParams;
-use crate::services::work_runs::repository::queries::InsertWorkRunParams;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::parse_github_pr_url;
 

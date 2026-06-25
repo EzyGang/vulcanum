@@ -1,9 +1,9 @@
 use uuid::Uuid;
 
+use crate::models::project_configs::model::JobConfigFields;
+use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::work_runs::model::WorkRunType;
 use crate::services::model_providers::renderer::ModelSelection;
-use crate::services::project_configs::model::JobConfigFields;
-use crate::services::work_runs::errors::WorkRunsError;
-use crate::services::work_runs::model::WorkRunType;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_repo_full_name_from_url;
 use vulcanum_shared::api_types::{JobRepo, JobResponse};

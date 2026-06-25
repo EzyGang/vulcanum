@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
-use crate::services::project_configs::errors::ProjectConfigsError;
-use crate::services::project_configs::model::{
+use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::project_configs::model::{
     ColumnInfo, LookupProjectResult, ProjectInfo, WorkspaceInfo,
 };
 use crate::services::project_configs::service::ProjectConfigsService;

@@ -1,6 +1,6 @@
 use vulcanum_shared::runtime::types::FinishStatus;
 
-use crate::services::work_runs::model::WorkRunStatus;
+use crate::models::work_runs::model::WorkRunStatus;
 use crate::services::work_runs::service::sync_task_tracker::{
     implementation_result_column, review_result_column,
 };

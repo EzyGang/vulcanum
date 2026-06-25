@@ -3,9 +3,9 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::project_configs::model::{LookupProjectResult, ProjectInfo, WorkspaceInfo};
-use crate::services::provider_configs::model::{CreateProviderRequest, UpdateProviderRequest};
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::project_configs::model::{LookupProjectResult, ProjectInfo, WorkspaceInfo};
+use crate::models::provider_configs::model::{CreateProviderRequest, UpdateProviderRequest};
 
 pub async fn list(
     state: web::Data<AppState>,

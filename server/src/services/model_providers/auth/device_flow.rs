@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+use crate::models::model_providers::errors::ModelProvidersError;
 use crate::services::model_providers::auth::credentials::OAuthCredential;
-use crate::services::model_providers::errors::ModelProvidersError;
 
 #[derive(Clone, Debug)]
 pub struct DeviceStart {

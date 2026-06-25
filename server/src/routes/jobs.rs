@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
+use crate::models::auth::model::TeamPrincipal;
 use crate::routes::worker_auth::WorkerAuth;
 use crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth;
 use vulcanum_shared::api_types::{

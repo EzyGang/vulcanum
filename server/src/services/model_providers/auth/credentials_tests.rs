@@ -1,9 +1,9 @@
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 
+use crate::models::model_providers::model::ModelProviderConfig;
 use crate::services::model_providers::auth::credentials::{parse_auth, to_response, ParsedAuth};
 use crate::services::model_providers::auth::encryption::SecretCipher;
-use crate::services::model_providers::model::ModelProviderConfig;
 
 #[test]
 fn legacy_plaintext_credentials_parse_as_api_key_auth() {

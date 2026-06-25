@@ -2,18 +2,18 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
+use crate::db::dispatcher::DispatchRepository;
+use crate::models::work_runs::model::WorkRunStatus;
+use crate::models::workers::model::WorkerStatus;
 use crate::services::dispatcher::dispatch_store::{DispatchStore, InMemoryDispatchStore};
-use crate::services::dispatcher::repository::DispatchRepository;
 use crate::services::dispatcher::service::DispatcherService;
-use crate::services::work_runs::model::WorkRunStatus;
-use crate::services::workers::model::WorkerStatus;
 use crate::test_helpers;
 
 fn build_service(pool: PgPool) -> DispatcherService {
     DispatcherService::new(
         DispatchRepository::new(),
-        crate::services::workers::repository::WorkersRepository::new(),
-        crate::services::work_runs::repository::WorkRunsRepository::new(),
+        crate::db::workers::WorkersRepository::new(),
+        crate::db::work_runs::WorkRunsRepository::new(),
         pool,
         Arc::new(InMemoryDispatchStore::default()),
         DEFAULT_STALE_THRESHOLD,
@@ -79,8 +79,8 @@ async fn dispatch_sets_redis_flag(pool: PgPool) {
 
     let svc = DispatcherService::new(
         DispatchRepository::new(),
-        crate::services::workers::repository::WorkersRepository::new(),
-        crate::services::work_runs::repository::WorkRunsRepository::new(),
+        crate::db::workers::WorkersRepository::new(),
+        crate::db::work_runs::WorkRunsRepository::new(),
         pool,
         store.clone(),
         DEFAULT_STALE_THRESHOLD,

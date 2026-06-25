@@ -3,8 +3,8 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
-use crate::routes::team_auth::TeamPrincipal;
-use crate::services::model_providers::model::{
+use crate::models::auth::model::TeamPrincipal;
+use crate::models::model_providers::model::{
     CreateModelProviderRequest, StartDeviceFlowRequest, UpdateModelProviderRequest,
 };
 
