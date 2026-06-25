@@ -168,7 +168,7 @@ async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-poll").await;
 
-    svc.dispatch_store
+    svc.dispatch_store()
         .set_dispatched(worker_id, wr_id)
         .await
         .expect("Should set dispatched");
@@ -200,7 +200,7 @@ async fn poll_consumes_dispatch_flag(pool: sqlx::PgPool) {
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-poll-2").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-consume").await;
 
-    svc.dispatch_store
+    svc.dispatch_store()
         .set_dispatched(worker_id, wr_id)
         .await
         .expect("Should set dispatched");

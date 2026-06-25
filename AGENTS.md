@@ -151,21 +151,45 @@ Rules:
 
 ### File Organization
 
-Domain code is split by role at the crate root:
+The `server` crate is organized by architectural role first, then by domain. This keeps layer boundaries visible at the top level and avoids mixing HTTP, business logic, SQL, and DTOs in one domain directory.
 
 ```
-src/routes/              # HTTP route registration, handlers, extractors
-src/services/<domain>/   # Service structs, business operations, workflow stores, external clients
-src/db/<domain>.rs       # Repository struct definition
-src/db/<domain>/         # SQLx query implementations and repository tests
-src/models/<domain>/     # model.rs, errors.rs, DTOs, enums, shared principals
-src/util/                # cross-domain helpers
+server/src/
+  routes/                    # HTTP route registration, handlers, extractors
+    jobs.rs
+    jobs_tests.rs
+  services/                  # Business logic and infrastructure owned by services
+    work_runs/
+      mod.rs
+      service.rs             # WorkRunsService type and constructor
+      service/               # One file per larger service operation
+        poll.rs
+        submit_result.rs
+  db/                        # Repository structs and SQLx query implementations
+    work_runs.rs             # WorkRunsRepository type
+    work_runs/
+      queries.rs
+      queries/
+        limits.rs
+  models/                    # Domain rows, DTOs, enums, errors, shared principals
+    work_runs/
+      mod.rs
+      model.rs
+      errors.rs
+  tests/                     # Shared helpers, e2e tests, and cross-module service tests
+    helpers.rs
+    e2e_integration_tests.rs
+    work_runs_service/
+      mod.rs
+      work_runs_tests.rs
+  util/                      # Cross-domain helpers with no business state
 ```
 
-- Keep the HTTP layer in `src/routes/` or `src/handlers/`.
-- Put database row structs, request/response DTOs, enums, and domain errors in `src/models/<domain>/`.
-- Put SQLx repository structs and query modules in `src/db/`.
-- Keep Redis/in-memory workflow stores beside the service that owns the workflow unless a dedicated storage layer exists.
+- Put HTTP concerns in `src/routes/`. Route tests can live beside the route file as `*_tests.rs` when they only exercise that route module.
+- Put business logic in `src/services/<domain>/`. Split large service methods into `src/services/<domain>/service/<operation>.rs` and keep workflow stores beside the service that owns them.
+- Put repository structs in `src/db/<domain>.rs` and SQLx query modules under `src/db/<domain>/`.
+- Put database row structs, request/response DTOs, enums, shared principals, and domain errors in `src/models/<domain>/`.
+- Put reusable server test helpers, e2e tests, and cross-module service tests under `src/tests/` instead of using `#[path]` from production modules.
 - Split files when they exceed 200 lines.
 - Large domains may be extracted to separate workspace crates under `services/<domain>/`.
 

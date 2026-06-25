@@ -105,7 +105,7 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
 
     state
         .jobs
-        .dispatch_store
+        .dispatch_store()
         .set_dispatched(worker_uuid, wr_id)
         .await
         .expect("Should set dispatched");

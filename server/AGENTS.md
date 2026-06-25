@@ -63,20 +63,49 @@ This crate follows the **Web Service Architecture** defined in the root `AGENTS.
 
 ## Module Layout
 
-Top-level source directories are split by role:
+`src/` is role-first, then domain-specific. Do not create a domain root such as `src/work_runs/` that contains routes, services, models, and SQL together. Instead, put each piece in the layer that owns it.
 
 ```
-src/routes/              # Actix route registration, handlers, extractors
-src/services/<domain>/   # Service structs, business operations, workflow stores, external clients
-src/db/<domain>.rs       # Repository struct definition
-src/db/<domain>/         # SQLx query implementations and repository tests
-src/models/<domain>/     # model.rs, errors.rs, DTOs, enums, shared principals
-src/tests/               # Shared test helpers and e2e-style server tests
-src/util/                # Cross-domain helpers
+src/
+  routes/                    # Actix route registration, handlers, extractors
+    jobs.rs                  # Thin HTTP handlers for job endpoints
+    jobs_tests.rs            # Route tests scoped to the jobs routes module
+  services/                  # Business logic, orchestration, caches, external clients
+    work_runs/
+      mod.rs                 # Domain service module declarations
+      service.rs             # WorkRunsService type, constructor, shared deps
+      service/               # Larger service methods split by operation
+        poll.rs
+        submit_result.rs
+        record_review.rs
+    dispatcher/
+      dispatch_store.rs      # Service-owned workflow store abstraction
+      cancel_store.rs
+  db/                        # Repository structs and SQLx query implementations
+    work_runs.rs             # WorkRunsRepository type
+    work_runs/
+      queries.rs             # Query module declarations or small query impls
+      queries/
+        limits.rs            # Focused SQLx query implementations
+  models/                    # Domain data types and domain errors
+    work_runs/
+      mod.rs
+      model.rs               # Rows, DTOs, enums
+      errors.rs              # WorkRunsError and related domain errors
+  tests/                     # Shared helpers, e2e tests, cross-module service tests
+    helpers.rs
+    e2e_integration_tests.rs
+    e2e_worker_flow_tests.rs
+    work_runs_service/
+      mod.rs
+      work_runs_tests.rs
+      record_review_tests.rs
+  util/                      # Cross-domain helpers with no business state
 ```
 
-Put request/response DTOs, database row structs, domain enums, shared principals, and domain errors under `src/models/<domain>/`. Put SQLx repositories and queries under `src/db/`. Put business logic, validation, orchestration, Redis/in-memory workflow stores, and external API clients under `src/services/`.
-Keep reusable test fixtures in `src/tests/helpers.rs` and larger e2e-style test files under `src/tests/`.
+When adding or changing a domain, place each concern by layer: route handlers in `src/routes/`, business behavior in `src/services/<domain>/`, persistence in `src/db/<domain>.rs` and `src/db/<domain>/`, and data/error types in `src/models/<domain>/`. For example, a `work_runs` API change usually touches `routes/work_runs.rs`, one or more files under `services/work_runs/`, `db/work_runs.rs` or `db/work_runs/queries/`, and `models/work_runs/model.rs` or `models/work_runs/errors.rs`.
+
+Keep reusable test fixtures in `src/tests/helpers.rs`. Put e2e-style tests and service tests that need cross-module access under `src/tests/`. Route tests may stay next to route modules as `src/routes/<route>_tests.rs`. Do not use `#[path]` attributes from production modules to pull in test files.
 
 ### Provider Namespace (`src/services/providers/`)
 

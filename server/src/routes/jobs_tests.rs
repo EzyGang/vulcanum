@@ -45,7 +45,7 @@ async fn poll_returns_job_id_when_dispatched(pool: sqlx::PgPool) {
 
     state
         .jobs
-        .dispatch_store
+        .dispatch_store()
         .set_dispatched(worker_id, wr_id)
         .await
         .expect("Should set dispatched");
@@ -470,7 +470,7 @@ async fn post_runs_cancel_returns_204(pool: sqlx::PgPool) {
     let wr_id =
         test_helpers::insert_running_work_run(&pool, project_id, "cancel-1-task", worker_id).await;
 
-    let cancel_store = state.jobs.cancel_store.clone();
+    let cancel_store = state.jobs.cancel_store();
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(state))

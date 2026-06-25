@@ -73,7 +73,7 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
 
     state
         .jobs
-        .dispatch_store
+        .dispatch_store()
         .set_dispatched(worker_uuid, review_run.id)
         .await
         .expect("Should set dispatched");
@@ -173,7 +173,7 @@ async fn stale_worker_marked_disconnected(pool: sqlx::PgPool) {
         crate::db::workers::WorkersRepository::new(),
         crate::db::work_runs::WorkRunsRepository::new(),
         pool.clone(),
-        state.jobs.dispatch_store.clone(),
+        state.jobs.dispatch_store(),
         60,
         1800,
     );
