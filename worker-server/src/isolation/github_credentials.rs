@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use vulcanum_shared::runtime::errors::HarnessError;
 
-const DEFAULT_CONTAINER_PATH: &str = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
 const GITHUB_TOKEN_KEYS: &[&str] = &["GITHUB_TOKEN", "GH_TOKEN"];
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -22,15 +21,11 @@ pub(crate) async fn setup(
 ) -> Result<GitHubCredentialBridge, HarnessError> {
     let home_dir = workdir.join("home");
     let github_dir = home_dir.join(".vulcanum").join("github");
-    let bin_dir = home_dir.join(".vulcanum").join("bin");
     let gh_config_dir = github_dir.join("gh-config");
 
     fs::create_dir_all(&github_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create GitHub credential dir: {e}")))?;
-    fs::create_dir_all(&bin_dir)
-        .await
-        .map_err(|e| HarnessError::Crash(format!("failed to create GitHub wrapper dir: {e}")))?;
     fs::create_dir_all(&gh_config_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create gh config dir: {e}")))?;
@@ -39,8 +34,6 @@ pub(crate) async fn setup(
     write_git_config(&github_dir.join("gitconfig")).await?;
     write_askpass(&github_dir.join("git-askpass.sh")).await?;
     write_askpass_cmd(&github_dir.join("git-askpass.cmd")).await?;
-    write_gh_wrapper(&bin_dir.join("gh")).await?;
-    write_gh_wrapper_cmd(&bin_dir.join("gh.cmd")).await?;
 
     Ok(GitHubCredentialBridge {
         host_env: host_command_env(workdir),
@@ -63,16 +56,12 @@ pub(crate) async fn update_token(workdir: &Path, token: Option<&str>) -> Result<
                 HarnessError::Crash(format!("failed to write GitHub token file: {e}"))
             })?;
             set_mode(&token_path, 0o600).await?;
+            write_gh_hosts(workdir, token).await?;
         }
-        None => match fs::remove_file(&token_path).await {
-            Ok(()) => (),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-            Err(e) => {
-                return Err(HarnessError::Crash(format!(
-                    "failed to remove GitHub token file: {e}"
-                )));
-            }
-        },
+        None => {
+            remove_token_file(&token_path).await?;
+            remove_gh_hosts(workdir).await?;
+        }
     }
 
     Ok(())
@@ -103,43 +92,24 @@ pub(crate) fn without_direct_token_env(
 pub(crate) fn host_command_env(workdir: &Path) -> HashMap<String, String> {
     let home_dir = workdir.join("home");
     let github_dir = home_dir.join(".vulcanum").join("github");
-    let bin_dir = home_dir.join(".vulcanum").join("bin");
-    let path = prepend_path(
-        &path_value(&bin_dir),
-        std::env::var("PATH").unwrap_or_default().as_str(),
-        path_separator(),
-    );
 
     credential_env(
         path_value(github_dir.join("token")),
         path_value(github_dir.join("gitconfig")),
         path_value(github_dir.join(host_askpass_name())),
         path_value(github_dir.join("gh-config")),
-        path_value(bin_dir.join(host_gh_wrapper_name())),
-        path_value(&bin_dir),
-        path,
     )
 }
 
 #[must_use]
 pub(crate) fn runtime_env(runtime_home: &str) -> HashMap<String, String> {
     let github_dir = format!("{runtime_home}/.vulcanum/github");
-    let bin_dir = format!("{runtime_home}/.vulcanum/bin");
-    let host_path = std::env::var("PATH").unwrap_or_default();
-    let base_path = match runtime_home.starts_with("/workdir/") || runtime_home == "/workdir/home" {
-        true => DEFAULT_CONTAINER_PATH,
-        false => host_path.as_str(),
-    };
-    let path = prepend_path(&bin_dir, base_path, ':');
 
     credential_env(
         format!("{github_dir}/token"),
         format!("{github_dir}/gitconfig"),
         format!("{github_dir}/git-askpass.sh"),
         format!("{github_dir}/gh-config"),
-        format!("{bin_dir}/gh"),
-        bin_dir,
-        path,
     )
 }
 
@@ -148,19 +118,13 @@ fn credential_env(
     git_config: String,
     askpass: String,
     gh_config_dir: String,
-    gh_wrapper: String,
-    bin_dir: String,
-    path: String,
 ) -> HashMap<String, String> {
     let mut env = HashMap::new();
     env.insert("VULCANUM_GITHUB_TOKEN_FILE".to_owned(), token_file);
     env.insert("GIT_CONFIG_GLOBAL".to_owned(), git_config);
     env.insert("GIT_ASKPASS".to_owned(), askpass);
     env.insert("GH_CONFIG_DIR".to_owned(), gh_config_dir);
-    env.insert("VULCANUM_GITHUB_GH_WRAPPER".to_owned(), gh_wrapper);
-    env.insert("VULCANUM_GITHUB_BIN_DIR".to_owned(), bin_dir);
     env.insert("GIT_TERMINAL_PROMPT".to_owned(), "0".to_owned());
-    env.insert("PATH".to_owned(), path);
     env
 }
 
@@ -170,6 +134,15 @@ fn token_file(workdir: &Path) -> PathBuf {
         .join(".vulcanum")
         .join("github")
         .join("token")
+}
+
+fn gh_hosts_file(workdir: &Path) -> PathBuf {
+    workdir
+        .join("home")
+        .join(".vulcanum")
+        .join("github")
+        .join("gh-config")
+        .join("hosts.yml")
 }
 
 async fn write_git_config(path: &Path) -> Result<(), HarnessError> {
@@ -193,18 +166,42 @@ async fn write_askpass_cmd(path: &Path) -> Result<(), HarnessError> {
     set_mode(path, 0o700).await
 }
 
-async fn write_gh_wrapper(path: &Path) -> Result<(), HarnessError> {
-    fs::write(path, scripts::gh_wrapper_sh())
+async fn write_gh_hosts(workdir: &Path, token: &str) -> Result<(), HarnessError> {
+    let hosts_path = gh_hosts_file(workdir);
+    if let Some(parent) = hosts_path.parent() {
+        fs::create_dir_all(parent)
+            .await
+            .map_err(|e| HarnessError::Crash(format!("failed to create gh config dir: {e}")))?;
+    }
+
+    let content = format!(
+        "github.com:\n  oauth_token: {}\n  git_protocol: https\n",
+        yaml_single_quoted(token)
+    );
+    fs::write(&hosts_path, content)
         .await
-        .map_err(|e| HarnessError::Crash(format!("failed to write gh credential wrapper: {e}")))?;
-    set_mode(path, 0o700).await
+        .map_err(|e| HarnessError::Crash(format!("failed to write gh hosts file: {e}")))?;
+    set_mode(&hosts_path, 0o600).await
 }
 
-async fn write_gh_wrapper_cmd(path: &Path) -> Result<(), HarnessError> {
-    fs::write(path, scripts::gh_wrapper_cmd())
-        .await
-        .map_err(|e| HarnessError::Crash(format!("failed to write gh credential wrapper: {e}")))?;
-    set_mode(path, 0o700).await
+async fn remove_token_file(path: &Path) -> Result<(), HarnessError> {
+    match fs::remove_file(path).await {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(HarnessError::Crash(format!(
+            "failed to remove GitHub token file: {e}"
+        ))),
+    }
+}
+
+async fn remove_gh_hosts(workdir: &Path) -> Result<(), HarnessError> {
+    match fs::remove_file(gh_hosts_file(workdir)).await {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(HarnessError::Crash(format!(
+            "failed to remove gh hosts file: {e}"
+        ))),
+    }
 }
 
 #[cfg(unix)]
@@ -236,6 +233,10 @@ fn validate_token(token: &str) -> Result<(), HarnessError> {
     Ok(())
 }
 
+fn yaml_single_quoted(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
+}
+
 fn path_value<P>(path: P) -> String
 where
     P: AsRef<Path>,
@@ -243,30 +244,9 @@ where
     path.as_ref().to_string_lossy().to_string()
 }
 
-fn prepend_path(prefix: &str, existing: &str, separator: char) -> String {
-    if existing.is_empty() {
-        return prefix.to_owned();
-    }
-    format!("{prefix}{separator}{existing}")
-}
-
-fn path_separator() -> char {
-    match cfg!(windows) {
-        true => ';',
-        false => ':',
-    }
-}
-
 fn host_askpass_name() -> &'static str {
     match cfg!(windows) {
         true => "git-askpass.cmd",
         false => "git-askpass.sh",
-    }
-}
-
-fn host_gh_wrapper_name() -> &'static str {
-    match cfg!(windows) {
-        true => "gh.cmd",
-        false => "gh",
     }
 }

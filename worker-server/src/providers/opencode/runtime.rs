@@ -29,6 +29,52 @@ impl OpenCodeServeRuntime {
         Ok(port)
     }
 
+    async fn container_status(container_name: Option<&str>) -> Option<String> {
+        let name = container_name?;
+        let output = tokio::process::Command::new("docker")
+            .args(["inspect", "--format={{.State.Status}}", name])
+            .output()
+            .await
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+
+        let status = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        match status.is_empty() {
+            true => None,
+            false => Some(status),
+        }
+    }
+
+    async fn container_logs(container_name: Option<&str>) -> Option<String> {
+        let name = container_name?;
+        let output = tokio::process::Command::new("docker")
+            .args(["logs", "--tail", "50", name])
+            .output()
+            .await
+            .ok()?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let logs = format!("{}{}", stdout.trim(), stderr.trim());
+        match logs.is_empty() {
+            true => None,
+            false => Some(logs),
+        }
+    }
+
+    fn unhealthy_message(prefix: &str, status: Option<&str>, logs: Option<&str>) -> String {
+        let mut msg = prefix.to_owned();
+        if let Some(status) = status {
+            msg.push_str(&format!("; container status: {status}"));
+        }
+        if let Some(logs) = logs {
+            msg.push_str(&format!("; recent container logs: {logs}"));
+        }
+        msg
+    }
+
     async fn wait_for_health(
         client: &super::OpenCodeClient,
         child: &mut Option<tokio::process::Child>,
@@ -54,18 +100,25 @@ impl OpenCodeServeRuntime {
                 }
             }
 
+            let container_status = Self::container_status(container_name).await;
+            if matches!(container_status.as_deref(), Some("exited" | "dead")) {
+                let logs = Self::container_logs(container_name).await;
+                let msg = Self::unhealthy_message(
+                    "server container exited before becoming healthy",
+                    container_status.as_deref(),
+                    logs.as_deref(),
+                );
+                tracing::warn!("{msg}");
+                return Err(HarnessError::ServerUnhealthy(msg));
+            }
+
             if std::time::Instant::now() >= deadline {
-                let mut msg = format!("server not healthy after {HEALTH_CHECK_TIMEOUT_SECS}s");
-                if let Some(name) = container_name {
-                    if let Ok(output) = tokio::process::Command::new("docker")
-                        .args(["inspect", "--format={{.State.Status}}", name])
-                        .output()
-                        .await
-                    {
-                        let status = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-                        msg.push_str(&format!("; container status: {status}"));
-                    }
-                }
+                let logs = Self::container_logs(container_name).await;
+                let msg = Self::unhealthy_message(
+                    &format!("server not healthy after {HEALTH_CHECK_TIMEOUT_SECS}s"),
+                    container_status.as_deref(),
+                    logs.as_deref(),
+                );
                 tracing::warn!("{msg}");
                 return Err(HarnessError::ServerUnhealthy(msg));
             }
