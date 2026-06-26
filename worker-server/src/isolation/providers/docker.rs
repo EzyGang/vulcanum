@@ -6,6 +6,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
+use crate::isolation::github_credentials;
 use crate::isolation::workspace;
 
 pub struct DockerIsolation {
@@ -64,12 +65,19 @@ impl IsolationProvider for DockerIsolation {
         workspace::write_env_files(workdir, agents_md, generated_opencode_config).await?;
         workspace::write_finish_run_tool(workdir, work_type).await?;
 
-        let token = secrets.get("GITHUB_TOKEN").map(|s| s.as_str());
-        let workspace_repos = workspace::prepare_repos(workdir, repos, token).await?;
+        let github_credentials = github_credentials::setup(
+            workdir,
+            github_credentials::token_from(secrets),
+            "/workdir/home",
+        )
+        .await?;
+        let workspace_repos =
+            workspace::prepare_repos(workdir, repos, &github_credentials.host_env).await?;
 
         let container_name = workspace::container_name(workdir);
 
-        let mut combined_env: HashMap<String, String> = secrets.clone();
+        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
+        let mut combined_env: HashMap<String, String> = sanitized_secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
         combined_env.insert(
             "OPENCODE_CONFIG".to_owned(),
@@ -79,13 +87,14 @@ impl IsolationProvider for DockerIsolation {
             "OPENCODE_CONFIG_DIR".to_owned(),
             "/workdir/home/.config/opencode".to_owned(),
         );
+        combined_env.extend(github_credentials.runtime_env);
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),
             workspace_dir: workdir.join("workspace"),
             repos: workspace_repos,
             container_name: Some(container_name),
-            secrets: secrets.clone(),
+            secrets: sanitized_secrets,
             env_vars: combined_env,
             runtime: self.runtime,
             image: Some(self.image.clone()),

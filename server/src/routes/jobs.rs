@@ -1,15 +1,15 @@
 use actix_web::{web, HttpResponse};
 use uuid::Uuid;
+use vulcanum_shared::api_types::{
+    AckRequest, AppendEventsRequest, AppendEventsResponse, ListEventsResponse, PollResponse,
+    SubmitResultRequest,
+};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
 use crate::routes::worker_auth::WorkerAuth;
 use crate::routes::worker_or_instance_auth::WorkerOrInstanceAuth;
-use vulcanum_shared::api_types::{
-    AckRequest, AppendEventsRequest, AppendEventsResponse, ListEventsResponse, PollResponse,
-    SubmitResultRequest,
-};
 
 pub async fn poll(state: web::Data<AppState>, auth: WorkerAuth) -> Result<HttpResponse, AppError> {
     match state.jobs.poll(auth.worker_id).await {
@@ -30,6 +30,19 @@ pub async fn get_job(
         .await?;
 
     Ok(HttpResponse::Ok().json(job))
+}
+
+pub async fn refresh_github_token(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    auth: WorkerAuth,
+) -> Result<HttpResponse, AppError> {
+    let token = state
+        .jobs
+        .refresh_github_token(path.into_inner(), auth.worker_id)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(token))
 }
 
 pub async fn ack_job(

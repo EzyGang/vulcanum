@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::api_error::ApiError;
 use crate::api_types::{
     AckRequest, AppendEventsRequest, AppendEventsResponse, ConnectRequest, ConnectResponse,
-    JobResponse, PollResponse, RefreshRequest, RefreshResponse, StatusResponse,
-    SubmitResultRequest, WireEvent,
+    JobResponse, PollResponse, RefreshGithubTokenResponse, RefreshRequest, RefreshResponse,
+    StatusResponse, SubmitResultRequest, WireEvent,
 };
 
 #[derive(Clone)]
@@ -123,6 +123,23 @@ impl ApiClient {
             .send()
             .await
             .context("get job request failed")?;
+
+        map_response(resp).await.map_err(Into::into)
+    }
+
+    pub async fn refresh_github_token(
+        &self,
+        job_id: Uuid,
+        access_token: &str,
+    ) -> anyhow::Result<RefreshGithubTokenResponse> {
+        let url = format!("{}/api/v1/jobs/{}/github-token", self.base_url, job_id);
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .context("refresh github token request failed")?;
 
         map_response(resp).await.map_err(Into::into)
     }

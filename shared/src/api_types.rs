@@ -71,9 +71,17 @@ pub struct JobResponse {
     pub external_workspace_id: String,
     pub max_turns: i32,
     pub github_token: Option<String>,
+    #[serde(default)]
+    pub github_token_expires_at: Option<DateTime<Utc>>,
     pub pr_urls: Vec<String>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshGithubTokenResponse {
+    pub github_token: Option<String>,
+    pub github_token_expires_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

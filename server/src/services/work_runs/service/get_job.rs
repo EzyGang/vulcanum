@@ -1,12 +1,11 @@
 use uuid::Uuid;
+use vulcanum_shared::api_types::JobResponse;
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::WorkRunType;
 use crate::services::model_providers::renderer::ModelSelection;
 use crate::services::work_runs::service::WorkRunsService;
-use crate::util::github::github_repo_full_name_from_url;
-use vulcanum_shared::api_types::{JobRepo, JobResponse};
 
 impl WorkRunsService {
     pub async fn get_job(&self, id: Uuid, worker_id: Uuid) -> Result<JobResponse, WorkRunsError> {
@@ -31,13 +30,7 @@ impl WorkRunsService {
                 JobConfigFields::empty_for_team(run.team_id)
             }
         };
-        let mut repos = self.work_runs_repo.list_repos(&self.db, id).await?;
-        if repos.is_empty() && !run.repo_url.is_empty() {
-            repos.push(JobRepo {
-                full_name: github_repo_full_name_from_url(&run.repo_url),
-                url: run.repo_url.clone(),
-            });
-        }
+        let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
@@ -52,28 +45,9 @@ impl WorkRunsService {
             None => (String::new(), String::new()),
         };
 
-        let repo_full_names = repos
-            .iter()
-            .map(|repo| repo.full_name.clone())
-            .collect::<Vec<String>>();
-        let github_token = match repo_full_names.is_empty() {
-            true => None,
-            false => match self
-                .github
-                .generate_installation_token_for_repos(cfg.team_id, &repo_full_names)
-                .await
-            {
-                Ok(token) => Some(token.token),
-                Err(e) => {
-                    tracing::error!(
-                        work_run_id = %id,
-                        error = %e,
-                        "failed to mint github installation token"
-                    );
-                    return Err(e.into());
-                }
-            },
-        };
+        let github_token = self
+            .mint_github_token_for_repos(id, cfg.team_id, &repos)
+            .await?;
 
         let rendered = self
             .model_providers
@@ -105,7 +79,8 @@ impl WorkRunsService {
                 WorkRunType::Implementation => cfg.max_turns,
                 WorkRunType::PullRequestReview => cfg.review_max_turns,
             },
-            github_token,
+            github_token: github_token.github_token,
+            github_token_expires_at: github_token.github_token_expires_at,
             pr_urls,
             review_target_pr_url: run.review_target_pr_url,
             review_target_repo_full_name: run.review_target_repo_full_name,

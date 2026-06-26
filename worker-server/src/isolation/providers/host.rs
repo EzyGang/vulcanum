@@ -7,6 +7,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
+use crate::isolation::github_credentials;
 use crate::isolation::workspace;
 
 pub struct HostIsolation;
@@ -51,14 +52,22 @@ impl IsolationProvider for HostIsolation {
         workspace::write_env_files(workdir, agents_md, generated_opencode_config).await?;
         workspace::write_finish_run_tool(workdir, work_type).await?;
 
-        let token = secrets.get("GITHUB_TOKEN").map(|s| s.as_str());
-        let workspace_repos = workspace::prepare_repos(workdir, repos, token).await?;
-
-        let mut combined_env: HashMap<String, String> = env_vars.clone();
-        for (k, v) in secrets {
-            combined_env.insert(k.clone(), v.clone());
-        }
         let home_dir = workdir.join("home");
+        let runtime_home = home_dir.to_string_lossy().to_string();
+        let github_credentials = github_credentials::setup(
+            workdir,
+            github_credentials::token_from(secrets),
+            &runtime_home,
+        )
+        .await?;
+        let workspace_repos =
+            workspace::prepare_repos(workdir, repos, &github_credentials.host_env).await?;
+
+        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
+        let mut combined_env: HashMap<String, String> = env_vars.clone();
+        for (k, v) in sanitized_secrets.clone() {
+            combined_env.insert(k, v);
+        }
         let config_dir = home_dir.join(".config").join("opencode");
         combined_env.insert("HOME".to_owned(), home_dir.to_string_lossy().to_string());
         combined_env.insert(
@@ -72,13 +81,14 @@ impl IsolationProvider for HostIsolation {
             "OPENCODE_CONFIG_DIR".to_owned(),
             config_dir.to_string_lossy().to_string(),
         );
+        combined_env.extend(github_credentials.host_env);
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),
             workspace_dir: workdir.join("workspace"),
             repos: workspace_repos,
             container_name: None,
-            secrets: secrets.clone(),
+            secrets: sanitized_secrets,
             env_vars: combined_env,
             runtime: None,
             image: None,
