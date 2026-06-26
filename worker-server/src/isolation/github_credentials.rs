@@ -59,8 +59,8 @@ pub(crate) async fn update_token(workdir: &Path, token: Option<&str>) -> Result<
             write_gh_hosts(workdir, token).await?;
         }
         None => {
-            remove_token_file(&token_path).await?;
-            remove_gh_hosts(workdir).await?;
+            remove_file_if_exists(&token_path, "GitHub token file").await?;
+            remove_file_if_exists(&gh_hosts_file(workdir), "gh hosts file").await?;
         }
     }
 
@@ -184,22 +184,12 @@ async fn write_gh_hosts(workdir: &Path, token: &str) -> Result<(), HarnessError>
     set_mode(&hosts_path, 0o600).await
 }
 
-async fn remove_token_file(path: &Path) -> Result<(), HarnessError> {
+async fn remove_file_if_exists(path: &Path, description: &str) -> Result<(), HarnessError> {
     match fs::remove_file(path).await {
         Ok(()) => Ok(()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(e) => Err(HarnessError::Crash(format!(
-            "failed to remove GitHub token file: {e}"
-        ))),
-    }
-}
-
-async fn remove_gh_hosts(workdir: &Path) -> Result<(), HarnessError> {
-    match fs::remove_file(gh_hosts_file(workdir)).await {
-        Ok(()) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(HarnessError::Crash(format!(
-            "failed to remove gh hosts file: {e}"
+            "failed to remove {description}: {e}"
         ))),
     }
 }

@@ -57,7 +57,11 @@ impl OpenCodeServeRuntime {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        let logs = format!("{}{}", stdout.trim(), stderr.trim());
+        let logs = [stdout.trim(), stderr.trim()]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<&str>>()
+            .join("\n---\n");
         match logs.is_empty() {
             true => None,
             false => Some(logs),
