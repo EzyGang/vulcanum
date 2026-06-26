@@ -1,16 +1,10 @@
 import { useLocation } from 'wouter-preact';
-import { listModelProviders } from '../../../services/model-providers/model-providers.service';
 import { listProjects } from '../../../services/projects/projects.service';
 import { listProviders } from '../../../services/providers/providers.service';
 import { listWorkers } from '../../../services/workers/workers.service';
 import type { Worker } from '../../../types/workers';
 import { useApiQuery } from '../../../utils/api/query/hooks';
 import { formatRelativeTime } from '../../../utils/format';
-import {
-  getProjectSetupHelpText,
-  getProjectSetupMissingMessages,
-  isProjectSetupComplete
-} from '../../../utils/project-setup';
 import { useGitHubApp } from '../../github/hooks/useGitHubApp.hook';
 
 interface DashboardStats {
@@ -42,12 +36,6 @@ export const useDashboard = () => {
     error: providersError
   } = useApiQuery(['providers'], () => listProviders());
 
-  const {
-    data: modelProviders,
-    isLoading: modelProvidersLoading,
-    error: modelProvidersError
-  } = useApiQuery(['model-providers'], () => listModelProviders());
-
   const github = useGitHubApp();
 
   const rawWorkers = workers ?? [];
@@ -65,14 +53,8 @@ export const useDashboard = () => {
     lastSeen: formatRelativeTime(w.lastSeen)
   }));
 
-  const setupState = {
-    hasTaskTrackerProvider: (providers ?? []).length > 0,
-    hasModelProvider: (modelProviders ?? []).length > 0
-  };
-  const setupLoading = providersLoading || modelProvidersLoading;
-  const setupMessages = getProjectSetupMissingMessages(setupState);
-  const loading = workersLoading || projectsLoading || setupLoading;
-  const anyError = workersError ?? providersError ?? modelProvidersError ?? null;
+  const loading = workersLoading || projectsLoading || providersLoading;
+  const anyError = workersError ?? providersError ?? null;
 
   return {
     data: {
@@ -81,9 +63,7 @@ export const useDashboard = () => {
       projects: projects ?? [],
       providers: providers ?? [],
       githubInstallation: github.installation ?? null,
-      githubLoading: github.installationLoading,
-      canCreateProject: !setupLoading && isProjectSetupComplete(setupState),
-      projectSetupWarning: setupLoading ? '' : getProjectSetupHelpText(setupMessages)
+      githubLoading: github.installationLoading
     },
     status: {
       loading,
@@ -92,8 +72,7 @@ export const useDashboard = () => {
     actions: {
       goToSettings: () => setLocation('/settings'),
       goToWorkers: () => setLocation('/workers'),
-      goToRuns: () => setLocation('/runs'),
-      goToNewProject: () => setLocation('/projects/connect')
+      goToRuns: () => setLocation('/runs')
     }
   };
 };

@@ -4,7 +4,6 @@ import { NavigationShellContainer } from '../components/app-shell/containers/Nav
 import { Dashboard } from '../pages/Dashboard';
 import { InviteAccept } from '../pages/InviteAccept';
 import { Login } from '../pages/Login';
-import { ProjectsFormPage } from '../pages/ProjectsForm';
 import { Runs } from '../pages/Runs';
 import { Settings } from '../pages/Settings';
 import { TeamDetail } from '../pages/TeamDetail';
@@ -17,11 +16,6 @@ const AuthenticatedLayout = ({ children }: { children: ComponentChildren }): JSX
     <NavigationShellContainer>{children}</NavigationShellContainer>
   </ProtectedRoute>
 );
-
-const ProjectsEditRoute = () => {
-  const params = useParams<{ id?: string }>();
-  return <ProjectsFormPage projectId={params.id} />;
-};
 
 const InviteAcceptRoute = () => {
   const params = useParams<{ token: string }>();
@@ -55,16 +49,6 @@ export const AppRouter = () => (
     <Route path='/teams'>
       <AuthenticatedLayout>
         <Teams />
-      </AuthenticatedLayout>
-    </Route>
-    <Route path='/projects/connect'>
-      <AuthenticatedLayout>
-        <ProjectsFormPage />
-      </AuthenticatedLayout>
-    </Route>
-    <Route path='/projects/:id/edit'>
-      <AuthenticatedLayout>
-        <ProjectsEditRoute />
       </AuthenticatedLayout>
     </Route>
     <Route path='/runs'>

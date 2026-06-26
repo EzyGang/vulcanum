@@ -6,7 +6,6 @@ const TABS = [
   { value: 'team-defaults', label: 'Team Defaults' },
   { value: 'providers', label: 'Task Tracker Providers' },
   { value: 'model-providers', label: 'Model Providers' },
-  { value: 'projects', label: 'Projects' },
   { value: 'github', label: 'GitHub App' }
 ];
 

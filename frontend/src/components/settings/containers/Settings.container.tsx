@@ -2,7 +2,6 @@ import type { JSX } from 'preact';
 import { selectedTeamId } from '../../../stores/auth.store';
 import { GitHubAppCardContainer } from '../../github/containers/GitHubAppCard.container';
 import { ModelProvidersContainer } from '../../model-providers/containers/ModelProviders.container';
-import { ProjectsContainer } from '../../projects/containers/Projects.container';
 import { ProvidersContainer } from '../../providers/containers/Providers.container';
 import { TeamDefaultsContainer } from '../../team-defaults/containers/TeamDefaults.container';
 import { useSettings } from '../hooks/useSettings.hook';
@@ -20,7 +19,6 @@ export const SettingsContainer = (): JSX.Element => {
         teamDefaults: <TeamDefaultsContainer teamId={selectedTeamId.value} />,
         providers: <ProvidersContainer />,
         modelProviders: <ModelProvidersContainer />,
-        projects: <ProjectsContainer />,
         github: <GitHubAppCardContainer />
       }}
     />

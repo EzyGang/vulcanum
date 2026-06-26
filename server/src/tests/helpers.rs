@@ -27,6 +27,7 @@ use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::task_board::service::TaskBoardService;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::service::WorkRunEventsService;
@@ -264,6 +265,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let providers_repo = IntegrationProvidersRepository::new();
     let providers = IntegrationProvidersService::new(providers_repo.clone(), pool.clone());
+    let task_board = TaskBoardService::new(providers_repo.clone(), pool.clone());
     let model_catalog = ModelCatalogClient::new();
     let model_providers_repo = ModelProvidersRepository::new();
     let model_providers = ModelProvidersService::new(
@@ -352,6 +354,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         auth,
         project_configs,
         providers: providers.clone(),
+        task_board,
         model_providers,
         workers: WorkersService::new(
             WorkersRepository::new(),

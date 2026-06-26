@@ -6,6 +6,7 @@ pub mod poller;
 pub mod project_configs;
 pub mod provider_configs;
 pub mod providers;
+pub mod task_board;
 pub mod teams;
 pub mod users;
 pub mod work_run_events;

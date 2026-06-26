@@ -82,8 +82,13 @@ pub(crate) fn make_task(id: &str, title: &str) -> IntegrationTask {
         title: title.to_owned(),
         project_id: "test-proj".to_owned(),
         description: None,
+        status: "to-do".to_owned(),
+        priority: "low".to_owned(),
         number: Some(1),
         project_slug: Some("tst".to_owned()),
+        assignee_name: None,
+        created_at: "2026-01-01T00:00:00Z".to_owned(),
+        updated_at: None,
     }
 }
 

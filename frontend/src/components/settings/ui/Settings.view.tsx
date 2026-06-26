@@ -9,7 +9,6 @@ interface SettingsViewProps {
     teamDefaults: JSX.Element;
     providers: JSX.Element;
     modelProviders: JSX.Element;
-    projects: JSX.Element;
     github: JSX.Element;
   };
 }
@@ -27,7 +26,6 @@ export const SettingsView = ({
       <Tabs.Panel value='team-defaults'>{panels.teamDefaults}</Tabs.Panel>
       <Tabs.Panel value='providers'>{panels.providers}</Tabs.Panel>
       <Tabs.Panel value='model-providers'>{panels.modelProviders}</Tabs.Panel>
-      <Tabs.Panel value='projects'>{panels.projects}</Tabs.Panel>
       <Tabs.Panel value='github'>{panels.github}</Tabs.Panel>
     </Tabs>
   </div>
