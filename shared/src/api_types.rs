@@ -70,7 +70,6 @@ pub struct JobResponse {
     pub external_project_id: String,
     pub external_workspace_id: String,
     pub max_turns: i32,
-    #[serde(default)]
     pub github_token: Option<String>,
     #[serde(default)]
     pub github_token_expires_at: Option<DateTime<Utc>>,

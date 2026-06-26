@@ -63,8 +63,9 @@ impl IsolationProvider for HostIsolation {
         let workspace_repos =
             workspace::prepare_repos(workdir, repos, &github_credentials.host_env).await?;
 
+        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
         let mut combined_env: HashMap<String, String> = env_vars.clone();
-        for (k, v) in github_credentials::without_direct_token_env(secrets) {
+        for (k, v) in sanitized_secrets.clone() {
             combined_env.insert(k, v);
         }
         let config_dir = home_dir.join(".config").join("opencode");
@@ -81,7 +82,6 @@ impl IsolationProvider for HostIsolation {
             config_dir.to_string_lossy().to_string(),
         );
         combined_env.extend(github_credentials.host_env);
-        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),

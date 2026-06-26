@@ -76,8 +76,8 @@ impl IsolationProvider for DockerIsolation {
 
         let container_name = workspace::container_name(workdir);
 
-        let mut combined_env: HashMap<String, String> =
-            github_credentials::without_direct_token_env(secrets);
+        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
+        let mut combined_env: HashMap<String, String> = sanitized_secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
         combined_env.insert(
             "OPENCODE_CONFIG".to_owned(),
@@ -88,7 +88,6 @@ impl IsolationProvider for DockerIsolation {
             "/workdir/home/.config/opencode".to_owned(),
         );
         combined_env.extend(github_credentials.runtime_env);
-        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),

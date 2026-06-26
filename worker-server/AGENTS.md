@@ -27,6 +27,7 @@ The isolation module provides environment isolation via the `IsolationProvider` 
 | File / Directory | Role |
 |------------------|------|
 | `factory.rs`     | `IsolationKind` enum + `create_isolation_provider()` dispatch |
+| `github_credentials.rs` | GitHub credential bridge: token file, git config, askpass, gh wrapper, env builders |
 | `workspace.rs`   | Workdir creation, env-file setup, repo clone, finish tool install |
 | `providers/`     | Concrete isolation implementations |
 
