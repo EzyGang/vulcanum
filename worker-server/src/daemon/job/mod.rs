@@ -1,4 +1,5 @@
 pub(crate) mod execution;
+pub(crate) mod github_credentials;
 pub(crate) mod orchestrate;
 mod prompts;
 pub(crate) mod review;

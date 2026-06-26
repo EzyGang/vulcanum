@@ -100,6 +100,62 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
     assert_eq!(body["external_task_ref"], "task-get-test");
     assert_eq!(body["prompt_text"], "Review the PR");
     assert_eq!(body["repos"], serde_json::json!([]));
+    assert_eq!(body["github_token"], serde_json::Value::Null);
+    assert_eq!(body["github_token_expires_at"], serde_json::Value::Null);
+}
+
+#[sqlx::test]
+async fn refresh_github_token_returns_nulls_for_no_repos(pool: sqlx::PgPool) {
+    let state = build_state(pool.clone()).await;
+    let worker_id = test_helpers::insert_worker(&pool, "test-token-no-repos").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-token-no-repos").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "task-token-no-repos", worker_id)
+            .await;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/jobs/{wr_id}/github-token"))
+        .insert_header(("Authorization", build_worker_token(worker_id).as_str()))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 200);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert_eq!(body["github_token"], serde_json::Value::Null);
+    assert_eq!(body["github_token_expires_at"], serde_json::Value::Null);
+}
+
+#[sqlx::test]
+async fn refresh_github_token_rejects_wrong_owner(pool: sqlx::PgPool) {
+    let state = build_state(pool.clone()).await;
+    let owner = test_helpers::insert_worker(&pool, "test-token-owner").await;
+    let attacker = test_helpers::insert_worker(&pool, "test-token-attacker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-token-owner").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "task-token-owner", owner).await;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri(&format!("/api/v1/jobs/{wr_id}/github-token"))
+        .insert_header(("Authorization", build_worker_token(attacker).as_str()))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 403);
 }
 
 #[sqlx::test]

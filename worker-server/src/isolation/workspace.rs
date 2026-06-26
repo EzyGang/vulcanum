@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use tokio::fs;
@@ -45,29 +45,20 @@ pub async fn write_env_files(
     Ok(())
 }
 
-#[must_use]
-pub fn authenticated_repo_url(repo_url: &str, token: Option<&str>) -> String {
-    if let Some(t) = token {
-        if let Some(host_path) = repo_url.strip_prefix("https://") {
-            return format!("https://x-access-token:{t}@{host_path}");
-        }
-    }
-    repo_url.to_owned()
-}
-
-pub async fn clone_repo(url: &str, dest: &Path) -> Result<(), HarnessError> {
-    let output = tokio::process::Command::new("git")
-        .args([
-            "-c",
-            "credential.helper=",
-            "-c",
-            "core.askPass=",
-            "clone",
-            url,
-        ])
+pub async fn clone_repo(
+    url: &str,
+    dest: &Path,
+    command_env: &HashMap<String, String>,
+) -> Result<(), HarnessError> {
+    let mut command = tokio::process::Command::new("git");
+    command
+        .args(["clone", url])
         .arg(dest)
+        .envs(command_env)
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    let output = command
         .output()
         .await
         .map_err(|e| HarnessError::Install(format!("failed to run git clone: {e}")))?;
@@ -86,28 +77,38 @@ pub async fn clone_repo(url: &str, dest: &Path) -> Result<(), HarnessError> {
 pub async fn prepare_repos(
     workdir: &Path,
     repos: &[JobRepo],
-    token: Option<&str>,
+    command_env: &HashMap<String, String>,
 ) -> Result<Vec<WorkspaceRepo>, HarnessError> {
     let workspace_dir = workdir.join("workspace");
     fs::create_dir_all(&workspace_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create workspace dir: {e}")))?;
 
-    let mut seen_dirs: HashSet<String> = HashSet::new();
-    let mut workspace_repos: Vec<WorkspaceRepo> = Vec::new();
-    for repo in repos {
-        let relative_path = unique_repo_dir(&repo.full_name, &mut seen_dirs);
-        let clone_url = authenticated_repo_url(&repo.url, token);
-        clone_repo(&clone_url, &workspace_dir.join(&relative_path)).await?;
-        workspace_repos.push(WorkspaceRepo {
-            full_name: repo.full_name.clone(),
-            url: repo.url.clone(),
-            relative_path,
-        });
+    let workspace_repos = workspace_repos_from_job_repos(repos);
+    for repo in &workspace_repos {
+        clone_repo(
+            &repo.url,
+            &workspace_dir.join(&repo.relative_path),
+            command_env,
+        )
+        .await?;
     }
 
     surface_repo_context(&workspace_dir, &workspace_repos).await?;
     Ok(workspace_repos)
+}
+
+#[must_use]
+pub(crate) fn workspace_repos_from_job_repos(repos: &[JobRepo]) -> Vec<WorkspaceRepo> {
+    let mut seen_dirs: HashSet<String> = HashSet::new();
+    repos
+        .iter()
+        .map(|repo| WorkspaceRepo {
+            full_name: repo.full_name.clone(),
+            url: repo.url.clone(),
+            relative_path: unique_repo_dir(&repo.full_name, &mut seen_dirs),
+        })
+        .collect()
 }
 
 #[must_use]

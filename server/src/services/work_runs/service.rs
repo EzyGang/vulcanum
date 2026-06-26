@@ -7,6 +7,7 @@ pub mod get_job;
 pub mod list;
 pub mod poll;
 pub(crate) mod record_review;
+pub mod refresh_github_token;
 pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;

@@ -72,6 +72,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/jobs")
                     .route("/{id}", web::get().to(jobs::get_job))
+                    .route(
+                        "/{id}/github-token",
+                        web::post().to(jobs::refresh_github_token),
+                    )
                     .route("/{id}/ack", web::post().to(jobs::ack_job))
                     .route("/{id}/result", web::post().to(jobs::submit_result))
                     .route("/{id}/events", web::post().to(jobs::append_events))

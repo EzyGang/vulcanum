@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use vulcanum_shared::runtime::errors::HarnessError;
@@ -8,7 +9,7 @@ pub async fn checkout_pull_request(
     repos: &[WorkspaceRepo],
     repo_full_name: &str,
     pr_url: &str,
-    token: Option<&str>,
+    command_env: &HashMap<String, String>,
 ) -> Result<(), HarnessError> {
     let repo = match repos.iter().find(|repo| repo.full_name == repo_full_name) {
         Some(repo) => repo,
@@ -28,7 +29,7 @@ pub async fn checkout_pull_request(
     };
     let repo_dir = workspace_dir.join(&repo.relative_path);
 
-    match run_checkout_command(&repo_dir, "gh", &["pr", "checkout", pr_url], token).await {
+    match run_checkout_command(&repo_dir, "gh", &["pr", "checkout", pr_url], command_env).await {
         Ok(()) => Ok(()),
         Err(e) => {
             tracing::warn!(
@@ -37,7 +38,7 @@ pub async fn checkout_pull_request(
                 error = %e,
                 "gh pr checkout failed, falling back to git pull ref checkout"
             );
-            checkout_pull_ref(&repo_dir, pr_number, token).await
+            checkout_pull_ref(&repo_dir, pr_number, command_env).await
         }
     }
 }
@@ -62,7 +63,7 @@ pub(crate) fn parse_github_pr_number(pr_url: &str) -> Option<i64> {
 async fn checkout_pull_ref(
     repo_dir: &Path,
     pr_number: i64,
-    token: Option<&str>,
+    command_env: &HashMap<String, String>,
 ) -> Result<(), HarnessError> {
     let branch = checkout_branch_name(pr_number);
     let pull_ref = format!("pull/{pr_number}/head:{branch}");
@@ -71,29 +72,25 @@ async fn checkout_pull_ref(
         repo_dir,
         "git",
         &["fetch", "origin", pull_ref.as_str()],
-        token,
+        command_env,
     )
     .await?;
-    run_checkout_command(repo_dir, "git", &["checkout", branch.as_str()], token).await
+    run_checkout_command(repo_dir, "git", &["checkout", branch.as_str()], command_env).await
 }
 
 async fn run_checkout_command(
     repo_dir: &Path,
     program: &str,
     args: &[&str],
-    token: Option<&str>,
+    command_env: &HashMap<String, String>,
 ) -> Result<(), HarnessError> {
     let mut command = tokio::process::Command::new(program);
     command
         .args(args)
         .current_dir(repo_dir)
+        .envs(command_env)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped());
-
-    if let Some(token) = token {
-        command.env("GITHUB_TOKEN", token);
-        command.env("GH_TOKEN", token);
-    }
 
     let output = command
         .output()

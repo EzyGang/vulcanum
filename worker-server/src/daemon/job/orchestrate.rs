@@ -17,6 +17,7 @@ use vulcanum_shared::worker_state::WorkerState;
 
 use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
+use super::github_credentials::spawn_refresh_task;
 use super::prompts::text::initial_prompt;
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::daemon::auth::with_retry_on_401;
@@ -267,7 +268,7 @@ pub(crate) async fn handle_job(
             &isolated_env.repos,
             repo_full_name,
             pr_url,
-            job.github_token.as_deref(),
+            &crate::isolation::github_credentials::host_command_env(&isolated_env.workdir),
         )
         .await
         {
@@ -345,7 +346,16 @@ pub(crate) async fn handle_job(
 
     reporter.emit("session.started", serde_json::json!({}));
     let heartbeat_stop = spawn_heartbeat(reporter.clone());
-
+    let github_refresh_stop = match job.github_token.as_ref() {
+        Some(_) => Some(spawn_refresh_task(
+            client.clone(),
+            worker_state.clone(),
+            job_id,
+            workdir.clone(),
+            job.github_token_expires_at,
+        )),
+        None => None,
+    };
     let ctx = TurnLoopCtx {
         client: client.clone(),
         worker_state: worker_state.clone(),
@@ -364,6 +374,9 @@ pub(crate) async fn handle_job(
         &ctx,
     )
     .await;
+    if let Some(stop) = github_refresh_stop {
+        let _ = stop.send(true);
+    }
     let _ = heartbeat_stop.send(true);
 
     if let (Some(sid), Some(base_url)) = (

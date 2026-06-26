@@ -11,6 +11,7 @@ use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::execution::submit::{submit_result_request, SubmitResultParams};
+use crate::daemon::job::github_credentials::{setup_recovered_credentials, spawn_refresh_task};
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::providers::host::HostIsolation;
 use crate::providers::opencode::events;
@@ -47,23 +48,26 @@ pub(crate) async fn recover_session_task(
     let max_turns = entry.max_turns.unwrap_or(1).max(1);
     let current_turn = entry.turn_count.unwrap_or(0);
     let initial_turn = current_turn + 1;
-    let work_type = match with_retry_on_401(&api_client, &worker_state, |token| {
+    let recovered_job = match with_retry_on_401(&api_client, &worker_state, |token| {
         let client = api_client.clone();
         let job_id = entry.job_id;
         async move { client.get_job(job_id, &token).await }
     })
     .await
     {
-        Ok(job) => job.work_type,
+        Ok(job) => Some(job),
         Err(e) => {
             tracing::warn!(
                 job_id = %entry.job_id,
                 error = %e,
-                "failed to load job type during recovery, using implementation turn loop"
+                "failed to load job during recovery, using implementation turn loop without github credential refresh"
             );
-            WorkRunType::Implementation
+            None
         }
     };
+    let work_type = recovered_job
+        .as_ref()
+        .map_or(WorkRunType::Implementation, |job| job.work_type);
 
     let running_session = OpenCodeRunningSession::new(SessionConfig {
         client: oc_client,
@@ -78,6 +82,18 @@ pub(crate) async fn recover_session_task(
 
     let workdir = std::path::Path::new(&entry.workdir);
     let artifact_path = workdir.join("home").join("finish_artifact.json");
+    if let Some(job) = recovered_job.as_ref() {
+        if let Err(e) =
+            setup_recovered_credentials(workdir, &entry.harness_type, job.github_token.as_deref())
+                .await
+        {
+            tracing::warn!(
+                job_id = %entry.job_id,
+                error = %e,
+                "failed to restore github credential bridge during recovery"
+            );
+        }
+    }
 
     tracing::info!(
         job_id = %entry.job_id,
@@ -107,6 +123,17 @@ pub(crate) async fn recover_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
+    let github_refresh_stop = recovered_job.as_ref().and_then(|job| {
+        job.github_token.as_ref().map(|_| {
+            spawn_refresh_task(
+                api_client.clone(),
+                worker_state.clone(),
+                entry.job_id,
+                std::path::PathBuf::from(&entry.workdir),
+                job.github_token_expires_at,
+            )
+        })
+    });
     run_turn_loop(
         &mut boxed,
         &artifact_path,
@@ -116,6 +143,9 @@ pub(crate) async fn recover_session_task(
         &ctx,
     )
     .await;
+    if let Some(stop) = github_refresh_stop {
+        let _ = stop.send(true);
+    }
 
     cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "recovery session completed");
