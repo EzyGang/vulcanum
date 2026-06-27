@@ -49,6 +49,8 @@ export const TaskBoardView = ({
     );
   }
 
+  const boardColumnCount = Math.max(board.columns.length, 1);
+
   return (
     <div class='flex flex-col gap-6 animate-fade-in'>
       <div class='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
@@ -80,7 +82,10 @@ export const TaskBoardView = ({
         <ErrorBanner message={form.createError ?? form.serverError ?? 'Unable to update board'} />
       )}
 
-      <div class='grid gap-4 xl:grid-cols-3'>
+      <div
+        class='grid grid-cols-1 gap-4 lg:grid-cols-[repeat(var(--board-column-count),minmax(0,1fr))]'
+        style={`--board-column-count: ${boardColumnCount}`}
+      >
         {board.columns.map((column) => (
           <TaskBoardColumn
             key={column.id}
