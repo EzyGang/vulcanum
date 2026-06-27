@@ -206,7 +206,7 @@ fn sanitize_repo_dir(repo_name: &str) -> String {
     }
 }
 
-async fn surface_repo_context(
+pub(crate) async fn surface_repo_context(
     workspace_dir: &Path,
     repos: &[WorkspaceRepo],
 ) -> Result<(), HarnessError> {
@@ -231,8 +231,9 @@ async fn surface_repo_context(
             break;
         }
 
-        let repo_skills_dir = repo_dir.join(".agents").join("skills");
-        copy_skills_first_wins(&repo_skills_dir, &skills_dir, &mut copied_skills, repo).await?;
+        for skills_root in skill_roots(&repo_dir) {
+            copy_skills_first_wins(&skills_root, &skills_dir, &mut copied_skills, repo).await?;
+        }
     }
 
     if !aggregate.is_empty() {
@@ -246,6 +247,15 @@ async fn surface_repo_context(
     Ok(())
 }
 
+fn skill_roots(repo_dir: &Path) -> [PathBuf; 4] {
+    [
+        repo_dir.join(".agents").join("skills"),
+        repo_dir.join(".claude").join("skills"),
+        repo_dir.join(".codex").join("skills"),
+        repo_dir.join(".omp").join("skills"),
+    ]
+}
+
 async fn copy_skills_first_wins(
     source: &Path,
     target: &Path,
@@ -256,6 +266,7 @@ async fn copy_skills_first_wins(
         Ok(entries) => entries,
         Err(_) => return Ok(()),
     };
+    let mut skill_entries = Vec::new();
 
     while let Some(entry) = entries
         .next_entry()
@@ -269,7 +280,15 @@ async fn copy_skills_first_wins(
         if !file_type.is_dir() {
             continue;
         }
-        let skill_name = entry.file_name().to_string_lossy().to_string();
+        skill_entries.push((
+            entry.file_name().to_string_lossy().to_string(),
+            entry.path(),
+        ));
+    }
+
+    skill_entries.sort_by(|(left_name, _), (right_name, _)| left_name.cmp(right_name));
+
+    for (skill_name, source_path) in skill_entries {
         if copied.contains(&skill_name) {
             tracing::warn!(
                 repo = %repo.full_name,
@@ -278,7 +297,7 @@ async fn copy_skills_first_wins(
             );
             continue;
         }
-        copy_dir(&entry.path(), &target.join(&skill_name)).await?;
+        copy_dir(&source_path, &target.join(&skill_name)).await?;
         copied.insert(skill_name);
     }
 

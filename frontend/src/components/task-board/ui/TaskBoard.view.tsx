@@ -1,4 +1,4 @@
-import { IconSettings } from '@tabler/icons-react';
+import { IconInfoCircle, IconSettings } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
@@ -20,7 +20,8 @@ export const TaskBoardView = ({
     createDialogOpen,
     settingsDialogOpen,
     actionMenuTaskId,
-    visibleTaskCounts
+    visibleTaskCounts,
+    columnRoles
   },
   form,
   status,
@@ -57,9 +58,17 @@ export const TaskBoardView = ({
         <div class='flex flex-col gap-2'>
           <span class='text-xs uppercase tracking-wider text-accent'>Task provider board</span>
           <h2 class='text-3xl font-semibold text-text-primary'>{board.project.name}</h2>
-          <p class='text-sm text-text-muted'>
-            Proxy view for provider columns, task creation, status movement, and project repository
-            assignment.
+          <p class='flex items-center gap-2 text-sm text-text-muted'>
+            <span>
+              Provider-backed board for task creation, status movement, repository pinning, and
+              automation column roles.
+            </span>
+            <span
+              class='inline-flex text-text-muted hover:text-text-primary'
+              title='Proxy view. Vulcanum sits on top of the connected task provider: actions update the provider, and the board refreshes periodically to pick up external changes.'
+            >
+              <IconInfoCircle size={16} stroke={1.75} aria-label='Board sync details' />
+            </span>
           </p>
         </div>
         <div class='flex items-center gap-2'>
@@ -92,10 +101,13 @@ export const TaskBoardView = ({
             column={column}
             visibleCount={visibleTaskCounts[column.slug] ?? 20}
             statusOptions={statusOptions}
+            columnRoles={columnRoles}
             moving={status.moving}
             movingTaskId={status.movingTaskId}
             actionMenuTaskId={actionMenuTaskId}
+            configuringColumns={status.configuringColumns}
             onMoveTask={actions.onMoveTask}
+            onSetColumnRole={actions.onSetColumnRole}
             onOpenTask={actions.onOpenTask}
             onOpenTaskMenu={actions.onOpenTaskMenu}
             onDragStart={actions.onDragStart}
@@ -116,8 +128,10 @@ export const TaskBoardView = ({
       />
       <TaskBoardSettingsDialog
         open={settingsDialogOpen}
+        form={form.settings}
         repoItems={repoItems}
         selectedRepoNames={selectedRepoNames}
+        statusOptions={statusOptions}
         status={status}
         actions={actions}
       />

@@ -15,7 +15,7 @@ const MAX_WIDTH: Record<PageMaxWidth, string> = {
   '5xl': 'w-full max-w-5xl',
   '6xl': 'w-full max-w-6xl',
   '7xl': 'w-full max-w-7xl',
-  board: 'w-full lg:w-[80vw] lg:max-w-[1536px]'
+  board: 'w-full lg:w-[80vw] lg:max-w-[1600px]'
 };
 
 const GAP: Record<6 | 8, string> = {

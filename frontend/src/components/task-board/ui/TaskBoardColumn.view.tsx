@@ -3,16 +3,29 @@ import { useCallback } from 'preact/hooks';
 import type { SelectOption } from '../../../types/shared';
 import type { TaskBoardColumn as TaskBoardColumnModel } from '../../../types/task-board';
 import { Button } from '../../shared/ui/Button.view';
+import type { TaskBoardColumnRole, TaskBoardColumnRoles } from '../types';
 import { TaskCard } from './TaskCard.view';
+
+interface ColumnRoleButtonProps {
+  columnSlug: string;
+  columnName: string;
+  role: TaskBoardColumnRole;
+  active: boolean;
+  disabled: boolean;
+  onSetColumnRole: (columnSlug: string, role: TaskBoardColumnRole) => void;
+}
 
 interface TaskBoardColumnProps {
   column: TaskBoardColumnModel;
   visibleCount: number;
   statusOptions: SelectOption[];
+  columnRoles: TaskBoardColumnRoles;
   moving: boolean;
   movingTaskId: string | null;
   actionMenuTaskId: string | null;
+  configuringColumns: boolean;
   onMoveTask: (taskId: string, status: string) => void;
+  onSetColumnRole: (columnSlug: string, role: TaskBoardColumnRole) => void;
   onOpenTask: (task: TaskBoardColumnModel['tasks'][number]) => void;
   onOpenTaskMenu: (event: MouseEvent, taskId: string) => void;
   onDragStart: (taskId: string) => void;
@@ -22,14 +35,70 @@ interface TaskBoardColumnProps {
   onColumnScroll: (event: Event, columnSlug: string) => void;
 }
 
+const ROLE_LABELS: Record<TaskBoardColumnRole, string> = {
+  pickup: 'Pickup',
+  progress: 'In progress',
+  done: 'Done',
+  review: 'Review'
+};
+
+const ROLE_ORDER: TaskBoardColumnRole[] = ['pickup', 'progress', 'done', 'review'];
+
+const columnRoleActive = (
+  role: TaskBoardColumnRole,
+  columnSlug: string,
+  columnRoles: TaskBoardColumnRoles
+): boolean => {
+  if (role === 'pickup') return columnRoles.pickupColumn === columnSlug;
+  if (role === 'progress') return columnRoles.progressColumn === columnSlug;
+  if (role === 'done') return columnRoles.targetColumn === columnSlug;
+  return columnRoles.reviewPickupColumn === columnSlug;
+};
+
+const ColumnRoleButton = ({
+  columnSlug,
+  columnName,
+  role,
+  active,
+  disabled,
+  onSetColumnRole
+}: ColumnRoleButtonProps): JSX.Element => {
+  const setRole = useCallback(() => {
+    onSetColumnRole(columnSlug, role);
+  }, [columnSlug, onSetColumnRole, role]);
+
+  return (
+    <Button
+      type='button'
+      variant='ghost'
+      disabled={disabled}
+      aria-pressed={active}
+      aria-label={`${active && role === 'review' ? 'Clear' : 'Set'} ${columnName} ${ROLE_LABELS[
+        role
+      ].toLowerCase()} column`}
+      onClick={setRole}
+      class={`border px-2 py-1 text-[10px] ${
+        active
+          ? 'border-accent bg-bg-hover text-text-primary'
+          : 'border-border-base text-text-muted'
+      }`}
+    >
+      {ROLE_LABELS[role]}
+    </Button>
+  );
+};
+
 export const TaskBoardColumn = ({
   column,
   visibleCount,
   statusOptions,
+  columnRoles,
   moving,
   movingTaskId,
   actionMenuTaskId,
+  configuringColumns,
   onMoveTask,
+  onSetColumnRole,
   onOpenTask,
   onOpenTaskMenu,
   onDragStart,
@@ -40,6 +109,7 @@ export const TaskBoardColumn = ({
 }: TaskBoardColumnProps): JSX.Element => {
   const visibleTasks = column.tasks.slice(0, visibleCount);
   const hasMoreTasks = visibleTasks.length < column.tasks.length;
+  const activeRoles = ROLE_ORDER.filter((role) => columnRoleActive(role, column.slug, columnRoles));
 
   const dropOnStatus = useCallback(
     (event: JSX.TargetedDragEvent<HTMLElement>) => {
@@ -66,11 +136,42 @@ export const TaskBoardColumn = ({
       onDrop={dropOnStatus}
       class='flex min-h-80 flex-col gap-4 border border-border-base bg-bg-card p-4'
     >
-      <div class='flex items-center justify-between gap-3 border-b border-border-base pb-3'>
-        <h3 class='text-sm font-semibold uppercase tracking-wider text-text-primary'>
-          {column.name}
-        </h3>
-        <span class='text-xs tabular-nums text-text-muted'>{column.tasks.length}</span>
+      <div class='flex flex-col gap-3 border-b border-border-base pb-3'>
+        <div class='flex items-start justify-between gap-3'>
+          <div class='flex flex-col gap-2'>
+            <h3 class='text-sm font-semibold uppercase tracking-wider text-text-primary'>
+              {column.name}
+            </h3>
+            <div class='flex flex-wrap gap-1'>
+              {activeRoles.length > 0 ? (
+                activeRoles.map((role) => (
+                  <span
+                    key={role}
+                    class='border border-accent bg-bg-hover px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-primary'
+                  >
+                    {ROLE_LABELS[role]}
+                  </span>
+                ))
+              ) : (
+                <span class='text-[10px] uppercase tracking-wider text-text-muted'>No role</span>
+              )}
+            </div>
+          </div>
+          <span class='text-xs tabular-nums text-text-muted'>{column.tasks.length}</span>
+        </div>
+        <div class='grid grid-cols-2 gap-1'>
+          {ROLE_ORDER.map((role) => (
+            <ColumnRoleButton
+              key={role}
+              columnSlug={column.slug}
+              columnName={column.name}
+              role={role}
+              active={columnRoleActive(role, column.slug, columnRoles)}
+              disabled={configuringColumns}
+              onSetColumnRole={onSetColumnRole}
+            />
+          ))}
+        </div>
       </div>
       <div class='flex max-h-[70vh] flex-col gap-3 overflow-auto pr-1' onScroll={scrollColumn}>
         {visibleTasks.length ? (

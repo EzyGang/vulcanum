@@ -1,6 +1,25 @@
 import type { SelectOption } from '../../types/shared';
 import type { TaskBoard, TaskBoardTask } from '../../types/task-board';
 
+export type TaskBoardColumnRole = 'pickup' | 'progress' | 'review' | 'done';
+
+export interface TaskBoardColumnRoles {
+  pickupColumn: string;
+  progressColumn: string;
+  targetColumn: string;
+  reviewPickupColumn: string | null;
+}
+
+export interface TaskBoardSettingsFormState {
+  promptTemplate: string;
+  agentsMd: string;
+  reviewEnabled: string;
+  reviewPickupColumn: string;
+  reviewMaxTurns: string;
+  reviewPromptTemplate: string;
+  maxInProgressTasks: string;
+}
+
 export interface TaskBoardViewData {
   selectedProjectKey: string | null;
   board?: TaskBoard;
@@ -12,6 +31,7 @@ export interface TaskBoardViewData {
   settingsDialogOpen: boolean;
   actionMenuTaskId: string | null;
   visibleTaskCounts: Record<string, number>;
+  columnRoles: TaskBoardColumnRoles;
 }
 
 export interface TaskBoardFormState {
@@ -20,6 +40,7 @@ export interface TaskBoardFormState {
   status: string;
   createError: string | null;
   serverError: string | null;
+  settings: TaskBoardSettingsFormState;
 }
 
 export interface TaskBoardStatusState {
@@ -31,6 +52,8 @@ export interface TaskBoardStatusState {
   reposLoading: boolean;
   connectingRepos: boolean;
   connected: boolean;
+  savingSettings: boolean;
+  configuringColumns: boolean;
 }
 
 export interface TaskBoardActions {
@@ -40,6 +63,15 @@ export interface TaskBoardActions {
   onSubmitTask: (event: Event) => void;
   onMoveTask: (taskId: string, status: string) => void;
   onToggleRepo: (repoFullName: string) => void;
+  onSettingsPromptInput: (event: Event) => void;
+  onSettingsAgentsInput: (event: Event) => void;
+  onSettingsReviewEnabledChange: (value: string) => void;
+  onSettingsReviewPickupColumnChange: (value: string) => void;
+  onSettingsReviewMaxTurnsInput: (event: Event) => void;
+  onSettingsReviewPromptInput: (event: Event) => void;
+  onSettingsMaxInProgressInput: (event: Event) => void;
+  onSubmitSettings: (event: Event) => void;
+  onSetColumnRole: (columnSlug: string, role: TaskBoardColumnRole) => void;
   onOpenTask: (task: TaskBoardTask) => void;
   onCloseTask: () => void;
   onDragStart: (taskId: string) => void;

@@ -25,6 +25,7 @@ export interface TeamMember {
 }
 
 export interface TeamDefaults {
+  promptTemplate: string;
   reviewPromptTemplate: string;
   maxInProgressTasks: number;
 }

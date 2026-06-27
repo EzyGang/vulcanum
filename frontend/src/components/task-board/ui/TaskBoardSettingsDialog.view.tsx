@@ -1,55 +1,43 @@
-import { useSignal } from '@preact/signals';
 import type { JSX } from 'preact';
-import { useCallback, useMemo } from 'preact/hooks';
-import type { SelectOption } from '../../../types/shared';
+import { useCallback } from 'preact/hooks';
 import { Button } from '../../shared/ui/Button.view';
-import { Checkbox } from '../../shared/ui/Checkbox.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
-import { Input } from '../../shared/ui/Input.view';
-import type { TaskBoardActions, TaskBoardStatusState } from '../types';
-
-interface RepoCheckboxProps {
-  repo: SelectOption;
-  checked: boolean;
-  disabled: boolean;
-  onToggleRepo: (repoFullName: string) => void;
-}
+import type { TaskBoardActions, TaskBoardFormState, TaskBoardStatusState } from '../types';
+import { TaskBoardProjectSettings } from './TaskBoardProjectSettings.view';
+import { TaskBoardRepositorySettings } from './TaskBoardRepositorySettings.view';
+import { TaskBoardReviewSettings } from './TaskBoardReviewSettings.view';
 
 interface TaskBoardSettingsDialogProps {
   open: boolean;
-  repoItems: SelectOption[];
+  form: TaskBoardFormState['settings'];
+  repoItems: { value: string; label: string }[];
   selectedRepoNames: string[];
-  status: Pick<TaskBoardStatusState, 'connected' | 'connectingRepos' | 'reposLoading'>;
-  actions: Pick<TaskBoardActions, 'onCloseSettings' | 'onToggleRepo'>;
+  statusOptions: { value: string; label: string }[];
+  status: Pick<
+    TaskBoardStatusState,
+    'connected' | 'connectingRepos' | 'reposLoading' | 'savingSettings'
+  >;
+  actions: Pick<
+    TaskBoardActions,
+    | 'onCloseSettings'
+    | 'onToggleRepo'
+    | 'onSettingsPromptInput'
+    | 'onSettingsAgentsInput'
+    | 'onSettingsReviewEnabledChange'
+    | 'onSettingsReviewPickupColumnChange'
+    | 'onSettingsReviewMaxTurnsInput'
+    | 'onSettingsReviewPromptInput'
+    | 'onSettingsMaxInProgressInput'
+    | 'onSubmitSettings'
+  >;
 }
-
-const RepoCheckbox = ({
-  repo,
-  checked,
-  disabled,
-  onToggleRepo
-}: RepoCheckboxProps): JSX.Element => {
-  const toggleRepo = useCallback(() => {
-    onToggleRepo(repo.value);
-  }, [onToggleRepo, repo.value]);
-
-  return (
-    <label for={`repo-${repo.value}`} class='flex items-center gap-2 text-sm text-text-secondary'>
-      <Checkbox
-        id={`repo-${repo.value}`}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={toggleRepo}
-      />
-      <span>{repo.label}</span>
-    </label>
-  );
-};
 
 export const TaskBoardSettingsDialog = ({
   open,
+  form,
   repoItems,
   selectedRepoNames,
+  statusOptions,
   status,
   actions
 }: TaskBoardSettingsDialogProps): JSX.Element => {
@@ -61,112 +49,61 @@ export const TaskBoardSettingsDialog = ({
     },
     [actions]
   );
-
-  const repoFilter = useSignal('');
-  const selectedRepoNameSet = useMemo(() => new Set(selectedRepoNames), [selectedRepoNames]);
-  const selectedRepos = useMemo(
-    () =>
-      selectedRepoNames.map(
-        (repoFullName) =>
-          repoItems.find((repo) => repo.value === repoFullName) ?? {
-            value: repoFullName,
-            label: repoFullName
-          }
-      ),
-    [repoItems, selectedRepoNames]
-  );
-  const normalizedRepoFilter = repoFilter.value.trim().toLocaleLowerCase();
-  const filteredRepoItems = repoItems.filter(
-    (repo) =>
-      !selectedRepoNameSet.has(repo.value) &&
-      (normalizedRepoFilter.length === 0 ||
-        repo.label.toLocaleLowerCase().includes(normalizedRepoFilter) ||
-        repo.value.toLocaleLowerCase().includes(normalizedRepoFilter))
-  );
-
-  const filterRepos = useCallback(
-    (event: Event) => {
-      repoFilter.value = (event.target as HTMLInputElement).value;
-    },
-    [repoFilter]
-  );
+  const settingsDisabled = status.savingSettings || !status.connected;
+  const repoControlsDisabled = status.connectingRepos || !status.connected;
 
   return (
     <Dialog open={open} onOpenChange={closeWhenDismissed}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup class='flex w-[min(92vw,720px)] flex-col gap-5'>
-          <div class='flex items-start justify-between gap-4'>
-            <div class='flex flex-col gap-2'>
-              <Dialog.Title>Board settings</Dialog.Title>
-              <Dialog.Description>
-                Assign GitHub repositories related to this provider project.
-              </Dialog.Description>
+        <Dialog.Popup class='w-[min(92vw,760px)] max-h-[90vh] overflow-auto'>
+          <form onSubmit={actions.onSubmitSettings} class='flex flex-col gap-5'>
+            <div class='flex items-start justify-between gap-4'>
+              <div class='flex flex-col gap-2'>
+                <Dialog.Title>Board settings</Dialog.Title>
+                <Dialog.Description>
+                  Pin repositories and override task automation for this provider project.
+                </Dialog.Description>
+              </div>
+              <Dialog.Close>
+                <Button type='button' variant='ghost'>
+                  Close
+                </Button>
+              </Dialog.Close>
             </div>
-            <Dialog.Close>
-              <Button type='button' variant='ghost'>
-                Close
+
+            <span class='text-xs uppercase tracking-wider text-text-muted'>
+              {status.connected
+                ? 'Project configuration connected'
+                : 'Project configuration missing'}
+            </span>
+            {!status.connected && (
+              <p class='border border-warning-border bg-warning-bg p-3 text-xs text-warning'>
+                Add this provider project to Vulcanum before editing board settings.
+              </p>
+            )}
+
+            <TaskBoardRepositorySettings
+              repoItems={repoItems}
+              selectedRepoNames={selectedRepoNames}
+              loading={status.reposLoading}
+              disabled={repoControlsDisabled}
+              onToggleRepo={actions.onToggleRepo}
+            />
+            <TaskBoardProjectSettings form={form} disabled={settingsDisabled} actions={actions} />
+            <TaskBoardReviewSettings
+              form={form}
+              statusOptions={statusOptions}
+              disabled={settingsDisabled}
+              actions={actions}
+            />
+
+            <div class='flex justify-end gap-2'>
+              <Button type='submit' variant='primary' disabled={settingsDisabled}>
+                {status.savingSettings ? 'Saving…' : 'Save settings'}
               </Button>
-            </Dialog.Close>
-          </div>
-          <span class='text-xs uppercase tracking-wider text-text-muted'>
-            {status.connected ? 'Connected' : 'Not connected'}
-          </span>
-          {status.reposLoading && <p class='text-xs text-text-muted'>Loading repositories…</p>}
-          {!status.reposLoading && repoItems.length === 0 && (
-            <p class='text-xs text-text-muted'>No GitHub repositories are available.</p>
-          )}
-          {repoItems.length > 0 && (
-            <div class='flex flex-col gap-4'>
-              <Input
-                aria-label='Filter repositories'
-                placeholder='Filter repositories'
-                value={repoFilter.value}
-                disabled={status.connectingRepos}
-                onInput={filterRepos}
-              />
-              {selectedRepos.length > 0 && (
-                <section class='flex flex-col gap-2'>
-                  <h3 class='text-xs font-medium uppercase tracking-wider text-text-muted'>
-                    Selected repositories
-                  </h3>
-                  <div class='grid gap-2 border border-border-accent bg-accent-muted/10 p-3 md:grid-cols-2'>
-                    {selectedRepos.map((repo) => (
-                      <RepoCheckbox
-                        key={repo.value}
-                        repo={repo}
-                        checked={true}
-                        disabled={status.connectingRepos}
-                        onToggleRepo={actions.onToggleRepo}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-              <section class='flex flex-col gap-2'>
-                <h3 class='text-xs font-medium uppercase tracking-wider text-text-muted'>
-                  Available repositories
-                </h3>
-                {filteredRepoItems.length > 0 ? (
-                  <div class='grid max-h-72 gap-2 overflow-auto border border-border-base bg-bg-input p-3 md:grid-cols-2'>
-                    {filteredRepoItems.map((repo) => (
-                      <RepoCheckbox
-                        key={repo.value}
-                        repo={repo}
-                        checked={false}
-                        disabled={status.connectingRepos}
-                        onToggleRepo={actions.onToggleRepo}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p class='border border-border-base bg-bg-input p-3 text-xs text-text-muted'>
-                    No repositories match this filter.
-                  </p>
-                )}
-              </section>
             </div>
-          )}
+          </form>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog>

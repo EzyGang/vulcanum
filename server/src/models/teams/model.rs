@@ -5,9 +5,28 @@ use uuid::Uuid;
 
 use crate::util::serde::deserialize_nullable_string;
 
+pub const DEFAULT_PROMPT_TEMPLATE: &str = r#"Implement the linked task.
+
+Before editing, inspect the repository instructions and project manifests. Spawn a focused setup subagent when dependencies, generated files, or environment preparation are not already clear; have it follow the relevant AGENTS.md files and run the installation/setup commands the project needs.
+
+Task title:
+{{task_title}}
+
+Task body:
+```text
+{{task_body}}
+```
+
+Repositories:
+{{repo_urls}}
+
+Follow the repository instructions, keep changes focused on the task, and keep the final response concise."#;
+
 pub const DEFAULT_REVIEW_PROMPT_TEMPLATE: &str = r#"Review this pull request for the linked task.
 
-Review the solution for correctness, maintainability, and project fit. Make sure the implementation is elegant, avoids duplication, and follows every AGENTS.md file that applies to the changed directories. Verify that the pull request has been formatted and validated with the repository commands that apply to the changed code. During the review phase, do not edit files, commit, push, or create pull requests.
+Before judging the implementation, inspect the repository instructions and project manifests. Follow every AGENTS.md file that applies to the changed directories. Spawn focused read-only subagents when they would help check correctness, tests, security, or project conventions; they must not edit files.
+
+Review the solution for correctness, maintainability, and project fit. Make sure the implementation is elegant, avoids duplication, and has been formatted and validated with the repository commands that apply to the changed code. During the review phase, do not edit files, commit, push, or create pull requests. Keep the final response concise and focused on actionable findings.
 
 Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes. If a suitable review already exists for the current PR head commit, do not post a duplicate review. If the PR has new commits after the existing review, post a new review.
 
@@ -16,7 +35,7 @@ The review body must use exactly these Markdown sections in this order:
 - List defects that make the implementation unsafe, incorrect, or unusable. Use "- None" if empty.
 
 ## WARNINGS
-- List defects that should be fixed before merging, including missing or failing formatter, validation, or test commands. Use "- None" if empty.
+- List defects that should be fixed before merging, including missing or failing formatter, validation, or test commands. This includes serious violations of AGENTS.md guidelines. Use "- None" if empty.
 
 ## SUGGESTIONS
 - List optional improvements. Use "- None" if empty.
@@ -39,6 +58,7 @@ Repository:
 pub struct TeamDefaultsResponse {
     pub review_prompt_template: &'static str,
     pub max_in_progress_tasks: i32,
+    pub prompt_template: &'static str,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]

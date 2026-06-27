@@ -93,7 +93,7 @@ const makeTask = (id: string, title = `Task ${id}`) => ({
 
 const makeProps = () => ({
   data: {
-    selectedProjectKey: 'provider-1:project-1',
+    selectedProjectKey: 'provider-1/project-1',
     statusOptions: [
       { value: 'to-do', label: 'To Do' },
       { value: 'in-progress', label: 'In Progress' },
@@ -118,14 +118,29 @@ const makeProps = () => ({
     createDialogOpen: false,
     settingsDialogOpen: false,
     actionMenuTaskId: null as string | null,
-    visibleTaskCounts: { 'to-do': 20, done: 20 }
+    visibleTaskCounts: { 'to-do': 20, done: 20 },
+    columnRoles: {
+      pickupColumn: 'to-do',
+      progressColumn: 'to-do',
+      targetColumn: 'done',
+      reviewPickupColumn: null
+    }
   },
   form: {
     title: '',
     body: '',
     status: 'to-do',
     createError: null,
-    serverError: null
+    serverError: null,
+    settings: {
+      promptTemplate: '',
+      agentsMd: '',
+      reviewEnabled: '',
+      reviewPickupColumn: '',
+      reviewMaxTurns: '',
+      reviewPromptTemplate: '',
+      maxInProgressTasks: ''
+    }
   },
   status: {
     loading: false,
@@ -135,7 +150,9 @@ const makeProps = () => ({
     moving: false,
     reposLoading: false,
     connectingRepos: false,
-    connected: false
+    connected: true,
+    savingSettings: false,
+    configuringColumns: false
   },
   actions: {
     onTitleInput: vi.fn(),
@@ -144,6 +161,15 @@ const makeProps = () => ({
     onSubmitTask: vi.fn((event: Event) => event.preventDefault()),
     onMoveTask: vi.fn(),
     onToggleRepo: vi.fn(),
+    onSettingsPromptInput: vi.fn(),
+    onSettingsAgentsInput: vi.fn(),
+    onSettingsReviewEnabledChange: vi.fn(),
+    onSettingsReviewPickupColumnChange: vi.fn(),
+    onSettingsReviewMaxTurnsInput: vi.fn(),
+    onSettingsReviewPromptInput: vi.fn(),
+    onSettingsMaxInProgressInput: vi.fn(),
+    onSubmitSettings: vi.fn((event: Event) => event.preventDefault()),
+    onSetColumnRole: vi.fn(),
     onOpenTask: vi.fn(),
     onCloseTask: vi.fn(),
     onDragStart: vi.fn(),
@@ -250,6 +276,27 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onToggleRepo).toHaveBeenCalledWith('owner/repo');
   });
 
+  it('submits project overrides from the settings modal', () => {
+    const props = makeProps();
+    props.data.settingsDialogOpen = true;
+    props.form.settings.promptTemplate = 'Use the pinned repositories.';
+    const { getByText } = render(<TaskBoardView {...props} />);
+    const settingsForm = getByText('Save settings').closest('form');
+
+    fireEvent.submit(settingsForm as Element);
+
+    expect(props.actions.onSubmitSettings).toHaveBeenCalledOnce();
+  });
+
+  it('sets board column roles from header controls', () => {
+    const props = makeProps();
+    const { getByLabelText } = render(<TaskBoardView {...props} />);
+
+    fireEvent.click(getByLabelText('Set Done review column'));
+
+    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'review');
+  });
+
   it('pins selected repositories and filters available repositories', () => {
     const props = makeProps();
     props.data.settingsDialogOpen = true;
@@ -290,7 +337,9 @@ describe('TaskBoard.view', () => {
   it('drops a task onto a column through the provided action', () => {
     const props = makeProps();
     const { getByText } = render(<TaskBoardView {...props} />);
-    const doneColumn = getByText('Done').closest('section');
+    const doneColumn = getByText('Drop tasks here or create a new one for this column.').closest(
+      'section'
+    );
 
     fireEvent.drop(doneColumn as Element);
 

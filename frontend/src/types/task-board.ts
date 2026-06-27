@@ -1,6 +1,6 @@
 export interface TaskProviderProject {
   providerId: string;
-  providerType: 'kaneo';
+  providerType: string;
   workspaceId: string;
   externalProjectId: string;
   name: string;
@@ -42,7 +42,7 @@ export interface TaskBoard {
 
 export interface TaskBoardResponse {
   providerId: string;
-  providerType: 'kaneo';
+  providerType: string;
   board: TaskBoard;
 }
 

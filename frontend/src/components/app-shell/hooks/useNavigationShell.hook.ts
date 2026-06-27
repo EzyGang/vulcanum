@@ -1,6 +1,7 @@
 import { useSignal } from '@preact/signals';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useMemo } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
+import { listProjects } from '../../../services/projects/projects.service';
 import { listTaskBoardProjects } from '../../../services/task-board/task-board.service';
 import { listTeams } from '../../../services/teams/teams.service';
 import {
@@ -29,10 +30,29 @@ export const useNavigationShell = () => {
   const [location, setLocation] = useLocation();
   const mobileMenuOpen = useSignal(false);
   const { data: teamList = [] } = useApiQuery(['teams'], listTeams);
-  const { data: projectList = [] } = useApiQuery(
+  const { data: projectList = [], isLoading: providerProjectsLoading } = useApiQuery(
     ['task-board-projects', selectedTeamId.value],
     listTaskBoardProjects,
     { enabled: Boolean(selectedTeamId.value) }
+  );
+  const { data: projectConfigs = [], isLoading: projectConfigsLoading } = useApiQuery(
+    ['projects', selectedTeamId.value],
+    listProjects,
+    { enabled: Boolean(selectedTeamId.value) }
+  );
+  const projectsLoading = providerProjectsLoading || projectConfigsLoading;
+
+  const configuredProjectList = useMemo(
+    () =>
+      projectList.filter((project) =>
+        projectConfigs.some(
+          (config) =>
+            config.enabled &&
+            config.providerId === project.providerId &&
+            config.externalProjectId === project.externalProjectId
+        )
+      ),
+    [projectList, projectConfigs]
   );
 
   useEffect(() => {
@@ -44,7 +64,8 @@ export const useNavigationShell = () => {
   }, [teamList, selectedTeamId.value]);
 
   useEffect(() => {
-    const selectedStillExists = projectList.some(
+    if (projectsLoading) return;
+    const selectedStillExists = configuredProjectList.some(
       (project) =>
         buildTaskProjectKey(project.providerId, project.externalProjectId) ===
         selectedTaskProjectKey.value
@@ -52,15 +73,16 @@ export const useNavigationShell = () => {
 
     if (selectedStillExists) return;
 
-    if (projectList[0]) {
+    if (configuredProjectList[0]) {
+      const firstProject = configuredProjectList[0];
       setSelectedTaskProjectKey(
-        buildTaskProjectKey(projectList[0].providerId, projectList[0].externalProjectId)
+        buildTaskProjectKey(firstProject.providerId, firstProject.externalProjectId)
       );
       return;
     }
 
     setSelectedTaskProjectKey(null);
-  }, [projectList, selectedTaskProjectKey.value]);
+  }, [configuredProjectList, projectsLoading, selectedTaskProjectKey.value]);
 
   const isActive = (href: string): boolean => {
     if (href === '/') {
@@ -97,7 +119,7 @@ export const useNavigationShell = () => {
     selectedTeamId: selectedTeamId.value,
     teamOptions: teamList.map((team) => ({ value: team.id, label: team.name })),
     selectedProjectKey: selectedTaskProjectKey.value,
-    projectOptions: projectList.map((project) => ({
+    projectOptions: configuredProjectList.map((project) => ({
       value: buildTaskProjectKey(project.providerId, project.externalProjectId),
       label: project.name
     })),

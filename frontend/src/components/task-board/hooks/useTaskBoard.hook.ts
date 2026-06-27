@@ -1,23 +1,28 @@
 import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
-import { listRepos } from '../../../services/github/github.service';
 import {
-  createProject,
-  listProjects,
-  updateProject
-} from '../../../services/projects/projects.service';
+  DEFAULT_MAX_IN_PROGRESS_TASKS,
+  DEFAULT_REVIEW_MAX_TURNS
+} from '../../../constants/reviewAutomation';
+import { listRepos } from '../../../services/github/github.service';
+import { listProjects, updateProject } from '../../../services/projects/projects.service';
 import {
   createTask,
   getTaskBoard,
-  listTaskBoardProjects,
   moveTask
 } from '../../../services/task-board/task-board.service';
 import { parseTaskProjectKey, selectedTaskProjectKey } from '../../../stores/task-board.store';
-import type { ProjectConfig } from '../../../types/projects';
+import type { ProjectConfig, UpdateProjectRequest } from '../../../types/projects';
 import type { TaskBoardColumn, TaskBoardTask } from '../../../types/task-board';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
+import { parsePositiveNumber } from '../../../utils/numbers';
 import { textInputHandler } from '../../../utils/signal-input';
+import type {
+  TaskBoardColumnRole,
+  TaskBoardColumnRoles,
+  TaskBoardSettingsFormState
+} from '../types';
 
 const boardQueryKey = (providerId?: string, projectId?: string) => [
   'task-board',
@@ -25,9 +30,9 @@ const boardQueryKey = (providerId?: string, projectId?: string) => [
   projectId ?? ''
 ];
 
-const projectsQueryKey = ['task-board-projects'];
 const projectConfigsQueryKey = ['projects'];
 const reposQueryKey = ['github-repos'];
+const taskBoardProjectsQueryKey = ['task-board-projects'];
 const COLUMN_PAGE_SIZE = 20;
 
 const firstColumnSlug = (columns: TaskBoardColumn[]): string => columns[0]?.slug ?? '';
@@ -50,28 +55,66 @@ const matchingProjectConfig = (
     (config) => config.providerId === providerId && config.externalProjectId === externalProjectId
   ) ?? null;
 
+const columnRolesForProject = (
+  config: ProjectConfig | null,
+  columns: TaskBoardColumn[]
+): TaskBoardColumnRoles => ({
+  pickupColumn: config?.pickupColumn || firstColumnSlug(columns),
+  progressColumn: config?.progressColumn || progressColumnSlug(columns),
+  targetColumn: config?.targetColumn || targetColumnSlug(columns),
+  reviewPickupColumn: config?.reviewPickupColumn ?? null
+});
+
+const nullableText = (value: string): string | null => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? value : null;
+};
+
+const settingsFormFromConfig = (config: ProjectConfig | null): TaskBoardSettingsFormState => ({
+  promptTemplate: config?.promptTemplate ?? '',
+  agentsMd: config?.agentsMd ?? '',
+  reviewEnabled:
+    config?.reviewEnabled === null || config?.reviewEnabled === undefined
+      ? ''
+      : config.reviewEnabled
+        ? 'true'
+        : 'false',
+  reviewPickupColumn: config?.reviewPickupColumn ?? '',
+  reviewMaxTurns: config?.reviewMaxTurns?.toString() ?? '',
+  reviewPromptTemplate: config?.reviewPromptTemplate ?? '',
+  maxInProgressTasks: config?.maxInProgressTasks?.toString() ?? ''
+});
+
 export const useTaskBoard = () => {
   const selection = parseTaskProjectKey(selectedTaskProjectKey.value);
   const title = useSignal('');
   const body = useSignal('');
   const status = useSignal('');
   const createError = useSignal<string | null>(null);
-  const repoError = useSignal<string | null>(null);
+  const formError = useSignal<string | null>(null);
   const selectedTask = useSignal<TaskBoardTask | null>(null);
   const draggedTask = useSignal<string | null>(null);
   const createDialogOpen = useSignal(false);
   const settingsDialogOpen = useSignal(false);
   const actionMenuTaskId = useSignal<string | null>(null);
   const visibleTaskCounts = useSignal<Record<string, number>>({});
+  const settingsPromptTemplate = useSignal('');
+  const settingsAgentsMd = useSignal('');
+  const settingsReviewEnabled = useSignal('');
+  const settingsReviewPickupColumn = useSignal('');
+  const settingsReviewMaxTurns = useSignal('');
+  const settingsReviewPromptTemplate = useSignal('');
+  const settingsMaxInProgressTasks = useSignal('');
 
   const boardQuery = useApiQuery(
     boardQueryKey(selection?.providerId, selection?.externalProjectId),
     () => getTaskBoard(selection?.providerId ?? '', selection?.externalProjectId ?? ''),
-    { enabled: Boolean(selection) }
+    {
+      enabled: Boolean(selection),
+      refetchInterval: 120_000,
+      staleTime: 60_000
+    }
   );
-  const { data: providerProjects = [] } = useApiQuery(projectsQueryKey, listTaskBoardProjects, {
-    enabled: Boolean(selection)
-  });
   const { data: projectConfigs = [] } = useApiQuery(projectConfigsQueryKey, listProjects, {
     enabled: Boolean(selection)
   });
@@ -86,12 +129,8 @@ export const useTaskBoard = () => {
     selection?.providerId,
     selection?.externalProjectId
   );
-  const providerProject = providerProjects.find(
-    (project) =>
-      project.providerId === selection?.providerId &&
-      project.externalProjectId === selection?.externalProjectId
-  );
   const selectedRepoNames = projectConfig?.repoFullNames ?? [];
+  const columnRoles = columnRolesForProject(projectConfig, columns);
 
   useEffect(() => {
     const nextCounts: Record<string, number> = {};
@@ -114,6 +153,19 @@ export const useTaskBoard = () => {
       status.value = firstColumnSlug(columns);
     }
   }, [columns, status.value]);
+
+  useEffect(() => {
+    if (!settingsDialogOpen.value) return;
+
+    const nextSettings = settingsFormFromConfig(projectConfig);
+    settingsPromptTemplate.value = nextSettings.promptTemplate;
+    settingsAgentsMd.value = nextSettings.agentsMd;
+    settingsReviewEnabled.value = nextSettings.reviewEnabled;
+    settingsReviewPickupColumn.value = nextSettings.reviewPickupColumn;
+    settingsReviewMaxTurns.value = nextSettings.reviewMaxTurns;
+    settingsReviewPromptTemplate.value = nextSettings.reviewPromptTemplate;
+    settingsMaxInProgressTasks.value = nextSettings.maxInProgressTasks;
+  }, [settingsDialogOpen.value, projectConfig?.id]);
 
   const createMutation = useApiMutation(
     () =>
@@ -145,26 +197,51 @@ export const useTaskBoard = () => {
 
   const repoMutation = useApiMutation(
     (nextRepoNames: string[]) => {
-      if (projectConfig) {
-        return updateProject(projectConfig.id, { repoFullNames: nextRepoNames });
+      if (!projectConfig) {
+        throw new Error('Add this provider project before pinning repositories');
       }
 
-      return createProject({
-        externalProjectId: selection?.externalProjectId ?? '',
-        externalWorkspaceId: providerProject?.workspaceId ?? '',
-        name: board?.project.name ?? providerProject?.name ?? '',
-        providerId: selection?.providerId ?? '',
-        enabled: true,
-        pickupColumn: firstColumnSlug(columns),
-        progressColumn: progressColumnSlug(columns),
-        targetColumn: targetColumnSlug(columns),
-        repoFullNames: nextRepoNames
-      });
+      return updateProject(projectConfig.id, { repoFullNames: nextRepoNames });
     },
     {
       onSuccess: () => {
-        repoError.value = null;
+        formError.value = null;
         invalidate(...projectConfigsQueryKey);
+      }
+    }
+  );
+
+  const settingsMutation = useApiMutation(
+    (input: UpdateProjectRequest) => {
+      if (!projectConfig) {
+        throw new Error('Add this provider project before editing board settings');
+      }
+
+      return updateProject(projectConfig.id, input);
+    },
+    {
+      onSuccess: () => {
+        formError.value = null;
+        settingsDialogOpen.value = false;
+        invalidate(...projectConfigsQueryKey);
+        invalidate(...taskBoardProjectsQueryKey);
+      }
+    }
+  );
+
+  const columnRoleMutation = useApiMutation(
+    (input: UpdateProjectRequest) => {
+      if (!projectConfig) {
+        throw new Error('Add this provider project before editing column roles');
+      }
+
+      return updateProject(projectConfig.id, input);
+    },
+    {
+      onSuccess: () => {
+        formError.value = null;
+        invalidate(...projectConfigsQueryKey);
+        invalidate(...taskBoardProjectsQueryKey);
       }
     }
   );
@@ -180,6 +257,68 @@ export const useTaskBoard = () => {
       createMutation.mutate(undefined);
     },
     [createMutation, title, createError]
+  );
+
+  const submitSettings = useCallback(
+    async (event: Event) => {
+      event.preventDefault();
+      formError.value = null;
+
+      try {
+        await settingsMutation.mutateAsync({
+          promptTemplate: nullableText(settingsPromptTemplate.value),
+          agentsMd: nullableText(settingsAgentsMd.value),
+          reviewEnabled:
+            settingsReviewEnabled.value === '' ? null : settingsReviewEnabled.value === 'true',
+          reviewPickupColumn: settingsReviewPickupColumn.value || null,
+          reviewMaxTurns: settingsReviewMaxTurns.value.trim()
+            ? parsePositiveNumber(settingsReviewMaxTurns.value, DEFAULT_REVIEW_MAX_TURNS)
+            : null,
+          reviewPromptTemplate: nullableText(settingsReviewPromptTemplate.value),
+          maxInProgressTasks: settingsMaxInProgressTasks.value.trim()
+            ? parsePositiveNumber(settingsMaxInProgressTasks.value, DEFAULT_MAX_IN_PROGRESS_TASKS)
+            : null
+        });
+      } catch (err) {
+        formError.value = err instanceof Error ? err.message : 'Failed to save board settings';
+      }
+    },
+    [
+      formError,
+      settingsMutation,
+      settingsPromptTemplate,
+      settingsAgentsMd,
+      settingsReviewEnabled,
+      settingsReviewPickupColumn,
+      settingsReviewMaxTurns,
+      settingsReviewPromptTemplate,
+      settingsMaxInProgressTasks
+    ]
+  );
+
+  const setColumnRole = useCallback(
+    (columnSlug: string, role: TaskBoardColumnRole) => {
+      formError.value = null;
+      const input: UpdateProjectRequest = {};
+
+      if (role === 'pickup') {
+        input.pickupColumn = columnSlug;
+      } else if (role === 'progress') {
+        input.progressColumn = columnSlug;
+      } else if (role === 'done') {
+        input.targetColumn = columnSlug;
+      } else {
+        input.reviewPickupColumn =
+          projectConfig?.reviewPickupColumn === columnSlug ? null : columnSlug;
+      }
+
+      columnRoleMutation.mutate(input, {
+        onError: (err) => {
+          formError.value = err.message;
+        }
+      });
+    },
+    [columnRoleMutation, formError, projectConfig?.reviewPickupColumn]
   );
 
   const selectStatus = useCallback(
@@ -200,16 +339,20 @@ export const useTaskBoard = () => {
   const toggleRepo = useCallback(
     (repoFullName: string) => {
       if (!selection || !columns.length) {
-        repoError.value = 'Board columns must load before repositories can be connected';
+        formError.value = 'Board columns must load before repositories can be connected';
         return;
       }
 
       const nextRepoNames = selectedRepoNames.includes(repoFullName)
         ? selectedRepoNames.filter((name) => name !== repoFullName)
         : [...selectedRepoNames, repoFullName];
-      repoMutation.mutate(nextRepoNames);
+      repoMutation.mutate(nextRepoNames, {
+        onError: (err) => {
+          formError.value = err.message;
+        }
+      });
     },
-    [selection, columns, selectedRepoNames, repoMutation, repoError]
+    [selection, columns, selectedRepoNames, repoMutation, formError]
   );
 
   const openTask = useCallback(
@@ -293,7 +436,8 @@ export const useTaskBoard = () => {
       createDialogOpen: createDialogOpen.value,
       settingsDialogOpen: settingsDialogOpen.value,
       actionMenuTaskId: actionMenuTaskId.value,
-      visibleTaskCounts: visibleTaskCounts.value
+      visibleTaskCounts: visibleTaskCounts.value,
+      columnRoles
     },
     form: {
       title: title.value,
@@ -304,8 +448,19 @@ export const useTaskBoard = () => {
         createMutation.error?.message ??
         moveMutation.error?.message ??
         repoMutation.error?.message ??
-        repoError.value ??
-        null
+        settingsMutation.error?.message ??
+        columnRoleMutation.error?.message ??
+        formError.value ??
+        null,
+      settings: {
+        promptTemplate: settingsPromptTemplate.value,
+        agentsMd: settingsAgentsMd.value,
+        reviewEnabled: settingsReviewEnabled.value,
+        reviewPickupColumn: settingsReviewPickupColumn.value,
+        reviewMaxTurns: settingsReviewMaxTurns.value,
+        reviewPromptTemplate: settingsReviewPromptTemplate.value,
+        maxInProgressTasks: settingsMaxInProgressTasks.value
+      }
     },
     status: {
       loading: boardQuery.isLoading,
@@ -315,7 +470,9 @@ export const useTaskBoard = () => {
       moving: moveMutation.isPending,
       reposLoading,
       connectingRepos: repoMutation.isPending,
-      connected: Boolean(projectConfig)
+      connected: Boolean(projectConfig),
+      savingSettings: settingsMutation.isPending,
+      configuringColumns: columnRoleMutation.isPending
     },
     actions: {
       onTitleInput: textInputHandler(title),
@@ -324,6 +481,19 @@ export const useTaskBoard = () => {
       onSubmitTask: submitTask,
       onMoveTask: moveTaskToStatus,
       onToggleRepo: toggleRepo,
+      onSettingsPromptInput: textInputHandler(settingsPromptTemplate),
+      onSettingsAgentsInput: textInputHandler(settingsAgentsMd),
+      onSettingsReviewEnabledChange: (value: string) => {
+        settingsReviewEnabled.value = value;
+      },
+      onSettingsReviewPickupColumnChange: (value: string) => {
+        settingsReviewPickupColumn.value = value;
+      },
+      onSettingsReviewMaxTurnsInput: textInputHandler(settingsReviewMaxTurns),
+      onSettingsReviewPromptInput: textInputHandler(settingsReviewPromptTemplate),
+      onSettingsMaxInProgressInput: textInputHandler(settingsMaxInProgressTasks),
+      onSubmitSettings: submitSettings,
+      onSetColumnRole: setColumnRole,
       onOpenTask: openTask,
       onCloseTask: closeTask,
       onDragStart: startDrag,
@@ -336,6 +506,7 @@ export const useTaskBoard = () => {
         createDialogOpen.value = false;
       },
       onOpenSettings: () => {
+        formError.value = null;
         settingsDialogOpen.value = true;
       },
       onCloseSettings: () => {

@@ -5,14 +5,14 @@ const STORAGE_KEY = 'vulcanum-task-board-project';
 export const selectedTaskProjectKey = signal<string | null>(localStorage.getItem(STORAGE_KEY));
 
 export const buildTaskProjectKey = (providerId: string, externalProjectId: string): string =>
-  `${providerId}:${externalProjectId}`;
+  `${providerId}/${externalProjectId}`;
 
 export const parseTaskProjectKey = (
   key: string | null
 ): { providerId: string; externalProjectId: string } | null => {
   if (!key) return null;
 
-  const separator = key.indexOf(':');
+  const separator = key.indexOf('/');
   if (separator <= 0 || separator === key.length - 1) return null;
 
   return {

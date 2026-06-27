@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use vulcanum_shared::api_types::JobRepo;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 
@@ -78,4 +80,137 @@ fn workspace_prompt_prefix_requires_repo_commands_and_agents_chain() {
     assert!(prompt.contains("aggregated ./AGENTS.md"));
     assert!(prompt.contains("down to the changed directories"));
     assert!(prompt.contains("formatter, validation, and test commands"));
+}
+
+#[tokio::test]
+async fn surface_repo_context_copies_common_skill_roots() {
+    let workspace_dir = std::env::temp_dir().join("vulcanum-test-common-skill-roots");
+    let repo_dir = workspace_dir.join("repo");
+    let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
+    tokio::fs::create_dir_all(&repo_dir)
+        .await
+        .expect("repo dir should be created");
+
+    write_skill(&repo_dir, ".agents", "alpha", "agents-alpha").await;
+    write_skill(&repo_dir, ".agents", "shared", "agents-shared").await;
+    write_skill(&repo_dir, ".claude", "bravo", "claude-bravo").await;
+    write_skill(&repo_dir, ".claude", "shared", "claude-shared").await;
+    write_skill(&repo_dir, ".claude", "extra-shared", "claude-extra-shared").await;
+    write_skill(&repo_dir, ".codex", "charlie", "codex-charlie").await;
+    write_skill(&repo_dir, ".codex", "extra-shared", "codex-extra-shared").await;
+    write_skill(&repo_dir, ".codex", "codex-omp-shared", "codex-omp-shared").await;
+    write_skill(&repo_dir, ".omp", "delta", "omp-delta").await;
+    write_skill(
+        &repo_dir,
+        ".omp",
+        "codex-omp-shared",
+        "omp-codex-omp-shared",
+    )
+    .await;
+    tokio::fs::write(
+        repo_dir.join(".claude").join("skills").join("ignored.md"),
+        "ignored",
+    )
+    .await
+    .expect("non-directory skill fixture should be written");
+
+    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()])
+        .await
+        .expect("repo context should be surfaced");
+
+    let skills_dir = workspace_dir.join(".agents").join("skills");
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("alpha").join("README.md"))
+            .await
+            .expect("alpha skill should be copied"),
+        "agents-alpha"
+    );
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("bravo").join("README.md"))
+            .await
+            .expect("bravo skill should be copied"),
+        "claude-bravo"
+    );
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("charlie").join("README.md"))
+            .await
+            .expect("charlie skill should be copied"),
+        "codex-charlie"
+    );
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("delta").join("README.md"))
+            .await
+            .expect("delta skill should be copied"),
+        "omp-delta"
+    );
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("shared").join("README.md"))
+            .await
+            .expect("first duplicate skill should be copied"),
+        "agents-shared"
+    );
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("extra-shared").join("README.md"))
+            .await
+            .expect("first extra duplicate skill should be copied"),
+        "claude-extra-shared"
+    );
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("codex-omp-shared").join("README.md"))
+            .await
+            .expect("codex duplicate skill should be copied before omp"),
+        "codex-omp-shared"
+    );
+    assert!(!tokio::fs::try_exists(skills_dir.join("ignored.md"))
+        .await
+        .expect("ignored file existence should be checked"));
+
+    let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
+}
+
+#[tokio::test]
+async fn surface_repo_context_ignores_absent_common_skill_roots() {
+    let workspace_dir = std::env::temp_dir().join("vulcanum-test-absent-skill-roots");
+    let repo_dir = workspace_dir.join("repo");
+    let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
+    tokio::fs::create_dir_all(&repo_dir)
+        .await
+        .expect("repo dir should be created");
+
+    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()])
+        .await
+        .expect("missing skill roots should be ignored");
+
+    let skills_dir = workspace_dir.join(".agents").join("skills");
+    let mut entries = tokio::fs::read_dir(&skills_dir)
+        .await
+        .expect("target skills dir should exist");
+    assert!(entries
+        .next_entry()
+        .await
+        .expect("target skills dir should be readable")
+        .is_none());
+    assert!(!tokio::fs::try_exists(workspace_dir.join("AGENTS.md"))
+        .await
+        .expect("workspace AGENTS.md existence should be checked"));
+
+    let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
+}
+
+async fn write_skill(repo_dir: &Path, root: &str, name: &str, contents: &str) {
+    let skill_dir = repo_dir.join(root).join("skills").join(name);
+    tokio::fs::create_dir_all(&skill_dir)
+        .await
+        .expect("skill fixture dir should be created");
+    tokio::fs::write(skill_dir.join("README.md"), contents)
+        .await
+        .expect("skill fixture file should be written");
+}
+
+fn repo_fixture() -> WorkspaceRepo {
+    WorkspaceRepo {
+        full_name: "owner/repo".to_owned(),
+        url: "https://github.com/owner/repo".to_owned(),
+        relative_path: "repo".to_owned(),
+    }
 }
