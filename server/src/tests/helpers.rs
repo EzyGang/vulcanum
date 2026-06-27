@@ -265,7 +265,6 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let providers_repo = IntegrationProvidersRepository::new();
     let providers = IntegrationProvidersService::new(providers_repo.clone(), pool.clone());
-    let task_board = TaskBoardService::new(providers_repo.clone(), pool.clone());
     let model_catalog = ModelCatalogClient::new();
     let model_providers_repo = ModelProvidersRepository::new();
     let model_providers = ModelProvidersService::new(
@@ -301,6 +300,11 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo = WorkRunsRepository::new();
     let work_runs_repo_for_workers = WorkRunsRepository::new();
     let project_configs_repo = ProjectConfigsRepository::new();
+    let task_board = TaskBoardService::new(
+        providers_repo.clone(),
+        project_configs_repo.clone(),
+        pool.clone(),
+    );
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();

@@ -28,6 +28,7 @@ const boardQueryKey = (providerId?: string, projectId?: string) => [
 const projectsQueryKey = ['task-board-projects'];
 const projectConfigsQueryKey = ['projects'];
 const reposQueryKey = ['github-repos'];
+const COLUMN_PAGE_SIZE = 20;
 
 const firstColumnSlug = (columns: TaskBoardColumn[]): string => columns[0]?.slug ?? '';
 
@@ -58,6 +59,10 @@ export const useTaskBoard = () => {
   const repoError = useSignal<string | null>(null);
   const selectedTask = useSignal<TaskBoardTask | null>(null);
   const draggedTask = useSignal<string | null>(null);
+  const createDialogOpen = useSignal(false);
+  const settingsDialogOpen = useSignal(false);
+  const actionMenuTaskId = useSignal<string | null>(null);
+  const visibleTaskCounts = useSignal<Record<string, number>>({});
 
   const boardQuery = useApiQuery(
     boardQueryKey(selection?.providerId, selection?.externalProjectId),
@@ -89,6 +94,16 @@ export const useTaskBoard = () => {
   const selectedRepoNames = projectConfig?.repoFullNames ?? [];
 
   useEffect(() => {
+    const nextCounts: Record<string, number> = {};
+
+    for (const column of columns) {
+      nextCounts[column.slug] = visibleTaskCounts.value[column.slug] ?? COLUMN_PAGE_SIZE;
+    }
+
+    visibleTaskCounts.value = nextCounts;
+  }, [columns]);
+
+  useEffect(() => {
     if (!columns.length) {
       status.value = '';
       return;
@@ -112,6 +127,7 @@ export const useTaskBoard = () => {
         title.value = '';
         body.value = '';
         createError.value = null;
+        createDialogOpen.value = false;
         invalidate(...boardQueryKey(selection?.providerId, selection?.externalProjectId));
       }
     }
@@ -175,9 +191,10 @@ export const useTaskBoard = () => {
 
   const moveTaskToStatus = useCallback(
     (taskId: string, nextStatus: string) => {
+      actionMenuTaskId.value = null;
       moveMutation.mutate({ taskId, nextStatus });
     },
-    [moveMutation]
+    [actionMenuTaskId, moveMutation]
   );
 
   const toggleRepo = useCallback(
@@ -197,9 +214,10 @@ export const useTaskBoard = () => {
 
   const openTask = useCallback(
     (task: TaskBoardTask) => {
+      actionMenuTaskId.value = null;
       selectedTask.value = task;
     },
-    [selectedTask]
+    [actionMenuTaskId, selectedTask]
   );
 
   const closeTask = useCallback(() => {
@@ -228,6 +246,41 @@ export const useTaskBoard = () => {
     [draggedTask, moveMutation]
   );
 
+  const openTaskMenu = useCallback(
+    (event: MouseEvent, taskId: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      actionMenuTaskId.value = actionMenuTaskId.value === taskId ? null : taskId;
+    },
+    [actionMenuTaskId]
+  );
+
+  const closeTaskMenu = useCallback(() => {
+    actionMenuTaskId.value = null;
+  }, [actionMenuTaskId]);
+
+  const loadMoreColumn = useCallback(
+    (columnSlug: string) => {
+      visibleTaskCounts.value = {
+        ...visibleTaskCounts.value,
+        [columnSlug]: (visibleTaskCounts.value[columnSlug] ?? COLUMN_PAGE_SIZE) + COLUMN_PAGE_SIZE
+      };
+    },
+    [visibleTaskCounts]
+  );
+
+  const scrollColumn = useCallback(
+    (event: Event, columnSlug: string) => {
+      const target = event.currentTarget as HTMLElement;
+      const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 32;
+
+      if (nearBottom) {
+        loadMoreColumn(columnSlug);
+      }
+    },
+    [loadMoreColumn]
+  );
+
   return {
     data: {
       selectedProjectKey: selectedTaskProjectKey.value,
@@ -236,7 +289,11 @@ export const useTaskBoard = () => {
       statusOptions: columns.map((column) => ({ value: column.slug, label: column.name })),
       repoItems: repos.map((repo) => ({ value: repo.fullName, label: repo.fullName })),
       selectedRepoNames,
-      selectedTask: selectedTask.value
+      selectedTask: selectedTask.value,
+      createDialogOpen: createDialogOpen.value,
+      settingsDialogOpen: settingsDialogOpen.value,
+      actionMenuTaskId: actionMenuTaskId.value,
+      visibleTaskCounts: visibleTaskCounts.value
     },
     form: {
       title: title.value,
@@ -271,7 +328,23 @@ export const useTaskBoard = () => {
       onCloseTask: closeTask,
       onDragStart: startDrag,
       onDragOver: allowDrop,
-      onDropOnStatus: dropOnStatus
+      onDropOnStatus: dropOnStatus,
+      onOpenCreateTask: () => {
+        createDialogOpen.value = true;
+      },
+      onCloseCreateTask: () => {
+        createDialogOpen.value = false;
+      },
+      onOpenSettings: () => {
+        settingsDialogOpen.value = true;
+      },
+      onCloseSettings: () => {
+        settingsDialogOpen.value = false;
+      },
+      onOpenTaskMenu: openTaskMenu,
+      onCloseTaskMenu: closeTaskMenu,
+      onLoadMoreColumn: loadMoreColumn,
+      onColumnScroll: scrollColumn
     }
   };
 };

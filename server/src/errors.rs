@@ -291,6 +291,7 @@ impl From<TaskBoardError> for AppError {
                 tracing::error!(error = %e, operation = "task_board", "integration error");
                 Self::Internal
             }
+            TaskBoardError::ProjectConfig(e) => e.into(),
             TaskBoardError::EmptyTitle => Self::BadRequest("Task title is required".to_owned()),
             TaskBoardError::EmptyStatus => Self::BadRequest("Task status is required".to_owned()),
         }

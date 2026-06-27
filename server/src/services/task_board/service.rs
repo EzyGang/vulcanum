@@ -1,7 +1,9 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::models::project_configs::model::ProjectConfig;
 use crate::models::provider_configs::model::IntegrationProvider;
 use crate::models::providers::model::{CreateIntegrationTaskInput, IntegrationColumn};
 use crate::models::task_board::errors::TaskBoardError;
@@ -16,41 +18,35 @@ const FALLBACK_STATUS: &str = "planned";
 #[derive(Clone)]
 pub struct TaskBoardService {
     providers_repo: IntegrationProvidersRepository,
+    project_configs_repo: ProjectConfigsRepository,
     db: PgPool,
 }
 
 impl TaskBoardService {
-    pub fn new(providers_repo: IntegrationProvidersRepository, db: PgPool) -> Self {
-        Self { providers_repo, db }
+    pub fn new(
+        providers_repo: IntegrationProvidersRepository,
+        project_configs_repo: ProjectConfigsRepository,
+        db: PgPool,
+    ) -> Self {
+        Self {
+            providers_repo,
+            project_configs_repo,
+            db,
+        }
     }
 
     pub async fn list_projects(
         &self,
         team_id: Uuid,
     ) -> Result<Vec<TaskProviderProject>, TaskBoardError> {
-        let providers = self.providers_repo.list_all(&self.db, team_id).await?;
-        let mut projects = Vec::new();
-
-        for provider in providers {
-            let client = IntegrationClient::from_provider(provider.clone());
-            let workspaces = client.fetch_workspaces().await?;
-
-            for workspace in workspaces {
-                let workspace_projects = client.fetch_projects(&workspace.id).await?;
-                projects.extend(workspace_projects.into_iter().map(|project| {
-                    TaskProviderProject {
-                        provider_id: provider.id,
-                        provider_type: provider.provider_type,
-                        workspace_id: workspace.id.clone(),
-                        external_project_id: project.id,
-                        name: project.name,
-                        slug: project.slug,
-                    }
-                }));
-            }
-        }
-
-        Ok(projects)
+        let configs = self
+            .project_configs_repo
+            .list_all(&self.db, team_id)
+            .await?;
+        Ok(configs
+            .into_iter()
+            .filter_map(project_config_to_provider_project)
+            .collect())
     }
 
     pub async fn get_board(
@@ -148,6 +144,25 @@ impl TaskBoardService {
     }
 }
 
+pub(crate) fn project_config_to_provider_project(
+    config: ProjectConfig,
+) -> Option<TaskProviderProject> {
+    let provider_id = config.provider_id?;
+    let fallback_name = config.external_project_id.clone();
+
+    Some(TaskProviderProject {
+        provider_id,
+        provider_type: config.integration_type,
+        workspace_id: config.external_workspace_id,
+        external_project_id: config.external_project_id,
+        name: if config.name.is_empty() {
+            fallback_name.clone()
+        } else {
+            config.name
+        },
+        slug: fallback_name,
+    })
+}
 pub(crate) fn default_column_status(columns: &[IntegrationColumn]) -> String {
     columns
         .iter()

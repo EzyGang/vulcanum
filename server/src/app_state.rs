@@ -58,7 +58,6 @@ impl AppState {
 
         let providers_repo = IntegrationProvidersRepository::new();
         let providers = IntegrationProvidersService::new(providers_repo.clone(), db_pool.clone());
-        let task_board = TaskBoardService::new(providers_repo.clone(), db_pool.clone());
         let model_catalog = ModelCatalogClient::new();
         let model_providers_repo = ModelProvidersRepository::new();
         let model_provider_cipher = SecretCipher::new(&cfg.model_provider_secret_key)?;
@@ -90,6 +89,11 @@ impl AppState {
             cfg,
         );
         let project_configs_repo = ProjectConfigsRepository::new();
+        let task_board = TaskBoardService::new(
+            providers_repo.clone(),
+            project_configs_repo.clone(),
+            db_pool.clone(),
+        );
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),
             db_pool.clone(),
