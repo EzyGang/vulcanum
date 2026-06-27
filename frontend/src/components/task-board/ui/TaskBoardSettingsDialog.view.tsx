@@ -1,9 +1,11 @@
+import { useSignal } from '@preact/signals';
 import type { JSX } from 'preact';
-import { useCallback } from 'preact/hooks';
+import { useCallback, useMemo } from 'preact/hooks';
 import type { SelectOption } from '../../../types/shared';
 import { Button } from '../../shared/ui/Button.view';
 import { Checkbox } from '../../shared/ui/Checkbox.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
+import { Input } from '../../shared/ui/Input.view';
 import type { TaskBoardActions, TaskBoardStatusState } from '../types';
 
 interface RepoCheckboxProps {
@@ -60,6 +62,35 @@ export const TaskBoardSettingsDialog = ({
     [actions]
   );
 
+  const repoFilter = useSignal('');
+  const selectedRepoNameSet = useMemo(() => new Set(selectedRepoNames), [selectedRepoNames]);
+  const selectedRepos = useMemo(
+    () =>
+      selectedRepoNames.map(
+        (repoFullName) =>
+          repoItems.find((repo) => repo.value === repoFullName) ?? {
+            value: repoFullName,
+            label: repoFullName
+          }
+      ),
+    [repoItems, selectedRepoNames]
+  );
+  const normalizedRepoFilter = repoFilter.value.trim().toLocaleLowerCase();
+  const filteredRepoItems = repoItems.filter(
+    (repo) =>
+      !selectedRepoNameSet.has(repo.value) &&
+      (normalizedRepoFilter.length === 0 ||
+        repo.label.toLocaleLowerCase().includes(normalizedRepoFilter) ||
+        repo.value.toLocaleLowerCase().includes(normalizedRepoFilter))
+  );
+
+  const filterRepos = useCallback(
+    (event: Event) => {
+      repoFilter.value = (event.target as HTMLInputElement).value;
+    },
+    [repoFilter]
+  );
+
   return (
     <Dialog open={open} onOpenChange={closeWhenDismissed}>
       <Dialog.Portal>
@@ -86,16 +117,54 @@ export const TaskBoardSettingsDialog = ({
             <p class='text-xs text-text-muted'>No GitHub repositories are available.</p>
           )}
           {repoItems.length > 0 && (
-            <div class='grid max-h-72 gap-2 overflow-auto border border-border-base bg-bg-input p-3 md:grid-cols-2'>
-              {repoItems.map((repo) => (
-                <RepoCheckbox
-                  key={repo.value}
-                  repo={repo}
-                  checked={selectedRepoNames.includes(repo.value)}
-                  disabled={status.connectingRepos}
-                  onToggleRepo={actions.onToggleRepo}
-                />
-              ))}
+            <div class='flex flex-col gap-4'>
+              <Input
+                aria-label='Filter repositories'
+                placeholder='Filter repositories'
+                value={repoFilter.value}
+                disabled={status.connectingRepos}
+                onInput={filterRepos}
+              />
+              {selectedRepos.length > 0 && (
+                <section class='flex flex-col gap-2'>
+                  <h3 class='text-xs font-medium uppercase tracking-wider text-text-muted'>
+                    Selected repositories
+                  </h3>
+                  <div class='grid gap-2 border border-border-accent bg-accent-muted/10 p-3 md:grid-cols-2'>
+                    {selectedRepos.map((repo) => (
+                      <RepoCheckbox
+                        key={repo.value}
+                        repo={repo}
+                        checked={true}
+                        disabled={status.connectingRepos}
+                        onToggleRepo={actions.onToggleRepo}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+              <section class='flex flex-col gap-2'>
+                <h3 class='text-xs font-medium uppercase tracking-wider text-text-muted'>
+                  Available repositories
+                </h3>
+                {filteredRepoItems.length > 0 ? (
+                  <div class='grid max-h-72 gap-2 overflow-auto border border-border-base bg-bg-input p-3 md:grid-cols-2'>
+                    {filteredRepoItems.map((repo) => (
+                      <RepoCheckbox
+                        key={repo.value}
+                        repo={repo}
+                        checked={false}
+                        disabled={status.connectingRepos}
+                        onToggleRepo={actions.onToggleRepo}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p class='border border-border-base bg-bg-input p-3 text-xs text-text-muted'>
+                    No repositories match this filter.
+                  </p>
+                )}
+              </section>
             </div>
           )}
         </Dialog.Popup>

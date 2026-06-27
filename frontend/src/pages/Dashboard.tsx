@@ -3,7 +3,7 @@ import { PageLayout } from '../components/shared/ui/PageLayout.view';
 import { TaskBoardContainer } from '../components/task-board/containers/TaskBoard.container';
 
 export const Dashboard = (): JSX.Element => (
-  <PageLayout maxWidth='7xl' gap={8}>
+  <PageLayout maxWidth='board' gap={8}>
     <TaskBoardContainer />
   </PageLayout>
 );

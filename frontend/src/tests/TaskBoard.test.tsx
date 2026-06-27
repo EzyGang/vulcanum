@@ -113,7 +113,7 @@ const makeProps = () => ({
       ]
     },
     repoItems: [{ value: 'owner/repo', label: 'owner/repo' }],
-    selectedRepoNames: [],
+    selectedRepoNames: [] as string[],
     selectedTask: null as TaskBoardTask | null,
     createDialogOpen: false,
     settingsDialogOpen: false,
@@ -248,6 +248,28 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByLabelText('owner/repo'));
 
     expect(props.actions.onToggleRepo).toHaveBeenCalledWith('owner/repo');
+  });
+
+  it('pins selected repositories and filters available repositories', () => {
+    const props = makeProps();
+    props.data.settingsDialogOpen = true;
+    props.data.repoItems = [
+      { value: 'owner/repo', label: 'owner/repo' },
+      { value: 'owner/selected', label: 'owner/selected' },
+      { value: 'team/api', label: 'team/api' }
+    ];
+    props.data.selectedRepoNames = ['owner/selected'];
+    const { getByLabelText, queryByLabelText } = render(<TaskBoardView {...props} />);
+
+    expect((getByLabelText('owner/selected') as HTMLInputElement).checked).toBe(true);
+
+    const repoFilterInput = getByLabelText('Filter repositories') as HTMLInputElement;
+    repoFilterInput.value = 'team';
+    fireEvent.input(repoFilterInput);
+
+    expect(getByLabelText('owner/selected')).toBeTruthy();
+    expect(getByLabelText('team/api')).toBeTruthy();
+    expect(queryByLabelText('owner/repo')).toBeNull();
   });
 
   it('loads more tasks from a paginated column', () => {

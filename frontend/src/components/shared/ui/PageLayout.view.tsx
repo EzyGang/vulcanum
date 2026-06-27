@@ -1,7 +1,7 @@
 import { clsx } from 'clsx';
 import type { ComponentChildren, JSX } from 'preact';
 
-type PageMaxWidth = '3xl' | '5xl' | '6xl' | '7xl';
+type PageMaxWidth = '3xl' | '5xl' | '6xl' | '7xl' | 'board';
 
 interface PageLayoutProps {
   children: ComponentChildren;
@@ -11,10 +11,11 @@ interface PageLayoutProps {
 }
 
 const MAX_WIDTH: Record<PageMaxWidth, string> = {
-  '3xl': 'max-w-3xl',
-  '5xl': 'max-w-5xl',
-  '6xl': 'max-w-6xl',
-  '7xl': 'max-w-7xl'
+  '3xl': 'w-full max-w-3xl',
+  '5xl': 'w-full max-w-5xl',
+  '6xl': 'w-full max-w-6xl',
+  '7xl': 'w-full max-w-7xl',
+  board: 'w-full lg:w-[80vw] lg:max-w-[1536px]'
 };
 
 const GAP: Record<6 | 8, string> = {
@@ -30,7 +31,7 @@ export const PageLayout = ({
 }: PageLayoutProps): JSX.Element => (
   <div
     class={clsx(
-      'flex flex-col flex-1 px-4 sm:px-6 py-8 w-full mx-auto animate-fade-in',
+      'flex flex-col flex-1 px-4 sm:px-6 py-8 mx-auto animate-fade-in',
       MAX_WIDTH[maxWidth],
       GAP[gap],
       classProp
