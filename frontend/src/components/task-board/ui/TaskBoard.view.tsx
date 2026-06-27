@@ -1,9 +1,9 @@
+import { IconSettings } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import type { TaskBoardViewProps } from '../types';
-import { SettingsIcon } from './SettingsIcon.view';
 import { TaskBoardColumn } from './TaskBoardColumn.view';
 import { TaskBoardSettingsDialog } from './TaskBoardSettingsDialog.view';
 import { TaskCreateDialog } from './TaskCreateDialog.view';
@@ -73,7 +73,7 @@ export const TaskBoardView = ({
             onClick={actions.onOpenSettings}
             class='border border-border-base p-2'
           >
-            <SettingsIcon />
+            <IconSettings size={16} stroke={1.75} aria-hidden='true' />
           </Button>
         </div>
       </div>
