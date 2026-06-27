@@ -23,7 +23,7 @@ vi.mock('../components/shared/ui/Select.view', () => ({
       value={value}
       disabled={disabled}
       aria-label={placeholder}
-      onChange={(event) => onValueChange((event.target as HTMLSelectElement).value)}
+      onInput={(event) => onValueChange((event.target as HTMLSelectElement).value)}
     >
       {items.map((item) => (
         <option key={item.value} value={item.value}>
@@ -220,12 +220,12 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onSubmitTask).toHaveBeenCalledOnce();
   });
 
-  it('opens a right-click action menu before moving a task', () => {
+  it('opens a task action menu from the visible action button', () => {
     const props = makeProps();
-    const { queryByText, getByText } = render(<TaskBoardView {...props} />);
+    const { queryByText, getByLabelText } = render(<TaskBoardView {...props} />);
 
     expect(queryByText('Mark Done')).toBeNull();
-    fireEvent.contextMenu(getByText('Create proxy API'));
+    fireEvent.click(getByLabelText('Task actions for Create proxy API'));
 
     expect(props.actions.onOpenTaskMenu).toHaveBeenCalledWith(expect.any(Object), 'task-1');
   });
@@ -288,11 +288,15 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onSubmitSettings).toHaveBeenCalledOnce();
   });
 
-  it('sets board column roles from header controls', () => {
+  it('sets board column roles from the settings modal', () => {
     const props = makeProps();
-    const { getByLabelText } = render(<TaskBoardView {...props} />);
+    props.data.settingsDialogOpen = true;
+    const { container } = render(<TaskBoardView {...props} />);
+    const reviewColumn = container.querySelector(
+      '#board-settings-review-pickup-column'
+    ) as HTMLSelectElement;
 
-    fireEvent.click(getByLabelText('Set Done review column'));
+    fireEvent.change(reviewColumn, { target: { value: 'done' } });
 
     expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'review');
   });

@@ -22,6 +22,11 @@ export const TaskBoardProjectSettings = ({
   <TaskBoardSettingsSection
     title='Project overrides'
     description='Leave fields empty to inherit the team defaults.'
+    hasOverrides={
+      form.promptTemplate.trim().length > 0 ||
+      form.agentsMd.trim().length > 0 ||
+      form.maxInProgressTasks.trim().length > 0
+    }
   >
     <div class='flex flex-col gap-2'>
       <Label for='board-settings-prompt'>Prompt template</Label>

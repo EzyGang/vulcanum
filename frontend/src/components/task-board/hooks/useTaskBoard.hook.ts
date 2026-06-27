@@ -167,6 +167,20 @@ export const useTaskBoard = () => {
     settingsMaxInProgressTasks.value = nextSettings.maxInProgressTasks;
   }, [settingsDialogOpen.value, projectConfig?.id]);
 
+  useEffect(() => {
+    if (actionMenuTaskId.value === null) return;
+
+    const closeOpenMenu = () => {
+      actionMenuTaskId.value = null;
+    };
+
+    window.addEventListener('click', closeOpenMenu);
+
+    return () => {
+      window.removeEventListener('click', closeOpenMenu);
+    };
+  }, [actionMenuTaskId, actionMenuTaskId.value]);
+
   const createMutation = useApiMutation(
     () =>
       createTask(selection?.providerId ?? '', selection?.externalProjectId ?? '', {
@@ -297,16 +311,21 @@ export const useTaskBoard = () => {
   );
 
   const setColumnRole = useCallback(
-    (columnSlug: string, role: TaskBoardColumnRole) => {
+    (columnSlug: string | null, role: TaskBoardColumnRole) => {
       formError.value = null;
       const input: UpdateProjectRequest = {};
+      if (columnSlug === null && role !== 'review') {
+        formError.value = 'Required board roles must use a provider column';
+        return;
+      }
+      const requiredColumnSlug = columnSlug ?? undefined;
 
       if (role === 'pickup') {
-        input.pickupColumn = columnSlug;
+        input.pickupColumn = requiredColumnSlug;
       } else if (role === 'progress') {
-        input.progressColumn = columnSlug;
+        input.progressColumn = requiredColumnSlug;
       } else if (role === 'done') {
-        input.targetColumn = columnSlug;
+        input.targetColumn = requiredColumnSlug;
       } else {
         input.reviewPickupColumn =
           projectConfig?.reviewPickupColumn === columnSlug ? null : columnSlug;

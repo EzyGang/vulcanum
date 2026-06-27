@@ -1,3 +1,4 @@
+import { IconMenu2 } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import { useCallback } from 'preact/hooks';
 import type { SelectOption } from '../../../types/shared';
@@ -74,6 +75,10 @@ export const TaskCard = ({
     [onOpenTaskMenu, task.id]
   );
 
+  const stopMenuClick = useCallback((event: JSX.TargetedMouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+  }, []);
+
   const openTaskFromKeyboard = useCallback(
     (event: JSX.TargetedKeyboardEvent<HTMLElement>) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -100,9 +105,21 @@ export const TaskCard = ({
           </span>
           <h3 class='text-sm font-medium text-text-primary'>{task.title}</h3>
         </div>
-        <span class='border border-border-base px-2 py-1 text-[10px] uppercase tracking-wider text-text-muted'>
-          {task.priority}
-        </span>
+        <div class='flex shrink-0 items-center gap-2'>
+          <span class='border border-border-base px-2 py-1 text-[10px] uppercase tracking-wider text-text-muted'>
+            {task.priority}
+          </span>
+          <Button
+            type='button'
+            variant='ghost'
+            aria-label={`Task actions for ${task.title}`}
+            aria-expanded={menuOpen}
+            onClick={openMenu}
+            class='h-8 w-8 justify-center border border-border-base p-0'
+          >
+            <IconMenu2 size={16} stroke={1.75} aria-hidden='true' />
+          </Button>
+        </div>
       </div>
 
       <div class='flex items-center justify-between gap-3 text-[11px] text-text-muted'>
@@ -111,7 +128,12 @@ export const TaskCard = ({
       </div>
 
       {menuOpen && (
-        <div class='absolute top-3 right-3 z-10 flex min-w-36 flex-col border border-border-base bg-bg-card p-1 shadow-modal'>
+        <div
+          role='menu'
+          aria-label={`Actions for ${task.title}`}
+          class='absolute top-12 right-3 z-10 flex min-w-36 flex-col border border-border-base bg-bg-card p-1 shadow-modal'
+          onClick={stopMenuClick}
+        >
           {statusOptions
             .filter((option) => option.value !== task.status)
             .map((option) => (

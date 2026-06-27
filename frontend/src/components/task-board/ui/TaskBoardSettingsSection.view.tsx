@@ -1,24 +1,33 @@
 import type { ComponentChildren, JSX } from 'preact';
+import { Accordion } from '../../shared/ui/Accordion.view';
 
 interface TaskBoardSettingsSectionProps {
   title: string;
   description: string;
   children: ComponentChildren;
+  hasOverrides?: boolean;
 }
 
 export const TaskBoardSettingsSection = ({
   title,
   description,
-  children
+  children,
+  hasOverrides = false
 }: TaskBoardSettingsSectionProps): JSX.Element => (
-  <details open class='group border border-border-base bg-bg-panel p-4'>
-    <summary class='flex cursor-pointer list-none items-start justify-between gap-4 text-xs font-medium uppercase tracking-wider text-text-muted outline-none transition-colors hover:text-text-primary focus-visible:ring-2 focus-visible:ring-border-focus [&::-webkit-details-marker]:hidden'>
-      <span>{title}</span>
-      <span class='text-sm leading-none transition-transform group-open:rotate-90'>›</span>
-    </summary>
-    <div class='mt-3 flex flex-col gap-4'>
-      <p class='text-xs normal-case tracking-normal text-text-muted'>{description}</p>
-      {children}
-    </div>
-  </details>
+  <Accordion class='gap-0'>
+    <Accordion.Item value={title} class='p-4'>
+      <Accordion.Trigger class='text-xs font-medium uppercase tracking-wider text-text-muted'>
+        <span class='flex min-w-0 items-center gap-2'>
+          <span>{title}</span>
+          {hasOverrides && (
+            <span class='border border-accent/60 px-1.5 py-0.5 text-[9px] text-accent'>Set</span>
+          )}
+        </span>
+      </Accordion.Trigger>
+      <Accordion.Panel class='mt-3 flex flex-col gap-4'>
+        <p class='text-xs normal-case tracking-normal text-text-muted'>{description}</p>
+        {children}
+      </Accordion.Panel>
+    </Accordion.Item>
+  </Accordion>
 );

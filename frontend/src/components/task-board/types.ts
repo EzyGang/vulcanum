@@ -65,13 +65,13 @@ export interface TaskBoardActions {
   onToggleRepo: (repoFullName: string) => void;
   onSettingsPromptInput: (event: Event) => void;
   onSettingsAgentsInput: (event: Event) => void;
+  onSettingsMaxInProgressInput: (event: Event) => void;
   onSettingsReviewEnabledChange: (value: string) => void;
   onSettingsReviewPickupColumnChange: (value: string) => void;
   onSettingsReviewMaxTurnsInput: (event: Event) => void;
   onSettingsReviewPromptInput: (event: Event) => void;
-  onSettingsMaxInProgressInput: (event: Event) => void;
+  onSetColumnRole: (columnSlug: string | null, role: TaskBoardColumnRole) => void;
   onSubmitSettings: (event: Event) => void;
-  onSetColumnRole: (columnSlug: string, role: TaskBoardColumnRole) => void;
   onOpenTask: (task: TaskBoardTask) => void;
   onCloseTask: () => void;
   onDragStart: (taskId: string) => void;

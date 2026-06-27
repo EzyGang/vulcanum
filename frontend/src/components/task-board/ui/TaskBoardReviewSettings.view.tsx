@@ -45,6 +45,12 @@ export const TaskBoardReviewSettings = ({
     <TaskBoardSettingsSection
       title='Review automation'
       description='Override review enablement, pickup column, follow-up passes, and review prompt.'
+      hasOverrides={
+        form.reviewEnabled !== '' ||
+        form.reviewPickupColumn !== '' ||
+        form.reviewMaxTurns.trim().length > 0 ||
+        form.reviewPromptTemplate.trim().length > 0
+      }
     >
       <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
         <div class='flex flex-col gap-2'>

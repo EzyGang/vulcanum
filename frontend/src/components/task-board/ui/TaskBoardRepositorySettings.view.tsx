@@ -83,6 +83,7 @@ export const TaskBoardRepositorySettings = ({
     <TaskBoardSettingsSection
       title='Repositories'
       description='Pinned repositories are passed to workers for this project.'
+      hasOverrides={selectedRepoNames.length > 0}
     >
       {loading && <p class='text-xs text-text-muted'>Loading repositories…</p>}
       {!loading && repoItems.length === 0 && (

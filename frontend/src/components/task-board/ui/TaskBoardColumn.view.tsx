@@ -6,15 +6,6 @@ import { Button } from '../../shared/ui/Button.view';
 import type { TaskBoardColumnRole, TaskBoardColumnRoles } from '../types';
 import { TaskCard } from './TaskCard.view';
 
-interface ColumnRoleButtonProps {
-  columnSlug: string;
-  columnName: string;
-  role: TaskBoardColumnRole;
-  active: boolean;
-  disabled: boolean;
-  onSetColumnRole: (columnSlug: string, role: TaskBoardColumnRole) => void;
-}
-
 interface TaskBoardColumnProps {
   column: TaskBoardColumnModel;
   visibleCount: number;
@@ -23,10 +14,8 @@ interface TaskBoardColumnProps {
   moving: boolean;
   movingTaskId: string | null;
   actionMenuTaskId: string | null;
-  configuringColumns: boolean;
-  onMoveTask: (taskId: string, status: string) => void;
-  onSetColumnRole: (columnSlug: string, role: TaskBoardColumnRole) => void;
   onOpenTask: (task: TaskBoardColumnModel['tasks'][number]) => void;
+  onMoveTask: (taskId: string, status: string) => void;
   onOpenTaskMenu: (event: MouseEvent, taskId: string) => void;
   onDragStart: (taskId: string) => void;
   onDragOver: (event: DragEvent) => void;
@@ -55,39 +44,6 @@ const columnRoleActive = (
   return columnRoles.reviewPickupColumn === columnSlug;
 };
 
-const ColumnRoleButton = ({
-  columnSlug,
-  columnName,
-  role,
-  active,
-  disabled,
-  onSetColumnRole
-}: ColumnRoleButtonProps): JSX.Element => {
-  const setRole = useCallback(() => {
-    onSetColumnRole(columnSlug, role);
-  }, [columnSlug, onSetColumnRole, role]);
-
-  return (
-    <Button
-      type='button'
-      variant='ghost'
-      disabled={disabled}
-      aria-pressed={active}
-      aria-label={`${active && role === 'review' ? 'Clear' : 'Set'} ${columnName} ${ROLE_LABELS[
-        role
-      ].toLowerCase()} column`}
-      onClick={setRole}
-      class={`border px-2 py-1 text-[10px] ${
-        active
-          ? 'border-accent bg-bg-hover text-text-primary'
-          : 'border-border-base text-text-muted'
-      }`}
-    >
-      {ROLE_LABELS[role]}
-    </Button>
-  );
-};
-
 export const TaskBoardColumn = ({
   column,
   visibleCount,
@@ -96,10 +52,8 @@ export const TaskBoardColumn = ({
   moving,
   movingTaskId,
   actionMenuTaskId,
-  configuringColumns,
-  onMoveTask,
-  onSetColumnRole,
   onOpenTask,
+  onMoveTask,
   onOpenTaskMenu,
   onDragStart,
   onDragOver,
@@ -158,19 +112,6 @@ export const TaskBoardColumn = ({
             </div>
           </div>
           <span class='text-xs tabular-nums text-text-muted'>{column.tasks.length}</span>
-        </div>
-        <div class='grid grid-cols-2 gap-1'>
-          {ROLE_ORDER.map((role) => (
-            <ColumnRoleButton
-              key={role}
-              columnSlug={column.slug}
-              columnName={column.name}
-              role={role}
-              active={columnRoleActive(role, column.slug, columnRoles)}
-              disabled={configuringColumns}
-              onSetColumnRole={onSetColumnRole}
-            />
-          ))}
         </div>
       </div>
       <div class='flex max-h-[70vh] flex-col gap-3 overflow-auto pr-1' onScroll={scrollColumn}>
