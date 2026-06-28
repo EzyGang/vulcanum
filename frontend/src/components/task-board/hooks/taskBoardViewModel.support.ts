@@ -74,6 +74,30 @@ export interface UseTaskBoardViewModelResult {
   };
 }
 
+interface BuildTaskBoardColumnsInput {
+  boardColumns: TaskBoard['columns'];
+  statusOptions: SelectOption[];
+  visibleTaskCounts: Record<string, number>;
+  columnRoles: TaskBoardColumnRoles;
+  moving: boolean;
+  movingTaskId: string | null;
+  actionMenuTaskId: string | null;
+  configuringColumns: boolean;
+  dropPreviewColumn: string | null;
+  openRoleMenuColumn: string | null;
+  onRoleMenuColumnChange: (columnSlug: string | null) => void;
+  onMoveTask: (taskId: string, status: string) => void;
+  onOpenTask: (task: TaskBoardTask) => void;
+  onOpenTaskMenu: (event: MouseEvent, taskId: string) => void;
+  onDragStart: (taskId: string, status: string) => void;
+  onDragOverStatus: (event: DragEvent, status: string) => void;
+  onDragEnd: () => void;
+  onDropOnStatus: (event: DragEvent, status: string) => void;
+  onLoadMoreColumn: (columnSlug: string) => void;
+  onColumnScroll: (event: Event, columnSlug: string) => void;
+  onSetColumnRole: (columnSlug: string | null, role: TaskBoardColumnRole) => void;
+}
+
 export const ROLE_LABELS: Record<TaskBoardColumnRole, string> = {
   pickup: 'Pickup',
   progress: 'In progress',
@@ -106,3 +130,116 @@ export const optionToNullableColumn = (columnSlug: string): string | null =>
 
 export const formatCreatedAt = (createdAt: string): string =>
   new Date(createdAt).toLocaleDateString();
+
+export const buildTaskBoardMoveActions = (
+  task: TaskBoardTask,
+  statusOptions: SelectOption[],
+  onMoveTask: (taskId: string, status: string) => void
+): TaskBoardMoveAction[] =>
+  statusOptions
+    .filter((option) => option.value !== task.status)
+    .map((option) => ({
+      value: option.value,
+      label: option.label,
+      onClick: (event) => {
+        event.stopPropagation();
+        onMoveTask(task.id, option.value);
+      }
+    }));
+
+export const buildTaskBoardColumns = ({
+  boardColumns,
+  statusOptions,
+  visibleTaskCounts,
+  columnRoles,
+  moving,
+  movingTaskId,
+  actionMenuTaskId,
+  configuringColumns,
+  dropPreviewColumn,
+  openRoleMenuColumn,
+  onRoleMenuColumnChange,
+  onMoveTask,
+  onOpenTask,
+  onOpenTaskMenu,
+  onDragStart,
+  onDragOverStatus,
+  onDragEnd,
+  onDropOnStatus,
+  onLoadMoreColumn,
+  onColumnScroll,
+  onSetColumnRole
+}: BuildTaskBoardColumnsInput): TaskBoardColumnData[] =>
+  boardColumns.map((column): TaskBoardColumnData => {
+    const visibleCount = visibleTaskCounts[column.slug] ?? 20;
+    const visibleTasks = column.tasks.slice(0, visibleCount);
+    const activeRoles = ROLE_ORDER.filter((role) =>
+      columnRoleActive(role, column.slug, columnRoles)
+    );
+    const dropPreviewActive = dropPreviewColumn === column.slug;
+
+    return {
+      column,
+      visibleTasks: visibleTasks.map((task) => ({
+        task,
+        displayId: task.number ? `#${task.number}` : task.id.slice(0, 8),
+        createdAtLabel: formatCreatedAt(task.createdAt),
+        moving: moving && movingTaskId === task.id,
+        menuOpen: actionMenuTaskId === task.id,
+        moveActions: buildTaskBoardMoveActions(task, statusOptions, onMoveTask),
+        onClick: () => onOpenTask(task),
+        onContextMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
+        onDragStart: () => onDragStart(task.id, task.status),
+        onDragEnd,
+        onKeyDown: (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+
+          event.preventDefault();
+          onOpenTask(task);
+        },
+        onStopMenuClick: (event) => {
+          event.stopPropagation();
+        }
+      })),
+      taskCount: column.tasks.length,
+      activeRoles: activeRoles.map((role) => ({ role })),
+      hasMoreTasks: visibleTasks.length < column.tasks.length,
+      dropPreviewActive,
+      roleMenu: {
+        buttonLabel: `Column role settings for ${column.name}`,
+        menuLabel: `Column roles for ${column.name}`,
+        open: openRoleMenuColumn === column.slug,
+        disabled: configuringColumns,
+        onToggle: (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onRoleMenuColumnChange(openRoleMenuColumn === column.slug ? null : column.slug);
+        },
+        onStopClick: (event) => {
+          event.stopPropagation();
+        },
+        items: ROLE_ORDER.map((role) => {
+          const active = activeRoles.includes(role);
+          const disabled = configuringColumns || (active && role !== 'review');
+
+          return {
+            role,
+            label: `${active && role === 'review' ? 'Clear' : 'Set'} ${ROLE_LABELS[role]}`,
+            help: ROLE_HELP[role],
+            active,
+            disabled,
+            onClick: (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onSetColumnRole(role === 'review' && active ? null : column.slug, role);
+              onRoleMenuColumnChange(null);
+            }
+          };
+        })
+      },
+      onDragOver: (event) => onDragOverStatus(event as unknown as DragEvent, column.slug),
+      onDrop: (event) => onDropOnStatus(event as unknown as DragEvent, column.slug),
+      onScroll: (event) => onColumnScroll(event, column.slug),
+      onLoadMore: () => onLoadMoreColumn(column.slug)
+    };
+  });
