@@ -20,7 +20,8 @@ interface TaskCardProps {
   onMoveTask: (taskId: string, status: string) => void;
   onOpenTask: (task: TaskBoardTask) => void;
   onOpenTaskMenu: (event: MouseEvent, taskId: string) => void;
-  onDragStart: (taskId: string) => void;
+  onDragStart: (taskId: string, status: string) => void;
+  onDragEnd: () => void;
 }
 
 const TaskMoveButton = ({
@@ -58,11 +59,12 @@ export const TaskCard = ({
   onMoveTask,
   onOpenTask,
   onOpenTaskMenu,
-  onDragStart
+  onDragStart,
+  onDragEnd
 }: TaskCardProps): JSX.Element => {
   const startDrag = useCallback(() => {
-    onDragStart(task.id);
-  }, [onDragStart, task.id]);
+    onDragStart(task.id, task.status);
+  }, [onDragStart, task.id, task.status]);
 
   const openTask = useCallback(() => {
     onOpenTask(task);
@@ -93,6 +95,7 @@ export const TaskCard = ({
     <article
       draggable
       onDragStart={startDrag}
+      onDragEnd={onDragEnd}
       onClick={openTask}
       onContextMenu={openMenu}
       onKeyDown={openTaskFromKeyboard}

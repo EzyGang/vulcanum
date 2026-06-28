@@ -88,7 +88,7 @@ AccordionRoot.Trigger = ({
 );
 
 AccordionRoot.Panel = ({ children, class: classProp }: AccordionPanelProps): JSX.Element => (
-  <BaseAccordion.Panel class={clsx('`data-closed:hidden', classProp)}>
+  <BaseAccordion.Panel class={clsx('data-closed:hidden', classProp)}>
     {children}
   </BaseAccordion.Panel>
 );

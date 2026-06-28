@@ -124,7 +124,8 @@ const makeProps = () => ({
       progressColumn: 'to-do',
       targetColumn: 'done',
       reviewPickupColumn: null
-    }
+    },
+    dropPreviewColumn: null as string | null
   },
   form: {
     title: '',
@@ -173,7 +174,8 @@ const makeProps = () => ({
     onOpenTask: vi.fn(),
     onCloseTask: vi.fn(),
     onDragStart: vi.fn(),
-    onDragOver: vi.fn((event: DragEvent) => event.preventDefault()),
+    onDragOverStatus: vi.fn((event: DragEvent) => event.preventDefault()),
+    onDragEnd: vi.fn(),
     onDropOnStatus: vi.fn(),
     onOpenCreateTask: vi.fn(),
     onCloseCreateTask: vi.fn(),
@@ -255,6 +257,8 @@ describe('TaskBoard.view', () => {
     const { getByText } = render(<TaskBoardView {...props} />);
 
     expect(getByText('Hidden task body')).toBeTruthy();
+    const bodyRegion = getByText('Hidden task body').closest('div');
+    expect(bodyRegion?.className).toContain('overflow-auto');
   });
 
   it('opens board settings from the icon button', () => {
@@ -288,17 +292,12 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onSubmitSettings).toHaveBeenCalledOnce();
   });
 
-  it('sets board column roles from the settings modal', () => {
+  it('keeps board column roles out of the settings modal', () => {
     const props = makeProps();
     props.data.settingsDialogOpen = true;
-    const { container } = render(<TaskBoardView {...props} />);
-    const reviewColumn = container.querySelector(
-      '#board-settings-review-pickup-column'
-    ) as HTMLSelectElement;
+    const { queryByText } = render(<TaskBoardView {...props} />);
 
-    fireEvent.change(reviewColumn, { target: { value: 'done' } });
-
-    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'review');
+    expect(queryByText('Board columns')).toBeNull();
   });
 
   it('pins selected repositories and filters available repositories', () => {
@@ -336,6 +335,24 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByText('Load more'));
 
     expect(props.actions.onLoadMoreColumn).toHaveBeenCalledWith('to-do');
+  });
+
+  it('sets board column roles from a column header menu', () => {
+    const props = makeProps();
+    const { getByLabelText, getByText } = render(<TaskBoardView {...props} />);
+
+    fireEvent.click(getByLabelText('Column role settings for Done'));
+    fireEvent.click(getByText('Set Review'));
+
+    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'review');
+  });
+
+  it('shows a drop preview when hovering another column', () => {
+    const props = makeProps();
+    props.data.dropPreviewColumn = 'done';
+    const { getByText } = render(<TaskBoardView {...props} />);
+
+    expect(getByText('Drop here to move into Done.')).toBeTruthy();
   });
 
   it('drops a task onto a column through the provided action', () => {

@@ -21,7 +21,8 @@ export const TaskBoardView = ({
     settingsDialogOpen,
     actionMenuTaskId,
     visibleTaskCounts,
-    columnRoles
+    columnRoles,
+    dropPreviewColumn
   },
   form,
   status,
@@ -58,18 +59,27 @@ export const TaskBoardView = ({
         <div class='flex flex-col gap-2'>
           <span class='text-xs uppercase tracking-wider text-accent'>Task provider board</span>
           <h2 class='text-3xl font-semibold text-text-primary'>{board.project.name}</h2>
-          <p class='flex items-center gap-2 text-sm text-text-muted'>
-            <span>
+          <div class='flex items-start gap-2 text-sm text-text-muted'>
+            <p>
               Provider-backed board for task creation, status movement, repository pinning, and
               automation column roles.
+            </p>
+            <span class='group relative mt-0.5 inline-flex text-text-muted hover:text-text-primary focus-within:text-text-primary'>
+              <button type='button' class='cursor-help' aria-label='Board sync details'>
+                <IconInfoCircle size={16} stroke={1.75} aria-hidden='true' />
+              </button>
+              <span class='pointer-events-none absolute top-6 left-0 z-20 hidden w-[min(80vw,48rem)] border border-border-base bg-bg-card px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-modal group-focus-within:block group-hover:block'>
+                <span class='block font-medium text-text-primary'>Proxy view</span>
+                <span class='mt-1 block'>
+                  Vulcanum reads projects, columns, and tasks from the connected provider, then
+                  writes task creation and status changes back through that same provider API.
+                </span>
+                <span class='mt-1 block'>
+                  The board refreshes periodically, so provider-side edits still show up here.
+                </span>
+              </span>
             </span>
-            <span
-              class='inline-flex text-text-muted hover:text-text-primary'
-              title='Proxy view. Vulcanum sits on top of the connected task provider: actions update the provider, and the board refreshes periodically to pick up external changes.'
-            >
-              <IconInfoCircle size={16} stroke={1.75} aria-label='Board sync details' />
-            </span>
-          </p>
+          </div>
         </div>
         <div class='flex items-center gap-2'>
           <Button type='button' variant='primary' onClick={actions.onOpenCreateTask}>
@@ -109,14 +119,17 @@ export const TaskBoardView = ({
             onOpenTask={actions.onOpenTask}
             onOpenTaskMenu={actions.onOpenTaskMenu}
             onDragStart={actions.onDragStart}
-            onDragOver={actions.onDragOver}
+            configuringColumns={status.configuringColumns}
+            dropPreviewColumn={dropPreviewColumn}
+            onDragOverStatus={actions.onDragOverStatus}
+            onDragEnd={actions.onDragEnd}
             onDropOnStatus={actions.onDropOnStatus}
+            onSetColumnRole={actions.onSetColumnRole}
             onLoadMoreColumn={actions.onLoadMoreColumn}
             onColumnScroll={actions.onColumnScroll}
           />
         ))}
       </div>
-
       <TaskCreateDialog
         open={createDialogOpen}
         form={form}
@@ -129,7 +142,6 @@ export const TaskBoardView = ({
         form={form.settings}
         repoItems={repoItems}
         selectedRepoNames={selectedRepoNames}
-        columnRoles={columnRoles}
         statusOptions={statusOptions}
         status={status}
         actions={actions}

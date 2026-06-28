@@ -32,6 +32,7 @@ export interface TaskBoardViewData {
   actionMenuTaskId: string | null;
   visibleTaskCounts: Record<string, number>;
   columnRoles: TaskBoardColumnRoles;
+  dropPreviewColumn: string | null;
 }
 
 export interface TaskBoardFormState {
@@ -74,8 +75,9 @@ export interface TaskBoardActions {
   onSubmitSettings: (event: Event) => void;
   onOpenTask: (task: TaskBoardTask) => void;
   onCloseTask: () => void;
-  onDragStart: (taskId: string) => void;
-  onDragOver: (event: DragEvent) => void;
+  onDragStart: (taskId: string, status: string) => void;
+  onDragOverStatus: (event: DragEvent, status: string) => void;
+  onDragEnd: () => void;
   onDropOnStatus: (event: DragEvent, status: string) => void;
   onOpenCreateTask: () => void;
   onCloseCreateTask: () => void;

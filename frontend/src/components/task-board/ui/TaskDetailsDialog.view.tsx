@@ -56,7 +56,7 @@ export const TaskDetailsDialog = ({
     <Dialog open={Boolean(task)} onOpenChange={closeWhenDismissed}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup class='flex w-[min(92vw,640px)] flex-col gap-5'>
+        <Dialog.Popup class='flex max-h-[90vh] w-[min(92vw,640px)] flex-col gap-5 overflow-hidden'>
           {task && (
             <>
               <div class='flex items-start justify-between gap-4'>
@@ -78,15 +78,13 @@ export const TaskDetailsDialog = ({
                 <span>Assignee: {task.assigneeName ?? 'Unassigned'}</span>
                 <span>Created: {new Date(task.createdAt).toLocaleString()}</span>
               </div>
-              {task.description ? (
-                <p class='whitespace-pre-wrap border border-border-base bg-bg-input p-4 text-sm leading-6 text-text-secondary'>
-                  {task.description}
-                </p>
-              ) : (
-                <p class='border border-border-base bg-bg-input p-4 text-sm text-text-muted'>
-                  No task body.
-                </p>
-              )}
+              <div class='min-h-0 flex-1 overflow-auto border border-border-base bg-bg-input p-4 text-sm leading-6 text-text-secondary'>
+                {task.description ? (
+                  <p class='whitespace-pre-wrap'>{task.description}</p>
+                ) : (
+                  <p class='text-text-muted'>No task body.</p>
+                )}
+              </div>
               <div class='flex flex-wrap gap-2'>
                 {statusOptions
                   .filter((option) => option.value !== task.status)

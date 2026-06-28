@@ -2,13 +2,7 @@ import type { JSX } from 'preact';
 import { useCallback } from 'preact/hooks';
 import { Button } from '../../shared/ui/Button.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
-import type {
-  TaskBoardActions,
-  TaskBoardColumnRoles,
-  TaskBoardFormState,
-  TaskBoardStatusState
-} from '../types';
-import { TaskBoardColumnSettings } from './TaskBoardColumnSettings.view';
+import type { TaskBoardActions, TaskBoardFormState, TaskBoardStatusState } from '../types';
 import { TaskBoardProjectSettings } from './TaskBoardProjectSettings.view';
 import { TaskBoardRepositorySettings } from './TaskBoardRepositorySettings.view';
 import { TaskBoardReviewSettings } from './TaskBoardReviewSettings.view';
@@ -17,7 +11,6 @@ interface TaskBoardSettingsDialogProps {
   open: boolean;
   form: TaskBoardFormState['settings'];
   repoItems: { value: string; label: string }[];
-  columnRoles: TaskBoardColumnRoles;
   selectedRepoNames: string[];
   statusOptions: { value: string; label: string }[];
   status: Pick<
@@ -35,7 +28,6 @@ interface TaskBoardSettingsDialogProps {
     | 'onSettingsReviewMaxTurnsInput'
     | 'onSettingsReviewPromptInput'
     | 'onSettingsMaxInProgressInput'
-    | 'onSetColumnRole'
     | 'onSubmitSettings'
   >;
 }
@@ -45,7 +37,6 @@ export const TaskBoardSettingsDialog = ({
   form,
   repoItems,
   selectedRepoNames,
-  columnRoles,
   statusOptions,
   status,
   actions
@@ -98,12 +89,6 @@ export const TaskBoardSettingsDialog = ({
               loading={status.reposLoading}
               disabled={repoControlsDisabled}
               onToggleRepo={actions.onToggleRepo}
-            />
-            <TaskBoardColumnSettings
-              columnRoles={columnRoles}
-              statusOptions={statusOptions}
-              disabled={settingsDisabled}
-              actions={actions}
             />
             <TaskBoardProjectSettings form={form} disabled={settingsDisabled} actions={actions} />
             <TaskBoardReviewSettings

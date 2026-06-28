@@ -93,7 +93,8 @@ export const useTaskBoard = () => {
   const createError = useSignal<string | null>(null);
   const formError = useSignal<string | null>(null);
   const selectedTask = useSignal<TaskBoardTask | null>(null);
-  const draggedTask = useSignal<string | null>(null);
+  const draggedTask = useSignal<{ id: string; status: string } | null>(null);
+  const dragTargetStatus = useSignal<string | null>(null);
   const createDialogOpen = useSignal(false);
   const settingsDialogOpen = useSignal(false);
   const actionMenuTaskId = useSignal<string | null>(null);
@@ -387,25 +388,37 @@ export const useTaskBoard = () => {
   }, [selectedTask]);
 
   const startDrag = useCallback(
-    (taskId: string) => {
-      draggedTask.value = taskId;
+    (taskId: string, taskStatus: string) => {
+      draggedTask.value = { id: taskId, status: taskStatus };
+      dragTargetStatus.value = null;
     },
-    [draggedTask]
+    [dragTargetStatus, draggedTask]
   );
 
-  const allowDrop = useCallback((event: DragEvent) => {
-    event.preventDefault();
-  }, []);
+  const clearDrag = useCallback(() => {
+    draggedTask.value = null;
+    dragTargetStatus.value = null;
+  }, [dragTargetStatus, draggedTask]);
+
+  const allowDropOnStatus = useCallback(
+    (event: DragEvent, nextStatus: string) => {
+      event.preventDefault();
+      dragTargetStatus.value =
+        draggedTask.value !== null && draggedTask.value.status !== nextStatus ? nextStatus : null;
+    },
+    [dragTargetStatus, draggedTask]
+  );
 
   const dropOnStatus = useCallback(
     (event: DragEvent, nextStatus: string) => {
       event.preventDefault();
-      if (!draggedTask.value) return;
+      const task = draggedTask.value;
+      clearDrag();
+      if (task === null || task.status === nextStatus) return;
 
-      moveMutation.mutate({ taskId: draggedTask.value, nextStatus });
-      draggedTask.value = null;
+      moveMutation.mutate({ taskId: task.id, nextStatus });
     },
-    [draggedTask, moveMutation]
+    [clearDrag, draggedTask, moveMutation]
   );
 
   const openTaskMenu = useCallback(
@@ -456,7 +469,8 @@ export const useTaskBoard = () => {
       settingsDialogOpen: settingsDialogOpen.value,
       actionMenuTaskId: actionMenuTaskId.value,
       visibleTaskCounts: visibleTaskCounts.value,
-      columnRoles
+      columnRoles,
+      dropPreviewColumn: dragTargetStatus.value
     },
     form: {
       title: title.value,
@@ -516,7 +530,8 @@ export const useTaskBoard = () => {
       onOpenTask: openTask,
       onCloseTask: closeTask,
       onDragStart: startDrag,
-      onDragOver: allowDrop,
+      onDragOverStatus: allowDropOnStatus,
+      onDragEnd: clearDrag,
       onDropOnStatus: dropOnStatus,
       onOpenCreateTask: () => {
         createDialogOpen.value = true;
