@@ -16,7 +16,6 @@ export interface ProjectConfig {
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean | null;
-  reviewPickupColumn?: string | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
   maxInProgressTasks?: number | null;
@@ -41,7 +40,6 @@ export interface CreateProjectRequest {
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean | null;
-  reviewPickupColumn?: string | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
   maxInProgressTasks?: number | null;
@@ -62,7 +60,6 @@ export interface UpdateProjectRequest {
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean | null;
-  reviewPickupColumn?: string | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
   maxInProgressTasks?: number | null;

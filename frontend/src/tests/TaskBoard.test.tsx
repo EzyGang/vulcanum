@@ -121,7 +121,6 @@ const makeProps = (): TaskBoardViewProps => {
     onSettingsPromptInput: vi.fn(),
     onSettingsAgentsInput: vi.fn(),
     onSettingsReviewEnabledChange: vi.fn(),
-    onSettingsReviewPickupColumnChange: vi.fn(),
     onSettingsReviewMaxTurnsInput: vi.fn(),
     onSettingsReviewPromptInput: vi.fn(),
     onSettingsMaxInProgressInput: vi.fn(),
@@ -148,8 +147,7 @@ const makeProps = (): TaskBoardViewProps => {
     onColumnScroll: vi.fn(),
     onPickupColumnChange: vi.fn(),
     onProgressColumnChange: vi.fn(),
-    onDoneColumnChange: vi.fn(),
-    onReviewColumnChange: vi.fn()
+    onDoneColumnChange: vi.fn()
   };
   const data: TaskBoardViewProps['data'] = {
     selectedProjectKey: 'provider-1/project-1',
@@ -161,15 +159,14 @@ const makeProps = (): TaskBoardViewProps => {
       return board.columns.map((column) => {
         const visibleCount = data.visibleTaskCounts[column.slug] ?? 20;
         const visibleTasks = column.tasks.slice(0, visibleCount);
-        const activeRoles = ['pickup', 'progress', 'done', 'review'] as const;
+        const activeRoles = ['pickup', 'progress', 'done'] as const;
         const columnRoles = data.columnRoles;
         const activeColumnRoles = activeRoles
           .filter(
             (role) =>
               (role === 'pickup' && columnRoles.pickupColumn === column.slug) ||
               (role === 'progress' && columnRoles.progressColumn === column.slug) ||
-              (role === 'done' && columnRoles.targetColumn === column.slug) ||
-              (role === 'review' && columnRoles.reviewPickupColumn === column.slug)
+              (role === 'done' && columnRoles.targetColumn === column.slug)
           )
           .map((role) => ({ role }));
 
@@ -235,8 +232,7 @@ const makeProps = (): TaskBoardViewProps => {
     columnRoles: {
       pickupColumn: 'to-do',
       progressColumn: 'to-do',
-      targetColumn: 'done',
-      reviewPickupColumn: null
+      targetColumn: 'done'
     },
     dropPreviewColumn: null,
     automationEnabled: false,
@@ -270,10 +266,6 @@ const makeProps = (): TaskBoardViewProps => {
     columnSettings: { hasOptions: true, hasOverrides: false, roleSelects: [] },
     projectSettings: { hasOverrides: false },
     reviewSettings: {
-      reviewPickupColumnItems: [
-        { value: '', label: 'Use column role or team default' },
-        ...statusOptions
-      ],
       hasOverrides: false
     },
     get selectedTaskCreatedAtLabel() {
@@ -305,7 +297,6 @@ const makeProps = (): TaskBoardViewProps => {
         promptTemplate: '',
         agentsMd: '',
         reviewEnabled: '',
-        reviewPickupColumn: '',
         reviewMaxTurns: '',
         reviewPromptTemplate: '',
         maxInProgressTasks: ''
@@ -494,9 +485,9 @@ describe('TaskBoard.view', () => {
     const { getByLabelText, getByText } = render(<TaskBoardView {...props} />);
 
     fireEvent.click(getByLabelText('Column role settings for Done'));
-    fireEvent.click(getByText('Set Review'));
+    fireEvent.click(getByText('Set Pickup'));
 
-    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'review');
+    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'pickup');
   });
 
   it('shows a drop preview when hovering another column', () => {

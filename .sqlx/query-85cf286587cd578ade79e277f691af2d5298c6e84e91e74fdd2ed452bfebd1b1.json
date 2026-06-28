@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n              pc.agents_md, pc.primary_model_provider_key, pc.primary_model_id,\n              pc.small_model_provider_key, pc.small_model_id,\n              pc.review_enabled, pc.review_pickup_column, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n              pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.id = $1\n             GROUP BY pc.id",
+  "query": "UPDATE project_configs SET\n             name = COALESCE($2, name),\n             pickup_column = COALESCE($3, pickup_column),\n             target_column = COALESCE($4, target_column),\n             progress_column = COALESCE($5, progress_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = CASE WHEN $7 THEN $8 ELSE prompt_template END,\n             repo_url = COALESCE($9, repo_url),\n             agents_md = CASE WHEN $10 THEN $11 ELSE agents_md END,\n             enabled = COALESCE($12, enabled),\n             external_workspace_id = COALESCE($13, external_workspace_id),\n             integration_type = COALESCE($14, integration_type),\n             provider_id = COALESCE($15, provider_id),\n             primary_model_provider_key = CASE WHEN $16 THEN $17 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $18 THEN $19 ELSE primary_model_id END,\n              small_model_provider_key = CASE WHEN $20 THEN $21 ELSE small_model_provider_key END,\n              small_model_id = CASE WHEN $22 THEN $23 ELSE small_model_id END,\n              review_enabled = CASE WHEN $24 THEN $25 ELSE review_enabled END,\n              review_max_turns = CASE WHEN $26 THEN $27 ELSE review_max_turns END,\n              review_prompt_template = CASE WHEN $28 THEN $29 ELSE review_prompt_template END,\n              max_in_progress_tasks = CASE WHEN $30 THEN $31 ELSE max_in_progress_tasks END\n               WHERE id = $1\n               RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n               progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as \"repo_full_names!\", ARRAY[]::TEXT[] as \"repo_urls!\", agents_md, primary_model_provider_key, primary_model_id,\n              small_model_provider_key, small_model_id, review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at, provider_id as \"provider_id?\"",
   "describe": {
     "columns": [
       {
@@ -119,38 +119,72 @@
       },
       {
         "ordinal": 21,
-        "name": "review_pickup_column",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 22,
         "name": "review_max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 23,
+        "ordinal": 22,
         "name": "review_prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 24,
+        "ordinal": 23,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 25,
+        "ordinal": 24,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 26,
+        "ordinal": 25,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Bool",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Int4",
+        "Bool",
+        "Text",
+        "Bool",
+        "Int4"
       ]
     },
     "nullable": [
@@ -178,10 +212,9 @@
       true,
       true,
       true,
-      true,
       false,
       true
     ]
   },
-  "hash": "c5570d48fd03f8bcd55e281dd2384215c67bd99de6e88d8c9ae478063e135d2f"
+  "hash": "85cf286587cd578ade79e277f691af2d5298c6e84e91e74fdd2ed452bfebd1b1"
 }

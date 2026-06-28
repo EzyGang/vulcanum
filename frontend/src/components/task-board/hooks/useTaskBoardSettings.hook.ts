@@ -36,7 +36,6 @@ export const useTaskBoardSettings = (
   const settingsPromptTemplate = useSignal('');
   const settingsAgentsMd = useSignal('');
   const settingsReviewEnabled = useSignal('');
-  const settingsReviewPickupColumn = useSignal('');
   const settingsReviewMaxTurns = useSignal('');
   const settingsReviewPromptTemplate = useSignal('');
   const settingsMaxInProgressTasks = useSignal('');
@@ -50,7 +49,6 @@ export const useTaskBoardSettings = (
     settingsPromptTemplate.value = nextSettings.promptTemplate;
     settingsAgentsMd.value = nextSettings.agentsMd;
     settingsReviewEnabled.value = nextSettings.reviewEnabled;
-    settingsReviewPickupColumn.value = nextSettings.reviewPickupColumn;
     settingsReviewMaxTurns.value = nextSettings.reviewMaxTurns;
     settingsReviewPromptTemplate.value = nextSettings.reviewPromptTemplate;
     settingsMaxInProgressTasks.value = nextSettings.maxInProgressTasks;
@@ -155,7 +153,6 @@ export const useTaskBoardSettings = (
           agentsMd: nullableText(settingsAgentsMd.value),
           reviewEnabled:
             settingsReviewEnabled.value === '' ? null : settingsReviewEnabled.value === 'true',
-          reviewPickupColumn: settingsReviewPickupColumn.value || null,
           reviewMaxTurns: settingsReviewMaxTurns.value.trim()
             ? parsePositiveNumber(settingsReviewMaxTurns.value, DEFAULT_REVIEW_MAX_TURNS)
             : null,
@@ -174,7 +171,6 @@ export const useTaskBoardSettings = (
       settingsPromptTemplate,
       settingsAgentsMd,
       settingsReviewEnabled,
-      settingsReviewPickupColumn,
       settingsReviewMaxTurns,
       settingsReviewPromptTemplate,
       settingsMaxInProgressTasks
@@ -185,7 +181,7 @@ export const useTaskBoardSettings = (
     (columnSlug: string | null, role: TaskBoardColumnRole) => {
       formError.value = null;
       const input: UpdateProjectRequest = {};
-      if (columnSlug === null && role !== 'review') {
+      if (columnSlug === null) {
         formError.value = 'Required board roles must use a provider column';
         return;
       }
@@ -197,9 +193,6 @@ export const useTaskBoardSettings = (
         input.progressColumn = requiredColumnSlug;
       } else if (role === 'done') {
         input.targetColumn = requiredColumnSlug;
-      } else {
-        input.reviewPickupColumn =
-          projectConfig?.reviewPickupColumn === columnSlug ? null : columnSlug;
       }
 
       columnRoleMutation.mutate(input, {
@@ -208,7 +201,7 @@ export const useTaskBoardSettings = (
         }
       });
     },
-    [columnRoleMutation, formError, projectConfig?.reviewPickupColumn]
+    [columnRoleMutation, formError]
   );
 
   const toggleRepo = useCallback(
@@ -234,7 +227,6 @@ export const useTaskBoardSettings = (
     promptTemplate: settingsPromptTemplate.value,
     agentsMd: settingsAgentsMd.value,
     reviewEnabled: settingsReviewEnabled.value,
-    reviewPickupColumn: settingsReviewPickupColumn.value,
     reviewMaxTurns: settingsReviewMaxTurns.value,
     reviewPromptTemplate: settingsReviewPromptTemplate.value,
     maxInProgressTasks: settingsMaxInProgressTasks.value
@@ -269,9 +261,6 @@ export const useTaskBoardSettings = (
       onSettingsAgentsInput: textInputHandler(settingsAgentsMd),
       onSettingsReviewEnabledChange: (value: string) => {
         settingsReviewEnabled.value = value;
-      },
-      onSettingsReviewPickupColumnChange: (value: string) => {
-        settingsReviewPickupColumn.value = value;
       },
       onSettingsReviewMaxTurnsInput: textInputHandler(settingsReviewMaxTurns),
       onSettingsReviewPromptInput: textInputHandler(settingsReviewPromptTemplate),

@@ -13,7 +13,6 @@ impl WorkRunsService {
         params: &SubmitResultRequest,
         status: WorkRunStatus,
         pr_urls: &[String],
-        defer_success_target: bool,
     ) {
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(c) => c,
@@ -60,42 +59,15 @@ impl WorkRunsService {
         let client = IntegrationClient::from_provider(&provider);
         let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
 
-        let review_pickup_column = match is_review {
-            true => match self
-                .project_configs
-                .effective_settings(&project_config)
-                .await
-            {
-                Ok(settings) => settings.review_pickup_column,
-                Err(e) => {
-                    tracing::warn!(
-                        project_config_id = %run.project_config_id,
-                        work_run_id = %run.id,
-                        error = %e,
-                        "failed to resolve review pickup column",
-                    );
-                    project_config
-                        .review_pickup_column
-                        .clone()
-                        .unwrap_or(project_config.target_column.clone())
-                }
-            },
-            false => String::new(),
-        };
-
         let result_column = match is_review {
-            true => review_result_column(
-                params.finish_status,
-                status,
-                review_pickup_column.as_str(),
-                &project_config.target_column,
-            ),
+            true => {
+                review_result_column(params.finish_status, status, &project_config.target_column)
+            }
             false => implementation_result_column(
                 params.finish_status,
                 status,
                 &project_config.pickup_column,
                 &project_config.target_column,
-                defer_success_target,
             ),
         };
 
@@ -139,39 +111,30 @@ pub(crate) fn implementation_result_column<'a>(
     run_status: WorkRunStatus,
     pickup_column: &'a str,
     target_column: &'a str,
-    defer_success_target: bool,
 ) -> Option<&'a str> {
     match finish_status {
-        Some(FinishStatus::Completed) => match defer_success_target {
-            true => None,
-            false => Some(target_column),
-        },
+        Some(FinishStatus::Completed) => Some(target_column),
         Some(FinishStatus::Failed) => Some(pickup_column),
         Some(FinishStatus::Blocked) => None,
         None => match run_status {
-            WorkRunStatus::Completed => match defer_success_target {
-                true => None,
-                false => Some(target_column),
-            },
+            WorkRunStatus::Completed => Some(target_column),
             _ => Some(pickup_column),
         },
     }
 }
 
 #[must_use]
-pub(crate) fn review_result_column<'a>(
+pub(crate) fn review_result_column(
     finish_status: Option<FinishStatus>,
     run_status: WorkRunStatus,
-    review_pickup_column: &'a str,
-    target_column: &'a str,
-) -> Option<&'a str> {
+    target_column: &str,
+) -> Option<&str> {
     match finish_status {
         Some(FinishStatus::Completed) => Some(target_column),
-        Some(FinishStatus::Failed) => Some(review_pickup_column),
-        Some(FinishStatus::Blocked) => None,
+        Some(FinishStatus::Failed | FinishStatus::Blocked) => None,
         None => match run_status {
             WorkRunStatus::Completed => Some(target_column),
-            _ => Some(review_pickup_column),
+            _ => None,
         },
     }
 }

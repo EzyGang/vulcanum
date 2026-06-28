@@ -9,14 +9,13 @@ import { TaskBoardSettingsSection } from './TaskBoardSettingsSection.view';
 interface TaskBoardReviewSettingsProps {
   form: Pick<
     TaskBoardFormState['settings'],
-    'reviewEnabled' | 'reviewPickupColumn' | 'reviewMaxTurns' | 'reviewPromptTemplate'
+    'reviewEnabled' | 'reviewMaxTurns' | 'reviewPromptTemplate'
   >;
   data: TaskBoardReviewSettingsData;
   disabled: boolean;
   actions: Pick<
     TaskBoardActions,
     | 'onSettingsReviewEnabledChange'
-    | 'onSettingsReviewPickupColumnChange'
     | 'onSettingsReviewMaxTurnsInput'
     | 'onSettingsReviewPromptInput'
   >;
@@ -36,7 +35,7 @@ export const TaskBoardReviewSettings = ({
 }: TaskBoardReviewSettingsProps): JSX.Element => (
   <TaskBoardSettingsSection
     title='Review automation'
-    description='Override review enablement, pickup column, follow-up passes, and review prompt.'
+    description='Implementation runs spawn PR review jobs from submitted pull requests. Override review enablement, follow-up passes, and review prompt.'
     hasOverrides={data.hasOverrides}
   >
     <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
@@ -48,16 +47,6 @@ export const TaskBoardReviewSettings = ({
           onValueChange={actions.onSettingsReviewEnabledChange}
           disabled={disabled}
           items={REVIEW_ENABLED_ITEMS}
-        />
-      </div>
-      <div class='flex flex-col gap-2'>
-        <Label for='board-review-pickup-column'>Review pickup column</Label>
-        <Select
-          id='board-review-pickup-column'
-          value={form.reviewPickupColumn}
-          onValueChange={actions.onSettingsReviewPickupColumnChange}
-          disabled={disabled}
-          items={data.reviewPickupColumnItems}
         />
       </div>
       <div class='flex flex-col gap-2'>

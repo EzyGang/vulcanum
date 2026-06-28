@@ -32,7 +32,6 @@ pub struct ProjectConfig {
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
     pub review_enabled: Option<bool>,
-    pub review_pickup_column: Option<String>,
     pub review_max_turns: Option<i32>,
     pub review_prompt_template: Option<String>,
     pub max_in_progress_tasks: Option<i32>,
@@ -74,8 +73,6 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub review_enabled: Option<bool>,
     #[serde(default)]
-    pub review_pickup_column: Option<String>,
-    #[serde(default)]
     pub review_max_turns: Option<i32>,
     #[serde(default)]
     pub review_prompt_template: Option<String>,
@@ -114,8 +111,6 @@ pub struct UpdateProjectConfigRequest {
     pub small_model_id: Option<Option<String>>,
     #[serde(default)]
     pub review_enabled: Option<Option<bool>>,
-    #[serde(default, deserialize_with = "deserialize_nullable_string")]
-    pub review_pickup_column: Option<Option<String>>,
     #[serde(default)]
     pub review_max_turns: Option<Option<i32>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
@@ -216,7 +211,6 @@ pub struct EffectiveProjectSettings {
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
     pub review_enabled: bool,
-    pub review_pickup_column: String,
     pub review_max_turns: i32,
     pub review_prompt_template: String,
     pub max_in_progress_tasks: i32,

@@ -21,8 +21,7 @@ interface RoleMenuProps {
 const ROLE_BADGE_CLASSES: Record<TaskBoardColumnRole, string> = {
   pickup: 'border-warning-border bg-warning-bg text-warning',
   progress: 'border-accent/60 bg-accent/10 text-accent-light',
-  done: 'border-success-border bg-success-bg text-success',
-  review: 'border-border-focus bg-bg-active text-text-primary'
+  done: 'border-success-border bg-success-bg text-success'
 };
 
 const RoleBadge = ({ role }: RoleBadgeProps): JSX.Element => (
@@ -43,7 +42,7 @@ const RoleMenu = ({ data }: RoleMenuProps): JSX.Element => (
       type='button'
       variant='ghost'
       aria-label={data.buttonLabel}
-      title='Set this column as pickup, in progress, review pickup, or done'
+      title='Set this column as pickup, in progress, or done'
       aria-expanded={data.open}
       disabled={data.disabled}
       onClick={data.onToggle}

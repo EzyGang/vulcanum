@@ -42,7 +42,6 @@ impl ProjectConfigsService {
             resolve_column_if_set(&all_columns, &mut params.pickup_column)?;
             resolve_column_if_set(&all_columns, &mut params.progress_column)?;
             resolve_column_if_set(&all_columns, &mut params.target_column)?;
-            resolve_nullable_column_if_set(&all_columns, &mut params.review_pickup_column)?;
         }
 
         let primary_provider_key = resolve_model_field(
@@ -107,10 +106,6 @@ impl ProjectConfigsService {
                         .map(|value| value.as_deref()),
                     small_model_id: params.small_model_id.as_ref().map(|value| value.as_deref()),
                     review_enabled: params.review_enabled,
-                    review_pickup_column: params
-                        .review_pickup_column
-                        .as_ref()
-                        .map(|value| value.as_deref()),
                     review_max_turns: params.review_max_turns,
                     review_prompt_template: params
                         .review_prompt_template
@@ -154,20 +149,4 @@ fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
     params.pickup_column.is_some()
         || params.progress_column.is_some()
         || params.target_column.is_some()
-        || params.review_pickup_column.is_some()
-}
-
-fn resolve_nullable_column_if_set(
-    columns: &[crate::models::providers::model::IntegrationColumn],
-    column: &mut Option<Option<String>>,
-) -> Result<(), ProjectConfigsError> {
-    match column {
-        Some(Some(input)) => {
-            *column = Some(Some(
-                crate::services::project_configs::service::resolve_column_slug(columns, input)?,
-            ));
-            Ok(())
-        }
-        Some(None) | None => Ok(()),
-    }
 }

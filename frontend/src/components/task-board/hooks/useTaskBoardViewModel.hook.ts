@@ -82,12 +82,6 @@ export const useTaskBoardViewModel = ({
     },
     [onSetColumnRole]
   );
-  const setReviewColumn = useCallback(
-    (value: string) => {
-      onSetColumnRole(optionToNullableColumn(value), 'review');
-    },
-    [onSetColumnRole]
-  );
 
   const selectedRepoNameSet = new Set(selectedRepoNames);
   const makeRepoItem = (repo: SelectOption, checked: boolean): TaskBoardRepositoryItem => ({
@@ -145,11 +139,6 @@ export const useTaskBoardViewModel = ({
     onSetColumnRole
   });
 
-  const reviewPickupColumnItems = [
-    { value: '', label: 'Use column role or team default' },
-    ...statusOptions
-  ];
-
   return {
     data: {
       boardColumnCount: Math.max(boardColumns.length, 1),
@@ -170,7 +159,7 @@ export const useTaskBoardViewModel = ({
       },
       columnSettings: {
         hasOptions: statusOptions.length > 0,
-        hasOverrides: columnRoles.reviewPickupColumn !== null,
+        hasOverrides: false,
         roleSelects: [
           {
             id: 'board-settings-pickup-column',
@@ -192,13 +181,6 @@ export const useTaskBoardViewModel = ({
             value: columnRoles.targetColumn,
             options: statusOptions,
             onValueChange: setDoneColumn
-          },
-          {
-            id: 'board-settings-review-pickup-column',
-            label: 'Review pickup column',
-            value: columnRoles.reviewPickupColumn ?? '',
-            options: [{ value: '', label: 'No review pickup override' }, ...statusOptions],
-            onValueChange: setReviewColumn
           }
         ]
       },
@@ -209,10 +191,8 @@ export const useTaskBoardViewModel = ({
           settingsForm.maxInProgressTasks.trim().length > 0
       },
       reviewSettings: {
-        reviewPickupColumnItems,
         hasOverrides:
           settingsForm.reviewEnabled !== '' ||
-          settingsForm.reviewPickupColumn !== '' ||
           settingsForm.reviewMaxTurns.trim().length > 0 ||
           settingsForm.reviewPromptTemplate.trim().length > 0
       },
@@ -225,8 +205,7 @@ export const useTaskBoardViewModel = ({
       onFilterRepos: filterRepos,
       onPickupColumnChange: setPickupColumn,
       onProgressColumnChange: setProgressColumn,
-      onDoneColumnChange: setDoneColumn,
-      onReviewColumnChange: setReviewColumn
+      onDoneColumnChange: setDoneColumn
     }
   };
 };

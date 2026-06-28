@@ -22,7 +22,6 @@ interface TeamDefaultsViewProps {
     smallModelProviderKey: Signal<string>;
     smallModelId: Signal<string>;
     reviewEnabled: Signal<boolean>;
-    reviewPickupColumn: Signal<string>;
     reviewMaxTurns: Signal<number>;
     reviewPromptTemplate: Signal<string>;
     maxInProgressTasks: Signal<number>;
@@ -43,7 +42,6 @@ interface TeamDefaultsViewProps {
     onSmallProviderChange: (value: string) => void;
     onSmallModelChange: (value: string) => void;
     onReviewEnabledChange: (checked: boolean) => void;
-    onReviewPickupColumnInput: (event: Event) => void;
     onReviewMaxTurnsInput: (event: Event) => void;
     onReviewPromptTemplateInput: (event: Event) => void;
     onMaxInProgressTasksInput: (event: Event) => void;
@@ -190,15 +188,6 @@ const AgentDefaultFields = ({
         Enable PR Review Automation
       </CheckboxWithLabel>
       <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>
-        <div class='flex flex-col gap-2'>
-          <Label for='team-review-pickup-column'>Review Pickup Column</Label>
-          <Input
-            id='team-review-pickup-column'
-            value={data.reviewPickupColumn.value}
-            onInput={actions.onReviewPickupColumnInput}
-            disabled={status.saving}
-          />
-        </div>
         <div class='flex flex-col gap-2'>
           <Label for='team-review-max-turns'>Review Follow-up Passes</Label>
           <Input
