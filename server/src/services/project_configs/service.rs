@@ -9,7 +9,7 @@ use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
-use crate::models::providers::model::{IntegrationColumn, IntegrationType};
+use crate::models::providers::model::IntegrationColumn;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::providers::client::IntegrationClient;
 use crate::services::teams::service::TeamsService;
@@ -122,12 +122,7 @@ impl ProjectConfigsService {
             .await
             .map_err(|_| ProjectConfigsError::NoProvider)?;
 
-        let client = match provider.provider_type {
-            IntegrationType::Kaneo => {
-                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
-            }
-        };
-        Ok(client)
+        Ok(IntegrationClient::from_provider(&provider))
     }
 
     pub(super) async fn validate_model_selection(

@@ -1,6 +1,6 @@
 use kaneo_cli::api::types::{BoardColumn, BoardData, BoardResponse, Task};
 
-use crate::services::providers::client::{
+use crate::services::providers::kaneo::mapping::{
     column_name_to_slug, kaneo_board_to_integration, kaneo_column_slug,
 };
 
