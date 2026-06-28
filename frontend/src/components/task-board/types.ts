@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import type { SelectOption } from '../../types/shared';
 import type { TaskBoard, TaskBoardTask } from '../../types/task-board';
 
-export type TaskBoardColumnRole = 'pickup' | 'progress' | 'review' | 'done';
+export type TaskBoardColumnRole = 'pickup' | 'progress' | 'done';
 
 export type TaskBoardHelpCard = 'proxy' | 'roles' | 'automation';
 
@@ -10,14 +10,12 @@ export interface TaskBoardColumnRoles {
   pickupColumn: string;
   progressColumn: string;
   targetColumn: string;
-  reviewPickupColumn: string | null;
 }
 
 export interface TaskBoardSettingsFormState {
   promptTemplate: string;
   agentsMd: string;
   reviewEnabled: string;
-  reviewPickupColumn: string;
   reviewMaxTurns: string;
   reviewPromptTemplate: string;
   maxInProgressTasks: string;
@@ -115,7 +113,6 @@ export interface TaskBoardRoleSelectData {
 
 export interface TaskBoardColumnSettingsData {
   hasOptions: boolean;
-  hasOverrides: boolean;
   roleSelects: TaskBoardRoleSelectData[];
 }
 
@@ -124,7 +121,6 @@ export interface TaskBoardProjectSettingsData {
 }
 
 export interface TaskBoardReviewSettingsData {
-  reviewPickupColumnItems: SelectOption[];
   hasOverrides: boolean;
 }
 
@@ -192,7 +188,6 @@ export interface TaskBoardActions {
   onSettingsAgentsInput: (event: Event) => void;
   onSettingsMaxInProgressInput: (event: Event) => void;
   onSettingsReviewEnabledChange: (value: string) => void;
-  onSettingsReviewPickupColumnChange: (value: string) => void;
   onSettingsReviewMaxTurnsInput: (event: Event) => void;
   onSettingsReviewPromptInput: (event: Event) => void;
   onSetColumnRole: (columnSlug: string | null, role: TaskBoardColumnRole) => void;
@@ -219,7 +214,6 @@ export interface TaskBoardActions {
   onPickupColumnChange: (value: string) => void;
   onProgressColumnChange: (value: string) => void;
   onDoneColumnChange: (value: string) => void;
-  onReviewColumnChange: (value: string) => void;
 }
 
 export interface TaskBoardViewProps {

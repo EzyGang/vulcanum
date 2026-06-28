@@ -33,8 +33,7 @@ export const TaskBoardColumnSettings = ({
 }: TaskBoardColumnSettingsProps): JSX.Element => (
   <TaskBoardSettingsSection
     title='Board columns'
-    description='Map provider columns to the board lifecycle. These roles drive pickup, in-progress, done, and review automation.'
-    hasOverrides={data.hasOverrides}
+    description='Map provider columns to the board lifecycle. Implementation runs start from pickup and move completed tickets to done; PR review jobs are spawned from submitted pull requests.'
   >
     {data.hasOptions ? (
       <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>

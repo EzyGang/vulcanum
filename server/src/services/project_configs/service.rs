@@ -82,7 +82,6 @@ impl ProjectConfigsService {
         params.pickup_column = resolve_column_slug(&all_columns, &params.pickup_column)?;
         params.progress_column = resolve_column_slug(&all_columns, &params.progress_column)?;
         params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
-        resolve_column_if_set(&all_columns, &mut params.review_pickup_column)?;
 
         self.validate_model_selection(
             team_id,

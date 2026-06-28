@@ -30,7 +30,6 @@ interface TaskBoardSettingsDialogProps {
     | 'onSettingsPromptInput'
     | 'onSettingsAgentsInput'
     | 'onSettingsReviewEnabledChange'
-    | 'onSettingsReviewPickupColumnChange'
     | 'onSettingsReviewMaxTurnsInput'
     | 'onSettingsReviewPromptInput'
     | 'onSettingsMaxInProgressInput'

@@ -33,7 +33,6 @@ pub struct UpdateProjectConfigParams<'a> {
     pub small_model_provider_key: Option<Option<&'a str>>,
     pub small_model_id: Option<Option<&'a str>>,
     pub review_enabled: Option<Option<bool>>,
-    pub review_pickup_column: Option<Option<&'a str>>,
     pub review_max_turns: Option<Option<i32>>,
     pub review_prompt_template: Option<Option<&'a str>>,
     pub max_in_progress_tasks: Option<Option<i32>>,

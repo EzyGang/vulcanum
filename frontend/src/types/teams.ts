@@ -9,7 +9,6 @@ export interface Team {
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
   reviewEnabled: boolean;
-  reviewPickupColumn: string;
   reviewMaxTurns: number;
   reviewPromptTemplate: string;
   maxInProgressTasks: number;
@@ -43,7 +42,6 @@ export interface UpdateTeamRequest {
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
   reviewEnabled?: boolean;
-  reviewPickupColumn?: string;
   reviewMaxTurns?: number;
   reviewPromptTemplate?: string;
   maxInProgressTasks?: number;

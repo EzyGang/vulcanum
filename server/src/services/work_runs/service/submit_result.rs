@@ -167,14 +167,14 @@ impl WorkRunsService {
             "work_run completed by worker",
         );
 
-        let defer_success_target = match (status, run.work_type) {
-            (WorkRunStatus::Completed, WorkRunType::Implementation) => {
-                self.attach_prs_and_spawn_reviews(&run, &pr_urls).await
-            }
-            _ => false,
-        };
+        if matches!(
+            (status, run.work_type),
+            (WorkRunStatus::Completed, WorkRunType::Implementation)
+        ) {
+            self.attach_prs_and_spawn_reviews(&run, &pr_urls).await;
+        }
 
-        self.sync_task_tracker_on_result(&run, &params, status, &pr_urls, defer_success_target)
+        self.sync_task_tracker_on_result(&run, &params, status, &pr_urls)
             .await;
 
         if matches!(run.work_type, WorkRunType::PullRequestReview) {

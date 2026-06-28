@@ -8,7 +8,6 @@ import type {
   TaskBoardMoveAction,
   TaskBoardProjectSettingsData,
   TaskBoardRepositorySettingsData,
-  TaskBoardReviewSettingsData,
   TaskBoardRoleSelectData,
   TaskBoardSettingsFormState
 } from '../types';
@@ -57,11 +56,10 @@ export interface UseTaskBoardViewModelResult {
     repositorySettings: TaskBoardRepositorySettingsData;
     columnSettings: {
       hasOptions: boolean;
-      hasOverrides: boolean;
       roleSelects: TaskBoardRoleSelectData[];
     };
     projectSettings: TaskBoardProjectSettingsData;
-    reviewSettings: TaskBoardReviewSettingsData;
+    reviewSettings: { hasOverrides: boolean };
     selectedTaskCreatedAtLabel: string | null;
     selectedTaskMoveActions: TaskBoardMoveAction[];
   };
@@ -70,7 +68,6 @@ export interface UseTaskBoardViewModelResult {
     onPickupColumnChange: (value: string) => void;
     onProgressColumnChange: (value: string) => void;
     onDoneColumnChange: (value: string) => void;
-    onReviewColumnChange: (value: string) => void;
   };
 }
 
@@ -101,17 +98,15 @@ interface BuildTaskBoardColumnsInput {
 export const ROLE_LABELS: Record<TaskBoardColumnRole, string> = {
   pickup: 'Pickup',
   progress: 'In progress',
-  done: 'Done',
-  review: 'Review'
+  done: 'Done'
 };
 
-export const ROLE_ORDER: TaskBoardColumnRole[] = ['pickup', 'progress', 'done', 'review'];
+export const ROLE_ORDER: TaskBoardColumnRole[] = ['pickup', 'progress', 'done'];
 
 export const ROLE_HELP: Record<TaskBoardColumnRole, string> = {
   pickup: 'Ready work. Agents and humans can pick tickets up from this column.',
   progress: 'Active work. Moving tickets here marks them as being worked on.',
-  done: 'Completed work. Moving tickets here closes the board workflow.',
-  review: 'Review pickup. Automated review work starts from this column when enabled.'
+  done: 'Completed implementation work moves here. PR review automation also starts from completed implementation runs, so this column can represent in-review or done.'
 };
 
 export const columnRoleActive = (
@@ -121,8 +116,7 @@ export const columnRoleActive = (
 ): boolean => {
   if (role === 'pickup') return columnRoles.pickupColumn === columnSlug;
   if (role === 'progress') return columnRoles.progressColumn === columnSlug;
-  if (role === 'done') return columnRoles.targetColumn === columnSlug;
-  return columnRoles.reviewPickupColumn === columnSlug;
+  return columnRoles.targetColumn === columnSlug;
 };
 
 export const optionToNullableColumn = (columnSlug: string): string | null =>
@@ -220,18 +214,18 @@ export const buildTaskBoardColumns = ({
         },
         items: ROLE_ORDER.map((role) => {
           const active = activeRoles.includes(role);
-          const disabled = configuringColumns || (active && role !== 'review');
+          const disabled = configuringColumns || active;
 
           return {
             role,
-            label: `${active && role === 'review' ? 'Clear' : 'Set'} ${ROLE_LABELS[role]}`,
+            label: `Set ${ROLE_LABELS[role]}`,
             help: ROLE_HELP[role],
             active,
             disabled,
             onClick: (event) => {
               event.preventDefault();
               event.stopPropagation();
-              onSetColumnRole(role === 'review' && active ? null : column.slug, role);
+              onSetColumnRole(column.slug, role);
               onRoleMenuColumnChange(null);
             }
           };

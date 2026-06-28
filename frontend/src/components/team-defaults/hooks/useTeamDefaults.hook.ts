@@ -2,8 +2,7 @@ import { useSignal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import {
   DEFAULT_MAX_IN_PROGRESS_TASKS,
-  DEFAULT_REVIEW_MAX_TURNS,
-  DEFAULT_REVIEW_PICKUP_COLUMN
+  DEFAULT_REVIEW_MAX_TURNS
 } from '../../../constants/reviewAutomation';
 import { useModelItems } from '../../../hooks/useModelItems.hook';
 import {
@@ -24,7 +23,6 @@ export const useTeamDefaults = (teamId: string | null) => {
   const smallModelProviderKey = useSignal('');
   const smallModelId = useSignal('');
   const reviewEnabled = useSignal(false);
-  const reviewPickupColumn = useSignal(DEFAULT_REVIEW_PICKUP_COLUMN);
   const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewPromptTemplate = useSignal('');
   const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
@@ -60,7 +58,6 @@ export const useTeamDefaults = (teamId: string | null) => {
     smallModelProviderKey.value = team.smallModelProviderKey ?? '';
     smallModelId.value = team.smallModelId ?? '';
     reviewEnabled.value = team.reviewEnabled;
-    reviewPickupColumn.value = team.reviewPickupColumn;
     reviewMaxTurns.value = team.reviewMaxTurns;
     reviewPromptTemplate.value = promptTemplateOrDefault(
       team.reviewPromptTemplate,
@@ -97,7 +94,6 @@ export const useTeamDefaults = (teamId: string | null) => {
       smallModelProviderKey,
       smallModelId,
       reviewEnabled,
-      reviewPickupColumn,
       reviewMaxTurns,
       reviewPromptTemplate,
       maxInProgressTasks,
@@ -130,7 +126,6 @@ export const useTeamDefaults = (teamId: string | null) => {
       onReviewEnabledChange: (checked: boolean) => {
         reviewEnabled.value = checked;
       },
-      onReviewPickupColumnInput: textInputHandler(reviewPickupColumn),
       onReviewMaxTurnsInput: (event: Event) => {
         reviewMaxTurns.value = parsePositiveNumber(
           (event.target as HTMLInputElement).value,
@@ -164,7 +159,6 @@ export const useTeamDefaults = (teamId: string | null) => {
             smallModelProviderKey: smallModelProviderKey.value || null,
             smallModelId: smallModelId.value || null,
             reviewEnabled: reviewEnabled.value,
-            reviewPickupColumn: reviewPickupColumn.value || DEFAULT_REVIEW_PICKUP_COLUMN,
             reviewMaxTurns: reviewMaxTurns.value,
             reviewPromptTemplate: promptTemplateForSubmit(
               team?.reviewPromptTemplate,

@@ -82,8 +82,7 @@ export const columnRolesForProject = (
 ): TaskBoardColumnRoles => ({
   pickupColumn: config?.pickupColumn || firstColumnSlug(columns),
   progressColumn: config?.progressColumn || progressColumnSlug(columns),
-  targetColumn: config?.targetColumn || targetColumnSlug(columns),
-  reviewPickupColumn: config?.reviewPickupColumn ?? null
+  targetColumn: config?.targetColumn || targetColumnSlug(columns)
 });
 
 export const nullableText = (value: string): string | null => {
@@ -102,7 +101,6 @@ export const settingsFormFromConfig = (
       : config.reviewEnabled
         ? 'true'
         : 'false',
-  reviewPickupColumn: config?.reviewPickupColumn ?? '',
   reviewMaxTurns: config?.reviewMaxTurns?.toString() ?? '',
   reviewPromptTemplate: config?.reviewPromptTemplate ?? '',
   maxInProgressTasks: config?.maxInProgressTasks?.toString() ?? ''

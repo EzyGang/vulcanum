@@ -73,7 +73,6 @@ pub struct Team {
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
     pub review_enabled: bool,
-    pub review_pickup_column: String,
     pub review_max_turns: i32,
     pub review_prompt_template: String,
     pub max_in_progress_tasks: i32,
@@ -120,8 +119,6 @@ pub struct UpdateTeamRequest {
     pub small_model_id: Option<Option<String>>,
     #[serde(default)]
     pub review_enabled: Option<bool>,
-    #[serde(default)]
-    pub review_pickup_column: Option<String>,
     #[serde(default)]
     pub review_max_turns: Option<i32>,
     #[serde(default)]
