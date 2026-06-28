@@ -57,7 +57,7 @@ impl WorkRunsService {
             }
         };
 
-        let client = IntegrationClient::from_provider(provider);
+        let client = IntegrationClient::from_provider(&provider);
         let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
 
         let review_pickup_column = match is_review {

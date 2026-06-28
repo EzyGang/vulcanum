@@ -20,12 +20,16 @@ pub enum IntegrationClient {
 }
 
 impl IntegrationClient {
-    pub fn from_provider(provider: IntegrationProvider) -> Self {
+    #[must_use]
+    pub fn from_provider(provider: &IntegrationProvider) -> Self {
         match provider.provider_type {
-            IntegrationType::Kaneo => Self::new_kaneo(provider.instance_url, provider.api_key),
+            IntegrationType::Kaneo => {
+                Self::new_kaneo(provider.instance_url.clone(), provider.api_key.clone())
+            }
         }
     }
 
+    #[must_use]
     pub fn new_kaneo(instance: String, api_key: String) -> Self {
         Self::Kaneo(KaneoClient::new(instance, api_key))
     }
@@ -201,6 +205,7 @@ impl IntegrationClient {
     }
 }
 
+#[must_use]
 pub(crate) fn column_name_to_slug(name: &str) -> String {
     name.trim()
         .to_lowercase()
@@ -209,6 +214,7 @@ pub(crate) fn column_name_to_slug(name: &str) -> String {
         .join("-")
 }
 
+#[must_use]
 pub(crate) fn kaneo_task_to_integration(
     task: &KaneoTask,
     project_slug: Option<&str>,
@@ -228,6 +234,7 @@ pub(crate) fn kaneo_task_to_integration(
     }
 }
 
+#[must_use]
 pub(crate) fn kaneo_column_slug(name: &str, status: Option<&str>) -> String {
     status
         .filter(|value| !value.is_empty())
@@ -235,6 +242,7 @@ pub(crate) fn kaneo_column_slug(name: &str, status: Option<&str>) -> String {
         .unwrap_or_else(|| column_name_to_slug(name))
 }
 
+#[must_use]
 pub(crate) fn kaneo_board_column_to_integration(
     column: &KaneoBoardColumn,
     project_slug: &str,
@@ -252,6 +260,7 @@ pub(crate) fn kaneo_board_column_to_integration(
     }
 }
 
+#[must_use]
 pub(crate) fn kaneo_board_to_integration(board: KaneoBoardResponse) -> IntegrationBoard {
     let data = board.data;
     let project = IntegrationProject {

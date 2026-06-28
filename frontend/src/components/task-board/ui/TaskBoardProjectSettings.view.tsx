@@ -2,11 +2,12 @@ import type { JSX } from 'preact';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
-import type { TaskBoardActions, TaskBoardFormState } from '../types';
+import type { TaskBoardActions, TaskBoardFormState, TaskBoardProjectSettingsData } from '../types';
 import { TaskBoardSettingsSection } from './TaskBoardSettingsSection.view';
 
 interface TaskBoardProjectSettingsProps {
   form: Pick<TaskBoardFormState['settings'], 'promptTemplate' | 'agentsMd' | 'maxInProgressTasks'>;
+  data: TaskBoardProjectSettingsData;
   disabled: boolean;
   actions: Pick<
     TaskBoardActions,
@@ -16,17 +17,14 @@ interface TaskBoardProjectSettingsProps {
 
 export const TaskBoardProjectSettings = ({
   form,
+  data,
   disabled,
   actions
 }: TaskBoardProjectSettingsProps): JSX.Element => (
   <TaskBoardSettingsSection
     title='Project overrides'
     description='Leave fields empty to inherit the team defaults.'
-    hasOverrides={
-      form.promptTemplate.trim().length > 0 ||
-      form.agentsMd.trim().length > 0 ||
-      form.maxInProgressTasks.trim().length > 0
-    }
+    hasOverrides={data.hasOverrides}
   >
     <div class='flex flex-col gap-2'>
       <Label for='board-settings-prompt'>Prompt template</Label>

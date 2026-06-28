@@ -40,11 +40,15 @@ pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
 pub async fn ensure_default_team(pool: &sqlx::PgPool) {
     sqlx::query!(
         r#"INSERT INTO teams (id, name, prompt_template, review_prompt_template)
-           VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING"#,
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO UPDATE
+           SET name = EXCLUDED.name,
+               prompt_template = EXCLUDED.prompt_template,
+               review_prompt_template = EXCLUDED.review_prompt_template"#,
         DEFAULT_TEAM_ID,
         "Default team",
-        DEFAULT_PROMPT_TEMPLATE,
-        DEFAULT_REVIEW_PROMPT_TEMPLATE,
+        "",
+        "",
     )
     .execute(pool)
     .await
@@ -304,11 +308,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo = WorkRunsRepository::new();
     let work_runs_repo_for_workers = WorkRunsRepository::new();
     let project_configs_repo = ProjectConfigsRepository::new();
-    let task_board = TaskBoardService::new(
-        providers_repo.clone(),
-        project_configs_repo.clone(),
-        pool.clone(),
-    );
+    let task_board = TaskBoardService::new(providers_repo.clone(), project_configs_repo.clone());
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();

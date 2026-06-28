@@ -4,46 +4,30 @@ import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import type { TaskBoardHelpCard, TaskBoardViewProps } from '../types';
+import type { TaskBoardViewProps } from '../types';
 import { TaskBoardColumn } from './TaskBoardColumn.view';
 import { TaskBoardSettingsDialog } from './TaskBoardSettingsDialog.view';
 import { TaskCreateDialog } from './TaskCreateDialog.view';
 import { TaskDetailsDialog } from './TaskDetailsDialog.view';
 
-const HELP_CARDS: { id: TaskBoardHelpCard; title: string; body: string }[] = [
-  {
-    id: 'proxy',
-    title: 'Provider proxy',
-    body: 'Projects, columns, and tickets stay in the task provider. Vulcanum writes creates and status moves back to that provider API.'
-  },
-  {
-    id: 'roles',
-    title: 'Workflow roles',
-    body: 'Map pickup, in progress, done, and optional review directly in each column header. The labels explain the workflow and stay visible while you work.'
-  },
-  {
-    id: 'automation',
-    title: 'Automation',
-    body: 'Leave automation off while shaping the board. Enable it after repositories, prompts, AI provider defaults, and column roles are ready.'
-  }
-];
-
 export const TaskBoardView = ({
   data: {
     selectedProjectKey,
     board,
+    boardColumnCount,
+    columns,
+    helpCards,
+    automationLabel,
     statusOptions,
-    repoItems,
-    selectedRepoNames,
     selectedTask,
+    selectedTaskCreatedAtLabel,
+    selectedTaskMoveActions,
     createDialogOpen,
     settingsDialogOpen,
-    actionMenuTaskId,
-    visibleTaskCounts,
-    columnRoles,
-    dropPreviewColumn,
     automationEnabled,
-    dismissedHelpCards
+    repositorySettings,
+    projectSettings,
+    reviewSettings
   },
   form,
   status,
@@ -52,8 +36,8 @@ export const TaskBoardView = ({
   if (!selectedProjectKey) {
     return (
       <EmptyState
-        title='No project selected'
-        description='Add a task provider project to Vulcanum, then select it from the navbar.'
+        title='Select a board to begin'
+        description='Use the board picker in the navigation to choose a connected provider project.'
       />
     );
   }
@@ -68,13 +52,12 @@ export const TaskBoardView = ({
 
   if (!board) {
     return (
-      <EmptyState title='Board unavailable' description='Select another project from the navbar.' />
+      <EmptyState
+        title='Board unavailable'
+        description='The selected provider project did not return board data.'
+      />
     );
   }
-
-  const boardColumnCount = Math.max(board.columns.length, 1);
-  const visibleHelpCards = HELP_CARDS.filter((card) => !dismissedHelpCards.includes(card.id));
-  const automationLabel = automationEnabled ? 'Automation on' : 'Automation off';
 
   return (
     <div class='flex flex-col gap-6 animate-fade-in'>
@@ -141,9 +124,9 @@ export const TaskBoardView = ({
         </div>
       </div>
 
-      {visibleHelpCards.length > 0 && (
+      {helpCards.length > 0 && (
         <section class='grid grid-cols-1 gap-3 md:grid-cols-3'>
-          {visibleHelpCards.map((card) => (
+          {helpCards.map((card) => (
             <article
               key={card.id}
               class='group relative border border-border-base bg-bg-card p-4 pr-12 shadow-card transition-colors hover:border-border-focus'
@@ -153,7 +136,7 @@ export const TaskBoardView = ({
               <button
                 type='button'
                 aria-label={`Dismiss ${card.title} help`}
-                onClick={() => actions.onDismissHelpCard(card.id)}
+                onClick={card.onDismiss}
                 class='absolute top-3 right-3 inline-flex size-7 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-base hover:bg-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus'
               >
                 <IconX size={14} stroke={1.75} aria-hidden='true' />
@@ -171,29 +154,8 @@ export const TaskBoardView = ({
         class='grid grid-cols-1 gap-4 lg:grid-cols-[repeat(var(--board-column-count),minmax(0,1fr))]'
         style={`--board-column-count: ${boardColumnCount}`}
       >
-        {board.columns.map((column) => (
-          <TaskBoardColumn
-            key={column.id}
-            column={column}
-            visibleCount={visibleTaskCounts[column.slug] ?? 20}
-            statusOptions={statusOptions}
-            columnRoles={columnRoles}
-            moving={status.moving}
-            movingTaskId={status.movingTaskId}
-            actionMenuTaskId={actionMenuTaskId}
-            onMoveTask={actions.onMoveTask}
-            onOpenTask={actions.onOpenTask}
-            onOpenTaskMenu={actions.onOpenTaskMenu}
-            onDragStart={actions.onDragStart}
-            configuringColumns={status.configuringColumns}
-            dropPreviewColumn={dropPreviewColumn}
-            onDragOverStatus={actions.onDragOverStatus}
-            onDragEnd={actions.onDragEnd}
-            onDropOnStatus={actions.onDropOnStatus}
-            onSetColumnRole={actions.onSetColumnRole}
-            onLoadMoreColumn={actions.onLoadMoreColumn}
-            onColumnScroll={actions.onColumnScroll}
-          />
+        {columns.map((column) => (
+          <TaskBoardColumn key={column.column.id} data={column} />
         ))}
       </div>
       <TaskCreateDialog
@@ -206,15 +168,16 @@ export const TaskBoardView = ({
       <TaskBoardSettingsDialog
         open={settingsDialogOpen}
         form={form.settings}
-        repoItems={repoItems}
-        selectedRepoNames={selectedRepoNames}
-        statusOptions={statusOptions}
+        repositorySettings={repositorySettings}
+        projectSettings={projectSettings}
+        reviewSettings={reviewSettings}
         status={status}
         actions={actions}
       />
       <TaskDetailsDialog
+        createdAtLabel={selectedTaskCreatedAtLabel}
         task={selectedTask}
-        statusOptions={statusOptions}
+        moveActions={selectedTaskMoveActions}
         status={status}
         actions={actions}
       />

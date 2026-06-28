@@ -47,10 +47,7 @@ impl ProjectConfigsService {
 fn effective_prompt_template(config_template: Option<&str>, team_template: &str) -> String {
     match config_template {
         Some(template) if !template.trim().is_empty() => template.to_owned(),
-        Some(_) | None => match team_template.trim().is_empty() {
-            true => DEFAULT_PROMPT_TEMPLATE.to_owned(),
-            false => team_template.to_owned(),
-        },
+        Some(_) | None => prompt_template_or_default(team_template, DEFAULT_PROMPT_TEMPLATE),
     }
 }
 
@@ -58,9 +55,15 @@ fn effective_prompt_template(config_template: Option<&str>, team_template: &str)
 fn effective_review_prompt_template(config_template: Option<&str>, team_template: &str) -> String {
     match config_template {
         Some(template) if !template.trim().is_empty() => template.to_owned(),
-        Some(_) | None => match team_template.trim().is_empty() {
-            true => DEFAULT_REVIEW_PROMPT_TEMPLATE.to_owned(),
-            false => team_template.to_owned(),
-        },
+        Some(_) | None => prompt_template_or_default(team_template, DEFAULT_REVIEW_PROMPT_TEMPLATE),
+    }
+}
+
+#[must_use]
+fn prompt_template_or_default(template: &str, default_template: &str) -> String {
+    if template.trim().is_empty() {
+        default_template.to_owned()
+    } else {
+        template.to_owned()
     }
 }
