@@ -2,6 +2,7 @@ import { IconSettings } from '@tabler/icons-react';
 import { clsx } from 'clsx';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
+import { ROLE_HELP, ROLE_LABELS } from '../hooks/taskBoardViewModel.support';
 import type { TaskBoardColumnData, TaskBoardColumnRole, TaskBoardRoleMenuData } from '../types';
 import { TaskCard } from './TaskCard.view';
 
@@ -16,20 +17,6 @@ interface RoleBadgeProps {
 interface RoleMenuProps {
   data: TaskBoardRoleMenuData;
 }
-
-const ROLE_LABELS: Record<TaskBoardColumnRole, string> = {
-  pickup: 'Pickup',
-  progress: 'In progress',
-  done: 'Done',
-  review: 'Review'
-};
-
-const ROLE_HELP: Record<TaskBoardColumnRole, string> = {
-  pickup: 'Ready work. Agents and humans can pick tickets up from this column.',
-  progress: 'Active work. Moving tickets here marks them as being worked on.',
-  done: 'Completed work. Moving tickets here closes the board workflow.',
-  review: 'Review pickup. Automated review work starts from this column when enabled.'
-};
 
 const ROLE_BADGE_CLASSES: Record<TaskBoardColumnRole, string> = {
   pickup: 'border-warning-border bg-warning-bg text-warning',
