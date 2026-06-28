@@ -159,7 +159,6 @@ export const useTaskBoardViewModel = ({
       },
       columnSettings: {
         hasOptions: statusOptions.length > 0,
-        hasOverrides: false,
         roleSelects: [
           {
             id: 'board-settings-pickup-column',

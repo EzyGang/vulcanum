@@ -34,7 +34,6 @@ export const TaskBoardColumnSettings = ({
   <TaskBoardSettingsSection
     title='Board columns'
     description='Map provider columns to the board lifecycle. Implementation runs start from pickup and move completed tickets to done; PR review jobs are spawned from submitted pull requests.'
-    hasOverrides={data.hasOverrides}
   >
     {data.hasOptions ? (
       <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>

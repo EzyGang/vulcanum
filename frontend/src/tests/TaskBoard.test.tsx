@@ -263,7 +263,7 @@ const makeProps = (): TaskBoardViewProps => {
         hasOverrides: selectedRepoNames.length > 0
       };
     },
-    columnSettings: { hasOptions: true, hasOverrides: false, roleSelects: [] },
+    columnSettings: { hasOptions: true, roleSelects: [] },
     projectSettings: { hasOverrides: false },
     reviewSettings: {
       hasOverrides: false

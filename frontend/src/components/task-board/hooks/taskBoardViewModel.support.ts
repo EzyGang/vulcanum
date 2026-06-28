@@ -56,7 +56,6 @@ export interface UseTaskBoardViewModelResult {
     repositorySettings: TaskBoardRepositorySettingsData;
     columnSettings: {
       hasOptions: boolean;
-      hasOverrides: boolean;
       roleSelects: TaskBoardRoleSelectData[];
     };
     projectSettings: TaskBoardProjectSettingsData;

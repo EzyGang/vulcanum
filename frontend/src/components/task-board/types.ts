@@ -113,7 +113,6 @@ export interface TaskBoardRoleSelectData {
 
 export interface TaskBoardColumnSettingsData {
   hasOptions: boolean;
-  hasOverrides: boolean;
   roleSelects: TaskBoardRoleSelectData[];
 }
 
