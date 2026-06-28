@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::db::work_runs::queries::InsertWorkRunParams;
 use crate::models::project_configs::model::ProjectConfig;
-use crate::models::providers::model::{IntegrationTask, IntegrationType};
+use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
@@ -214,11 +214,7 @@ impl PollerService {
             }
         };
 
-        let client = match provider.provider_type {
-            IntegrationType::Kaneo => {
-                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
-            }
-        };
+        let client = IntegrationClient::from_provider(&provider);
 
         Some(Arc::new(client))
     }

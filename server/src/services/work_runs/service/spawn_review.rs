@@ -1,6 +1,5 @@
 use crate::db::work_runs::queries::prs::UpsertTaskPrParams;
 use crate::db::work_runs::queries::InsertWorkRunParams;
-use crate::models::providers::model::IntegrationType;
 use crate::models::work_runs::model::{TaskPr, WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::poller::service::repo_layout;
 use crate::services::poller::template::{render_template, TemplateVars};
@@ -152,11 +151,7 @@ impl WorkRunsService {
                 return;
             }
         };
-        let client = match provider.provider_type {
-            IntegrationType::Kaneo => {
-                IntegrationClient::new_kaneo(provider.instance_url, provider.api_key)
-            }
-        };
+        let client = IntegrationClient::from_provider(&provider);
         let body = upsert_pr_block(
             &run.task_body,
             &task_prs
