@@ -5,9 +5,12 @@ import { WorkersView } from '../ui/Workers.view';
 export const WorkersContainer = (): JSX.Element => {
   const {
     formattedWorkers,
-    code,
+    maskedCode,
+    setupCommandPreview,
     countdown,
     generateLoading,
+    copiedTarget,
+    copyError,
     deletingId,
     deleteError,
     updateStatusError,
@@ -17,19 +20,32 @@ export const WorkersContainer = (): JSX.Element => {
     handleConfirmDelete,
     handleCancelDelete,
     handleDeleteWorker,
-    handleUpdateStatus
+    handleUpdateStatus,
+    copyGeneratedCode,
+    copySetupCommand
   } = useWorkers();
 
   return (
     <WorkersView
-      data={{ workers: formattedWorkers, code, countdown }}
-      status={{ loading, error, generateLoading, deletingId, deleteError, updateStatusError }}
+      data={{ workers: formattedWorkers, maskedCode, setupCommandPreview, countdown }}
+      status={{
+        loading,
+        error,
+        generateLoading,
+        deletingId,
+        deleteError,
+        updateStatusError,
+        copiedTarget,
+        copyError
+      }}
       actions={{
         onGenerateCode: handleGenerateCode,
         onConfirmDelete: handleConfirmDelete,
         onCancelDelete: handleCancelDelete,
         onDeleteWorker: handleDeleteWorker,
-        onUpdateStatus: handleUpdateStatus
+        onUpdateStatus: handleUpdateStatus,
+        onCopyCode: copyGeneratedCode,
+        onCopySetupCommand: copySetupCommand
       }}
     />
   );

@@ -14,13 +14,14 @@ import {
 import { parseTaskProjectKey, selectedTaskProjectKey } from '../../../stores/task-board.store';
 import type { ProjectConfig, UpdateProjectRequest } from '../../../types/projects';
 import type { TaskBoardColumn, TaskBoardTask } from '../../../types/task-board';
-import { invalidate } from '../../../utils/api/query/client';
+import { invalidate, queryClient } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
 import { textInputHandler } from '../../../utils/signal-input';
 import type {
   TaskBoardColumnRole,
   TaskBoardColumnRoles,
+  TaskBoardHelpCard,
   TaskBoardSettingsFormState
 } from '../types';
 
@@ -34,6 +35,31 @@ const projectConfigsQueryKey = ['projects'];
 const reposQueryKey = ['github-repos'];
 const taskBoardProjectsQueryKey = ['task-board-projects'];
 const COLUMN_PAGE_SIZE = 20;
+const HELP_CARD_STORAGE_KEY = 'vulcanum-task-board-dismissed-help-cards';
+const HELP_CARDS: TaskBoardHelpCard[] = ['proxy', 'roles', 'automation'];
+
+const readDismissedHelpCards = (): TaskBoardHelpCard[] => {
+  if (typeof localStorage === 'undefined') {
+    return [];
+  }
+
+  try {
+    const rawCards = JSON.parse(localStorage.getItem(HELP_CARD_STORAGE_KEY) ?? '[]');
+    return Array.isArray(rawCards)
+      ? rawCards.filter((card): card is TaskBoardHelpCard => HELP_CARDS.includes(card))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeDismissedHelpCards = (cards: TaskBoardHelpCard[]): void => {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem(HELP_CARD_STORAGE_KEY, JSON.stringify(cards));
+};
 
 const firstColumnSlug = (columns: TaskBoardColumn[]): string => columns[0]?.slug ?? '';
 
@@ -106,6 +132,8 @@ export const useTaskBoard = () => {
   const settingsReviewMaxTurns = useSignal('');
   const settingsReviewPromptTemplate = useSignal('');
   const settingsMaxInProgressTasks = useSignal('');
+  const dismissedHelpCards = useSignal<TaskBoardHelpCard[]>(readDismissedHelpCards());
+  const automationOverride = useSignal<boolean | null>(null);
 
   const boardQuery = useApiQuery(
     boardQueryKey(selection?.providerId, selection?.externalProjectId),
@@ -260,6 +288,43 @@ export const useTaskBoard = () => {
       }
     }
   );
+
+  const automationMutation = useApiMutation(
+    (enabled: boolean) => {
+      if (!projectConfig) {
+        throw new Error('Add this provider project before toggling automation');
+      }
+
+      return updateProject(projectConfig.id, { enabled });
+    },
+    {
+      onSuccess: async (updatedProject) => {
+        formError.value = null;
+        queryClient.setQueryData<ProjectConfig[]>(projectConfigsQueryKey, (configs) =>
+          configs?.map((config) => (config.id === updatedProject.id ? updatedProject : config))
+        );
+        await Promise.all([
+          invalidate(...projectConfigsQueryKey),
+          invalidate(...taskBoardProjectsQueryKey)
+        ]);
+        automationOverride.value = null;
+      },
+      onError: () => {
+        automationOverride.value = null;
+      }
+    }
+  );
+
+  const toggleAutomation = useCallback(() => {
+    if (!projectConfig) {
+      formError.value = 'Add this provider project before toggling automation';
+      return;
+    }
+
+    const nextEnabled = !(automationOverride.value ?? projectConfig.enabled);
+    automationOverride.value = nextEnabled;
+    automationMutation.mutate(nextEnabled);
+  }, [automationMutation, automationOverride, formError, projectConfig]);
 
   const submitTask = useCallback(
     (event: Event) => {
@@ -455,6 +520,18 @@ export const useTaskBoard = () => {
     },
     [loadMoreColumn]
   );
+  const dismissHelpCard = useCallback(
+    (card: TaskBoardHelpCard) => {
+      if (dismissedHelpCards.value.includes(card)) {
+        return;
+      }
+
+      const nextCards = [...dismissedHelpCards.value, card];
+      dismissedHelpCards.value = nextCards;
+      writeDismissedHelpCards(nextCards);
+    },
+    [dismissedHelpCards]
+  );
 
   return {
     data: {
@@ -470,7 +547,9 @@ export const useTaskBoard = () => {
       actionMenuTaskId: actionMenuTaskId.value,
       visibleTaskCounts: visibleTaskCounts.value,
       columnRoles,
-      dropPreviewColumn: dragTargetStatus.value
+      dropPreviewColumn: dragTargetStatus.value,
+      automationEnabled: automationOverride.value ?? Boolean(projectConfig?.enabled),
+      dismissedHelpCards: dismissedHelpCards.value
     },
     form: {
       title: title.value,
@@ -483,6 +562,7 @@ export const useTaskBoard = () => {
         repoMutation.error?.message ??
         settingsMutation.error?.message ??
         columnRoleMutation.error?.message ??
+        automationMutation.error?.message ??
         formError.value ??
         null,
       settings: {
@@ -505,7 +585,8 @@ export const useTaskBoard = () => {
       connectingRepos: repoMutation.isPending,
       connected: Boolean(projectConfig),
       savingSettings: settingsMutation.isPending,
-      configuringColumns: columnRoleMutation.isPending
+      configuringColumns: columnRoleMutation.isPending,
+      savingAutomation: automationMutation.isPending
     },
     actions: {
       onTitleInput: textInputHandler(title),
@@ -527,7 +608,9 @@ export const useTaskBoard = () => {
       onSettingsMaxInProgressInput: textInputHandler(settingsMaxInProgressTasks),
       onSubmitSettings: submitSettings,
       onSetColumnRole: setColumnRole,
+      onToggleAutomation: toggleAutomation,
       onOpenTask: openTask,
+      onDismissHelpCard: dismissHelpCard,
       onCloseTask: closeTask,
       onDragStart: startDrag,
       onDragOverStatus: allowDropOnStatus,

@@ -2,17 +2,17 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { UpdateWorkerStatusRequest } from '../../../types/workers';
 import type { ApiError } from '../../../utils/api/client';
-import { Button } from '../../shared/ui/Button.view';
-import { Card } from '../../shared/ui/Card.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import type { FormattedWorker } from '../hooks/useWorkers.hook';
+import type { FormattedWorker, WorkerRegistrationCopyTarget } from '../hooks/useWorkers.hook';
+import { WorkersRegistrationCodes } from './registration-codes/WorkersRegistrationCodes.view';
 import { WorkersTable } from './workers-table/WorkersTable.view';
 
 interface WorkersViewProps {
   data: {
     workers: FormattedWorker[];
-    code: string | null;
+    maskedCode: string | null;
+    setupCommandPreview: string | null;
     countdown: Signal<string>;
   };
   status: {
@@ -22,6 +22,8 @@ interface WorkersViewProps {
     deletingId: Signal<string | null>;
     deleteError: Signal<string | null>;
     updateStatusError: ApiError | null;
+    copiedTarget: Signal<WorkerRegistrationCopyTarget | null>;
+    copyError: Signal<string | null>;
   };
   actions: {
     onGenerateCode: () => void;
@@ -29,35 +31,45 @@ interface WorkersViewProps {
     onCancelDelete: () => void;
     onDeleteWorker: (id: string) => void;
     onUpdateStatus: (id: string, status: UpdateWorkerStatusRequest['status']) => void;
+    onCopyCode: () => void;
+    onCopySetupCommand: () => void;
   };
 }
 
 export const WorkersView = ({
-  data: { workers, code, countdown },
-  status: { loading, error, generateLoading, deletingId, deleteError, updateStatusError },
-  actions: { onGenerateCode, onConfirmDelete, onCancelDelete, onDeleteWorker, onUpdateStatus }
+  data: { workers, maskedCode, setupCommandPreview, countdown },
+  status: {
+    loading,
+    error,
+    generateLoading,
+    deletingId,
+    deleteError,
+    updateStatusError,
+    copiedTarget,
+    copyError
+  },
+  actions: {
+    onGenerateCode,
+    onConfirmDelete,
+    onCancelDelete,
+    onDeleteWorker,
+    onUpdateStatus,
+    onCopyCode,
+    onCopySetupCommand
+  }
 }: WorkersViewProps): JSX.Element => (
   <div class='flex flex-col gap-8'>
-    <section class='flex flex-col gap-4'>
-      <div class='flex items-center justify-between'>
-        <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>
-          Registration Codes
-        </h2>
-        <Button variant='primary' onClick={onGenerateCode} disabled={generateLoading}>
-          {generateLoading ? 'Generating...' : 'Generate Code'}
-        </Button>
-      </div>
-
-      {code && (
-        <Card class='flex flex-col gap-2'>
-          <div class='flex items-center gap-4'>
-            <span class='text-text-muted text-sm uppercase tracking-wider'>Code:</span>
-            <code class='text-accent font-mono text-lg tracking-widest'>{code}</code>
-          </div>
-          {countdown.value && <span class='text-text-muted text-sm'>{countdown.value}</span>}
-        </Card>
-      )}
-    </section>
+    <WorkersRegistrationCodes
+      maskedCode={maskedCode}
+      setupCommandPreview={setupCommandPreview}
+      countdown={countdown}
+      generateLoading={generateLoading}
+      copiedTarget={copiedTarget}
+      copyError={copyError}
+      onGenerateCode={onGenerateCode}
+      onCopyCode={onCopyCode}
+      onCopySetupCommand={onCopySetupCommand}
+    />
 
     <section class='flex flex-col gap-4'>
       <h2 class='text-lg font-semibold text-text-primary uppercase tracking-wide'>Workers</h2>

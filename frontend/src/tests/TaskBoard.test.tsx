@@ -125,7 +125,9 @@ const makeProps = () => ({
       targetColumn: 'done',
       reviewPickupColumn: null
     },
-    dropPreviewColumn: null as string | null
+    dropPreviewColumn: null as string | null,
+    automationEnabled: false,
+    dismissedHelpCards: []
   },
   form: {
     title: '',
@@ -153,7 +155,8 @@ const makeProps = () => ({
     connectingRepos: false,
     connected: true,
     savingSettings: false,
-    configuringColumns: false
+    configuringColumns: false,
+    savingAutomation: false
   },
   actions: {
     onTitleInput: vi.fn(),
@@ -171,6 +174,8 @@ const makeProps = () => ({
     onSettingsMaxInProgressInput: vi.fn(),
     onSubmitSettings: vi.fn((event: Event) => event.preventDefault()),
     onSetColumnRole: vi.fn(),
+    onToggleAutomation: vi.fn(),
+    onDismissHelpCard: vi.fn(),
     onOpenTask: vi.fn(),
     onCloseTask: vi.fn(),
     onDragStart: vi.fn(),
@@ -352,7 +357,16 @@ describe('TaskBoard.view', () => {
     props.data.dropPreviewColumn = 'done';
     const { getByText } = render(<TaskBoardView {...props} />);
 
-    expect(getByText('Drop here to move into Done.')).toBeTruthy();
+    expect(getByText('Drop to move into Done.')).toBeTruthy();
+  });
+
+  it('toggles project automation from the board header', () => {
+    const props = makeProps();
+    const { getByText } = render(<TaskBoardView {...props} />);
+
+    fireEvent.click(getByText('Automation off'));
+
+    expect(props.actions.onToggleAutomation).toHaveBeenCalledOnce();
   });
 
   it('drops a task onto a column through the provided action', () => {

@@ -3,6 +3,8 @@ import type { TaskBoard, TaskBoardTask } from '../../types/task-board';
 
 export type TaskBoardColumnRole = 'pickup' | 'progress' | 'review' | 'done';
 
+export type TaskBoardHelpCard = 'proxy' | 'roles' | 'automation';
+
 export interface TaskBoardColumnRoles {
   pickupColumn: string;
   progressColumn: string;
@@ -33,6 +35,8 @@ export interface TaskBoardViewData {
   visibleTaskCounts: Record<string, number>;
   columnRoles: TaskBoardColumnRoles;
   dropPreviewColumn: string | null;
+  automationEnabled: boolean;
+  dismissedHelpCards: TaskBoardHelpCard[];
 }
 
 export interface TaskBoardFormState {
@@ -55,6 +59,7 @@ export interface TaskBoardStatusState {
   connected: boolean;
   savingSettings: boolean;
   configuringColumns: boolean;
+  savingAutomation: boolean;
 }
 
 export interface TaskBoardActions {
@@ -73,6 +78,8 @@ export interface TaskBoardActions {
   onSettingsReviewPromptInput: (event: Event) => void;
   onSetColumnRole: (columnSlug: string | null, role: TaskBoardColumnRole) => void;
   onSubmitSettings: (event: Event) => void;
+  onToggleAutomation: () => void;
+  onDismissHelpCard: (card: TaskBoardHelpCard) => void;
   onOpenTask: (task: TaskBoardTask) => void;
   onCloseTask: () => void;
   onDragStart: (taskId: string, status: string) => void;

@@ -1,7 +1,9 @@
 import type { Signal } from '@preact/signals';
+import { IconPencil, IconPlus } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import type { IntegrationProvider } from '../../../types/projects';
 import type { ApiError } from '../../../utils/api/client';
+import { ActionIconButton } from '../../shared/ui/ActionIconButton.view';
 import { Button } from '../../shared/ui/Button.view';
 import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
@@ -85,7 +87,10 @@ export const ProvidersView = ({
       action={
         !showForm.value ? (
           <Button variant='primary' class='shrink-0 whitespace-nowrap px-5' onClick={onShowCreate}>
-            Add Task Tracker
+            <span class='inline-flex items-center gap-2'>
+              <IconPlus size={16} stroke={1.75} aria-hidden='true' />
+              Add task tracker
+            </span>
           </Button>
         ) : null
       }
@@ -156,9 +161,9 @@ export const ProvidersView = ({
                   onDelete={onDelete}
                   onCancel={onCancelDelete}
                   editActions={
-                    <Button variant='ghost' onClick={() => onShowEdit(provider)}>
-                      Edit
-                    </Button>
+                    <ActionIconButton label='Edit provider' onClick={() => onShowEdit(provider)}>
+                      <IconPencil size={16} stroke={1.75} aria-hidden='true' />
+                    </ActionIconButton>
                   }
                 />
               </Table.Cell>

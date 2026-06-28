@@ -16,7 +16,8 @@ export const SettingsContainer = (): JSX.Element => {
       activeTab={activeTab.value}
       onTabChange={setActiveTab}
       panels={{
-        teamDefaults: <TeamDefaultsContainer teamId={selectedTeamId.value} />,
+        teamDefaults: <TeamDefaultsContainer teamId={selectedTeamId.value} section='defaults' />,
+        modelSelection: <TeamDefaultsContainer teamId={selectedTeamId.value} section='models' />,
         providers: <ProvidersContainer />,
         modelProviders: <ModelProvidersContainer />,
         github: <GitHubAppCardContainer />

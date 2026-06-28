@@ -15,8 +15,8 @@ export const TaskBoardSettingsSection = ({
   hasOverrides = false
 }: TaskBoardSettingsSectionProps): JSX.Element => (
   <Accordion class='gap-0'>
-    <Accordion.Item value={title} class='p-4'>
-      <Accordion.Trigger class='text-xs font-medium uppercase tracking-wider text-text-muted'>
+    <Accordion.Item value={title}>
+      <Accordion.Trigger class='p-4 text-xs font-medium uppercase tracking-wider text-text-muted'>
         <span class='flex min-w-0 items-center gap-2'>
           <span>{title}</span>
           {hasOverrides && (
@@ -24,7 +24,7 @@ export const TaskBoardSettingsSection = ({
           )}
         </span>
       </Accordion.Trigger>
-      <Accordion.Panel class='mt-3 flex flex-col gap-4'>
+      <Accordion.Panel class='flex flex-col gap-4 px-4 pt-3 pb-4'>
         <p class='text-xs normal-case tracking-normal text-text-muted'>{description}</p>
         {children}
       </Accordion.Panel>

@@ -3,7 +3,7 @@ import { SettingsContainer } from '../components/settings/containers/Settings.co
 import { PageLayout } from '../components/shared/ui/PageLayout.view';
 
 export const Settings = (): JSX.Element => (
-  <PageLayout>
+  <PageLayout maxWidth='settings'>
     <SettingsContainer />
   </PageLayout>
 );

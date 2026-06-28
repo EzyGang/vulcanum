@@ -19,11 +19,15 @@ describe('Workers.view', () => {
   const countdown = signal('');
   const deletingId = signal<string | null>(null);
   const deleteError = signal<string | null>(null);
+  const copiedTarget = signal<'code' | 'setup-command' | null>(null);
+  const copyError = signal<string | null>(null);
   const onGenerateCode = vi.fn();
   const onConfirmDelete = vi.fn();
   const onCancelDelete = vi.fn();
   const onDeleteWorker = vi.fn();
   const onUpdateStatus = vi.fn();
+  const onCopyCode = vi.fn();
+  const onCopySetupCommand = vi.fn();
 
   const baseStatus = {
     loading: false,
@@ -31,41 +35,75 @@ describe('Workers.view', () => {
     generateLoading: false,
     deletingId,
     deleteError,
-    updateStatusError: null as ApiError | null
+    updateStatusError: null as ApiError | null,
+    copiedTarget,
+    copyError
   };
   const baseActions = {
     onGenerateCode,
     onConfirmDelete,
     onCancelDelete,
     onDeleteWorker,
-    onUpdateStatus
+    onUpdateStatus,
+    onCopyCode,
+    onCopySetupCommand
+  };
+  const baseData = {
+    workers: [],
+    maskedCode: null as string | null,
+    setupCommandPreview: null as string | null,
+    countdown
   };
 
   it('renders the generate code button', () => {
     const { getByText } = render(
-      <WorkersView
-        data={{ workers: [], code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={baseData} status={baseStatus} actions={baseActions} />
     );
 
-    expect(getByText('Generate Code')).toBeDefined();
+    expect(getByText('Generate code')).toBeDefined();
   });
 
   it('shows the generated code and countdown', () => {
     countdown.value = '9m 30s remaining';
 
-    const { getByText } = render(
+    const { getByText, queryByText } = render(
       <WorkersView
-        data={{ workers: [], code: 'a1b2c3d4e5f6g7h8', countdown }}
+        data={{
+          ...baseData,
+          maskedCode: '•••• •••• •••• g7h8',
+          setupCommandPreview:
+            'vulcanum worker setup --instance https://vulcanum.test --code •••• •••• •••• g7h8'
+        }}
         status={baseStatus}
         actions={baseActions}
       />
     );
 
-    expect(getByText('a1b2c3d4e5f6g7h8')).toBeDefined();
+    expect(getByText('•••• •••• •••• g7h8')).toBeDefined();
+    expect(getByText(/--code •••• •••• •••• g7h8/)).toBeDefined();
     expect(getByText('9m 30s remaining')).toBeDefined();
+    expect(queryByText('a1b2c3d4e5f6g7h8')).toBeNull();
+  });
+
+  it('copies the generated code and full setup command', () => {
+    const { getByText } = render(
+      <WorkersView
+        data={{
+          ...baseData,
+          maskedCode: '•••• •••• •••• g7h8',
+          setupCommandPreview:
+            'vulcanum worker setup --instance https://vulcanum.test --code •••• •••• •••• g7h8'
+        }}
+        status={baseStatus}
+        actions={baseActions}
+      />
+    );
+
+    fireEvent.click(getByText('Copy code'));
+    fireEvent.click(getByText('Copy command'));
+
+    expect(onCopyCode).toHaveBeenCalledOnce();
+    expect(onCopySetupCommand).toHaveBeenCalledOnce();
   });
 
   it('renders workers in the table', () => {
@@ -75,11 +113,7 @@ describe('Workers.view', () => {
     ];
 
     const { getByText } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     expect(getByText('runner-1')).toBeDefined();
@@ -88,11 +122,7 @@ describe('Workers.view', () => {
 
   it('shows empty state when no workers', () => {
     const { getByText } = render(
-      <WorkersView
-        data={{ workers: [], code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={baseData} status={baseStatus} actions={baseActions} />
     );
 
     expect(getByText('No workers registered yet.')).toBeDefined();
@@ -101,7 +131,7 @@ describe('Workers.view', () => {
   it('shows loading text when loading', () => {
     const { getByText } = render(
       <WorkersView
-        data={{ workers: [], code: null, countdown }}
+        data={baseData}
         status={{ ...baseStatus, loading: true }}
         actions={baseActions}
       />
@@ -119,11 +149,7 @@ describe('Workers.view', () => {
     };
 
     const { getByText } = render(
-      <WorkersView
-        data={{ workers: [], code: null, countdown }}
-        status={{ ...baseStatus, error }}
-        actions={baseActions}
-      />
+      <WorkersView data={baseData} status={{ ...baseStatus, error }} actions={baseActions} />
     );
 
     expect(getByText('Server error')).toBeDefined();
@@ -135,11 +161,7 @@ describe('Workers.view', () => {
     const workers = [makeWorker({ id: '1', name: 'runner-1' })];
 
     const { getByLabelText } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     expect(getByLabelText('Confirm delete')).toBeDefined();
@@ -151,11 +173,7 @@ describe('Workers.view', () => {
     const workers = [makeWorker({ id: '1', name: 'runner-1' })];
 
     const { getByLabelText } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     fireEvent.click(getByLabelText('Confirm delete'));
@@ -168,11 +186,7 @@ describe('Workers.view', () => {
     ];
 
     const { getByText } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     expect(getByText('2 / 5')).toBeDefined();
@@ -184,11 +198,7 @@ describe('Workers.view', () => {
     ];
 
     const { container } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     const fill = container.querySelector('.bg-error');
@@ -199,11 +209,7 @@ describe('Workers.view', () => {
     const workers = [makeWorker({ id: '1', name: 'worker-1', status: 'idle' as const })];
 
     const { getByLabelText, queryByText } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     expect(getByLabelText('Disable worker')).toBeDefined();
@@ -214,11 +220,7 @@ describe('Workers.view', () => {
     const workers = [makeWorker({ id: '1', name: 'worker-1', status: 'unhealthy' as const })];
 
     const { getByLabelText, queryByText } = render(
-      <WorkersView
-        data={{ workers, code: null, countdown }}
-        status={baseStatus}
-        actions={baseActions}
-      />
+      <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
     expect(getByLabelText('Re-enable worker')).toBeDefined();

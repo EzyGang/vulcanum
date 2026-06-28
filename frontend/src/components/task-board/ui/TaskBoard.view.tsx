@@ -1,13 +1,32 @@
-import { IconInfoCircle, IconSettings } from '@tabler/icons-react';
+import { IconBolt, IconInfoCircle, IconSettings, IconX } from '@tabler/icons-react';
+import { clsx } from 'clsx';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
-import type { TaskBoardViewProps } from '../types';
+import type { TaskBoardHelpCard, TaskBoardViewProps } from '../types';
 import { TaskBoardColumn } from './TaskBoardColumn.view';
 import { TaskBoardSettingsDialog } from './TaskBoardSettingsDialog.view';
 import { TaskCreateDialog } from './TaskCreateDialog.view';
 import { TaskDetailsDialog } from './TaskDetailsDialog.view';
+
+const HELP_CARDS: { id: TaskBoardHelpCard; title: string; body: string }[] = [
+  {
+    id: 'proxy',
+    title: 'Provider proxy',
+    body: 'Projects, columns, and tickets stay in the task provider. Vulcanum writes creates and status moves back to that provider API.'
+  },
+  {
+    id: 'roles',
+    title: 'Workflow roles',
+    body: 'Map pickup, in progress, done, and optional review directly in each column header. The labels explain the workflow and stay visible while you work.'
+  },
+  {
+    id: 'automation',
+    title: 'Automation',
+    body: 'Leave automation off while shaping the board. Enable it after repositories, prompts, AI provider defaults, and column roles are ready.'
+  }
+];
 
 export const TaskBoardView = ({
   data: {
@@ -22,7 +41,9 @@ export const TaskBoardView = ({
     actionMenuTaskId,
     visibleTaskCounts,
     columnRoles,
-    dropPreviewColumn
+    dropPreviewColumn,
+    automationEnabled,
+    dismissedHelpCards
   },
   form,
   status,
@@ -52,36 +73,59 @@ export const TaskBoardView = ({
   }
 
   const boardColumnCount = Math.max(board.columns.length, 1);
+  const visibleHelpCards = HELP_CARDS.filter((card) => !dismissedHelpCards.includes(card.id));
+  const automationLabel = automationEnabled ? 'Automation on' : 'Automation off';
 
   return (
     <div class='flex flex-col gap-6 animate-fade-in'>
       <div class='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
-        <div class='flex flex-col gap-2'>
+        <div class='flex min-w-0 flex-col gap-2'>
           <span class='text-xs uppercase tracking-wider text-accent'>Task provider board</span>
           <h2 class='text-3xl font-semibold text-text-primary'>{board.project.name}</h2>
-          <div class='flex items-start gap-2 text-sm text-text-muted'>
+          <div class='max-w-3xl text-sm leading-relaxed text-text-muted'>
             <p>
-              Provider-backed board for task creation, status movement, repository pinning, and
-              automation column roles.
-            </p>
-            <span class='group relative mt-0.5 inline-flex text-text-muted hover:text-text-primary focus-within:text-text-primary'>
-              <button type='button' class='cursor-help' aria-label='Board sync details'>
-                <IconInfoCircle size={16} stroke={1.75} aria-hidden='true' />
-              </button>
-              <span class='pointer-events-none absolute top-6 left-0 z-20 hidden w-[min(80vw,48rem)] border border-border-base bg-bg-card px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-modal group-focus-within:block group-hover:block'>
-                <span class='block font-medium text-text-primary'>Proxy view</span>
-                <span class='mt-1 block'>
-                  Vulcanum reads projects, columns, and tasks from the connected provider, then
-                  writes task creation and status changes back through that same provider API.
-                </span>
-                <span class='mt-1 block'>
-                  The board refreshes periodically, so provider-side edits still show up here.
+              Use this board as a task-provider proxy: create tickets, move them through provider
+              columns, and turn worker automation on only after pickup/progress/done roles are
+              mapped.{' '}
+              <span class='group relative inline-flex align-middle text-text-muted hover:text-text-primary focus-within:text-text-primary'>
+                <button
+                  type='button'
+                  class='inline-flex cursor-help'
+                  aria-label='Board sync details'
+                >
+                  <IconInfoCircle size={16} stroke={1.75} aria-hidden='true' />
+                </button>
+                <span class='pointer-events-none absolute top-6 left-0 z-20 hidden w-[min(80vw,48rem)] border border-border-base bg-bg-card px-3 py-2 text-xs leading-relaxed text-text-secondary shadow-modal group-focus-within:block group-hover:block'>
+                  <span class='block font-medium text-text-primary'>Proxy view</span>
+                  <span class='mt-1 block'>
+                    Vulcanum reads projects, columns, and tasks from the connected provider, then
+                    writes task creation and status changes back through that same provider API.
+                  </span>
+                  <span class='mt-1 block'>
+                    The board refreshes periodically, so provider-side edits still show up here.
+                  </span>
                 </span>
               </span>
-            </span>
+            </p>
           </div>
         </div>
-        <div class='flex items-center gap-2'>
+        <div class='flex shrink-0 flex-wrap items-center gap-2 md:justify-end'>
+          <button
+            type='button'
+            onClick={actions.onToggleAutomation}
+            disabled={!status.connected || status.savingAutomation}
+            aria-pressed={automationEnabled}
+            aria-label={automationEnabled ? 'Turn automation off' : 'Turn automation on'}
+            class={clsx(
+              'inline-flex h-10 items-center gap-2 border px-3 text-xs font-medium uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus disabled:cursor-not-allowed disabled:opacity-50',
+              automationEnabled
+                ? 'border-accent/70 bg-bg-active text-accent hover:border-accent'
+                : 'border-border-base bg-bg-panel text-text-muted hover:bg-bg-hover hover:text-text-primary'
+            )}
+          >
+            <IconBolt size={15} stroke={1.75} aria-hidden='true' />
+            {status.savingAutomation ? `Saving ${automationLabel.toLowerCase()}…` : automationLabel}
+          </button>
           <Button type='button' variant='primary' onClick={actions.onOpenCreateTask}>
             Create task
           </Button>
@@ -96,6 +140,28 @@ export const TaskBoardView = ({
           </Button>
         </div>
       </div>
+
+      {visibleHelpCards.length > 0 && (
+        <section class='grid grid-cols-1 gap-3 md:grid-cols-3'>
+          {visibleHelpCards.map((card) => (
+            <article
+              key={card.id}
+              class='group relative border border-border-base bg-bg-card p-4 pr-12 shadow-card transition-colors hover:border-border-focus'
+            >
+              <p class='text-xs font-medium uppercase tracking-wider text-accent'>{card.title}</p>
+              <p class='mt-2 text-sm leading-relaxed text-text-secondary'>{card.body}</p>
+              <button
+                type='button'
+                aria-label={`Dismiss ${card.title} help`}
+                onClick={() => actions.onDismissHelpCard(card.id)}
+                class='absolute top-3 right-3 inline-flex size-7 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-base hover:bg-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus'
+              >
+                <IconX size={14} stroke={1.75} aria-hidden='true' />
+              </button>
+            </article>
+          ))}
+        </section>
+      )}
 
       {(form.createError || form.serverError) && (
         <ErrorBanner message={form.createError ?? form.serverError ?? 'Unable to update board'} />

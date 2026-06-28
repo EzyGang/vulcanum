@@ -1,7 +1,7 @@
 import { clsx } from 'clsx';
 import type { ComponentChildren, JSX } from 'preact';
 
-type PageMaxWidth = '3xl' | '5xl' | '6xl' | '7xl' | 'board';
+type PageMaxWidth = '3xl' | '5xl' | '6xl' | '7xl' | 'board' | 'settings';
 
 interface PageLayoutProps {
   children: ComponentChildren;
@@ -15,7 +15,8 @@ const MAX_WIDTH: Record<PageMaxWidth, string> = {
   '5xl': 'w-full max-w-5xl',
   '6xl': 'w-full max-w-6xl',
   '7xl': 'w-full max-w-7xl',
-  board: 'w-full lg:w-[80vw] lg:max-w-[1600px]'
+  board: 'w-full lg:w-[80vw] lg:max-w-[1600px]',
+  settings: 'w-full lg:w-[92vw] lg:max-w-[1800px]'
 };
 
 const GAP: Record<6 | 8, string> = {

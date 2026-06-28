@@ -138,6 +138,7 @@ const RoleMenu = ({
         type='button'
         variant='ghost'
         aria-label={`Column role settings for ${columnName}`}
+        title='Set this column as pickup, in progress, review pickup, or done'
         aria-expanded={open.value}
         disabled={disabled}
         onClick={toggleOpen}
@@ -276,8 +277,8 @@ export const TaskBoardColumn = ({
       </div>
       <div class='flex max-h-[70vh] flex-col gap-3 overflow-auto pr-1' onScroll={scrollColumn}>
         {dropPreviewActive && (
-          <div class='border border-accent bg-bg-active p-4 text-xs font-medium text-text-primary'>
-            Drop here to move into {column.name}.
+          <div class='border border-accent bg-bg-active p-4 text-xs font-medium text-text-primary shadow-card'>
+            Drop to move into {column.name}.
           </div>
         )}
         {visibleTasks.length ? (

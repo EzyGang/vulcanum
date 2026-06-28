@@ -1,8 +1,15 @@
 import { useSignal } from '@preact/signals';
 import { useEffect, useMemo } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
-import { listProjects } from '../../../services/projects/projects.service';
-import { listTaskBoardProjects } from '../../../services/task-board/task-board.service';
+import {
+  createProject,
+  listProjects as listProjectConfigs
+} from '../../../services/projects/projects.service';
+import {
+  listProjects as listProviderProjects,
+  listProviders,
+  listWorkspaces
+} from '../../../services/providers/providers.service';
 import { listTeams } from '../../../services/teams/teams.service';
 import {
   selectedTeamId,
@@ -15,7 +22,7 @@ import {
   setSelectedTaskProjectKey
 } from '../../../stores/task-board.store';
 import { queryClient } from '../../../utils/api/query/client';
-import { useApiQuery } from '../../../utils/api/query/hooks';
+import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import type { NavLink } from '../types';
 
 const NAV_LINKS: NavLink[] = [
@@ -26,33 +33,133 @@ const NAV_LINKS: NavLink[] = [
   { href: '/settings', label: 'Settings' }
 ];
 
+const ADD_PROJECT_PREFIX = 'add:';
+interface ProviderProjectCandidate {
+  providerId: string;
+  providerName: string;
+  workspaceId: string;
+  workspaceName: string;
+  externalProjectId: string;
+  name: string;
+}
+
+const listProviderProjectCatalog = async (): Promise<ProviderProjectCandidate[]> => {
+  const providers = await listProviders();
+  const providerProjects = await Promise.all(
+    providers.map(async (provider) => {
+      const workspaces = await listWorkspaces(provider.id);
+      const workspaceProjects = await Promise.all(
+        workspaces.map(async (workspace) => {
+          const projects = await listProviderProjects(provider.id, workspace.id);
+          return projects.map((project) => ({
+            providerId: provider.id,
+            providerName: provider.name,
+            workspaceId: workspace.id,
+            workspaceName: workspace.name,
+            externalProjectId: project.id,
+            name: project.name
+          }));
+        })
+      );
+
+      return workspaceProjects.flat();
+    })
+  );
+
+  return providerProjects.flat();
+};
+
 export const useNavigationShell = () => {
   const [location, setLocation] = useLocation();
   const mobileMenuOpen = useSignal(false);
   const { data: teamList = [] } = useApiQuery(['teams'], listTeams);
-  const { data: projectList = [], isLoading: providerProjectsLoading } = useApiQuery(
-    ['task-board-projects', selectedTeamId.value],
-    listTaskBoardProjects,
-    { enabled: Boolean(selectedTeamId.value) }
-  );
   const { data: projectConfigs = [], isLoading: projectConfigsLoading } = useApiQuery(
     ['projects', selectedTeamId.value],
-    listProjects,
+    listProjectConfigs,
     { enabled: Boolean(selectedTeamId.value) }
   );
-  const projectsLoading = providerProjectsLoading || projectConfigsLoading;
+  const { data: providerProjectCatalog = [] } = useApiQuery(
+    ['provider-project-catalog', selectedTeamId.value],
+    listProviderProjectCatalog,
+    { enabled: Boolean(selectedTeamId.value) }
+  );
+  const projectsLoading = projectConfigsLoading;
 
   const configuredProjectList = useMemo(
     () =>
-      projectList.filter((project) =>
-        projectConfigs.some(
-          (config) =>
-            config.enabled &&
-            config.providerId === project.providerId &&
-            config.externalProjectId === project.externalProjectId
-        )
+      projectConfigs
+        .filter((config) => Boolean(config.providerId))
+        .map((config) => ({
+          providerId: config.providerId ?? '',
+          externalProjectId: config.externalProjectId,
+          name: config.name || config.externalProjectId
+        })),
+    [projectConfigs]
+  );
+
+  const availableProjectList = useMemo(
+    () =>
+      providerProjectCatalog.filter(
+        (project) =>
+          !projectConfigs.some(
+            (config) =>
+              config.providerId === project.providerId &&
+              config.externalProjectId === project.externalProjectId
+          )
       ),
-    [projectList, projectConfigs]
+    [providerProjectCatalog, projectConfigs]
+  );
+  const boardOptions = useMemo(
+    () => [
+      ...configuredProjectList.map((project) => ({
+        value: buildTaskProjectKey(project.providerId, project.externalProjectId),
+        label: project.name
+      })),
+      ...availableProjectList.map((project) => ({
+        value: `${ADD_PROJECT_PREFIX}${buildTaskProjectKey(
+          project.providerId,
+          project.externalProjectId
+        )}`,
+        label: `Add ${project.name} · ${project.workspaceName} · ${project.providerName}`
+      }))
+    ],
+    [configuredProjectList, availableProjectList]
+  );
+
+  const activateProjectMutation = useApiMutation(
+    (projectKey: string) => {
+      const project = availableProjectList.find(
+        (candidate) =>
+          buildTaskProjectKey(candidate.providerId, candidate.externalProjectId) === projectKey
+      );
+      if (!project) {
+        throw new Error('Provider project is no longer available');
+      }
+
+      return createProject({
+        providerId: project.providerId,
+        externalProjectId: project.externalProjectId,
+        externalWorkspaceId: project.workspaceId,
+        name: project.name,
+        enabled: false
+      });
+    },
+    {
+      onSuccess: async (config) => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['projects'] }),
+          queryClient.invalidateQueries({ queryKey: ['task-board-projects'] }),
+          queryClient.invalidateQueries({ queryKey: ['provider-project-catalog'] })
+        ]);
+        if (config.providerId) {
+          setSelectedTaskProjectKey(
+            buildTaskProjectKey(config.providerId, config.externalProjectId)
+          );
+          setLocation('/');
+          mobileMenuOpen.value = false;
+        }
+      }
+    }
   );
 
   useEffect(() => {
@@ -111,6 +218,21 @@ export const useNavigationShell = () => {
     mobileMenuOpen.value = false;
   };
 
+  const activateProject = (projectKey: string) => {
+    if (!projectKey) return;
+    activateProjectMutation.mutate(projectKey);
+  };
+
+  const selectBoardOption = (value: string) => {
+    if (!value) return;
+    if (value.startsWith(ADD_PROJECT_PREFIX)) {
+      activateProject(value.slice(ADD_PROJECT_PREFIX.length));
+      return;
+    }
+
+    selectProject(value);
+  };
+
   return {
     navLinks: NAV_LINKS,
     isActive,
@@ -119,12 +241,11 @@ export const useNavigationShell = () => {
     selectedTeamId: selectedTeamId.value,
     teamOptions: teamList.map((team) => ({ value: team.id, label: team.name })),
     selectedProjectKey: selectedTaskProjectKey.value,
-    projectOptions: configuredProjectList.map((project) => ({
-      value: buildTaskProjectKey(project.providerId, project.externalProjectId),
-      label: project.name
-    })),
+    boardOptions,
+    activatingProject: activateProjectMutation.isPending,
     toggleMobileMenu,
     selectTeam,
-    selectProject
+    selectBoardOption,
+    activateProject
   };
 };

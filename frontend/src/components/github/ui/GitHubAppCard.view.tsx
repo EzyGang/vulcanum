@@ -1,4 +1,6 @@
+import { IconBrandGithub, IconPlugConnected, IconRefresh, IconUnlink } from '@tabler/icons-react';
 import type { JSX } from 'preact';
+import { ActionIconButton } from '../../shared/ui/ActionIconButton.view';
 import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
@@ -31,7 +33,8 @@ export const GitHubAppCardView = ({
     <Card class='flex flex-col gap-4'>
       <div class='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div class='flex items-center gap-3'>
-          <span class='text-text-primary text-sm font-semibold uppercase tracking-wider'>
+          <span class='inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-text-primary'>
+            <IconBrandGithub size={16} stroke={1.75} aria-hidden='true' />
             GitHub App
           </span>
           {isLoading ? (
@@ -51,17 +54,29 @@ export const GitHubAppCardView = ({
         </div>
 
         <div class='flex items-center gap-2'>
-          <Button variant='ghost' onClick={onRefresh} disabled={isRefreshing}>
-            Refresh
-          </Button>
+          <ActionIconButton
+            label='Refresh GitHub app status'
+            onClick={onRefresh}
+            disabled={isRefreshing}
+          >
+            <IconRefresh size={16} stroke={1.75} aria-hidden='true' />
+          </ActionIconButton>
 
           {connected ? (
-            <Button variant='ghost-danger' onClick={onDisconnect} disabled={disconnectPending}>
-              {disconnectPending ? 'Disconnecting...' : 'Disconnect'}
-            </Button>
+            <ActionIconButton
+              label='Disconnect GitHub app'
+              variant='danger'
+              onClick={onDisconnect}
+              disabled={disconnectPending}
+            >
+              <IconUnlink size={16} stroke={1.75} aria-hidden='true' />
+            </ActionIconButton>
           ) : (
             <Button variant='secondary' onClick={onConnect}>
-              Connect
+              <span class='inline-flex items-center gap-2'>
+                <IconPlugConnected size={16} stroke={1.75} aria-hidden='true' />
+                Connect
+              </span>
             </Button>
           )}
         </div>
