@@ -1,4 +1,5 @@
 import type { Signal } from '@preact/signals';
+import { IconDeviceFloppy, IconPencil, IconPlus, IconX } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import type {
   CatalogProvider,
@@ -6,6 +7,7 @@ import type {
   StartDeviceFlowResponse
 } from '../../../types/model-providers';
 import type { ApiError } from '../../../utils/api/client';
+import { ActionIconButton } from '../../shared/ui/ActionIconButton.view';
 import { Button } from '../../shared/ui/Button.view';
 import { ConfirmDelete } from '../../shared/ui/ConfirmDelete.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
@@ -73,7 +75,10 @@ export const ModelProvidersView = ({
             onClick={actions.onShowCreate}
             disabled={status.catalogLoading}
           >
-            Add Model Provider
+            <span class='inline-flex items-center gap-2'>
+              <IconPlus size={16} stroke={1.75} aria-hidden='true' />
+              Add model provider
+            </span>
           </Button>
         ) : null
       }
@@ -184,10 +189,16 @@ export const ModelProvidersView = ({
 
         <div class='flex items-center gap-3'>
           <Button type='submit' variant='primary' disabled={data.formSubmitting.value}>
-            {data.saveButtonLabel}
+            <span class='inline-flex items-center gap-2'>
+              <IconDeviceFloppy size={16} stroke={1.75} aria-hidden='true' />
+              {data.saveButtonLabel}
+            </span>
           </Button>
           <Button type='button' variant='secondary' onClick={actions.onCancelForm}>
-            Cancel
+            <span class='inline-flex items-center gap-2'>
+              <IconX size={16} stroke={1.75} aria-hidden='true' />
+              Cancel
+            </span>
           </Button>
         </div>
       </form>
@@ -242,9 +253,12 @@ export const ModelProvidersView = ({
                   onDelete={actions.onDelete}
                   onCancel={actions.onCancelDelete}
                   editActions={
-                    <Button variant='ghost' onClick={() => actions.onShowEdit(provider)}>
-                      Edit
-                    </Button>
+                    <ActionIconButton
+                      label='Edit model provider'
+                      onClick={() => actions.onShowEdit(provider)}
+                    >
+                      <IconPencil size={16} stroke={1.75} aria-hidden='true' />
+                    </ActionIconButton>
                   }
                 />
               </Table.Cell>

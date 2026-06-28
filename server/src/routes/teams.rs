@@ -5,7 +5,8 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
 use crate::models::teams::model::{
-    CreateTeamRequest, TeamDefaultsResponse, UpdateTeamRequest, DEFAULT_REVIEW_PROMPT_TEMPLATE,
+    CreateTeamRequest, TeamDefaultsResponse, UpdateTeamRequest, DEFAULT_PROMPT_TEMPLATE,
+    DEFAULT_REVIEW_PROMPT_TEMPLATE,
 };
 
 pub async fn list(
@@ -24,6 +25,7 @@ pub async fn defaults(_auth: TeamPrincipal) -> Result<HttpResponse, AppError> {
     Ok(HttpResponse::Ok().json(TeamDefaultsResponse {
         review_prompt_template: DEFAULT_REVIEW_PROMPT_TEMPLATE,
         max_in_progress_tasks: 1,
+        prompt_template: DEFAULT_PROMPT_TEMPLATE,
     }))
 }
 

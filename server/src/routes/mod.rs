@@ -7,6 +7,7 @@ pub mod model_providers;
 pub mod project_configs;
 pub mod providers;
 pub mod status;
+pub mod task_board;
 pub mod team_auth;
 pub mod teams;
 pub mod work_runs;
@@ -122,6 +123,22 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                         web::get().to(providers::list_workspaces),
                     )
                     .route("/{id}/projects", web::get().to(providers::list_projects)),
+            )
+            .service(
+                web::scope("/task-board")
+                    .route("/projects", web::get().to(task_board::list_projects))
+                    .route(
+                        "/providers/{provider_id}/projects/{project_id}",
+                        web::get().to(task_board::get_board),
+                    )
+                    .route(
+                        "/providers/{provider_id}/projects/{project_id}/tasks",
+                        web::post().to(task_board::create_task),
+                    )
+                    .route(
+                        "/providers/{provider_id}/tasks/{task_id}/status",
+                        web::patch().to(task_board::move_task),
+                    ),
             )
             .service(
                 web::scope("/workers")

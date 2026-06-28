@@ -50,7 +50,10 @@ export const useTeamDefaults = (teamId: string | null) => {
     if (!team) {
       return;
     }
-    promptTemplate.value = team.promptTemplate;
+    promptTemplate.value = promptTemplateOrDefault(
+      team.promptTemplate,
+      teamDefaults?.promptTemplate ?? ''
+    );
     agentsMd.value = team.agentsMd;
     primaryModelProviderKey.value = team.primaryModelProviderKey ?? '';
     primaryModelId.value = team.primaryModelId ?? '';
@@ -59,7 +62,7 @@ export const useTeamDefaults = (teamId: string | null) => {
     reviewEnabled.value = team.reviewEnabled;
     reviewPickupColumn.value = team.reviewPickupColumn;
     reviewMaxTurns.value = team.reviewMaxTurns;
-    reviewPromptTemplate.value = reviewPromptTemplateOrDefault(
+    reviewPromptTemplate.value = promptTemplateOrDefault(
       team.reviewPromptTemplate,
       teamDefaults?.reviewPromptTemplate ?? ''
     );
@@ -150,7 +153,11 @@ export const useTeamDefaults = (teamId: string | null) => {
         formError.value = null;
         try {
           await mutation.mutateAsync({
-            promptTemplate: promptTemplate.value,
+            promptTemplate: promptTemplateForSubmit(
+              team?.promptTemplate,
+              promptTemplate.value,
+              teamDefaults?.promptTemplate
+            ),
             agentsMd: agentsMd.value,
             primaryModelProviderKey: primaryModelProviderKey.value || null,
             primaryModelId: primaryModelId.value || null,
@@ -159,7 +166,7 @@ export const useTeamDefaults = (teamId: string | null) => {
             reviewEnabled: reviewEnabled.value,
             reviewPickupColumn: reviewPickupColumn.value || DEFAULT_REVIEW_PICKUP_COLUMN,
             reviewMaxTurns: reviewMaxTurns.value,
-            reviewPromptTemplate: reviewPromptTemplateForSubmit(
+            reviewPromptTemplate: promptTemplateForSubmit(
               team?.reviewPromptTemplate,
               reviewPromptTemplate.value,
               teamDefaults?.reviewPromptTemplate
@@ -174,7 +181,7 @@ export const useTeamDefaults = (teamId: string | null) => {
   };
 };
 
-const reviewPromptTemplateOrDefault = (template: string, defaultTemplate: string): string => {
+const promptTemplateOrDefault = (template: string, defaultTemplate: string): string => {
   if (template.trim()) {
     return template;
   }
@@ -182,7 +189,7 @@ const reviewPromptTemplateOrDefault = (template: string, defaultTemplate: string
   return defaultTemplate;
 };
 
-const reviewPromptTemplateForSubmit = (
+const promptTemplateForSubmit = (
   storedTemplate: string | undefined,
   formTemplate: string,
   defaultTemplate: string | undefined

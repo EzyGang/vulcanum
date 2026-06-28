@@ -6,7 +6,7 @@ use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::teams::TeamsRepository;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::UpdateProjectConfigRequest;
-use crate::models::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
+use crate::models::teams::model::{DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE};
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
@@ -37,7 +37,7 @@ async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(pool: sqlx::PgPool) {
+async fn effective_settings_uses_default_prompts_for_empty_team_prompts(pool: sqlx::PgPool) {
     let svc = ProjectConfigsService::new(
         ProjectConfigsRepository::new(),
         pool.clone(),
@@ -46,6 +46,13 @@ async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(poo
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     let config_id = test_helpers::insert_project_config(&pool, "empty-review-prompt").await;
+    sqlx::query!(
+        "UPDATE project_configs SET prompt_template = '' WHERE id = $1",
+        config_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("project prompt should be blank");
     let config = svc
         .find_by_id(config_id)
         .await
@@ -56,6 +63,7 @@ async fn effective_settings_uses_default_review_prompt_for_empty_team_prompt(poo
         .await
         .expect("settings should resolve");
 
+    assert_eq!(settings.prompt_template, DEFAULT_PROMPT_TEMPLATE);
     assert_eq!(
         settings.review_prompt_template,
         DEFAULT_REVIEW_PROMPT_TEMPLATE

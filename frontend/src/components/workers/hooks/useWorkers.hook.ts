@@ -22,6 +22,64 @@ export interface FormattedWorker {
   consecutiveErrors: number;
 }
 
+export type WorkerRegistrationCopyTarget = 'code' | 'setup-command';
+
+const API_SUFFIX = /\/api\/v1\/?$/;
+
+const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+
+const resolveInstanceUrl = (): string => {
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    return trimTrailingSlash(apiUrl.replace(API_SUFFIX, ''));
+  }
+
+  if (typeof window === 'undefined') {
+    return '<instance>';
+  }
+
+  return window.location.origin;
+};
+
+const maskRegistrationCode = (code: string | null): string | null => {
+  if (!code) {
+    return null;
+  }
+
+  const suffix = code.slice(-4);
+  return `•••• •••• •••• ${suffix}`;
+};
+
+const buildSetupCommand = (instanceUrl: string, code: string): string =>
+  `vulcanum worker setup --instance ${instanceUrl} --code ${code}`;
+
+const copyToClipboard = async (text: string): Promise<void> => {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back to selection copy below for browsers that expose Clipboard API but deny it.
+    }
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '0';
+  textarea.style.opacity = '0';
+  document.body.append(textarea);
+  textarea.focus();
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+
+  if (!copied) {
+    throw new Error('Clipboard copy failed');
+  }
+};
+
 const formatWorkers = (workers: Worker[]): FormattedWorker[] =>
   workers.map((w) => ({
     id: w.id,
@@ -62,6 +120,8 @@ export const useCodeCountdown = (expiresAt: string | null) => {
 };
 
 export const useWorkers = () => {
+  const copiedTarget = useSignal<WorkerRegistrationCopyTarget | null>(null);
+  const copyError = useSignal<string | null>(null);
   const {
     data: workers,
     isLoading: loading,
@@ -94,8 +154,10 @@ export const useWorkers = () => {
   } = useDeleteConfirm('worker', deleteWorkerMutation);
 
   const handleGenerateCode = useCallback(() => {
+    copyError.value = null;
+    copiedTarget.value = null;
     generateCodeMutation.mutate(undefined);
-  }, [generateCodeMutation]);
+  }, [copyError, copiedTarget, generateCodeMutation]);
 
   const handleUpdateStatus = useCallback(
     (id: string, status: UpdateWorkerStatusRequest['status']) => {
@@ -104,13 +166,61 @@ export const useWorkers = () => {
     [updateStatusMutation]
   );
 
+  useSignalEffect(() => {
+    if (!copiedTarget.value) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      copiedTarget.value = null;
+    }, 1800);
+
+    return () => window.clearTimeout(timeout);
+  });
+
+  const generatedCode = generateCodeMutation.data?.code ?? null;
+  const instanceUrl = resolveInstanceUrl();
+  const setupCommand = generatedCode ? buildSetupCommand(instanceUrl, generatedCode) : null;
   const codeCountdown = useCodeCountdown(generateCodeMutation.data?.expiresAt ?? null);
+
+  const copyGeneratedCode = useCallback(async () => {
+    if (!generatedCode) {
+      return;
+    }
+
+    try {
+      await copyToClipboard(generatedCode);
+      copyError.value = null;
+      copiedTarget.value = 'code';
+    } catch {
+      copyError.value = 'Copy failed. Check browser clipboard permissions and try again.';
+    }
+  }, [copiedTarget, copyError, generatedCode]);
+
+  const copySetupCommand = useCallback(async () => {
+    if (!setupCommand) {
+      return;
+    }
+
+    try {
+      await copyToClipboard(setupCommand);
+      copyError.value = null;
+      copiedTarget.value = 'setup-command';
+    } catch {
+      copyError.value = 'Copy failed. Check browser clipboard permissions and try again.';
+    }
+  }, [copiedTarget, copyError, setupCommand]);
 
   return {
     formattedWorkers,
-    code: generateCodeMutation.data?.code ?? null,
+    maskedCode: maskRegistrationCode(generatedCode),
+    setupCommandPreview: generatedCode
+      ? buildSetupCommand(instanceUrl, maskRegistrationCode(generatedCode) ?? '')
+      : null,
     countdown: codeCountdown,
     generateLoading: generateCodeMutation.isPending,
+    copiedTarget,
+    copyError,
     deletingId,
     deleteError,
     updateStatusError: updateStatusMutation.error,
@@ -120,6 +230,8 @@ export const useWorkers = () => {
     handleConfirmDelete,
     handleCancelDelete,
     handleDeleteWorker,
-    handleUpdateStatus
+    handleUpdateStatus,
+    copyGeneratedCode,
+    copySetupCommand
   };
 };

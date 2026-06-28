@@ -16,11 +16,15 @@ interface NavigationShellProps {
     mobileMenuOpen: boolean;
     selectedTeamId: string | null;
     teamOptions: { value: string; label: string }[];
+    selectedProjectKey: string | null;
+    boardOptions: { value: string; label: string }[];
+    activatingProject: boolean;
   };
   actions: {
     onLogout: () => void;
     onNavigate: (href: string) => void;
     onSelectTeam: (teamId: string) => void;
+    onSelectBoardOption: (value: string) => void;
     onToggleMobileMenu: () => void;
   };
 }
@@ -73,8 +77,17 @@ const DesktopNavButton = ({
 
 export const NavigationShellView = ({
   children,
-  data: { navLinks, isActive, mobileMenuOpen, selectedTeamId, teamOptions },
-  actions: { onLogout, onNavigate, onSelectTeam, onToggleMobileMenu }
+  data: {
+    navLinks,
+    isActive,
+    mobileMenuOpen,
+    selectedTeamId,
+    teamOptions,
+    selectedProjectKey,
+    boardOptions,
+    activatingProject
+  },
+  actions: { onLogout, onNavigate, onSelectTeam, onSelectBoardOption, onToggleMobileMenu }
 }: NavigationShellProps): JSX.Element => (
   <div class='flex flex-col min-h-screen bg-bg-page'>
     <header class='sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border-base bg-bg-page'>
@@ -106,6 +119,15 @@ export const NavigationShellView = ({
       </div>
 
       <div class='flex items-center gap-2 sm:gap-4'>
+        <div class='hidden min-w-72 sm:block'>
+          <Select
+            items={boardOptions}
+            value={selectedProjectKey ?? ''}
+            onValueChange={onSelectBoardOption}
+            placeholder={activatingProject ? 'Adding board…' : 'Select or add board'}
+            disabled={activatingProject}
+          />
+        </div>
         {teamOptions.length > 0 && (
           <div class='hidden min-w-44 sm:block'>
             <Select
@@ -124,6 +146,15 @@ export const NavigationShellView = ({
 
       {mobileMenuOpen && (
         <nav class='absolute top-full left-0 right-0 bg-bg-card border-b border-border-base shadow-modal flex flex-col sm:hidden z-50 animate-slide-up'>
+          <div class='border-b border-border-base p-4'>
+            <Select
+              items={boardOptions}
+              value={selectedProjectKey ?? ''}
+              onValueChange={onSelectBoardOption}
+              placeholder={activatingProject ? 'Adding board…' : 'Select or add board'}
+              disabled={activatingProject}
+            />
+          </div>
           {teamOptions.length > 0 && (
             <div class='border-b border-border-base p-4'>
               <Select

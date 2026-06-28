@@ -24,6 +24,7 @@ use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::task_board::service::TaskBoardService;
 use crate::services::teams::invite_store::RedisTeamInviteStore;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::service::UsersService;
@@ -37,6 +38,7 @@ pub struct AppState {
     pub auth: AuthService,
     pub project_configs: ProjectConfigsService,
     pub providers: IntegrationProvidersService,
+    pub task_board: TaskBoardService,
     pub model_providers: ModelProvidersService,
     pub workers: WorkersService,
     pub jobs: WorkRunsService,
@@ -87,6 +89,8 @@ impl AppState {
             cfg,
         );
         let project_configs_repo = ProjectConfigsRepository::new();
+        let task_board =
+            TaskBoardService::new(providers_repo.clone(), project_configs_repo.clone());
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),
             db_pool.clone(),
@@ -140,6 +144,7 @@ impl AppState {
             auth,
             project_configs,
             providers,
+            task_board,
             model_providers,
             workers,
             jobs,

@@ -1,6 +1,6 @@
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::{EffectiveProjectSettings, ProjectConfig};
-use crate::models::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
+use crate::models::teams::model::{DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE};
 use crate::services::project_configs::service::ProjectConfigsService;
 
 impl ProjectConfigsService {
@@ -11,10 +11,10 @@ impl ProjectConfigsService {
         let team = self.teams.get_team(config.team_id).await?;
 
         Ok(EffectiveProjectSettings {
-            prompt_template: config
-                .prompt_template
-                .clone()
-                .unwrap_or(team.prompt_template),
+            prompt_template: effective_prompt_template(
+                config.prompt_template.as_deref(),
+                &team.prompt_template,
+            ),
             agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
             primary_model_provider_key: config
                 .primary_model_provider_key
@@ -44,12 +44,26 @@ impl ProjectConfigsService {
 }
 
 #[must_use]
+fn effective_prompt_template(config_template: Option<&str>, team_template: &str) -> String {
+    match config_template {
+        Some(template) if !template.trim().is_empty() => template.to_owned(),
+        Some(_) | None => prompt_template_or_default(team_template, DEFAULT_PROMPT_TEMPLATE),
+    }
+}
+
+#[must_use]
 fn effective_review_prompt_template(config_template: Option<&str>, team_template: &str) -> String {
     match config_template {
         Some(template) if !template.trim().is_empty() => template.to_owned(),
-        Some(_) | None => match team_template.trim().is_empty() {
-            true => DEFAULT_REVIEW_PROMPT_TEMPLATE.to_owned(),
-            false => team_template.to_owned(),
-        },
+        Some(_) | None => prompt_template_or_default(team_template, DEFAULT_REVIEW_PROMPT_TEMPLATE),
+    }
+}
+
+#[must_use]
+fn prompt_template_or_default(template: &str, default_template: &str) -> String {
+    if template.trim().is_empty() {
+        default_template.to_owned()
+    } else {
+        template.to_owned()
     }
 }

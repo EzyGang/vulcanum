@@ -1,3 +1,4 @@
+import { IconDeviceFloppy, IconX } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
@@ -93,10 +94,16 @@ export const ProviderFormFields = ({
       {error && <div class='text-error text-sm'>{error}</div>}
       <div class='flex items-center gap-2'>
         <Button variant='primary' onClick={onSave} disabled={submitting}>
-          {saveLabel}
+          <span class='inline-flex items-center gap-2'>
+            <IconDeviceFloppy size={16} stroke={1.75} aria-hidden='true' />
+            {saveLabel}
+          </span>
         </Button>
         <Button variant='secondary' onClick={onCancel} disabled={submitting}>
-          Cancel
+          <span class='inline-flex items-center gap-2'>
+            <IconX size={16} stroke={1.75} aria-hidden='true' />
+            Cancel
+          </span>
         </Button>
       </div>
     </div>

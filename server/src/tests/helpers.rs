@@ -14,7 +14,7 @@ use crate::db::work_run_events::WorkRunEventsRepository;
 use crate::db::work_runs::queries::InsertWorkRunParams;
 use crate::db::work_runs::WorkRunsRepository;
 use crate::db::workers::WorkersRepository;
-use crate::models::teams::model::DEFAULT_REVIEW_PROMPT_TEMPLATE;
+use crate::models::teams::model::{DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE};
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
@@ -27,6 +27,7 @@ use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::provider_configs::service::IntegrationProvidersService;
+use crate::services::task_board::service::TaskBoardService;
 use crate::services::teams::service::TeamsService;
 use crate::services::users::service::UsersService;
 use crate::services::work_run_events::service::WorkRunEventsService;
@@ -38,10 +39,16 @@ pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
 
 pub async fn ensure_default_team(pool: &sqlx::PgPool) {
     sqlx::query!(
-        "INSERT INTO teams (id, name, review_prompt_template) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING",
+        r#"INSERT INTO teams (id, name, prompt_template, review_prompt_template)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO UPDATE
+           SET name = EXCLUDED.name,
+               prompt_template = EXCLUDED.prompt_template,
+               review_prompt_template = EXCLUDED.review_prompt_template"#,
         DEFAULT_TEAM_ID,
         "Default team",
-        DEFAULT_REVIEW_PROMPT_TEMPLATE,
+        "",
+        "",
     )
     .execute(pool)
     .await
@@ -52,9 +59,11 @@ pub async fn insert_team(pool: &sqlx::PgPool, name: &str) -> Uuid {
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO teams (id, name, review_prompt_template) VALUES ($1, $2, $3)",
+        r#"INSERT INTO teams (id, name, prompt_template, review_prompt_template)
+           VALUES ($1, $2, $3, $4)"#,
         id,
         name,
+        DEFAULT_PROMPT_TEMPLATE,
         DEFAULT_REVIEW_PROMPT_TEMPLATE,
     )
     .execute(pool)
@@ -117,7 +126,7 @@ pub async fn insert_project_config_for_team(
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, 'Review {{task_title}}', 'kaneo')",
+        "INSERT INTO project_configs (id, team_id, external_project_id, integration_type) VALUES ($1, $2, $3, 'kaneo')",
         id,
         team_id,
         external_project_id,
@@ -138,7 +147,7 @@ pub async fn insert_project_config_with_provider(
     let id = Uuid::new_v4();
 
     sqlx::query!(
-        "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, $3, 'Review {{task_title}}', 'kaneo', $4)",
+        "INSERT INTO project_configs (id, team_id, external_project_id, integration_type, provider_id) VALUES ($1, $2, $3, 'kaneo', $4)",
         id,
         DEFAULT_TEAM_ID,
         external_project_id,
@@ -299,6 +308,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo = WorkRunsRepository::new();
     let work_runs_repo_for_workers = WorkRunsRepository::new();
     let project_configs_repo = ProjectConfigsRepository::new();
+    let task_board = TaskBoardService::new(providers_repo.clone(), project_configs_repo.clone());
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();
@@ -352,6 +362,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         auth,
         project_configs,
         providers: providers.clone(),
+        task_board,
         model_providers,
         workers: WorkersService::new(
             WorkersRepository::new(),

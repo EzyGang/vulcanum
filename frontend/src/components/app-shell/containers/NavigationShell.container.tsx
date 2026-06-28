@@ -17,8 +17,12 @@ export const NavigationShellContainer = ({
     mobileMenuOpen,
     selectedTeamId,
     teamOptions,
+    selectedProjectKey,
+    boardOptions,
+    activatingProject,
     toggleMobileMenu,
-    selectTeam
+    selectTeam,
+    selectBoardOption
   } = useNavigationShell();
 
   return (
@@ -28,13 +32,17 @@ export const NavigationShellContainer = ({
         isActive,
         mobileMenuOpen: mobileMenuOpen.value,
         selectedTeamId,
-        teamOptions
+        teamOptions,
+        selectedProjectKey,
+        boardOptions,
+        activatingProject
       }}
       actions={{
         onLogout: logout,
         onNavigate: navigate,
         onToggleMobileMenu: toggleMobileMenu,
-        onSelectTeam: selectTeam
+        onSelectTeam: selectTeam,
+        onSelectBoardOption: selectBoardOption
       }}
     >
       {children}

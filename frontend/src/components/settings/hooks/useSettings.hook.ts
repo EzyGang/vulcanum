@@ -3,14 +3,14 @@ import { useEffect } from 'preact/hooks';
 import { useLocation } from 'wouter-preact';
 
 const TABS = [
-  { value: 'team-defaults', label: 'Team Defaults' },
-  { value: 'providers', label: 'Task Tracker Providers' },
-  { value: 'model-providers', label: 'Model Providers' },
-  { value: 'projects', label: 'Projects' },
-  { value: 'github', label: 'GitHub App' }
+  { value: 'team-defaults', label: 'Agent defaults', group: 'Team' },
+  { value: 'model-selection', label: 'Model selection', group: 'Team' },
+  { value: 'providers', label: 'Task trackers', group: 'Integrations' },
+  { value: 'model-providers', label: 'Model providers', group: 'Integrations' },
+  { value: 'github', label: 'GitHub app', group: 'Integrations' }
 ];
 
-const DEFAULT_TAB = 'providers';
+const DEFAULT_TAB = 'team-defaults';
 
 export const useSettings = () => {
   const [location] = useLocation();

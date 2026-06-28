@@ -6,6 +6,7 @@ use crate::models::github_app::errors::GithubAppError;
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::provider_configs::errors::IntegrationProvidersError;
+use crate::models::task_board::errors::TaskBoardError;
 use crate::models::teams::errors::TeamsError;
 use crate::models::users::errors::UsersError;
 use crate::models::work_run_events::errors::WorkRunEventsError;
@@ -278,6 +279,21 @@ impl From<IntegrationProvidersError> for AppError {
                 tracing::error!(error = %e, operation = "providers", "database error");
                 Self::Internal
             }
+        }
+    }
+}
+
+impl From<TaskBoardError> for AppError {
+    fn from(err: TaskBoardError) -> Self {
+        match err {
+            TaskBoardError::Provider(e) => e.into(),
+            TaskBoardError::Integration(e) => {
+                tracing::error!(error = %e, operation = "task_board", "integration error");
+                Self::Internal
+            }
+            TaskBoardError::ProjectConfig(e) => e.into(),
+            TaskBoardError::EmptyTitle => Self::BadRequest("Task title is required".to_owned()),
+            TaskBoardError::EmptyStatus => Self::BadRequest("Task status is required".to_owned()),
         }
     }
 }

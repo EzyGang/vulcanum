@@ -1,5 +1,5 @@
 use kaneo_cli::api::client::ApiClient;
-use kaneo_cli::api::types::{BoardResponse, Column, Comment, Project, Task};
+use kaneo_cli::api::types::{BoardResponse, Column, Comment, CreateTaskBody, Project, Task};
 
 use super::errors::{api_err, KaneoError};
 
@@ -26,6 +26,18 @@ impl KaneoClient {
 
     fn build_client(&self) -> Result<ApiClient, KaneoError> {
         ApiClient::new(&self.instance, &self.api_key).map_err(api_err)
+    }
+
+    pub async fn fetch_board(&self, project_id: &str) -> Result<BoardResponse, KaneoError> {
+        let client = self.build_client()?;
+        let path = format!("/task/tasks/{project_id}?limit={FETCH_TASKS_LIMIT}");
+
+        let start = std::time::Instant::now();
+        let result = client.get(&path).await.map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("GET", &path, duration_ms, &result);
+        result
     }
 
     pub async fn fetch_tasks_in_column(
@@ -110,6 +122,34 @@ impl KaneoClient {
         let duration_ms = start.elapsed().as_millis() as i64;
 
         log_kaneo_result("PUT", &path, duration_ms, &result);
+        result
+    }
+
+    pub async fn create_task(
+        &self,
+        project_id: &str,
+        title: &str,
+        description: &str,
+        status: &str,
+        priority: &str,
+    ) -> Result<Task, KaneoError> {
+        let client = self.build_client()?;
+        let path = format!("/task/{project_id}");
+        let body = CreateTaskBody {
+            title: title.to_owned(),
+            description: description.to_owned(),
+            priority: priority.to_owned(),
+            status: status.to_owned(),
+            due_date: None,
+            start_date: None,
+            user_id: None,
+        };
+
+        let start = std::time::Instant::now();
+        let result = client.post(&path, &body).await.map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("POST", &path, duration_ms, &result);
         result
     }
 
