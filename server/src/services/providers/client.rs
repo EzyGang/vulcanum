@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod client_tests;
-
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -79,7 +76,7 @@ impl IntegrationClient {
     }
 
     #[must_use]
-    pub fn new_kaneo(instance: String, api_key: String) -> Self {
+    fn new_kaneo(instance: String, api_key: String) -> Self {
         Self::new(KaneoClient::new(instance, api_key))
     }
 
