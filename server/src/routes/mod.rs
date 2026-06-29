@@ -136,8 +136,20 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                         web::post().to(task_board::create_task),
                     )
                     .route(
+                        "/providers/{provider_id}/tasks/{task_id}",
+                        web::patch().to(task_board::update_task),
+                    )
+                    .route(
                         "/providers/{provider_id}/tasks/{task_id}/status",
                         web::patch().to(task_board::move_task),
+                    )
+                    .route(
+                        "/providers/{provider_id}/tasks/{task_id}/labels/{label_id}",
+                        web::put().to(task_board::add_task_label),
+                    )
+                    .route(
+                        "/providers/{provider_id}/tasks/{task_id}/labels/{label_id}",
+                        web::delete().to(task_board::remove_task_label),
                     ),
             )
             .service(

@@ -1,8 +1,18 @@
 import type { JSX } from 'preact';
-import type { TaskBoardTask } from '../../../types/task-board';
+import type { TaskBoardLabel, TaskBoardTask } from '../../../types/task-board';
 import { Button } from '../../shared/ui/Button.view';
+import { Checkbox } from '../../shared/ui/Checkbox.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
-import type { TaskBoardActions, TaskBoardMoveAction, TaskBoardStatusState } from '../types';
+import { Input } from '../../shared/ui/Input.view';
+import { Label } from '../../shared/ui/Label.view';
+import { TextArea } from '../../shared/ui/TextArea.view';
+import { formatTaskDisplayId } from '../hooks/taskBoardViewModel.support';
+import type {
+  TaskBoardActions,
+  TaskBoardFormState,
+  TaskBoardMoveAction,
+  TaskBoardStatusState
+} from '../types';
 
 interface TaskDetailsMoveButtonProps {
   action: TaskBoardMoveAction;
@@ -11,10 +21,19 @@ interface TaskDetailsMoveButtonProps {
 
 interface TaskDetailsDialogProps {
   task: TaskBoardTask | null;
+  availableLabels: TaskBoardLabel[];
   createdAtLabel: string | null;
   moveActions: TaskBoardMoveAction[];
-  status: Pick<TaskBoardStatusState, 'moving'>;
-  actions: Pick<TaskBoardActions, 'onTaskDetailsOpenChange'>;
+  form: Pick<TaskBoardFormState, 'editTitle' | 'editBody' | 'editLabelIds' | 'editError'>;
+  status: Pick<TaskBoardStatusState, 'moving' | 'updatingTask' | 'updatingTaskLabel'>;
+  actions: Pick<
+    TaskBoardActions,
+    | 'onTaskDetailsOpenChange'
+    | 'onEditTaskTitleInput'
+    | 'onEditTaskBodyInput'
+    | 'onSubmitTaskEdit'
+    | 'onToggleTaskLabel'
+  >;
 }
 
 const TaskDetailsMoveButton = ({ action, moving }: TaskDetailsMoveButtonProps): JSX.Element => (
@@ -25,21 +44,23 @@ const TaskDetailsMoveButton = ({ action, moving }: TaskDetailsMoveButtonProps): 
 
 export const TaskDetailsDialog = ({
   task,
+  availableLabels,
   createdAtLabel,
   moveActions,
+  form,
   status,
   actions
 }: TaskDetailsDialogProps): JSX.Element => (
   <Dialog open={Boolean(task)} onOpenChange={actions.onTaskDetailsOpenChange}>
     <Dialog.Portal>
       <Dialog.Backdrop />
-      <Dialog.Popup class='flex max-h-[90vh] w-[min(92vw,640px)] flex-col gap-5 overflow-hidden'>
+      <Dialog.Popup class='flex max-h-[90vh] w-[min(92vw,720px)] flex-col gap-5 overflow-hidden'>
         {task && (
           <>
             <div class='flex items-start justify-between gap-4'>
               <div class='flex flex-col gap-2'>
-                <Dialog.Title>{task.title}</Dialog.Title>
-                <Dialog.Description>{task.number ? `#${task.number}` : task.id}</Dialog.Description>
+                <Dialog.Title>{formatTaskDisplayId(task)}</Dialog.Title>
+                <Dialog.Description>Edit ticket details and provider labels.</Dialog.Description>
               </div>
               <Dialog.Close>
                 <Button type='button' variant='ghost'>
@@ -53,18 +74,90 @@ export const TaskDetailsDialog = ({
               <span>Assignee: {task.assigneeName ?? 'Unassigned'}</span>
               <span>Created: {createdAtLabel}</span>
             </div>
-            <div class='min-h-0 flex-1 overflow-auto border border-border-base bg-bg-input p-4 text-sm leading-6 text-text-secondary'>
-              {task.description ? (
-                <p class='whitespace-pre-wrap'>{task.description}</p>
-              ) : (
-                <p class='text-text-muted'>No task body.</p>
-              )}
-            </div>
-            <div class='flex flex-wrap gap-2'>
-              {moveActions.map((action) => (
-                <TaskDetailsMoveButton key={action.value} action={action} moving={status.moving} />
-              ))}
-            </div>
+            <form
+              class='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'
+              onSubmit={actions.onSubmitTaskEdit}
+            >
+              <div class='flex flex-col gap-2'>
+                <Label for='task-details-title'>Title</Label>
+                <Input
+                  id='task-details-title'
+                  value={form.editTitle}
+                  onInput={actions.onEditTaskTitleInput}
+                  disabled={status.updatingTask}
+                  invalid={Boolean(form.editError)}
+                />
+              </div>
+              <div class='flex min-h-44 flex-col gap-2'>
+                <Label for='task-details-body'>Body</Label>
+                <TextArea
+                  id='task-details-body'
+                  value={form.editBody}
+                  onInput={actions.onEditTaskBodyInput}
+                  disabled={status.updatingTask}
+                  class='min-h-44 flex-1 resize-y leading-6'
+                />
+              </div>
+              {form.editError && <p class='text-sm text-error'>{form.editError}</p>}
+              <div class='flex flex-col gap-3 border border-border-base bg-bg-input p-3'>
+                <div class='flex items-center justify-between gap-3'>
+                  <p class='text-xs uppercase tracking-wider text-text-muted'>Labels</p>
+                  {status.updatingTaskLabel && (
+                    <span class='text-[10px] uppercase tracking-wider text-text-muted'>
+                      Saving…
+                    </span>
+                  )}
+                </div>
+                {availableLabels.length > 0 ? (
+                  <div class='grid gap-2 sm:grid-cols-2'>
+                    {availableLabels.map((label) => {
+                      const checked = form.editLabelIds.includes(label.id);
+                      const checkboxId = `task-label-${label.id}`;
+
+                      return (
+                        <label
+                          key={label.id}
+                          for={checkboxId}
+                          class='flex cursor-pointer items-center gap-2 border border-border-base bg-bg-card p-2 text-xs text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary'
+                        >
+                          <Checkbox
+                            id={checkboxId}
+                            checked={checked}
+                            disabled={status.updatingTaskLabel}
+                            onCheckedChange={(nextChecked) =>
+                              actions.onToggleTaskLabel(label.id, nextChecked)
+                            }
+                          />
+                          <span
+                            class='size-2 border border-border-base'
+                            style={{ background: label.color }}
+                          />
+                          <span>{label.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p class='text-xs text-text-muted'>
+                    No provider labels configured for this board.
+                  </p>
+                )}
+              </div>
+              <div class='flex flex-wrap justify-between gap-2'>
+                <div class='flex flex-wrap gap-2'>
+                  {moveActions.map((action) => (
+                    <TaskDetailsMoveButton
+                      key={action.value}
+                      action={action}
+                      moving={status.moving}
+                    />
+                  ))}
+                </div>
+                <Button type='submit' variant='primary' disabled={status.updatingTask}>
+                  {status.updatingTask ? 'Saving…' : 'Save changes'}
+                </Button>
+              </div>
+            </form>
           </>
         )}
       </Dialog.Popup>

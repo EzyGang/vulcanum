@@ -16,4 +16,6 @@ pub enum TaskBoardError {
     EmptyTitle,
     #[error("task status is required")]
     EmptyStatus,
+    #[error("task label is required")]
+    EmptyLabel,
 }

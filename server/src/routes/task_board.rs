@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
-use crate::models::task_board::model::{CreateTaskRequest, MoveTaskRequest};
+use crate::models::task_board::model::{CreateTaskRequest, MoveTaskRequest, UpdateTaskRequest};
 
 pub async fn list_projects(
     state: web::Data<AppState>,
@@ -70,6 +70,31 @@ pub async fn create_task(
     Ok(HttpResponse::Created().json(task))
 }
 
+pub async fn update_task(
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid, String)>,
+    body: web::Json<UpdateTaskRequest>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let (provider_id, task_id) = path.into_inner();
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let task = state
+        .task_board
+        .update_task(
+            &state.project_configs.db,
+            team_id,
+            provider_id,
+            &task_id,
+            body.into_inner(),
+        )
+        .await?;
+
+    Ok(HttpResponse::Ok().json(task))
+}
+
 pub async fn move_task(
     state: web::Data<AppState>,
     path: web::Path<(Uuid, String)>,
@@ -89,6 +114,54 @@ pub async fn move_task(
             provider_id,
             &task_id,
             &body.status,
+        )
+        .await?;
+
+    Ok(HttpResponse::Ok().json(result))
+}
+
+pub async fn add_task_label(
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid, String, String)>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let (provider_id, task_id, label_id) = path.into_inner();
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let result = state
+        .task_board
+        .add_task_label(
+            &state.project_configs.db,
+            team_id,
+            provider_id,
+            &task_id,
+            &label_id,
+        )
+        .await?;
+
+    Ok(HttpResponse::Ok().json(result))
+}
+
+pub async fn remove_task_label(
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid, String, String)>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let (provider_id, task_id, label_id) = path.into_inner();
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let result = state
+        .task_board
+        .remove_task_label(
+            &state.project_configs.db,
+            team_id,
+            provider_id,
+            &task_id,
+            &label_id,
         )
         .await?;
 

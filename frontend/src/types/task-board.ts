@@ -7,6 +7,12 @@ export interface TaskProviderProject {
   slug: string;
 }
 
+export interface TaskBoardLabel {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface TaskBoardTask {
   id: string;
   title: string;
@@ -19,6 +25,7 @@ export interface TaskBoardTask {
   assigneeName?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+  labels: TaskBoardLabel[];
 }
 
 export interface TaskBoardColumn {
@@ -38,6 +45,7 @@ export interface TaskBoardProject {
 export interface TaskBoard {
   project: TaskBoardProject;
   columns: TaskBoardColumn[];
+  labels: TaskBoardLabel[];
 }
 
 export interface TaskBoardResponse {
@@ -57,6 +65,15 @@ export interface CreateTaskResponse {
   task: TaskBoardTask;
 }
 
+export interface UpdateTaskRequest {
+  title: string;
+  body: string;
+}
+
+export interface UpdateTaskResponse {
+  task: TaskBoardTask;
+}
+
 export interface MoveTaskRequest {
   taskId: string;
   status: string;
@@ -65,4 +82,9 @@ export interface MoveTaskRequest {
 export interface MoveTaskResponse {
   taskId: string;
   status: string;
+}
+
+export interface TaskLabelResponse {
+  taskId: string;
+  labelId: string;
 }

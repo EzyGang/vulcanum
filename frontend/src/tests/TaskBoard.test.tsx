@@ -74,6 +74,7 @@ vi.mock('../components/shared/ui/Dialog.view', () => {
   return { Dialog };
 });
 
+import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
 
@@ -84,11 +85,12 @@ const makeTask = (id: string, title = `Task ${id}`) => ({
   description: 'Hidden task body',
   status: 'to-do',
   priority: 'low',
-  number: 12,
-  projectSlug: 'proxy-board',
+  number: 10,
+  projectSlug: 'act',
   assigneeName: null,
   createdAt: '2026-01-01T00:00:00Z',
-  updatedAt: null
+  updatedAt: null,
+  labels: [{ id: 'label-1', name: 'Bug', color: '#ef4444' }]
 });
 
 const makeProps = (): TaskBoardViewProps => {
@@ -108,7 +110,8 @@ const makeProps = (): TaskBoardViewProps => {
         tasks: [makeTask('task-1', 'Create proxy API')]
       },
       { id: 'column-2', name: 'Done', slug: 'done', isFinal: true, tasks: [] }
-    ]
+    ],
+    labels: [{ id: 'label-1', name: 'Bug', color: '#ef4444' }]
   };
   const actions: TaskBoardViewProps['actions'] = {
     onTitleInput: vi.fn(),
@@ -116,6 +119,10 @@ const makeProps = (): TaskBoardViewProps => {
     onStatusChange: vi.fn(),
     onSubmitTask: vi.fn((event: Event) => event.preventDefault()),
     onMoveTask: vi.fn(),
+    onEditTaskTitleInput: vi.fn(),
+    onEditTaskBodyInput: vi.fn(),
+    onSubmitTaskEdit: vi.fn((event: Event) => event.preventDefault()),
+    onToggleTaskLabel: vi.fn(),
     onToggleRepo: vi.fn(),
     onFilterRepos: vi.fn(),
     onSettingsPromptInput: vi.fn(),
@@ -174,7 +181,7 @@ const makeProps = (): TaskBoardViewProps => {
           column,
           visibleTasks: visibleTasks.map((task) => ({
             task,
-            displayId: task.number ? `#${task.number}` : task.id.slice(0, 8),
+            displayId: formatTaskDisplayId(task),
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
             moving: false,
             menuOpen: data.actionMenuTaskId === task.id,
@@ -225,6 +232,7 @@ const makeProps = (): TaskBoardViewProps => {
     repoItems: [{ value: 'owner/repo', label: 'owner/repo' }],
     selectedRepoNames: [],
     selectedTask: null,
+    availableLabels: board.labels,
     createDialogOpen: false,
     settingsDialogOpen: false,
     actionMenuTaskId: null,
@@ -293,6 +301,10 @@ const makeProps = (): TaskBoardViewProps => {
       status: 'to-do',
       createError: null,
       serverError: null,
+      editTitle: '',
+      editBody: '',
+      editLabelIds: [],
+      editError: null,
       settings: {
         promptTemplate: '',
         agentsMd: '',
@@ -308,6 +320,8 @@ const makeProps = (): TaskBoardViewProps => {
       creating: false,
       movingTaskId: null,
       moving: false,
+      updatingTask: false,
+      updatingTaskLabel: false,
       reposLoading: false,
       connectingRepos: false,
       connected: true,
@@ -336,6 +350,7 @@ describe('TaskBoard.view', () => {
 
     expect(getByText('Proxy Board')).toBeTruthy();
     expect(getByText('Create proxy API')).toBeTruthy();
+    expect(getByText('ACT-10')).toBeTruthy();
     expect(queryByText('Hidden task body')).toBeNull();
     expect(getAllByText('To Do').length).toBeGreaterThan(0);
     expect(getAllByText('Done').length).toBeGreaterThan(0);
@@ -393,15 +408,15 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onOpenTask).toHaveBeenCalledWith(board.columns[0].tasks[0]);
   });
 
-  it('shows task body only in the details modal', () => {
+  it('shows editable task body in the details modal', () => {
     const props = makeProps();
     const board = requireBoard(props);
     props.data.selectedTask = board.columns[0].tasks[0];
-    const { getByText } = render(<TaskBoardView {...props} />);
+    props.form.editTitle = board.columns[0].tasks[0].title;
+    props.form.editBody = board.columns[0].tasks[0].description ?? '';
+    const { getByDisplayValue } = render(<TaskBoardView {...props} />);
 
-    expect(getByText('Hidden task body')).toBeTruthy();
-    const bodyRegion = getByText('Hidden task body').closest('div');
-    expect(bodyRegion?.className).toContain('overflow-auto');
+    expect(getByDisplayValue('Hidden task body')).toBeTruthy();
   });
 
   it('opens board settings from the icon button', () => {

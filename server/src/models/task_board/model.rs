@@ -36,6 +36,18 @@ pub struct CreateTaskResponse {
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
+pub struct UpdateTaskRequest {
+    pub title: String,
+    #[serde(default)]
+    pub body: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct UpdateTaskResponse {
+    pub task: IntegrationTask,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
 pub struct MoveTaskRequest {
     pub status: String,
 }
@@ -44,4 +56,10 @@ pub struct MoveTaskRequest {
 pub struct MoveTaskResponse {
     pub task_id: String,
     pub status: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TaskLabelResponse {
+    pub task_id: String,
+    pub label_id: String,
 }

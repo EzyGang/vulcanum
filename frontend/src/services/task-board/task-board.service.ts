@@ -4,9 +4,12 @@ import type {
   MoveTaskRequest,
   MoveTaskResponse,
   TaskBoardResponse,
-  TaskProviderProject
+  TaskLabelResponse,
+  TaskProviderProject,
+  UpdateTaskRequest,
+  UpdateTaskResponse
 } from '../../types/task-board';
-import { get, patch, post } from '../../utils/api/request';
+import { del, get, patch, post, put } from '../../utils/api/request';
 
 export const listTaskBoardProjects = (): Promise<TaskProviderProject[]> =>
   get<TaskProviderProject[]>('/task-board/projects');
@@ -29,10 +32,39 @@ export const createTask = (
     input
   );
 
+export const updateTask = (
+  providerId: string,
+  taskId: string,
+  input: UpdateTaskRequest
+): Promise<UpdateTaskResponse> =>
+  patch<UpdateTaskResponse>(
+    `/task-board/providers/${providerId}/tasks/${encodeURIComponent(taskId)}`,
+    input
+  );
+
 export const moveTask = (providerId: string, input: MoveTaskRequest): Promise<MoveTaskResponse> =>
   patch<MoveTaskResponse>(
     `/task-board/providers/${providerId}/tasks/${encodeURIComponent(input.taskId)}/status`,
     {
       status: input.status
     }
+  );
+
+export const addTaskLabel = (
+  providerId: string,
+  taskId: string,
+  labelId: string
+): Promise<TaskLabelResponse> =>
+  put<TaskLabelResponse>(
+    `/task-board/providers/${providerId}/tasks/${encodeURIComponent(taskId)}/labels/${encodeURIComponent(labelId)}`,
+    {}
+  );
+
+export const removeTaskLabel = (
+  providerId: string,
+  taskId: string,
+  labelId: string
+): Promise<TaskLabelResponse> =>
+  del<TaskLabelResponse>(
+    `/task-board/providers/${providerId}/tasks/${encodeURIComponent(taskId)}/labels/${encodeURIComponent(labelId)}`
   );
