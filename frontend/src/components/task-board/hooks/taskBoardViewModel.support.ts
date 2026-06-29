@@ -125,6 +125,16 @@ export const optionToNullableColumn = (columnSlug: string): string | null =>
 export const formatCreatedAt = (createdAt: string): string =>
   new Date(createdAt).toLocaleDateString();
 
+export const formatTaskDisplayId = (task: TaskBoardTask): string => {
+  if (task.number && task.projectSlug) {
+    return `${task.projectSlug.toUpperCase()}-${task.number}`;
+  }
+
+  if (task.number) return `#${task.number}`;
+
+  return task.id.slice(0, 8);
+};
+
 export const buildTaskBoardMoveActions = (
   task: TaskBoardTask,
   statusOptions: SelectOption[],
@@ -176,7 +186,7 @@ export const buildTaskBoardColumns = ({
       column,
       visibleTasks: visibleTasks.map((task) => ({
         task,
-        displayId: task.number ? `#${task.number}` : task.id.slice(0, 8),
+        displayId: formatTaskDisplayId(task),
         createdAtLabel: formatCreatedAt(task.createdAt),
         moving: moving && movingTaskId === task.id,
         menuOpen: actionMenuTaskId === task.id,

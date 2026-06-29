@@ -74,6 +74,7 @@ vi.mock('../components/shared/ui/Dialog.view', () => {
   return { Dialog };
 });
 
+import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
 
@@ -84,8 +85,8 @@ const makeTask = (id: string, title = `Task ${id}`) => ({
   description: 'Hidden task body',
   status: 'to-do',
   priority: 'low',
-  number: 12,
-  projectSlug: 'proxy-board',
+  number: 10,
+  projectSlug: 'act',
   assigneeName: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: null,
@@ -180,7 +181,7 @@ const makeProps = (): TaskBoardViewProps => {
           column,
           visibleTasks: visibleTasks.map((task) => ({
             task,
-            displayId: task.number ? `#${task.number}` : task.id.slice(0, 8),
+            displayId: formatTaskDisplayId(task),
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
             moving: false,
             menuOpen: data.actionMenuTaskId === task.id,
@@ -349,6 +350,7 @@ describe('TaskBoard.view', () => {
 
     expect(getByText('Proxy Board')).toBeTruthy();
     expect(getByText('Create proxy API')).toBeTruthy();
+    expect(getByText('ACT-10')).toBeTruthy();
     expect(queryByText('Hidden task body')).toBeNull();
     expect(getAllByText('To Do').length).toBeGreaterThan(0);
     expect(getAllByText('Done').length).toBeGreaterThan(0);

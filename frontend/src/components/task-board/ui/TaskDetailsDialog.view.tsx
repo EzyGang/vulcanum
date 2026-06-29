@@ -6,6 +6,7 @@ import { Dialog } from '../../shared/ui/Dialog.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
+import { formatTaskDisplayId } from '../hooks/taskBoardViewModel.support';
 import type {
   TaskBoardActions,
   TaskBoardFormState,
@@ -58,7 +59,7 @@ export const TaskDetailsDialog = ({
           <>
             <div class='flex items-start justify-between gap-4'>
               <div class='flex flex-col gap-2'>
-                <Dialog.Title>{task.number ? `#${task.number}` : task.id}</Dialog.Title>
+                <Dialog.Title>{formatTaskDisplayId(task)}</Dialog.Title>
                 <Dialog.Description>Edit ticket details and provider labels.</Dialog.Description>
               </div>
               <Dialog.Close>
