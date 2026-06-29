@@ -89,7 +89,10 @@ impl PollerService {
                 .insert_work_run_if_not_active(&self.db, params)
                 .await
             {
-                Ok(true) => inserted += 1,
+                Ok(true) => {
+                    inserted += 1;
+                    self.move_task_to_progress(&fetcher, config, &task.id).await;
+                }
                 Ok(false) => {
                     skipped += 1;
                     tracing::debug!(
@@ -144,16 +147,23 @@ impl PollerService {
                 .await?;
 
             if tasks.iter().any(|t| t.id == run.external_task_ref) {
-                self.work_runs_repo
+                match self
+                    .work_runs_repo
                     .reset_blocked_to_pending(&self.db, run.id)
                     .await
-                    .unwrap_or_else(|e| {
+                {
+                    Ok(()) => {
+                        self.move_task_to_progress(&fetcher, config, &run.external_task_ref)
+                            .await;
+                    }
+                    Err(e) => {
                         tracing::warn!(
                             work_run_id = %run.id,
                             error = %e,
                             "failed to unblock work run",
                         );
-                    });
+                    }
+                }
             }
         }
 
@@ -179,6 +189,29 @@ impl PollerService {
         let limit = i64::from(limit.max(1));
 
         limit.saturating_sub(active) as usize
+    }
+
+    async fn move_task_to_progress(
+        &self,
+        fetcher: &Arc<dyn TaskFetcher>,
+        config: &ProjectConfig,
+        task_id: &str,
+    ) {
+        match fetcher
+            .update_task_status(task_id, &config.progress_column)
+            .await
+        {
+            Ok(()) => (),
+            Err(e) => {
+                tracing::warn!(
+                    project_config_id = %config.id,
+                    task_id,
+                    progress_column = %config.progress_column,
+                    error = %e,
+                    "failed to move picked up task to progress column",
+                );
+            }
+        }
     }
 
     async fn resolve_fetcher(

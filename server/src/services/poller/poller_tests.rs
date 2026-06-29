@@ -13,6 +13,11 @@ async fn poller_inserts_tasks(pool: PgPool) {
     let mock = Arc::new(MockTaskFetcher::new());
     let provider_id = insert_provider(&pool).await;
     let project_id = insert_project_config(&pool, "kaneo-proj-1", provider_id).await;
+    sqlx::query("UPDATE project_configs SET progress_column = 'doing' WHERE id = $1")
+        .bind(project_id)
+        .execute(&pool)
+        .await
+        .expect("Should set custom progress column");
 
     mock.set_tasks(
         "kaneo-proj-1",
@@ -24,7 +29,7 @@ async fn poller_inserts_tasks(pool: PgPool) {
     )
     .await;
 
-    let service = build_service(mock, pool.clone());
+    let service = build_service(mock.clone(), pool.clone());
     service.poll_once().await;
 
     let rows = sqlx::query!(
@@ -42,6 +47,11 @@ async fn poller_inserts_tasks(pool: PgPool) {
     assert_eq!(rows[0].task_title.as_deref(), Some("Fix login bug"));
     assert!(rows[0].prompt_text.starts_with("Review Fix login bug"));
     assert!(rows[0].prompt_text.contains("Debian-based container"));
+    assert_eq!(
+        mock.status_updates().await,
+        vec![("task-1".to_owned(), "doing".to_owned())],
+        "Should move the picked up task to the configured progress column",
+    );
 }
 
 #[sqlx::test]
@@ -75,6 +85,12 @@ async fn poller_skips_duplicates(pool: PgPool) {
         row.count.unwrap(),
         1,
         "Should not insert duplicate work_run"
+    );
+
+    assert_eq!(
+        mock.status_updates().await,
+        vec![("task-dup".to_owned(), "in-progress".to_owned())],
+        "Should only move the task when a new work_run is inserted",
     );
 }
 

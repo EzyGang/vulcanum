@@ -250,6 +250,14 @@ impl TaskFetcher for IntegrationClient {
             .fetch_tasks_in_column(project_id, column_name)
             .await
     }
+
+    async fn update_task_status(
+        &self,
+        task_id: &str,
+        new_status: &str,
+    ) -> Result<(), IntegrationError> {
+        self.inner.update_task_status(task_id, new_status).await
+    }
 }
 
 #[async_trait]
@@ -259,4 +267,10 @@ pub trait TaskFetcher: Send + Sync {
         project_id: &str,
         column_name: &str,
     ) -> Result<Vec<IntegrationTask>, IntegrationError>;
+
+    async fn update_task_status(
+        &self,
+        task_id: &str,
+        new_status: &str,
+    ) -> Result<(), IntegrationError>;
 }

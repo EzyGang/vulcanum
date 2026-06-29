@@ -28,6 +28,7 @@ use crate::test_helpers::DEFAULT_TEAM_ID;
 
 pub(crate) struct MockTaskFetcher {
     responses: RwLock<HashMap<String, Result<Vec<IntegrationTask>, IntegrationError>>>,
+    status_updates: RwLock<Vec<(String, String)>>,
 }
 
 impl MockTaskFetcher {
@@ -35,6 +36,7 @@ impl MockTaskFetcher {
     pub(crate) fn new() -> Self {
         Self {
             responses: RwLock::new(HashMap::new()),
+            status_updates: RwLock::new(Vec::new()),
         }
     }
 
@@ -57,6 +59,10 @@ impl MockTaskFetcher {
         let key = format!("{}:{}", project_id, column_slug);
         self.responses.write().await.insert(key, Err(error));
     }
+
+    pub(crate) async fn status_updates(&self) -> Vec<(String, String)> {
+        self.status_updates.read().await.clone()
+    }
 }
 
 #[async_trait]
@@ -72,6 +78,18 @@ impl TaskFetcher for MockTaskFetcher {
             Some(Err(e)) => Err(IntegrationError::Other(format!("{}", e))),
             None => Err(IntegrationError::Other("unreachable".to_owned())),
         }
+    }
+
+    async fn update_task_status(
+        &self,
+        task_id: &str,
+        new_status: &str,
+    ) -> Result<(), IntegrationError> {
+        self.status_updates
+            .write()
+            .await
+            .push((task_id.to_owned(), new_status.to_owned()));
+        Ok(())
     }
 }
 
