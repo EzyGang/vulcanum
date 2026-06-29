@@ -29,7 +29,7 @@ impl KaneoClient {
         result
     }
 
-    pub async fn fetch_workspaces(&self) -> Result<Vec<KaneoWorkspace>, KaneoError> {
+    pub(crate) async fn fetch_workspaces(&self) -> Result<Vec<KaneoWorkspace>, KaneoError> {
         let client = self.build_client()?;
         let path = "/auth/organization/list";
 

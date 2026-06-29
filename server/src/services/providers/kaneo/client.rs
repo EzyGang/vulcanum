@@ -7,7 +7,6 @@ use kaneo_cli::api::client::ApiClient;
 
 use crate::services::providers::kaneo::errors::{api_err, KaneoError};
 
-pub use crate::services::providers::kaneo::client::types::KaneoWorkspace;
 #[cfg(test)]
 pub(crate) use tasks::filter_tasks_in_column;
 

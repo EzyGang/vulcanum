@@ -34,10 +34,8 @@ impl IntegrationProviderClient for KaneoClient {
         let board = KaneoClient::fetch_board(self, project_id)
             .await
             .map_err(IntegrationError::from)?;
-        let mut board = kaneo_board_to_integration(board);
-        hydrate_board_task_labels(self, &mut board).await?;
 
-        Ok(board)
+        Ok(kaneo_board_to_integration(board))
     }
 
     async fn fetch_tasks_in_column(
@@ -221,20 +219,4 @@ impl IntegrationProviderClient for KaneoClient {
             .await
             .map_err(IntegrationError::from)
     }
-}
-
-async fn hydrate_board_task_labels(
-    client: &KaneoClient,
-    board: &mut IntegrationBoard,
-) -> Result<(), IntegrationError> {
-    for column in &mut board.columns {
-        for task in &mut column.tasks {
-            let labels = KaneoClient::fetch_task_labels(client, &task.id)
-                .await
-                .map_err(IntegrationError::from)?;
-            task.labels = labels.iter().map(kaneo_label_to_integration).collect();
-        }
-    }
-
-    Ok(())
 }

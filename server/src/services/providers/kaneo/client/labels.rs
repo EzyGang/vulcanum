@@ -3,6 +3,11 @@ use kaneo_cli::api::types::{CreateLabelBody, Label};
 use crate::services::providers::kaneo::client::{log_kaneo_result, KaneoClient};
 use crate::services::providers::kaneo::errors::{api_err, KaneoError};
 
+#[derive(serde::Serialize)]
+struct TaskLabelBody {
+    #[serde(rename = "taskId")]
+    task_id: String,
+}
 impl KaneoClient {
     pub async fn fetch_labels(&self, workspace_id: &str) -> Result<Vec<Label>, KaneoError> {
         let client = self.build_client()?;
@@ -95,12 +100,6 @@ impl KaneoClient {
     pub async fn add_task_label(&self, task_id: &str, label_id: &str) -> Result<(), KaneoError> {
         let client = self.build_client()?;
 
-        #[derive(serde::Serialize)]
-        struct TaskLabelBody {
-            #[serde(rename = "taskId")]
-            task_id: String,
-        }
-
         let path = format!("/label/{label_id}/task");
         let start = std::time::Instant::now();
         let result = client
@@ -121,12 +120,6 @@ impl KaneoClient {
 
     pub async fn remove_task_label(&self, task_id: &str, label_id: &str) -> Result<(), KaneoError> {
         let client = self.build_client()?;
-
-        #[derive(serde::Serialize)]
-        struct TaskLabelBody {
-            #[serde(rename = "taskId")]
-            task_id: String,
-        }
 
         let path = format!("/label/{label_id}/task");
         let start = std::time::Instant::now();

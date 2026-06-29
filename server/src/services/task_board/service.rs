@@ -231,6 +231,8 @@ impl TaskBoardService {
         client: &IntegrationClient,
         external_project_id: &str,
     ) -> Result<String, TaskBoardError> {
+        // Only fallback API callers omit status. Keep this uncached so provider column changes
+        // do not require invalidation in Vulcanum.
         let columns = client.fetch_columns(external_project_id).await?;
         Ok(default_column_status(&columns))
     }
