@@ -1,283 +1,118 @@
 use super::client::filter_tasks_in_column;
-use super::client::log_kaneo_result;
-use super::client::KaneoClient;
+use super::client::types::{KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask};
+use super::client::{log_kaneo_result, KaneoClient};
 use super::errors::KaneoError;
-use kaneo_cli::api::types::{BoardColumn, BoardData, BoardResponse, Task};
 
-#[test]
-fn test_filter_tasks_in_column_exact_match() {
-    let task = Task {
-        id: "t1".to_owned(),
+fn task(id: &str, status: &str) -> KaneoTask {
+    KaneoTask {
+        id: id.to_owned(),
         project_id: "p1".to_owned(),
-        position: None,
         number: None,
-        user_id: None,
-        title: "Test task".to_owned(),
+        title: format!("Task {id}"),
         description: None,
-        status: "to-do".to_owned(),
+        status: status.to_owned(),
         priority: "low".to_owned(),
-        due_date: None,
         created_at: "2024-01-01".to_owned(),
-        start_date: None,
         updated_at: None,
-        column_id: None,
         assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
-    };
+        labels: Vec::new(),
+    }
+}
 
-    let board = BoardResponse {
-        data: BoardData {
+fn board(columns: Vec<KaneoBoardColumn>) -> KaneoBoardResponse {
+    KaneoBoardResponse {
+        data: KaneoBoardData {
             id: "p1".to_owned(),
             name: "Project".to_owned(),
             slug: "proj".to_owned(),
-            columns: vec![BoardColumn {
-                id: "c1".to_owned(),
-                name: "To Do".to_owned(),
-                status: Some("to-do".to_owned()),
-                is_final: None,
-                tasks: vec![task.clone()],
-            }],
-            planned_tasks: vec![],
-            archived_tasks: vec![],
+            columns,
+            planned_tasks: Vec::new(),
+            archived_tasks: Vec::new(),
         },
-    };
+    }
+}
+
+fn column(id: &str, name: &str, status: Option<&str>, tasks: Vec<KaneoTask>) -> KaneoBoardColumn {
+    KaneoBoardColumn {
+        id: id.to_owned(),
+        name: name.to_owned(),
+        status: status.map(str::to_owned),
+        is_final: None,
+        tasks,
+    }
+}
+
+#[test]
+fn filter_tasks_in_column_exact_match() {
+    let board = board(vec![column(
+        "c1",
+        "To Do",
+        Some("to-do"),
+        vec![task("t1", "to-do")],
+    )]);
 
     let result = filter_tasks_in_column(board, "to-do");
+
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t1");
 }
 
 #[test]
-fn test_filter_tasks_in_column_uses_task_status_when_column_status_missing() {
-    let task = Task {
-        id: "t-missing-column-status".to_owned(),
-        project_id: "p1".to_owned(),
-        position: None,
-        number: None,
-        user_id: None,
-        title: "Task from column without status".to_owned(),
-        description: None,
-        status: "to-do".to_owned(),
-        priority: "low".to_owned(),
-        due_date: None,
-        created_at: "2024-01-01".to_owned(),
-        start_date: None,
-        updated_at: None,
-        column_id: None,
-        assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
-    };
-
-    let board = BoardResponse {
-        data: BoardData {
-            id: "p1".to_owned(),
-            name: "Project".to_owned(),
-            slug: "proj".to_owned(),
-            columns: vec![BoardColumn {
-                id: "c1".to_owned(),
-                name: "To Do".to_owned(),
-                status: None,
-                is_final: None,
-                tasks: vec![task.clone()],
-            }],
-            planned_tasks: vec![],
-            archived_tasks: vec![],
-        },
-    };
+fn filter_tasks_in_column_uses_task_status_when_column_status_missing() {
+    let board = board(vec![column(
+        "c1",
+        "To Do",
+        None,
+        vec![task("t-missing-column-status", "to-do")],
+    )]);
 
     let result = filter_tasks_in_column(board, "to-do");
+
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t-missing-column-status");
 }
 
 #[test]
-fn test_filter_tasks_in_column_case_insensitive() {
-    let task = Task {
-        id: "t2".to_owned(),
-        project_id: "p1".to_owned(),
-        position: None,
-        number: None,
-        user_id: None,
-        title: "Another".to_owned(),
-        description: None,
-        status: "in-progress".to_owned(),
-        priority: "high".to_owned(),
-        due_date: None,
-        created_at: "2024-01-01".to_owned(),
-        start_date: None,
-        updated_at: None,
-        column_id: None,
-        assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
-    };
+fn filter_tasks_in_column_not_found_returns_empty() {
+    let board = board(vec![column("c1", "To Do", Some("to-do"), Vec::new())]);
 
-    let board = BoardResponse {
-        data: BoardData {
-            id: "p1".to_owned(),
-            name: "Project".to_owned(),
-            slug: "proj".to_owned(),
-            columns: vec![BoardColumn {
-                id: "c2".to_owned(),
-                name: "In Progress".to_owned(),
-                status: Some("in-progress".to_owned()),
-                is_final: None,
-                tasks: vec![task.clone()],
-            }],
-            planned_tasks: vec![],
-            archived_tasks: vec![],
-        },
-    };
+    let result = filter_tasks_in_column(board, "done");
 
-    let result = filter_tasks_in_column(board, "in-progress");
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0].id, "t2");
-}
-
-#[test]
-fn test_filter_tasks_in_column_not_found_returns_empty() {
-    let board = BoardResponse {
-        data: BoardData {
-            id: "p1".to_owned(),
-            name: "Project".to_owned(),
-            slug: "proj".to_owned(),
-            columns: vec![BoardColumn {
-                id: "c1".to_owned(),
-                name: "To Do".to_owned(),
-                status: Some("to-do".to_owned()),
-                is_final: None,
-                tasks: vec![],
-            }],
-            planned_tasks: vec![],
-            archived_tasks: vec![],
-        },
-    };
-
-    let result = filter_tasks_in_column(board, "Done");
     assert!(result.is_empty());
 }
 
 #[test]
-fn test_filter_tasks_in_column_multiple_columns_selects_correct_one() {
-    let task_todo = Task {
-        id: "t3".to_owned(),
-        project_id: "p1".to_owned(),
-        position: None,
-        number: None,
-        user_id: None,
-        title: "Todo task".to_owned(),
-        description: None,
-        status: "todo".to_owned(),
-        priority: "low".to_owned(),
-        due_date: None,
-        created_at: "2024-01-01".to_owned(),
-        start_date: None,
-        updated_at: None,
-        column_id: None,
-        assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
-    };
-
-    let task_done = Task {
-        id: "t4".to_owned(),
-        project_id: "p1".to_owned(),
-        position: None,
-        number: None,
-        user_id: None,
-        title: "Done task".to_owned(),
-        description: None,
-        status: "done".to_owned(),
-        priority: "low".to_owned(),
-        due_date: None,
-        created_at: "2024-01-01".to_owned(),
-        start_date: None,
-        updated_at: None,
-        column_id: None,
-        assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
-    };
-
-    let board = BoardResponse {
-        data: BoardData {
-            id: "p1".to_owned(),
-            name: "Project".to_owned(),
-            slug: "proj".to_owned(),
-            columns: vec![
-                BoardColumn {
-                    id: "c1".to_owned(),
-                    name: "To Do".to_owned(),
-                    status: Some("to-do".to_owned()),
-                    is_final: None,
-                    tasks: vec![task_todo],
-                },
-                BoardColumn {
-                    id: "c2".to_owned(),
-                    name: "Done".to_owned(),
-                    status: Some("done".to_owned()),
-                    is_final: Some(true),
-                    tasks: vec![task_done],
-                },
-            ],
-            planned_tasks: vec![],
-            archived_tasks: vec![],
-        },
-    };
+fn filter_tasks_in_column_multiple_columns_selects_correct_one() {
+    let mut done = column("c2", "Done", Some("done"), vec![task("t4", "done")]);
+    done.is_final = Some(true);
+    let board = board(vec![
+        column("c1", "To Do", Some("to-do"), vec![task("t3", "todo")]),
+        done,
+    ]);
 
     let result = filter_tasks_in_column(board, "done");
+
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t4");
 }
 
 #[test]
-fn test_filter_tasks_in_column_uses_status_slug() {
-    let task = Task {
-        id: "t5".to_owned(),
-        project_id: "p1".to_owned(),
-        position: None,
-        number: None,
-        user_id: None,
-        title: "Review task".to_owned(),
-        description: None,
-        status: "in-review".to_owned(),
-        priority: "medium".to_owned(),
-        due_date: None,
-        created_at: "2024-01-01".to_owned(),
-        start_date: None,
-        updated_at: None,
-        column_id: None,
-        assignee_name: None,
-        assignee_id: None,
-        assignee_image: None,
-    };
-
-    let board = BoardResponse {
-        data: BoardData {
-            id: "p1".to_owned(),
-            name: "Project".to_owned(),
-            slug: "proj".to_owned(),
-            columns: vec![BoardColumn {
-                id: "c3".to_owned(),
-                name: "In Review".to_owned(),
-                status: Some("in-review".to_owned()),
-                is_final: None,
-                tasks: vec![task.clone()],
-            }],
-            planned_tasks: vec![],
-            archived_tasks: vec![],
-        },
-    };
+fn filter_tasks_in_column_uses_status_slug() {
+    let board = board(vec![column(
+        "c3",
+        "In Review",
+        Some("in-review"),
+        vec![task("t5", "in-review")],
+    )]);
 
     let result = filter_tasks_in_column(board, "in-review");
+
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].id, "t5");
 }
 
 #[test]
-fn test_kaneo_error_display() {
+fn kaneo_error_display() {
     let api_err = KaneoError::Api("something went wrong".to_owned());
     assert_eq!(api_err.to_string(), "kaneo API error: something went wrong");
 
@@ -286,7 +121,7 @@ fn test_kaneo_error_display() {
 }
 
 #[test]
-fn test_kaneo_client_construction() {
+fn kaneo_client_construction() {
     let client = KaneoClient::new("cloud.kaneo.app".to_owned(), "sk-test-key".to_owned());
     let _ = client;
 }
@@ -298,10 +133,10 @@ mod tracing_tests {
 
     #[traced_test]
     #[test]
-    fn test_log_kaneo_result_success_emits_info() {
+    fn log_kaneo_result_success_emits_info() {
         let result: Result<(), KaneoError> = Ok(());
         log_kaneo_result("GET", "/test", 42, &result);
-        assert!(logs_contain("Kaneo API call succeeded"));
+        assert!(logs_contain("Kaneo API request succeeded"));
         assert!(logs_contain("GET"));
         assert!(logs_contain("/test"));
         assert!(logs_contain("42"));
@@ -309,17 +144,17 @@ mod tracing_tests {
 
     #[traced_test]
     #[test]
-    fn test_log_kaneo_result_error_emits_warn() {
+    fn log_kaneo_result_error_emits_warn() {
         let result: Result<(), KaneoError> = Err(KaneoError::Api("boom".to_owned()));
         log_kaneo_result("POST", "/fail", 99, &result);
-        assert!(logs_contain("Kaneo API call failed"));
+        assert!(logs_contain("Kaneo API request failed"));
         assert!(logs_contain("POST"));
         assert!(logs_contain("boom"));
     }
 
     #[traced_test]
     #[test]
-    fn test_log_kaneo_result_error_no_method_in_success() {
+    fn log_kaneo_result_error_no_method_in_success() {
         let result: Result<(), KaneoError> = Err(KaneoError::Api("err".to_owned()));
         log_kaneo_result("PUT", "/put", 10, &result);
         assert!(!logs_contain("succeeded"));

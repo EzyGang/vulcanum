@@ -9,6 +9,13 @@ pub enum IntegrationType {
     Kaneo,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub struct IntegrationLabel {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct IntegrationTask {
     pub id: String,
@@ -22,6 +29,7 @@ pub struct IntegrationTask {
     pub assignee_name: Option<String>,
     pub created_at: String,
     pub updated_at: Option<String>,
+    pub labels: Vec<IntegrationLabel>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,6 +37,7 @@ pub struct IntegrationProject {
     pub id: String,
     pub name: String,
     pub slug: String,
+    pub workspace_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,6 +61,7 @@ pub struct IntegrationBoardColumn {
 pub struct IntegrationBoard {
     pub project: IntegrationProject,
     pub columns: Vec<IntegrationBoardColumn>,
+    pub labels: Vec<IntegrationLabel>,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +71,27 @@ pub struct CreateIntegrationTaskInput {
     pub body: String,
     pub status: String,
     pub priority: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct UpdateIntegrationTaskInput {
+    pub task_id: String,
+    pub title: String,
+    pub body: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateIntegrationLabelInput {
+    pub workspace_id: String,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct UpdateIntegrationLabelInput {
+    pub label_id: String,
+    pub name: Option<String>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

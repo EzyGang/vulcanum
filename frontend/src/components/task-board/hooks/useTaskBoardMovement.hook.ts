@@ -1,9 +1,15 @@
 import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
-import { moveTask } from '../../../services/task-board/task-board.service';
-import type { TaskBoardColumn, TaskBoardTask } from '../../../types/task-board';
+import {
+  addTaskLabel,
+  moveTask,
+  removeTaskLabel,
+  updateTask
+} from '../../../services/task-board/task-board.service';
+import type { TaskBoardColumn, TaskBoardLabel, TaskBoardTask } from '../../../types/task-board';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation } from '../../../utils/api/query/hooks';
+import { textInputHandler } from '../../../utils/signal-input';
 import { boardQueryKey, COLUMN_PAGE_SIZE } from './taskBoard.helpers';
 
 interface TaskBoardSelection {
@@ -13,9 +19,14 @@ interface TaskBoardSelection {
 
 export const useTaskBoardMovement = (
   selection: TaskBoardSelection | null,
-  columns: TaskBoardColumn[]
+  columns: TaskBoardColumn[],
+  labels: TaskBoardLabel[]
 ) => {
   const selectedTask = useSignal<TaskBoardTask | null>(null);
+  const editTitle = useSignal('');
+  const editBody = useSignal('');
+  const editLabelIds = useSignal<string[]>([]);
+  const editError = useSignal<string | null>(null);
   const draggedTask = useSignal<{ id: string; status: string } | null>(null);
   const dragTargetStatus = useSignal<string | null>(null);
   const actionMenuTaskId = useSignal<string | null>(null);
@@ -55,6 +66,46 @@ export const useTaskBoardMovement = (
     }
   );
 
+  const updateMutation = useApiMutation(
+    ({ taskId, title, body }: { taskId: string; title: string; body: string }) =>
+      updateTask(selection?.providerId ?? '', taskId, { title, body }),
+    {
+      onSuccess: (response) => {
+        const labels = selectedTask.value?.labels ?? response.task.labels;
+        selectedTask.value = { ...response.task, labels };
+        editTitle.value = response.task.title;
+        editBody.value = response.task.description ?? '';
+        editError.value = null;
+        invalidate(...boardQueryKey(selection?.providerId, selection?.externalProjectId));
+      }
+    }
+  );
+
+  const labelMutation = useApiMutation(
+    ({ taskId, labelId, checked }: { taskId: string; labelId: string; checked: boolean }) =>
+      checked
+        ? addTaskLabel(selection?.providerId ?? '', taskId, labelId)
+        : removeTaskLabel(selection?.providerId ?? '', taskId, labelId),
+    {
+      onSuccess: (_response, input) => {
+        const nextLabelIds = input.checked
+          ? [...editLabelIds.value, input.labelId]
+          : editLabelIds.value.filter((labelId) => labelId !== input.labelId);
+        const nextLabelIdSet = new Set(nextLabelIds);
+        editLabelIds.value = nextLabelIds;
+
+        if (selectedTask.value) {
+          selectedTask.value = {
+            ...selectedTask.value,
+            labels: labels.filter((label) => nextLabelIdSet.has(label.id))
+          };
+        }
+
+        invalidate(...boardQueryKey(selection?.providerId, selection?.externalProjectId));
+      }
+    }
+  );
+
   const moveTaskToStatus = useCallback(
     (taskId: string, nextStatus: string) => {
       actionMenuTaskId.value = null;
@@ -67,13 +118,45 @@ export const useTaskBoardMovement = (
     (task: TaskBoardTask) => {
       actionMenuTaskId.value = null;
       selectedTask.value = task;
+      editTitle.value = task.title;
+      editBody.value = task.description ?? '';
+      editLabelIds.value = task.labels.map((label) => label.id);
+      editError.value = null;
     },
-    [actionMenuTaskId, selectedTask]
+    [actionMenuTaskId, editBody, editError, editLabelIds, editTitle, selectedTask]
   );
 
   const closeTask = useCallback(() => {
     selectedTask.value = null;
-  }, [selectedTask]);
+    editError.value = null;
+  }, [editError, selectedTask]);
+
+  const submitTaskEdit = useCallback(
+    (event: Event) => {
+      event.preventDefault();
+      const task = selectedTask.value;
+      const title = editTitle.value.trim();
+
+      if (task === null) return;
+      if (!title) {
+        editError.value = 'Task title is required';
+        return;
+      }
+
+      updateMutation.mutate({ taskId: task.id, title, body: editBody.value });
+    },
+    [editBody, editError, editTitle, selectedTask, updateMutation]
+  );
+
+  const toggleTaskLabel = useCallback(
+    (labelId: string, checked: boolean) => {
+      const task = selectedTask.value;
+      if (task === null) return;
+
+      labelMutation.mutate({ taskId: task.id, labelId, checked });
+    },
+    [labelMutation, selectedTask]
+  );
 
   const startDrag = useCallback(
     (taskId: string, taskStatus: string) => {
@@ -151,11 +234,23 @@ export const useTaskBoardMovement = (
       visibleTaskCounts: visibleTaskCounts.value,
       dropPreviewColumn: dragTargetStatus.value
     },
+    form: {
+      editTitle: editTitle.value,
+      editBody: editBody.value,
+      editLabelIds: editLabelIds.value,
+      editError: editError.value
+    },
     status: {
       movingTaskId: moveMutation.variables?.taskId ?? null,
-      moving: moveMutation.isPending
+      moving: moveMutation.isPending,
+      updatingTask: updateMutation.isPending,
+      updatingTaskLabel: labelMutation.isPending
     },
-    error: moveMutation.error?.message ?? null,
+    error:
+      moveMutation.error?.message ??
+      updateMutation.error?.message ??
+      labelMutation.error?.message ??
+      null,
     actions: {
       onMoveTask: moveTaskToStatus,
       onOpenTask: openTask,
@@ -163,6 +258,10 @@ export const useTaskBoardMovement = (
       onTaskDetailsOpenChange: (open: boolean) => {
         if (!open) closeTask();
       },
+      onEditTaskTitleInput: textInputHandler(editTitle),
+      onEditTaskBodyInput: textInputHandler(editBody),
+      onSubmitTaskEdit: submitTaskEdit,
+      onToggleTaskLabel: toggleTaskLabel,
       onDragStart: startDrag,
       onDragOverStatus: allowDropOnStatus,
       onDragEnd: clearDrag,

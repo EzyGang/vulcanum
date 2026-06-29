@@ -5,8 +5,9 @@ use async_trait::async_trait;
 use crate::models::provider_configs::model::IntegrationProvider;
 use crate::models::providers::errors::IntegrationError;
 use crate::models::providers::model::{
-    CreateIntegrationTaskInput, IntegrationBoard, IntegrationColumn, IntegrationProject,
-    IntegrationTask, IntegrationType, IntegrationWorkspace,
+    CreateIntegrationLabelInput, CreateIntegrationTaskInput, IntegrationBoard, IntegrationColumn,
+    IntegrationLabel, IntegrationProject, IntegrationTask, IntegrationType, IntegrationWorkspace,
+    UpdateIntegrationLabelInput, UpdateIntegrationTaskInput,
 };
 use crate::services::providers::kaneo::client::KaneoClient;
 
@@ -38,6 +39,11 @@ pub trait IntegrationProviderClient: Send + Sync {
         input: CreateIntegrationTaskInput,
     ) -> Result<IntegrationTask, IntegrationError>;
 
+    async fn update_task(
+        &self,
+        input: UpdateIntegrationTaskInput,
+    ) -> Result<IntegrationTask, IntegrationError>;
+
     async fn update_task_status(
         &self,
         task_id: &str,
@@ -63,6 +69,31 @@ pub trait IntegrationProviderClient: Send + Sync {
         &self,
         workspace_id: &str,
     ) -> Result<Vec<IntegrationProject>, IntegrationError>;
+
+    async fn fetch_labels(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<IntegrationLabel>, IntegrationError>;
+
+    async fn create_label(
+        &self,
+        input: CreateIntegrationLabelInput,
+    ) -> Result<IntegrationLabel, IntegrationError>;
+
+    async fn update_label(
+        &self,
+        input: UpdateIntegrationLabelInput,
+    ) -> Result<IntegrationLabel, IntegrationError>;
+
+    async fn delete_label(&self, label_id: &str) -> Result<IntegrationLabel, IntegrationError>;
+
+    async fn add_task_label(&self, task_id: &str, label_id: &str) -> Result<(), IntegrationError>;
+
+    async fn remove_task_label(
+        &self,
+        task_id: &str,
+        label_id: &str,
+    ) -> Result<(), IntegrationError>;
 }
 
 impl IntegrationClient {
@@ -119,6 +150,13 @@ impl IntegrationClient {
         self.inner.create_task(input).await
     }
 
+    pub async fn update_task(
+        &self,
+        input: UpdateIntegrationTaskInput,
+    ) -> Result<IntegrationTask, IntegrationError> {
+        self.inner.update_task(input).await
+    }
+
     pub async fn update_task_status(
         &self,
         task_id: &str,
@@ -157,6 +195,47 @@ impl IntegrationClient {
         workspace_id: &str,
     ) -> Result<Vec<IntegrationProject>, IntegrationError> {
         self.inner.fetch_projects(workspace_id).await
+    }
+
+    pub async fn fetch_labels(
+        &self,
+        workspace_id: &str,
+    ) -> Result<Vec<IntegrationLabel>, IntegrationError> {
+        self.inner.fetch_labels(workspace_id).await
+    }
+
+    pub async fn create_label(
+        &self,
+        input: CreateIntegrationLabelInput,
+    ) -> Result<IntegrationLabel, IntegrationError> {
+        self.inner.create_label(input).await
+    }
+
+    pub async fn update_label(
+        &self,
+        input: UpdateIntegrationLabelInput,
+    ) -> Result<IntegrationLabel, IntegrationError> {
+        self.inner.update_label(input).await
+    }
+
+    pub async fn delete_label(&self, label_id: &str) -> Result<IntegrationLabel, IntegrationError> {
+        self.inner.delete_label(label_id).await
+    }
+
+    pub async fn add_task_label(
+        &self,
+        task_id: &str,
+        label_id: &str,
+    ) -> Result<(), IntegrationError> {
+        self.inner.add_task_label(task_id, label_id).await
+    }
+
+    pub async fn remove_task_label(
+        &self,
+        task_id: &str,
+        label_id: &str,
+    ) -> Result<(), IntegrationError> {
+        self.inner.remove_task_label(task_id, label_id).await
     }
 }
 

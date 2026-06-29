@@ -46,7 +46,7 @@ export const useTaskBoard = () => {
   const repoItems = repos.map((repo) => ({ value: repo.fullName, label: repo.fullName }));
 
   const create = useTaskBoardCreate(selection, columns);
-  const movement = useTaskBoardMovement(selection, columns);
+  const movement = useTaskBoardMovement(selection, columns, board?.labels ?? []);
   const settings = useTaskBoardSettings(selection, columns, projectConfig, selectedRepoNames);
   const viewModel = useTaskBoardViewModel({
     board,
@@ -87,6 +87,7 @@ export const useTaskBoard = () => {
       repoItems,
       selectedRepoNames,
       selectedTask: movement.data.selectedTask,
+      availableLabels: board?.labels ?? [],
       createDialogOpen: create.dialogOpen,
       settingsDialogOpen: settings.data.settingsDialogOpen,
       actionMenuTaskId: movement.data.actionMenuTaskId,
@@ -101,6 +102,7 @@ export const useTaskBoard = () => {
       body: create.form.body,
       status: create.form.status,
       createError: create.form.createError,
+      ...movement.form,
       serverError: create.error ?? movement.error ?? settings.error,
       settings: settings.form
     },
@@ -110,6 +112,8 @@ export const useTaskBoard = () => {
       creating: create.status.creating,
       movingTaskId: movement.status.movingTaskId,
       moving: movement.status.moving,
+      updatingTask: movement.status.updatingTask,
+      updatingTaskLabel: movement.status.updatingTaskLabel,
       reposLoading,
       ...settings.status
     },

@@ -56,6 +56,19 @@ export const TaskCard = ({ data }: TaskCardProps): JSX.Element => (
       </div>
     </div>
 
+    {data.task.labels.length > 0 && (
+      <div class='flex flex-wrap gap-1'>
+        {data.task.labels.map((label) => (
+          <span
+            key={label.id}
+            class='border border-border-base bg-bg-card px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-secondary'
+          >
+            {label.name}
+          </span>
+        ))}
+      </div>
+    )}
+
     <div class='flex items-center justify-between gap-3 text-[11px] text-text-muted'>
       <span>{data.task.assigneeName ?? 'Unassigned'}</span>
       <span>{data.createdAtLabel}</span>

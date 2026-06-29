@@ -5,10 +5,13 @@ use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::models::project_configs::model::ProjectConfig;
 use crate::models::provider_configs::model::IntegrationProvider;
-use crate::models::providers::model::{CreateIntegrationTaskInput, IntegrationColumn};
+use crate::models::providers::model::{
+    CreateIntegrationTaskInput, IntegrationColumn, UpdateIntegrationTaskInput,
+};
 use crate::models::task_board::errors::TaskBoardError;
 use crate::models::task_board::model::{
-    CreateTaskRequest, CreateTaskResponse, MoveTaskResponse, TaskBoardResponse, TaskProviderProject,
+    CreateTaskRequest, CreateTaskResponse, MoveTaskResponse, TaskBoardResponse, TaskLabelResponse,
+    TaskProviderProject, UpdateTaskRequest, UpdateTaskResponse,
 };
 use crate::services::providers::client::IntegrationClient;
 
@@ -60,8 +63,11 @@ impl TaskBoardService {
     {
         let provider = self.load_provider(db, team_id, provider_id).await?;
         let client = IntegrationClient::from_provider(&provider);
-        let board = client.fetch_board(external_project_id).await?;
-
+        let mut board = client.fetch_board(external_project_id).await?;
+        let project = client.lookup_project(external_project_id).await?;
+        if let Some(workspace_id) = project.workspace_id.as_deref() {
+            board.labels = client.fetch_labels(workspace_id).await?;
+        }
         Ok(TaskBoardResponse {
             provider_id: provider.id,
             provider_type: provider.provider_type,
@@ -111,6 +117,31 @@ impl TaskBoardService {
         Ok(CreateTaskResponse { task })
     }
 
+    pub async fn update_task<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider_id: Uuid,
+        task_id: &str,
+        request: UpdateTaskRequest,
+    ) -> Result<UpdateTaskResponse, TaskBoardError>
+    where
+        Q: Queryer<'c>,
+    {
+        let title = normalized_required(&request.title, TaskBoardError::EmptyTitle)?;
+        let provider = self.load_provider(db, team_id, provider_id).await?;
+        let client = IntegrationClient::from_provider(&provider);
+        let task = client
+            .update_task(UpdateIntegrationTaskInput {
+                task_id: task_id.to_owned(),
+                title,
+                body: request.body,
+            })
+            .await?;
+
+        Ok(UpdateTaskResponse { task })
+    }
+
     pub async fn move_task<'c, Q>(
         &self,
         db: Q,
@@ -131,6 +162,52 @@ impl TaskBoardService {
         Ok(MoveTaskResponse {
             task_id: task_id.to_owned(),
             status: next_status,
+        })
+    }
+
+    pub async fn add_task_label<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider_id: Uuid,
+        task_id: &str,
+        label_id: &str,
+    ) -> Result<TaskLabelResponse, TaskBoardError>
+    where
+        Q: Queryer<'c>,
+    {
+        let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
+        let provider = self.load_provider(db, team_id, provider_id).await?;
+        let client = IntegrationClient::from_provider(&provider);
+
+        client.add_task_label(task_id, &label_id).await?;
+
+        Ok(TaskLabelResponse {
+            task_id: task_id.to_owned(),
+            label_id,
+        })
+    }
+
+    pub async fn remove_task_label<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider_id: Uuid,
+        task_id: &str,
+        label_id: &str,
+    ) -> Result<TaskLabelResponse, TaskBoardError>
+    where
+        Q: Queryer<'c>,
+    {
+        let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
+        let provider = self.load_provider(db, team_id, provider_id).await?;
+        let client = IntegrationClient::from_provider(&provider);
+
+        client.remove_task_label(task_id, &label_id).await?;
+
+        Ok(TaskLabelResponse {
+            task_id: task_id.to_owned(),
+            label_id,
         })
     }
 

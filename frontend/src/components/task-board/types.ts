@@ -1,6 +1,6 @@
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../types/shared';
-import type { TaskBoard, TaskBoardTask } from '../../types/task-board';
+import type { TaskBoard, TaskBoardLabel, TaskBoardTask } from '../../types/task-board';
 
 export type TaskBoardColumnRole = 'pickup' | 'progress' | 'done';
 
@@ -135,6 +135,7 @@ export interface TaskBoardViewData {
   repoItems: SelectOption[];
   selectedRepoNames: string[];
   selectedTask: TaskBoardTask | null;
+  availableLabels: TaskBoardLabel[];
   createDialogOpen: boolean;
   settingsDialogOpen: boolean;
   actionMenuTaskId: string | null;
@@ -157,6 +158,10 @@ export interface TaskBoardFormState {
   status: string;
   createError: string | null;
   serverError: string | null;
+  editTitle: string;
+  editBody: string;
+  editLabelIds: string[];
+  editError: string | null;
   settings: TaskBoardSettingsFormState;
 }
 
@@ -166,6 +171,8 @@ export interface TaskBoardStatusState {
   creating: boolean;
   movingTaskId: string | null;
   moving: boolean;
+  updatingTask: boolean;
+  updatingTaskLabel: boolean;
   reposLoading: boolean;
   connectingRepos: boolean;
   connected: boolean;
@@ -182,6 +189,10 @@ export interface TaskBoardActions {
   onStatusChange: (status: string) => void;
   onSubmitTask: (event: Event) => void;
   onMoveTask: (taskId: string, status: string) => void;
+  onEditTaskTitleInput: (event: Event) => void;
+  onEditTaskBodyInput: (event: Event) => void;
+  onSubmitTaskEdit: (event: Event) => void;
+  onToggleTaskLabel: (labelId: string, checked: boolean) => void;
   onToggleRepo: (repoFullName: string) => void;
   onFilterRepos: (event: Event) => void;
   onSettingsPromptInput: (event: Event) => void;
