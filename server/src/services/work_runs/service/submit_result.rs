@@ -5,6 +5,7 @@ use vulcanum_shared::runtime::types::FinishStatus;
 use crate::db::work_runs::queries::SetResultParams;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
+use crate::services::work_runs::service::spawn_review::ReviewSpawnOutcome;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {
@@ -167,19 +168,28 @@ impl WorkRunsService {
             "work_run completed by worker",
         );
 
-        if matches!(
-            (status, run.work_type),
-            (WorkRunStatus::Completed, WorkRunType::Implementation)
-        ) {
-            self.attach_prs_and_spawn_reviews(&run, &pr_urls).await;
-        }
+        let review_outcome = match (status, run.work_type) {
+            (WorkRunStatus::Completed, WorkRunType::Implementation) => {
+                Some(self.attach_prs_and_spawn_reviews(&run, &pr_urls).await)
+            }
+            _ => None,
+        };
 
-        self.sync_task_tracker_on_result(&run, &params, status, &pr_urls)
-            .await;
+        self.sync_task_tracker_on_result(
+            &run,
+            &params,
+            status,
+            &pr_urls,
+            matches!(review_outcome, Some(ReviewSpawnOutcome::ReviewRunning)),
+        )
+        .await;
 
         if matches!(run.work_type, WorkRunType::PullRequestReview) {
             self.record_review_result(&run, &params).await;
         }
+
+        self.set_lifecycle_label_after_result(&run, status, review_outcome)
+            .await;
 
         Ok(updated)
     }

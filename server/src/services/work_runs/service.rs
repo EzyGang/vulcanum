@@ -4,6 +4,7 @@ pub mod clear_cancel_flag;
 pub mod delete;
 pub mod fail;
 pub mod get_job;
+pub(crate) mod lifecycle_labels;
 pub mod list;
 pub mod poll;
 pub(crate) mod record_review;

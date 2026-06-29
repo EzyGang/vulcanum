@@ -10,6 +10,33 @@ import { TaskBoardSettingsDialog } from './TaskBoardSettingsDialog.view';
 import { TaskCreateDialog } from './TaskCreateDialog.view';
 import { TaskDetailsDialog } from './TaskDetailsDialog.view';
 
+const LIFECYCLE_LABELS = [
+  {
+    color: '#2563EB',
+    name: 'Implementation running',
+    description: 'Vulcanum has started an implementation job for this ticket.'
+  },
+  {
+    color: '#D97706',
+    name: 'Review needed',
+    description: 'Implementation produced work, but no automated review is currently running.'
+  },
+  {
+    color: '#7C3AED',
+    name: 'Review running',
+    description: 'Vulcanum has queued or started an automated review for this ticket.'
+  },
+  {
+    color: '#DC2626',
+    name: 'Needs attention',
+    description: 'Automation failed or blocked and will not continue without a human fix.'
+  },
+  {
+    color: '#16A34A',
+    name: 'Ready for human',
+    description: 'Implementation and review are complete, and the ticket is in its final column.'
+  }
+];
 export const TaskBoardView = ({
   data: {
     selectedProjectKey,
@@ -146,6 +173,35 @@ export const TaskBoardView = ({
           ))}
         </section>
       )}
+
+      <section class='border border-border-base bg-bg-card p-4'>
+        <div class='flex flex-col gap-2 md:flex-row md:items-start md:justify-between'>
+          <div class='flex max-w-2xl flex-col gap-1'>
+            <p class='text-xs font-medium uppercase tracking-wider text-accent'>Lifecycle labels</p>
+            <p class='text-sm leading-relaxed text-text-secondary'>
+              Vulcanum keeps one managed label active on each automated ticket so the board shows
+              the current automation handoff without changing your manual provider labels.
+            </p>
+          </div>
+          <p class='text-xs uppercase tracking-wider text-text-muted'>One active at a time</p>
+        </div>
+        <div class='mt-4 grid grid-cols-1 gap-2 md:grid-cols-5'>
+          {LIFECYCLE_LABELS.map((label) => (
+            <article key={label.name} class='border border-border-base bg-bg-panel p-3'>
+              <div class='flex items-center gap-2'>
+                <span
+                  class='size-2 shrink-0 border border-border-base'
+                  style={{ background: label.color }}
+                />
+                <p class='text-[11px] font-medium uppercase tracking-wider text-text-primary'>
+                  {label.name}
+                </p>
+              </div>
+              <p class='mt-2 text-xs leading-relaxed text-text-muted'>{label.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {(form.createError || form.serverError) && (
         <ErrorBanner message={form.createError ?? form.serverError ?? 'Unable to update board'} />

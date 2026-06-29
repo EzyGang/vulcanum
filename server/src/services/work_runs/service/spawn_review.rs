@@ -10,21 +10,28 @@ use crate::util::github::parse_github_pr_url;
 const PR_BLOCK_START: &str = "<!-- vulcanum:prs:start -->";
 const PR_BLOCK_END: &str = "<!-- vulcanum:prs:end -->";
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum ReviewSpawnOutcome {
+    NoPullRequests,
+    ReviewNeeded,
+    ReviewRunning,
+}
+
 impl WorkRunsService {
     pub(crate) async fn attach_prs_and_spawn_reviews(
         &self,
         run: &WorkRun,
         pr_urls: &[String],
-    ) -> bool {
+    ) -> ReviewSpawnOutcome {
         if pr_urls.is_empty() || !matches!(run.work_type, WorkRunType::Implementation) {
-            return false;
+            return ReviewSpawnOutcome::NoPullRequests;
         }
 
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(config) => config,
             Err(e) => {
                 tracing::warn!(work_run_id = %run.id, error = %e, "failed to load project config for review spawn");
-                return false;
+                return ReviewSpawnOutcome::ReviewNeeded;
             }
         };
         let settings = match self
@@ -35,7 +42,7 @@ impl WorkRunsService {
             Ok(settings) => settings,
             Err(e) => {
                 tracing::warn!(work_run_id = %run.id, error = %e, "failed to load effective settings for review spawn");
-                return false;
+                return ReviewSpawnOutcome::ReviewNeeded;
             }
         };
 
@@ -76,14 +83,16 @@ impl WorkRunsService {
         }
 
         if task_prs.is_empty() {
-            return false;
+            return ReviewSpawnOutcome::ReviewNeeded;
         }
 
         self.update_task_pr_block(run, &task_prs).await;
 
         if !settings.review_enabled {
-            return false;
+            return ReviewSpawnOutcome::ReviewNeeded;
         }
+
+        let mut review_running = false;
 
         for task_pr in &task_prs {
             let repo_names = task_pr.repo_full_name.clone();
@@ -119,16 +128,22 @@ impl WorkRunsService {
                 review_target_repo_full_name: Some(task_pr.repo_full_name.clone()),
             };
 
-            if let Err(e) = self
+            match self
                 .work_runs_repo
                 .insert_work_run_if_not_active(&self.db, params)
                 .await
             {
-                tracing::warn!(work_run_id = %run.id, pr_url = %task_pr.pr_url, error = %e, "failed to insert review run");
+                Ok(true) | Ok(false) => review_running = true,
+                Err(e) => {
+                    tracing::warn!(work_run_id = %run.id, pr_url = %task_pr.pr_url, error = %e, "failed to insert review run");
+                }
             }
         }
 
-        true
+        match review_running {
+            true => ReviewSpawnOutcome::ReviewRunning,
+            false => ReviewSpawnOutcome::ReviewNeeded,
+        }
     }
 
     async fn update_task_pr_block(&self, run: &WorkRun, task_prs: &[TaskPr]) {

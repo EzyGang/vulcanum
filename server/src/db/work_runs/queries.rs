@@ -31,6 +31,12 @@ pub struct InsertWorkRunParams {
     pub review_target_repo_full_name: Option<String>,
 }
 
+#[derive(Debug, Default)]
+pub struct ReviewSiblingSummary {
+    pub active_count: i64,
+    pub failed_count: i64,
+}
+
 impl WorkRunsRepository {
     pub async fn insert_work_run<'c, Q>(
         &self,
@@ -183,6 +189,33 @@ impl WorkRunsRepository {
                 url: row.repo_url,
             })
             .collect())
+    }
+
+    pub async fn review_sibling_summary<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        parent_work_run_id: Uuid,
+        current_work_run_id: Uuid,
+    ) -> Result<ReviewSiblingSummary, WorkRunsError> {
+        let (active_count, failed_count): (i64, i64) = sqlx::query_as(
+            r#"SELECT
+             COUNT(*) FILTER (WHERE status IN ('pending'::work_run_status, 'dispatched'::work_run_status, 'running'::work_run_status)) AS active_count,
+             COUNT(*) FILTER (WHERE status = 'failed'::work_run_status) AS failed_count
+             FROM work_runs
+             WHERE parent_work_run_id = $1
+             AND id != $2
+             AND work_type = 'pull_request_review'::work_run_type"#,
+        )
+        .bind(parent_work_run_id)
+        .bind(current_work_run_id)
+        .fetch_one(db)
+        .await
+        .map_err(WorkRunsError::from)?;
+
+        Ok(ReviewSiblingSummary {
+            active_count,
+            failed_count,
+        })
     }
 
     pub async fn find_by_id<'c, Q: Queryer<'c>>(

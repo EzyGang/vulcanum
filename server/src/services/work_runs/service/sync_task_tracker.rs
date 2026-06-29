@@ -13,6 +13,7 @@ impl WorkRunsService {
         params: &SubmitResultRequest,
         status: WorkRunStatus,
         pr_urls: &[String],
+        has_review_work: bool,
     ) {
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(c) => c,
@@ -66,8 +67,8 @@ impl WorkRunsService {
             false => implementation_result_column(
                 params.finish_status,
                 status,
-                &project_config.pickup_column,
                 &project_config.target_column,
+                has_review_work,
             ),
         };
 
@@ -106,19 +107,21 @@ impl WorkRunsService {
 }
 
 #[must_use]
-pub(crate) fn implementation_result_column<'a>(
+pub(crate) fn implementation_result_column(
     finish_status: Option<FinishStatus>,
     run_status: WorkRunStatus,
-    pickup_column: &'a str,
-    target_column: &'a str,
-) -> Option<&'a str> {
+    target_column: &str,
+    has_review_work: bool,
+) -> Option<&str> {
     match finish_status {
-        Some(FinishStatus::Completed) => Some(target_column),
-        Some(FinishStatus::Failed) => Some(pickup_column),
-        Some(FinishStatus::Blocked) => None,
-        None => match run_status {
-            WorkRunStatus::Completed => Some(target_column),
-            _ => Some(pickup_column),
+        Some(FinishStatus::Completed) => match has_review_work {
+            true => None,
+            false => Some(target_column),
+        },
+        Some(FinishStatus::Failed | FinishStatus::Blocked) => None,
+        None => match (run_status, has_review_work) {
+            (WorkRunStatus::Completed, false) => Some(target_column),
+            _ => None,
         },
     }
 }
