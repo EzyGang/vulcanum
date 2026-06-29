@@ -21,18 +21,6 @@ impl KaneoClient {
         result
     }
 
-    pub async fn fetch_task_labels(&self, task_id: &str) -> Result<Vec<Label>, KaneoError> {
-        let client = self.build_client()?;
-        let path = format!("/label/task/{task_id}");
-
-        let start = std::time::Instant::now();
-        let result = client.get(&path).await.map_err(api_err);
-        let duration_ms = start.elapsed().as_millis() as i64;
-
-        log_kaneo_result("GET", &path, duration_ms, &result);
-        result
-    }
-
     pub async fn create_label(
         &self,
         workspace_id: &str,
