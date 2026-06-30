@@ -88,3 +88,7 @@ export interface TaskLabelResponse {
   taskId: string;
   labelId: string;
 }
+
+export interface TaskLabelDeleteResponse {
+  labelId: string;
+}

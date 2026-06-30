@@ -1,3 +1,4 @@
+use crate::util::serde::deserialize_null_default;
 use kaneo_cli::api::types::Label;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -22,7 +23,7 @@ pub(crate) struct KaneoTask {
     pub updated_at: Option<String>,
     #[serde(default)]
     pub assignee_name: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub labels: Vec<Label>,
 }
 

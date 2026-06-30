@@ -12,6 +12,7 @@ export const projectConfigsQueryKey = ['projects'];
 export const reposQueryKey = ['github-repos'];
 export const taskBoardProjectsQueryKey = ['task-board-projects'];
 export const COLUMN_PAGE_SIZE = 20;
+export const LIFECYCLE_LABELS_HELP_CARD_ID: TaskBoardHelpCard = 'lifecycle-labels';
 
 const HELP_CARD_STORAGE_KEY = 'vulcanum-task-board-dismissed-help-cards';
 export const HELP_CARDS: { id: TaskBoardHelpCard; title: string; body: string }[] = [
@@ -32,7 +33,7 @@ export const HELP_CARDS: { id: TaskBoardHelpCard; title: string; body: string }[
   }
 ];
 
-const HELP_CARD_IDS = HELP_CARDS.map((card) => card.id);
+const HELP_CARD_IDS = [...HELP_CARDS.map((card) => card.id), LIFECYCLE_LABELS_HELP_CARD_ID];
 
 export const readDismissedHelpCards = (): TaskBoardHelpCard[] => {
   if (typeof localStorage === 'undefined') {

@@ -1,6 +1,10 @@
 import { fireEvent, render } from '@testing-library/preact';
 import type { ComponentChildren } from 'preact';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  readDismissedHelpCards,
+  writeDismissedHelpCards
+} from '../components/task-board/hooks/taskBoard.helpers';
 
 vi.mock('../components/shared/ui/Select.view', () => ({
   Select: ({
@@ -123,6 +127,7 @@ const makeProps = (): TaskBoardViewProps => {
     onEditTaskBodyInput: vi.fn(),
     onSubmitTaskEdit: vi.fn((event: Event) => event.preventDefault()),
     onToggleTaskLabel: vi.fn(),
+    onDeleteLabel: vi.fn(),
     onToggleRepo: vi.fn(),
     onFilterRepos: vi.fn(),
     onSettingsPromptInput: vi.fn(),
@@ -185,6 +190,7 @@ const makeProps = (): TaskBoardViewProps => {
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
             moving: false,
             menuOpen: data.actionMenuTaskId === task.id,
+            menuPosition: data.actionMenuTaskId === task.id ? data.actionMenuPosition : null,
             moveActions: statusOptions
               .filter((option) => option.value !== task.status)
               .map((option) => ({
@@ -193,7 +199,7 @@ const makeProps = (): TaskBoardViewProps => {
                 onClick: () => actions.onMoveTask(task.id, option.value)
               })),
             onClick: () => actions.onOpenTask(task),
-            onContextMenu: (event: MouseEvent) => actions.onOpenTaskMenu(event, task.id),
+            onOpenMenu: (event: MouseEvent) => actions.onOpenTaskMenu(event, task.id),
             onDragStart: () => actions.onDragStart(task.id, task.status),
             onDragEnd: actions.onDragEnd,
             onKeyDown: () => actions.onOpenTask(task),
@@ -236,6 +242,7 @@ const makeProps = (): TaskBoardViewProps => {
     createDialogOpen: false,
     settingsDialogOpen: false,
     actionMenuTaskId: null,
+    actionMenuPosition: null,
     visibleTaskCounts: { 'to-do': 20, done: 20 },
     columnRoles: {
       pickupColumn: 'to-do',
@@ -343,6 +350,18 @@ const requireBoard = (props: TaskBoardViewProps) => {
   return props.data.board;
 };
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
+describe('taskBoard.helpers', () => {
+  it('persists dismissed lifecycle labels with other help cards', () => {
+    writeDismissedHelpCards(['proxy', 'lifecycle-labels']);
+
+    expect(readDismissedHelpCards()).toEqual(['proxy', 'lifecycle-labels']);
+  });
+});
+
 describe('TaskBoard.view', () => {
   it('renders provider columns and tasks without task bodies', () => {
     const props = makeProps();
@@ -383,12 +402,12 @@ describe('TaskBoard.view', () => {
     const { queryByText, getByLabelText } = render(<TaskBoardView {...props} />);
 
     expect(queryByText('Mark Done')).toBeNull();
-    fireEvent.click(getByLabelText('Task actions for Create proxy API'));
+    fireEvent.click(getByLabelText('Actions for Create proxy API'));
 
     expect(props.actions.onOpenTaskMenu).toHaveBeenCalledWith(expect.any(Object), 'task-1');
   });
 
-  it('moves a task from the right-click action menu', () => {
+  it('moves a task from the action menu', () => {
     const props = makeProps();
     props.data.actionMenuTaskId = 'task-1';
     const { getByText } = render(<TaskBoardView {...props} />);
@@ -396,6 +415,16 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByText('Mark Done'));
 
     expect(props.actions.onMoveTask).toHaveBeenCalledWith('task-1', 'done');
+  });
+
+  it('does not open the action menu from card right-click', () => {
+    const props = makeProps();
+    const { getByText } = render(<TaskBoardView {...props} />);
+    const card = getByText('Create proxy API').closest('article');
+
+    fireEvent.contextMenu(card as Element);
+
+    expect(props.actions.onOpenTaskMenu).not.toHaveBeenCalled();
   });
 
   it('opens task details through the provided action', () => {
@@ -406,6 +435,17 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByText('Create proxy API'));
 
     expect(props.actions.onOpenTask).toHaveBeenCalledWith(board.columns[0].tasks[0]);
+  });
+
+  it('deletes a provider label from the task details dialog', () => {
+    const props = makeProps();
+    const board = requireBoard(props);
+    props.data.selectedTask = board.columns[0].tasks[0] ?? null;
+
+    const { getByLabelText } = render(<TaskBoardView {...props} />);
+    fireEvent.click(getByLabelText('Delete label Bug'));
+
+    expect(props.actions.onDeleteLabel).toHaveBeenCalledWith('label-1');
   });
 
   it('shows editable task body in the details modal', () => {
@@ -520,6 +560,23 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByText('Automation off'));
 
     expect(props.actions.onToggleAutomation).toHaveBeenCalledOnce();
+  });
+
+  it('dismisses lifecycle labels through the help card action', () => {
+    const props = makeProps();
+    const { getByLabelText } = render(<TaskBoardView {...props} />);
+
+    fireEvent.click(getByLabelText('Dismiss Lifecycle labels help'));
+
+    expect(props.actions.onDismissHelpCard).toHaveBeenCalledWith('lifecycle-labels');
+  });
+
+  it('hides lifecycle labels after dismissal', () => {
+    const props = makeProps();
+    props.data.dismissedHelpCards = ['lifecycle-labels'];
+    const { queryByText } = render(<TaskBoardView {...props} />);
+
+    expect(queryByText('Lifecycle labels')).toBeNull();
   });
 
   it('drops a task onto a column through the provided action', () => {

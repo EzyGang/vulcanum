@@ -33,6 +33,7 @@ interface TaskDetailsDialogProps {
     | 'onEditTaskBodyInput'
     | 'onSubmitTaskEdit'
     | 'onToggleTaskLabel'
+    | 'onDeleteLabel'
   >;
 }
 
@@ -115,10 +116,9 @@ export const TaskDetailsDialog = ({
                       const checkboxId = `task-label-${label.id}`;
 
                       return (
-                        <label
+                        <div
                           key={label.id}
-                          for={checkboxId}
-                          class='flex cursor-pointer items-center gap-2 border border-border-base bg-bg-card p-2 text-xs text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary'
+                          class='flex items-center gap-2 border border-border-base bg-bg-card p-2 text-xs text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary'
                         >
                           <Checkbox
                             id={checkboxId}
@@ -128,12 +128,27 @@ export const TaskDetailsDialog = ({
                               actions.onToggleTaskLabel(label.id, nextChecked)
                             }
                           />
-                          <span
-                            class='size-2 border border-border-base'
-                            style={{ background: label.color }}
-                          />
-                          <span>{label.name}</span>
-                        </label>
+                          <label
+                            for={checkboxId}
+                            class='flex min-w-0 flex-1 cursor-pointer items-center gap-2'
+                          >
+                            <span
+                              class='size-2 shrink-0 border border-border-base'
+                              style={{ background: label.color }}
+                            />
+                            <span class='truncate'>{label.name}</span>
+                          </label>
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            disabled={status.updatingTaskLabel}
+                            aria-label={`Delete label ${label.name}`}
+                            class='shrink-0 px-2 py-1 text-[10px]'
+                            onClick={() => actions.onDeleteLabel(label.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       );
                     })}
                   </div>

@@ -5,6 +5,7 @@ import type {
   TaskBoardColumnRole,
   TaskBoardColumnRoles,
   TaskBoardHelpCard,
+  TaskBoardMenuPosition,
   TaskBoardMoveAction,
   TaskBoardProjectSettingsData,
   TaskBoardRepositorySettingsData,
@@ -23,6 +24,7 @@ export interface UseTaskBoardViewModelInput {
   moving: boolean;
   movingTaskId: string | null;
   actionMenuTaskId: string | null;
+  actionMenuPosition: TaskBoardMenuPosition | null;
   configuringColumns: boolean;
   dropPreviewColumn: string | null;
   automationEnabled: boolean;
@@ -79,6 +81,7 @@ interface BuildTaskBoardColumnsInput {
   moving: boolean;
   movingTaskId: string | null;
   actionMenuTaskId: string | null;
+  actionMenuPosition: TaskBoardMenuPosition | null;
   configuringColumns: boolean;
   dropPreviewColumn: string | null;
   openRoleMenuColumn: string | null;
@@ -159,6 +162,7 @@ export const buildTaskBoardColumns = ({
   moving,
   movingTaskId,
   actionMenuTaskId,
+  actionMenuPosition,
   configuringColumns,
   dropPreviewColumn,
   openRoleMenuColumn,
@@ -190,9 +194,10 @@ export const buildTaskBoardColumns = ({
         createdAtLabel: formatCreatedAt(task.createdAt),
         moving: moving && movingTaskId === task.id,
         menuOpen: actionMenuTaskId === task.id,
+        menuPosition: actionMenuTaskId === task.id ? actionMenuPosition : null,
         moveActions: buildTaskBoardMoveActions(task, statusOptions, onMoveTask),
         onClick: () => onOpenTask(task),
-        onContextMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
+        onOpenMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
         onDragStart: () => onDragStart(task.id, task.status),
         onDragEnd,
         onKeyDown: (event) => {
