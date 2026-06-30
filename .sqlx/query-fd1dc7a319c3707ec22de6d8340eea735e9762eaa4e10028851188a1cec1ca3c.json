@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO teams (id, name, personal_user_id, prompt_template, review_prompt_template)\n             VALUES ($1, $2, $3, $4, $5)\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "UPDATE teams SET\n             name = COALESCE($2, name),\n             prompt_template = COALESCE($3, prompt_template),\n             agents_md = COALESCE($4, agents_md),\n             primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $7 THEN $8 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $9 THEN $10 ELSE small_model_provider_key END,\n             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END,\n             review_enabled = COALESCE($13, review_enabled),\n             review_max_turns = COALESCE($14, review_max_turns),\n             review_prompt_template = COALESCE($15, review_prompt_template),\n             max_in_progress_tasks = COALESCE($16, max_in_progress_tasks),\n             agent_backend = COALESCE($17, agent_backend)\n             WHERE id = $1\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -70,6 +70,11 @@
       },
       {
         "ordinal": 13,
+        "name": "agent_backend",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
@@ -80,6 +85,18 @@
         "Text",
         "Text",
         "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Int4",
+        "Text",
+        "Int4",
         "Text"
       ]
     },
@@ -97,8 +114,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "529a354ee01df6ee36634ba1b185bb16aeb7183c960a121947024de0f40f9363"
+  "hash": "fd1dc7a319c3707ec22de6d8340eea735e9762eaa4e10028851188a1cec1ca3c"
 }

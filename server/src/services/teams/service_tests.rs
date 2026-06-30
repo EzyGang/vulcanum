@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use chrono::{Duration, Utc};
 use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
 
 use crate::db::teams::TeamsRepository;
 use crate::models::auth::model::TeamPrincipal;
@@ -244,6 +245,7 @@ async fn member_cannot_rename_team(pool: sqlx::PgPool) {
                 review_max_turns: None,
                 review_prompt_template: None,
                 max_in_progress_tasks: None,
+                agent_backend: None,
             },
             &TeamPrincipal::User {
                 user_id: member_id.to_owned(),
@@ -254,6 +256,38 @@ async fn member_cannot_rename_team(pool: sqlx::PgPool) {
         .await;
 
     assert!(result.is_err());
+}
+
+#[sqlx::test]
+async fn owner_can_change_team_agent_backend(pool: sqlx::PgPool) {
+    let owner_id = "backend-owner";
+    let team_id = insert_team_with_member(&pool, owner_id, "owner").await;
+    let svc = TeamsService::new(TeamsRepository::new(), pool);
+
+    let team = svc
+        .update_for_principal(
+            team_id,
+            &UpdateTeamRequest {
+                name: None,
+                prompt_template: None,
+                agents_md: None,
+                primary_model_provider_key: None,
+                primary_model_id: None,
+                small_model_provider_key: None,
+                small_model_id: None,
+                review_enabled: None,
+                review_max_turns: None,
+                review_prompt_template: None,
+                max_in_progress_tasks: None,
+                agent_backend: Some(AgentBackend::OmpRpc),
+            },
+            &user_principal(owner_id),
+            false,
+        )
+        .await
+        .expect("owner should update team backend");
+
+    assert_eq!(team.agent_backend, "omp_rpc");
 }
 
 #[sqlx::test]

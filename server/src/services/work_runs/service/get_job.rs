@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use vulcanum_shared::api_types::{AgentBackend, JobResponse, WorkerCapabilities};
+use vulcanum_shared::api_types::JobResponse;
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::work_runs::errors::WorkRunsError;
@@ -14,8 +14,6 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
-        let worker = self.workers_repo.find_by_id(&self.db, worker_id).await?;
-        let agent_backend = worker_agent_backend(&worker.capabilities);
         let config = self.project_configs.find_by_id(run.project_config_id).await;
 
         let cfg = match &config {
@@ -55,7 +53,7 @@ impl WorkRunsService {
             .model_providers
             .render_agent_config_for_team(
                 cfg.team_id,
-                agent_backend,
+                cfg.agent_backend,
                 ModelSelection {
                     primary_provider_key: cfg.primary_model_provider_key.as_deref(),
                     primary_model_id: cfg.primary_model_id.as_deref(),
@@ -70,7 +68,7 @@ impl WorkRunsService {
             prompt_text: run.prompt_text,
             repos,
             agents_md: run.agents_md,
-            agent_backend,
+            agent_backend: cfg.agent_backend,
             agent_config: rendered.agent_config,
             model_provider_env: rendered.env,
             external_task_ref: run.external_task_ref,
@@ -89,14 +87,6 @@ impl WorkRunsService {
             review_target_repo_full_name: run.review_target_repo_full_name,
         })
     }
-}
-
-#[must_use]
-fn worker_agent_backend(capabilities: &serde_json::Value) -> AgentBackend {
-    serde_json::from_value::<WorkerCapabilities>(capabilities.clone())
-        .ok()
-        .and_then(|capabilities| capabilities.agent_backends.first().copied())
-        .unwrap_or_default()
 }
 
 #[must_use]

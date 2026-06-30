@@ -32,6 +32,18 @@ impl AgentBackend {
     }
 }
 
+impl std::str::FromStr for AgentBackend {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "opencode" => Ok(Self::OpenCode),
+            "omp_rpc" => Ok(Self::OmpRpc),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WorkerCapabilities {
     #[serde(default = "default_agent_backends")]

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE teams SET agent_backend = 'omp_rpc' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a6c7b33f3ad26b9f41633e02ff2290b7a3ae29930057f29eba5c5086005e1944"
+}

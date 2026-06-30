@@ -1,3 +1,5 @@
+export type TeamAgentBackend = 'opencode' | 'omp_rpc';
+
 export interface Team {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ export interface Team {
   reviewMaxTurns: number;
   reviewPromptTemplate: string;
   maxInProgressTasks: number;
+  agentBackend: TeamAgentBackend;
   createdAt: string;
 }
 
@@ -45,6 +48,7 @@ export interface UpdateTeamRequest {
   reviewMaxTurns?: number;
   reviewPromptTemplate?: string;
   maxInProgressTasks?: number;
+  agentBackend?: TeamAgentBackend;
 }
 
 export interface CreateTeamInviteResponse {

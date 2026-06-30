@@ -10,6 +10,7 @@ import {
   listModelProviders
 } from '../../../services/model-providers/model-providers.service';
 import { getTeam, getTeamDefaults, updateTeam } from '../../../services/teams/teams.service';
+import type { TeamAgentBackend } from '../../../types/teams';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
@@ -22,6 +23,7 @@ export const useTeamDefaults = (teamId: string | null) => {
   const primaryModelId = useSignal('');
   const smallModelProviderKey = useSignal('');
   const smallModelId = useSignal('');
+  const agentBackend = useSignal<TeamAgentBackend>('opencode');
   const reviewEnabled = useSignal(false);
   const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewPromptTemplate = useSignal('');
@@ -57,6 +59,7 @@ export const useTeamDefaults = (teamId: string | null) => {
     primaryModelId.value = team.primaryModelId ?? '';
     smallModelProviderKey.value = team.smallModelProviderKey ?? '';
     smallModelId.value = team.smallModelId ?? '';
+    agentBackend.value = team.agentBackend;
     reviewEnabled.value = team.reviewEnabled;
     reviewMaxTurns.value = team.reviewMaxTurns;
     reviewPromptTemplate.value = promptTemplateOrDefault(
@@ -97,6 +100,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       reviewMaxTurns,
       reviewPromptTemplate,
       maxInProgressTasks,
+      agentBackend,
       connectedProviderItems,
       primaryModelItems,
       smallModelItems
@@ -122,6 +126,9 @@ export const useTeamDefaults = (teamId: string | null) => {
       },
       onSmallModelChange: (value: string) => {
         smallModelId.value = value;
+      },
+      onAgentBackendChange: (value: string) => {
+        agentBackend.value = value as TeamAgentBackend;
       },
       onReviewEnabledChange: (checked: boolean) => {
         reviewEnabled.value = checked;
@@ -165,7 +172,8 @@ export const useTeamDefaults = (teamId: string | null) => {
               reviewPromptTemplate.value,
               teamDefaults?.reviewPromptTemplate
             ),
-            maxInProgressTasks: maxInProgressTasks.value
+            maxInProgressTasks: maxInProgressTasks.value,
+            agentBackend: agentBackend.value
           });
         } catch (err) {
           formError.value = err instanceof Error ? err.message : 'Failed to update team defaults';

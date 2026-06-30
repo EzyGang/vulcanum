@@ -24,7 +24,7 @@ impl TeamsRepository {
              VALUES ($1, $2, $3, $4, $5)
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
-              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
@@ -48,7 +48,7 @@ impl TeamsRepository {
              VALUES ($1, $2, $3, $4)
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
-              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
@@ -68,7 +68,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
-             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE id = $1"#,
             team_id,
@@ -108,7 +108,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
-             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE personal_user_id = $1"#,
             user_id,
@@ -179,7 +179,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT t.id, t.name, t.personal_user_id, t.prompt_template, t.agents_md, t.primary_model_provider_key,
              t.primary_model_id, t.small_model_provider_key, t.small_model_id,
-             t.review_enabled, t.review_max_turns, t.review_prompt_template, t.max_in_progress_tasks,
+             t.review_enabled, t.review_max_turns, t.review_prompt_template, t.max_in_progress_tasks, t.agent_backend,
              t.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams t
              INNER JOIN team_members tm ON tm.team_id = t.id
@@ -200,7 +200,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
-             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams
              ORDER BY created_at ASC"#,
@@ -218,7 +218,7 @@ impl TeamsRepository {
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
              primary_model_id, small_model_provider_key, small_model_id,
-             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams ORDER BY created_at ASC LIMIT 1"#,
         )
