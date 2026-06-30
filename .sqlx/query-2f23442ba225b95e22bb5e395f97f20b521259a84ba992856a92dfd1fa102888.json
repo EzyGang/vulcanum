@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE id = $1",
+  "query": "SELECT t.id, t.name, t.personal_user_id, t.prompt_template, t.agents_md, t.primary_model_provider_key,\n             t.primary_model_id, t.small_model_provider_key, t.small_model_id,\n             t.review_enabled, t.review_max_turns, t.review_prompt_template, t.max_in_progress_tasks, t.agent_backend,\n             t.created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams t\n             INNER JOIN team_members tm ON tm.team_id = t.id\n             WHERE tm.user_id = $1\n             ORDER BY t.created_at ASC",
   "describe": {
     "columns": [
       {
@@ -70,13 +70,18 @@
       },
       {
         "ordinal": 13,
+        "name": "agent_backend",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
@@ -93,8 +98,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "7b532cd00414c9ee83fd0c375e4f8ed2144dee1c6ac1f8642909254d9eb10421"
+  "hash": "2f23442ba225b95e22bb5e395f97f20b521259a84ba992856a92dfd1fa102888"
 }

@@ -3,6 +3,7 @@ use crate::models::github_app::errors::GithubAppError;
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::teams::errors::TeamsError;
+use crate::models::workers::errors::WorkersError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorkRunsError {
@@ -28,4 +29,6 @@ pub enum WorkRunsError {
     ProjectConfig(#[from] ProjectConfigsError),
     #[error("team error: {0}")]
     Team(#[from] TeamsError),
+    #[error("worker error: {0}")]
+    Worker(#[from] WorkersError),
 }

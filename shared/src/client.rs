@@ -5,7 +5,7 @@ use crate::api_error::ApiError;
 use crate::api_types::{
     AckRequest, AppendEventsRequest, AppendEventsResponse, ConnectRequest, ConnectResponse,
     JobResponse, PollResponse, RefreshGithubTokenResponse, RefreshRequest, RefreshResponse,
-    StatusResponse, SubmitResultRequest, WireEvent,
+    StatusResponse, SubmitResultRequest, WireEvent, WorkerCapabilities,
 };
 
 #[derive(Clone)]
@@ -33,12 +33,14 @@ impl ApiClient {
         code: &str,
         worker_name: &str,
         max_concurrent_jobs: Option<i32>,
+        capabilities: WorkerCapabilities,
     ) -> anyhow::Result<ConnectResponse> {
         let url = format!("{}/api/v1/workers/connect", self.base_url);
         let body = ConnectRequest {
             code: code.to_owned(),
             worker_name: worker_name.to_owned(),
             max_concurrent_jobs,
+            capabilities,
         };
         let resp = self
             .http

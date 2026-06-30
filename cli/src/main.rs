@@ -41,9 +41,11 @@ enum WorkerCommand {
         /// Force re-registration even if already connected
         #[arg(long)]
         force: bool,
-        /// Isolation backend to use (kata, docker, or none)
         #[arg(long, value_enum)]
         isolation: Option<IsolationBackend>,
+        /// Agent backend to use (opencode or omp-rpc)
+        #[arg(long, value_enum)]
+        agent_backend: Option<AgentBackendArg>,
     },
 }
 
@@ -52,6 +54,12 @@ enum IsolationBackend {
     Kata,
     Docker,
     None,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub(crate) enum AgentBackendArg {
+    Opencode,
+    OmpRpc,
 }
 
 #[tokio::main]
@@ -69,7 +77,8 @@ async fn main() -> anyhow::Result<()> {
                 code,
                 force,
                 isolation,
-            } => commands::setup::run(code, instance, force, isolation).await,
+                agent_backend,
+            } => commands::setup::run(code, instance, force, isolation, agent_backend).await,
         },
     }
 }

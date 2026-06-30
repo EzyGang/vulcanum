@@ -16,8 +16,8 @@ impl WorkRunsService {
 
         let config = self.project_configs.find_by_id(run.project_config_id).await;
 
-        let cfg = match config {
-            Ok(ref c) => {
+        let cfg = match &config {
+            Ok(c) => {
                 let settings = self.project_configs.effective_settings(c).await?;
                 c.job_fields(settings)
             }
@@ -51,8 +51,9 @@ impl WorkRunsService {
 
         let rendered = self
             .model_providers
-            .render_opencode_config_for_team(
+            .render_agent_config_for_team(
                 cfg.team_id,
+                cfg.agent_backend,
                 ModelSelection {
                     primary_provider_key: cfg.primary_model_provider_key.as_deref(),
                     primary_model_id: cfg.primary_model_id.as_deref(),
@@ -67,9 +68,9 @@ impl WorkRunsService {
             prompt_text: run.prompt_text,
             repos,
             agents_md: run.agents_md,
-            generated_opencode_config: rendered.opencode_config,
+            agent_backend: cfg.agent_backend,
+            agent_config: rendered.agent_config,
             model_provider_env: rendered.env,
-            opencode_auth_content: rendered.opencode_auth_content,
             external_task_ref: run.external_task_ref,
             provider_instance_url,
             provider_api_key,

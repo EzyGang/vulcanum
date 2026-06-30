@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use vulcanum_shared::api_types::{JobRepo, WorkRunType};
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -53,7 +53,8 @@ impl IsolationProvider for DockerIsolation {
         limits: &ResourceLimits,
         work_type: WorkRunType,
         agents_md: &str,
-        generated_opencode_config: &str,
+        agent_backend: AgentBackend,
+        agent_config: &AgentConfigPayload,
         repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, HarnessError> {
         self.ensure_image().await?;
@@ -62,8 +63,8 @@ impl IsolationProvider for DockerIsolation {
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        workspace::write_env_files(workdir, agents_md, generated_opencode_config).await?;
-        workspace::write_finish_run_tool(workdir, work_type).await?;
+        workspace::write_agent_files(workdir, agents_md, agent_backend, agent_config, work_type)
+            .await?;
 
         let github_credentials = github_credentials::setup(
             workdir,
@@ -72,7 +73,8 @@ impl IsolationProvider for DockerIsolation {
         )
         .await?;
         let workspace_repos =
-            workspace::prepare_repos(workdir, repos, &github_credentials.host_env).await?;
+            workspace::prepare_repos(workdir, repos, &github_credentials.host_env, agent_backend)
+                .await?;
 
         let container_name = workspace::container_name(workdir);
 
@@ -80,13 +82,27 @@ impl IsolationProvider for DockerIsolation {
         let mut combined_env: HashMap<String, String> = sanitized_secrets.clone();
         combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
         combined_env.insert(
-            "OPENCODE_CONFIG".to_owned(),
-            "/workdir/home/.config/opencode/opencode.json".to_owned(),
+            "FINISH_ARTIFACT_PATH".to_owned(),
+            "/workdir/home/finish_artifact.json".to_owned(),
         );
-        combined_env.insert(
-            "OPENCODE_CONFIG_DIR".to_owned(),
-            "/workdir/home/.config/opencode".to_owned(),
-        );
+        match agent_backend {
+            AgentBackend::OpenCode => {
+                combined_env.insert(
+                    "OPENCODE_CONFIG".to_owned(),
+                    "/workdir/home/.config/opencode/opencode.json".to_owned(),
+                );
+                combined_env.insert(
+                    "OPENCODE_CONFIG_DIR".to_owned(),
+                    "/workdir/home/.config/opencode".to_owned(),
+                );
+            }
+            AgentBackend::OmpRpc => {
+                combined_env.extend(workspace::omp_environment_vars(
+                    "/workdir/home",
+                    "/workdir/tmp",
+                ));
+            }
+        }
         combined_env.extend(github_credentials.runtime_env);
 
         Ok(IsolatedEnvironment {

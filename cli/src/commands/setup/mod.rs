@@ -1,7 +1,9 @@
-use vulcanum_shared::validate::{validate_environment_for_backend, Severity};
+use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::validate::Severity;
 use vulcanum_shared::worker_state;
 
 use crate::console;
+use crate::AgentBackendArg;
 
 use connect::{connect_worker, verify_connection};
 use prompts::resolve_backend;
@@ -21,6 +23,7 @@ pub async fn run(
     instance: Option<String>,
     force: bool,
     isolation: Option<crate::IsolationBackend>,
+    agent_backend: Option<AgentBackendArg>,
 ) -> anyhow::Result<()> {
     console::info("Checking prerequisites...");
     host::has_sudo_access()?;
@@ -34,6 +37,7 @@ pub async fn run(
     let mut config = vulcanum_shared::config::load_config()
         .unwrap_or_else(|_| vulcanum_shared::config::WorkerConfig::default());
     config.harness = backend.harness_name().to_owned();
+    config.agent_backend = selected_agent_backend(agent_backend);
     vulcanum_shared::config::save_config(&config)?;
 
     match backend {
@@ -54,7 +58,7 @@ pub async fn run(
 
     eprintln!();
     console::info("Running final environment validation...");
-    let issues = validate_environment_for_backend(backend.harness_name());
+    let issues = vulcanum_shared::validate::validate_environment_for_config(&config);
 
     let mut critical = 0;
     let mut warnings = 0;
@@ -152,5 +156,12 @@ impl Backend {
             Self::Docker => "docker",
             Self::None => "host",
         }
+    }
+}
+
+fn selected_agent_backend(agent_backend: Option<AgentBackendArg>) -> AgentBackend {
+    match agent_backend {
+        Some(AgentBackendArg::OmpRpc) => AgentBackend::OmpRpc,
+        Some(AgentBackendArg::Opencode) | None => AgentBackend::OpenCode,
     }
 }

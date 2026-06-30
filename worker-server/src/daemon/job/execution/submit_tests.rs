@@ -57,6 +57,12 @@ fn submit_result_from_journal_replays_stored_result() {
         max_turns: Some(3),
         host_pid: None,
         host_port: None,
+        agent_backend: Some("opencode".to_owned()),
+        agent_session_path: None,
+        agent_config_dir: None,
+        agent_state_dir: None,
+        agent_transport: None,
+        agent_pid: None,
     };
 
     let request = submit_result_from_journal(&entry);

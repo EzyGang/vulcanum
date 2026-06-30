@@ -1,8 +1,105 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::runtime::types::FinishStatus;
+
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentBackend {
+    #[default]
+    OpenCode,
+    OmpRpc,
+}
+
+impl AgentBackend {
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::OpenCode => "opencode",
+            Self::OmpRpc => "omp_rpc",
+        }
+    }
+
+    #[must_use]
+    pub fn binary_name(&self) -> &'static str {
+        match self {
+            Self::OpenCode => "opencode",
+            Self::OmpRpc => "omp",
+        }
+    }
+}
+
+impl std::str::FromStr for AgentBackend {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "opencode" => Ok(Self::OpenCode),
+            "omp_rpc" => Ok(Self::OmpRpc),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct WorkerCapabilities {
+    #[serde(default = "default_agent_backends")]
+    pub agent_backends: Vec<AgentBackend>,
+    #[serde(default)]
+    pub isolation_backends: Vec<String>,
+}
+
+impl Default for WorkerCapabilities {
+    fn default() -> Self {
+        Self {
+            agent_backends: default_agent_backends(),
+            isolation_backends: Vec::new(),
+        }
+    }
+}
+
+impl WorkerCapabilities {
+    #[must_use]
+    pub fn supports_agent_backend(&self, backend: AgentBackend) -> bool {
+        self.agent_backends.contains(&backend)
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OpenCodeProviderConfig {
+    pub options: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "backend", rename_all = "snake_case")]
+pub enum AgentConfigPayload {
+    OpenCode {
+        providers: HashMap<String, OpenCodeProviderConfig>,
+        model: Option<String>,
+        small_model: Option<String>,
+        auth_content: Option<String>,
+    },
+    OmpRpc {
+        config_yml: Option<String>,
+    },
+}
+
+impl AgentConfigPayload {
+    #[must_use]
+    pub fn backend(&self) -> AgentBackend {
+        match self {
+            Self::OpenCode { .. } => AgentBackend::OpenCode,
+            Self::OmpRpc { .. } => AgentBackend::OmpRpc,
+        }
+    }
+}
+
+fn default_agent_backends() -> Vec<AgentBackend> {
+    vec![AgentBackend::OpenCode]
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -16,6 +113,8 @@ pub struct ConnectRequest {
     pub code: String,
     pub worker_name: String,
     pub max_concurrent_jobs: Option<i32>,
+    #[serde(default)]
+    pub capabilities: WorkerCapabilities,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,9 +160,9 @@ pub struct JobResponse {
     pub prompt_text: String,
     pub repos: Vec<JobRepo>,
     pub agents_md: String,
-    pub generated_opencode_config: String,
-    pub model_provider_env: std::collections::HashMap<String, String>,
-    pub opencode_auth_content: Option<String>,
+    pub agent_backend: AgentBackend,
+    pub agent_config: AgentConfigPayload,
+    pub model_provider_env: HashMap<String, String>,
     pub external_task_ref: String,
     pub provider_instance_url: String,
     pub provider_api_key: String,

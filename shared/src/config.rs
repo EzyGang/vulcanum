@@ -3,6 +3,7 @@ use std::io::Write;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+use crate::api_types::AgentBackend;
 use crate::paths;
 
 fn default_harness() -> String {
@@ -24,6 +25,8 @@ pub struct WorkerConfig {
     #[serde(default = "default_image")]
     pub image: String,
     #[serde(default)]
+    pub agent_backend: AgentBackend,
+    #[serde(default)]
     pub log_format: Option<String>,
     #[serde(default)]
     pub debug: bool,
@@ -36,6 +39,7 @@ impl Default for WorkerConfig {
         Self {
             harness: default_harness(),
             image: default_image(),
+            agent_backend: AgentBackend::OpenCode,
             log_format: None,
             debug: false,
             poll_interval_secs: default_poll_interval(),

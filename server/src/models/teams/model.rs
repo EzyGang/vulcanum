@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
 
 use crate::util::serde::deserialize_nullable_string;
 
@@ -76,6 +77,7 @@ pub struct Team {
     pub review_max_turns: i32,
     pub review_prompt_template: String,
     pub max_in_progress_tasks: i32,
+    pub agent_backend: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -125,6 +127,8 @@ pub struct UpdateTeamRequest {
     pub review_prompt_template: Option<String>,
     #[serde(default)]
     pub max_in_progress_tasks: Option<i32>,
+    #[serde(default)]
+    pub agent_backend: Option<AgentBackend>,
 }
 
 #[derive(Debug, Clone, Serialize)]

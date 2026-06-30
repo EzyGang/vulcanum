@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE teams SET\n             name = COALESCE($2, name),\n             prompt_template = COALESCE($3, prompt_template),\n             agents_md = COALESCE($4, agents_md),\n             primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $7 THEN $8 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $9 THEN $10 ELSE small_model_provider_key END,\n             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END,\n             review_enabled = COALESCE($13, review_enabled),\n             review_max_turns = COALESCE($14, review_max_turns),\n             review_prompt_template = COALESCE($15, review_prompt_template),\n             max_in_progress_tasks = COALESCE($16, max_in_progress_tasks)\n             WHERE id = $1\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams ORDER BY created_at ASC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -70,29 +70,17 @@
       },
       {
         "ordinal": 13,
+        "name": "agent_backend",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Int4",
-        "Text",
-        "Int4"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -108,8 +96,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "80b3d93b5b956fac7b42d5d8b68f0fc83d9c3114c352f4bd1afae8668901d484"
+  "hash": "71bcc9446854aea4752d172882801c69470444273d2908e9d62726ec5cbbb008"
 }

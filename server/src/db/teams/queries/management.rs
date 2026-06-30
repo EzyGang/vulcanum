@@ -45,6 +45,7 @@ impl TeamsRepository {
         review_max_turns: Option<i32>,
         review_prompt_template: Option<&str>,
         max_in_progress_tasks: Option<i32>,
+        agent_backend: Option<&str>,
     ) -> Result<Team, TeamsError>
     where
         Q: Queryer<'c>,
@@ -62,11 +63,12 @@ impl TeamsRepository {
              review_enabled = COALESCE($13, review_enabled),
              review_max_turns = COALESCE($14, review_max_turns),
              review_prompt_template = COALESCE($15, review_prompt_template),
-             max_in_progress_tasks = COALESCE($16, max_in_progress_tasks)
+             max_in_progress_tasks = COALESCE($16, max_in_progress_tasks),
+             agent_backend = COALESCE($17, agent_backend)
              WHERE id = $1
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
-              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
+              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             team_id,
             name,
@@ -84,6 +86,7 @@ impl TeamsRepository {
             review_max_turns,
             review_prompt_template,
             max_in_progress_tasks,
+            agent_backend,
         )
         .fetch_optional(db)
         .await?

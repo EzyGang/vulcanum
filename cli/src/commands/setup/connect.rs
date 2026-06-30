@@ -15,7 +15,9 @@ pub async fn verify_connection() -> anyhow::Result<()> {
 }
 
 pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
+    use vulcanum_shared::api_types::WorkerCapabilities;
     use vulcanum_shared::client::{probe_url_with_scheme_fallback, ApiClient};
+    use vulcanum_shared::config::load_config;
     use vulcanum_shared::worker_state::{save_state, WorkerState};
 
     let raw_instance = match instance {
@@ -39,11 +41,16 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
         .and_then(|h| h.to_str().map(|s| s.to_owned()))
         .unwrap_or_else(|| "unnamed-worker".to_owned());
 
+    let config = load_config().unwrap_or_default();
+    let capabilities = WorkerCapabilities {
+        agent_backends: vec![config.agent_backend],
+        isolation_backends: vec![config.harness],
+    };
     let client = ApiClient::new(&resolved_url);
     let max_concurrent_jobs = host::calculate_worker_capacity();
 
     let resp = client
-        .connect(&code, &worker_name, Some(max_concurrent_jobs))
+        .connect(&code, &worker_name, Some(max_concurrent_jobs), capabilities)
         .await?;
 
     let state = WorkerState {

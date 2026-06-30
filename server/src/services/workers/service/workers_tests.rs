@@ -9,7 +9,9 @@ use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::service::WorkersService;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 use chrono::{Duration, Utc};
-use vulcanum_shared::api_types::{ConnectRequest, RefreshRequest};
+use vulcanum_shared::api_types::{
+    AgentBackend, ConnectRequest, RefreshRequest, WorkerCapabilities,
+};
 
 fn cfg() -> AppConfig {
     AppConfig {
@@ -69,6 +71,7 @@ async fn connect_with_valid_code_creates_worker(pool: sqlx::PgPool) {
             code: code.code,
             worker_name: "test-runner".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .expect("Should connect");
@@ -91,11 +94,43 @@ async fn connect_with_capacity_creates_worker_with_capacity(pool: sqlx::PgPool) 
             code: code.code,
             worker_name: "capacity-runner".to_owned(),
             max_concurrent_jobs: Some(2),
+            capabilities: Default::default(),
         })
         .await
         .expect("Should connect");
 
     assert_eq!(resp.max_concurrent_jobs, 2);
+}
+
+#[sqlx::test]
+async fn connect_persists_worker_capabilities(pool: sqlx::PgPool) {
+    let svc = svc(pool.clone()).await;
+    let code = svc
+        .generate_code(DEFAULT_TEAM_ID)
+        .await
+        .expect("should generate");
+    let capabilities = WorkerCapabilities {
+        agent_backends: vec![AgentBackend::OmpRpc],
+        isolation_backends: vec!["host".to_owned(), "docker".to_owned()],
+    };
+
+    let resp = svc
+        .connect(ConnectRequest {
+            code: code.code,
+            worker_name: "omp-runner".to_owned(),
+            max_concurrent_jobs: None,
+            capabilities: capabilities.clone(),
+        })
+        .await
+        .expect("Should connect");
+
+    let worker = WorkersRepository::new()
+        .find_by_id(&pool, resp.worker_id)
+        .await
+        .expect("worker exists");
+    let stored: WorkerCapabilities =
+        serde_json::from_value(worker.capabilities).expect("capabilities deserialize");
+    assert_eq!(stored, capabilities);
 }
 
 #[sqlx::test]
@@ -106,6 +141,7 @@ async fn connect_with_invalid_code_fails(pool: sqlx::PgPool) {
             code: "badcode".to_owned(),
             worker_name: "x".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .expect_err("Should fail");
@@ -131,6 +167,7 @@ async fn connect_with_expired_code_fails(pool: sqlx::PgPool) {
             code: "expired".to_owned(),
             worker_name: "x".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .expect_err("Should fail");
@@ -150,6 +187,7 @@ async fn refresh_rotates_token(pool: sqlx::PgPool) {
             code: code.code,
             worker_name: "refresh-test".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .unwrap();
@@ -181,6 +219,7 @@ async fn refresh_old_token_revoked(pool: sqlx::PgPool) {
             code: code.code,
             worker_name: "rotation-test".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .unwrap();

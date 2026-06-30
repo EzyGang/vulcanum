@@ -10,7 +10,7 @@ use uuid::Uuid;
 use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::WorkerConfig;
-use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
+use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
@@ -22,7 +22,7 @@ use super::prompts::text::initial_prompt;
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::factory::create_isolation_provider;
-use crate::providers::opencode::{self, api};
+use crate::providers::runtime::AgentRuntimeKind;
 use crate::state::journal::{Journal, JournalEntry, JournalStatus};
 use crate::storage::messages::MessageStore;
 
@@ -136,14 +136,15 @@ pub(crate) async fn handle_job(
 
     let max_turns = job.max_turns.max(1);
     let started_at = Utc::now();
-    if let Err(e) = journal.insert_job(
+    if let Err(e) = journal.insert_job(crate::state::journal::JournalInsert {
         job_id,
-        &workdir_str,
-        container_name.as_deref(),
+        workdir: &workdir_str,
+        container_name: container_name.as_deref(),
         harness_type,
         started_at,
         max_turns,
-    ) {
+        agent_backend: job.agent_backend.as_str(),
+    }) {
         match journal.find_by_id(job_id) {
             Ok(Some(entry)) => {
                 tracing::warn!(
@@ -210,14 +211,18 @@ pub(crate) async fn handle_job(
         job.external_workspace_id,
     );
     secrets.insert("EXTERNAL_TASK_ID".to_owned(), job.external_task_ref.clone());
-    if let Some(ref token) = job.github_token {
+    if let Some(token) = &job.github_token {
         secrets.insert("GITHUB_TOKEN".to_owned(), token.clone());
     }
     for (key, value) in &job.model_provider_env {
         secrets.insert(key.clone(), value.clone());
     }
-    if let Some(auth_content) = job.opencode_auth_content {
-        secrets.insert("OPENCODE_AUTH_CONTENT".to_owned(), auth_content);
+    if let vulcanum_shared::api_types::AgentConfigPayload::OpenCode {
+        auth_content: Some(auth_content),
+        ..
+    } = &job.agent_config
+    {
+        secrets.insert("OPENCODE_AUTH_CONTENT".to_owned(), auth_content.clone());
     }
     let env_vars = HashMap::new();
 
@@ -229,7 +234,8 @@ pub(crate) async fn handle_job(
             &limits,
             job.work_type,
             &job.agents_md,
-            &job.generated_opencode_config,
+            job.agent_backend,
+            &job.agent_config,
             &job.repos,
         )
         .await
@@ -301,7 +307,7 @@ pub(crate) async fn handle_job(
         &crate::isolation::workspace::workspace_prompt_prefix(&isolated_env.repos),
         &job.prompt_text,
     );
-    let runtime = crate::providers::opencode::runtime::OpenCodeServeRuntime::new();
+    let runtime = AgentRuntimeKind::new(job.agent_backend);
     let mut running_session: Box<dyn RunningSession> =
         match runtime.execute(&prompt_text, &isolated_env).await {
             Ok(session) => session,
@@ -341,6 +347,20 @@ pub(crate) async fn handle_job(
     if let Some((pid, port)) = running_session.host_server_info() {
         let _ = journal.set_host_info(job_id, pid.into(), port.into());
     }
+    let _ = journal.set_agent_metadata(
+        job_id,
+        running_session.agent_session_path(),
+        isolated_env
+            .env_vars
+            .get("PI_CONFIG_HOME")
+            .map(String::as_str),
+        isolated_env
+            .env_vars
+            .get("PI_STATE_HOME")
+            .map(String::as_str),
+        Some(job.agent_backend.as_str()),
+        running_session.agent_pid().map(i64::from),
+    );
 
     let artifact_path = workdir.join("home").join("finish_artifact.json");
 
@@ -379,13 +399,9 @@ pub(crate) async fn handle_job(
     }
     let _ = heartbeat_stop.send(true);
 
-    if let (Some(sid), Some(base_url)) = (
-        running_session.session_id(),
-        running_session.agent_base_url(),
-    ) {
-        let oc_client = opencode::OpenCodeClient::new(base_url);
-        match api::get_session_messages(&oc_client, sid, None).await {
-            Ok(messages) => match MessageStore::new() {
+    if let Some(sid) = running_session.session_id() {
+        match running_session.export_messages().await {
+            Ok(Some(messages)) => match MessageStore::new() {
                 Ok(store) => {
                     let _ = store.save(job_id, sid, &messages);
                 }
@@ -393,8 +409,9 @@ pub(crate) async fn handle_job(
                     tracing::warn!(work_run_id = %job_id, error = %e, "failed to create message store");
                 }
             },
+            Ok(None) => (),
             Err(e) => {
-                tracing::warn!(work_run_id = %job_id, error = %e, "failed to fetch session messages");
+                tracing::warn!(work_run_id = %job_id, error = %e, "failed to export session messages");
             }
         }
     }

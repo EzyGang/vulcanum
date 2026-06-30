@@ -22,8 +22,9 @@ pub(super) fn cleanup_stale_job(entry: &JournalEntry) {
 }
 
 pub(crate) fn kill_host_process_group(entry: &JournalEntry) {
-    let Some(pid) = entry.host_pid else {
-        return;
+    let pid = match entry.host_pid.or(entry.agent_pid) {
+        Some(pid) => pid,
+        None => return,
     };
     let _ = std::process::Command::new("kill")
         .args(["-9", &format!("-{pid}")])

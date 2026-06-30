@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
 
 use crate::db::teams::TeamsRepository;
 use crate::models::auth::model::TeamPrincipal;
@@ -141,6 +142,7 @@ impl TeamsService {
                 params.review_max_turns,
                 params.review_prompt_template.as_deref(),
                 params.max_in_progress_tasks,
+                params.agent_backend.as_ref().map(AgentBackend::as_str),
             )
             .await
     }

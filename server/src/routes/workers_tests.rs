@@ -108,6 +108,7 @@ async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
             code: code.code,
             worker_name: "rt-handler".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .unwrap();
@@ -169,6 +170,7 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
             code: code.code,
             worker_name: "delete-me".to_owned(),
             max_concurrent_jobs: None,
+            capabilities: Default::default(),
         })
         .await
         .unwrap();

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams ORDER BY created_at ASC LIMIT 1",
+  "query": "INSERT INTO teams (id, name, personal_user_id, prompt_template, review_prompt_template)\n             VALUES ($1, $2, $3, $4, $5)\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -70,12 +70,23 @@
       },
       {
         "ordinal": 13,
+        "name": "agent_backend",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -91,8 +102,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "b2fb471106e548194aae7b623c7bce6f5412d14b67e0252db74b9682a4393f6e"
+  "hash": "0390f523fc5af52fa22b1beab5fb97fc8a50b8c8d89f3f734f6bba11b8ac2564"
 }

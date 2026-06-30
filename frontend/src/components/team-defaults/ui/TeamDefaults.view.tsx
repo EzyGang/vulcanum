@@ -2,6 +2,7 @@ import type { Signal } from '@preact/signals';
 import { IconDeviceFloppy } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../../types/shared';
+import type { TeamAgentBackend } from '../../../types/teams';
 import { Button } from '../../shared/ui/Button.view';
 import { CheckboxWithLabel } from '../../shared/ui/CheckboxWithLabel.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
@@ -25,6 +26,8 @@ interface TeamDefaultsViewProps {
     reviewMaxTurns: Signal<number>;
     reviewPromptTemplate: Signal<string>;
     maxInProgressTasks: Signal<number>;
+    agentBackend: Signal<TeamAgentBackend>;
+    agentBackendItems: SelectOption[];
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
     smallModelItems: SelectOption[];
@@ -41,6 +44,7 @@ interface TeamDefaultsViewProps {
     onPrimaryModelChange: (value: string) => void;
     onSmallProviderChange: (value: string) => void;
     onSmallModelChange: (value: string) => void;
+    onAgentBackendChange: (value: string) => void;
     onReviewEnabledChange: (checked: boolean) => void;
     onReviewMaxTurnsInput: (event: Event) => void;
     onReviewPromptTemplateInput: (event: Event) => void;
@@ -80,6 +84,24 @@ const ModelSelectionFields = ({
   actions
 }: Pick<TeamDefaultsViewProps, 'data' | 'status' | 'actions'>): JSX.Element => (
   <div class='grid grid-cols-1 gap-4 xl:grid-cols-2'>
+    <div class='flex flex-col gap-2 border border-border-base bg-bg-card p-4 xl:col-span-2'>
+      <span class='text-xs font-medium uppercase tracking-wider text-accent'>
+        Implementation runtime
+      </span>
+      <Label for='team-agent-backend'>Agent Backend</Label>
+      <Select
+        id='team-agent-backend'
+        value={data.agentBackend.value}
+        onValueChange={actions.onAgentBackendChange}
+        disabled={status.saving}
+        placeholder='Select an agent backend...'
+        items={data.agentBackendItems}
+      />
+      <p class='text-xs leading-relaxed text-text-muted'>
+        New implementation and review runs use the selected worker runtime.
+      </p>
+    </div>
+
     <div class='flex flex-col gap-2 border border-border-base bg-bg-card p-4'>
       <span class='text-xs font-medium uppercase tracking-wider text-accent'>Primary runtime</span>
       <div class='flex flex-col gap-2'>

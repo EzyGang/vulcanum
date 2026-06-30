@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE personal_user_id = $1",
+  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE personal_user_id = $1",
   "describe": {
     "columns": [
       {
@@ -70,6 +70,11 @@
       },
       {
         "ordinal": 13,
+        "name": "agent_backend",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
@@ -93,8 +98,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "af56153c2f08b6d01d1286a1bee1f353b3e56489e6f8a96234b8122881be0564"
+  "hash": "41e64cda1a845e53d6de6605f9611b35e3af5ff4d1e59383ecd20232a880bc36"
 }

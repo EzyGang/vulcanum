@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
 
 use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
@@ -434,12 +435,20 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     .execute(&pool)
     .await
     .expect("Should assign worker");
+    sqlx::query!(
+        "UPDATE teams SET agent_backend = 'omp_rpc' WHERE id = $1",
+        test_helpers::DEFAULT_TEAM_ID,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should set team backend");
 
     let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
 
     assert_eq!(job.external_task_ref, "task-get");
     assert_eq!(job.prompt_text, "Review the PR");
     assert!(job.repos.is_empty());
+    assert_eq!(job.agent_backend, AgentBackend::OmpRpc);
 }
 
 #[sqlx::test]

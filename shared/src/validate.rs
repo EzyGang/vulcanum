@@ -1,5 +1,8 @@
 use std::path::PathBuf;
 
+use crate::api_types::AgentBackend;
+use crate::config::WorkerConfig;
+
 /// Severity of a validation issue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
@@ -14,24 +17,44 @@ pub struct ValidationIssue {
     pub message: String,
 }
 
-/// Runs all environment checks for a specific backend and returns a list of issues.
-pub fn validate_environment_for_backend(backend: &str) -> Vec<ValidationIssue> {
+/// Runs all environment checks for a specific isolation backend and agent backend.
+pub fn validate_environment(
+    isolation_backend: &str,
+    agent_backend: AgentBackend,
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     check_binary("docker", &mut issues, Severity::Warning);
 
-    match backend {
+    match isolation_backend {
         "kata" => {
             check_kvm(&mut issues);
             check_binary("kata-runtime", &mut issues, Severity::Warning);
         }
         "docker" => (),
         _ => {
-            check_binary("opencode", &mut issues, Severity::Warning);
+            check_binary(agent_backend.binary_name(), &mut issues, Severity::Warning);
         }
     }
 
     issues
+}
+
+/// Runs all environment checks for a worker configuration.
+pub fn validate_environment_for_config(config: &WorkerConfig) -> Vec<ValidationIssue> {
+    validate_environment(&config.harness, config.agent_backend)
+}
+
+/// Runs all environment checks for a specific backend and returns a list of issues.
+pub fn validate_environment_for_backend(backend: &str) -> Vec<ValidationIssue> {
+    validate_environment(backend, AgentBackend::OpenCode)
+}
+
+/// Validates the environment for a worker configuration and returns true if no critical issues exist.
+pub fn is_environment_ready_for_config(config: &WorkerConfig) -> bool {
+    validate_environment_for_config(config)
+        .iter()
+        .all(|i| i.severity != Severity::Critical)
 }
 
 /// Validates the environment for a specific backend and returns true if no critical issues exist.

@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
 
 use crate::models::providers::model::{
     IntegrationColumn, IntegrationProject, IntegrationType, IntegrationWorkspace,
@@ -197,6 +198,7 @@ impl ProjectConfig {
             max_turns: self.max_turns,
             review_max_turns: settings.review_max_turns,
             provider_id: self.provider_id,
+            agent_backend: settings.agent_backend,
             repo_urls: self.repo_urls.clone(),
         }
     }
@@ -214,6 +216,7 @@ pub struct EffectiveProjectSettings {
     pub review_max_turns: i32,
     pub review_prompt_template: String,
     pub max_in_progress_tasks: i32,
+    pub agent_backend: AgentBackend,
 }
 
 pub struct JobConfigFields {
@@ -228,6 +231,7 @@ pub struct JobConfigFields {
     pub review_max_turns: i32,
     pub provider_id: Option<Uuid>,
     pub repo_urls: Vec<String>,
+    pub agent_backend: AgentBackend,
 }
 
 impl JobConfigFields {
@@ -244,6 +248,7 @@ impl JobConfigFields {
             review_max_turns: 1,
             provider_id: None,
             repo_urls: Vec::new(),
+            agent_backend: AgentBackend::default(),
         }
     }
 }
