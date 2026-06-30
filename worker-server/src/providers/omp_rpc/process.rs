@@ -8,6 +8,8 @@ use tokio::sync::mpsc;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
+use crate::isolation::workspace;
+
 pub(crate) async fn launch_omp(
     env: &IsolatedEnvironment,
     resume_path: Option<&Path>,
@@ -64,26 +66,19 @@ fn docker_omp_command(
         command.arg("-e").arg(format!("{key}={value}"));
     }
     command.arg(image);
-    command.args([
-        "omp",
-        "--mode",
-        "rpc",
-        "--auto-approve",
-        "--session-dir",
-        "/workdir/home/.omp/sessions",
-    ]);
+    let session_dir = env
+        .env_vars
+        .get("PI_SESSION_DIR")
+        .map(String::as_str)
+        .unwrap_or("/workdir/home/.omp/sessions");
+    command.args(["omp", "--mode", "rpc", "--auto-approve", "--session-dir"]);
+    command.arg(session_dir);
     if let Some(path) = resume_path {
-        command.arg("--resume").arg(container_resume_path(path));
+        command
+            .arg("--resume")
+            .arg(workspace::container_path(&env.workdir, "/workdir", path));
     }
     Ok(command)
-}
-
-fn container_resume_path(path: &Path) -> String {
-    let path_text = path.to_string_lossy();
-    match path_text.split_once("/home/.omp/sessions") {
-        Some((_, rest)) => format!("/workdir/home/.omp/sessions{rest}"),
-        None => path_text.to_string(),
-    }
 }
 
 pub(crate) async fn read_stdout_frames(

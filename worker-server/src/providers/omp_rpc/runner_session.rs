@@ -145,13 +145,21 @@ impl RunningSession for OmpRpcRunningSession {
         let prompt = prompt.to_owned();
         Box::pin(async move {
             self.status = SessionStatus::Running;
-            self.send_command(serde_json::json!({
-                "id": "prompt-continue",
-                "type": "prompt",
-                "message": prompt,
-            }))
-            .await?;
-            self.wait_for_response("prompt-continue", "prompt").await?;
+            if let Err(error) = self
+                .send_command(serde_json::json!({
+                    "id": "prompt-continue",
+                    "type": "prompt",
+                    "message": prompt,
+                }))
+                .await
+            {
+                self.status = SessionStatus::Failed;
+                return Err(error);
+            }
+            if let Err(error) = self.wait_for_response("prompt-continue", "prompt").await {
+                self.status = SessionStatus::Failed;
+                return Err(error);
+            }
             Ok(())
         })
     }

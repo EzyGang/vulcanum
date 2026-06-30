@@ -68,6 +68,21 @@ fn repo_dir_name_sanitizes_basename() {
 }
 
 #[test]
+fn container_path_maps_host_path_under_workdir() {
+    let workdir = Path::new("/tmp/vulcanum-work-job");
+    let session_path = workdir
+        .join("home")
+        .join(".omp")
+        .join("sessions")
+        .join("session.jsonl");
+
+    assert_eq!(
+        workspace::container_path(workdir, "/workdir", &session_path),
+        "/workdir/home/.omp/sessions/session.jsonl"
+    );
+}
+
+#[test]
 fn workspace_prompt_prefix_requires_repo_commands_and_agents_chain() {
     let prompt = workspace::workspace_prompt_prefix(&[WorkspaceRepo {
         full_name: "owner/repo".to_owned(),

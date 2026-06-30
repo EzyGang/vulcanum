@@ -44,6 +44,23 @@ pub(crate) fn omp_environment_vars(home: &str, tmpdir: &str) -> HashMap<String, 
     ])
 }
 
+#[must_use]
+pub(crate) fn container_path(workdir: &Path, container_workdir: &str, path: &Path) -> String {
+    let path_text = path.to_string_lossy();
+    if path_text.starts_with(container_workdir) {
+        return path_text.to_string();
+    }
+
+    match path.strip_prefix(workdir) {
+        Ok(relative_path) => env_path(
+            container_workdir,
+            relative_path.to_string_lossy().replace('\\', "/").as_str(),
+        ),
+        Err(_) => path_text.to_string(),
+    }
+}
+
+#[cfg(windows)]
 fn env_path(base: &str, suffix: &str) -> String {
     let separator = match base.contains('\\') && !base.contains('/') {
         true => "\\",
@@ -55,6 +72,11 @@ fn env_path(base: &str, suffix: &str) -> String {
         separator,
         suffix.replace('/', separator)
     )
+}
+
+#[cfg(not(windows))]
+fn env_path(base: &str, suffix: &str) -> String {
+    format!("{}/{}", base.trim_end_matches('/'), suffix)
 }
 
 pub async fn write_agent_files(
