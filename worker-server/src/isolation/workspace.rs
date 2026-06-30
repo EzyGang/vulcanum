@@ -129,6 +129,7 @@ pub async fn prepare_repos(
     workdir: &Path,
     repos: &[JobRepo],
     command_env: &HashMap<String, String>,
+    agent_backend: AgentBackend,
 ) -> Result<Vec<WorkspaceRepo>, HarnessError> {
     let workspace_dir = workdir.join("workspace");
     fs::create_dir_all(&workspace_dir)
@@ -145,7 +146,7 @@ pub async fn prepare_repos(
         .await?;
     }
 
-    surface_repo_context(&workspace_dir, &workspace_repos).await?;
+    surface_repo_context(&workspace_dir, &workspace_repos, agent_backend).await?;
     Ok(workspace_repos)
 }
 
@@ -279,18 +280,17 @@ fn sanitize_repo_dir(repo_name: &str) -> String {
 pub(crate) async fn surface_repo_context(
     workspace_dir: &Path,
     repos: &[WorkspaceRepo],
+    agent_backend: AgentBackend,
 ) -> Result<(), HarnessError> {
     let mut aggregate = String::new();
-    let skills_dir = workspace_dir.join(".agents").join("skills");
-    let omp_skills_dir = workspace_dir.join(".omp").join("skills");
+    let skills_dir = match agent_backend {
+        AgentBackend::OpenCode => workspace_dir.join(".agents").join("skills"),
+        AgentBackend::OmpRpc => workspace_dir.join(".omp").join("skills"),
+    };
     fs::create_dir_all(&skills_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create skills dir: {e}")))?;
-    fs::create_dir_all(&omp_skills_dir)
-        .await
-        .map_err(|e| HarnessError::Crash(format!("failed to create OMP skills dir: {e}")))?;
     let mut copied_skills: HashSet<String> = HashSet::new();
-    let mut copied_omp_skills: HashSet<String> = HashSet::new();
 
     for repo in repos {
         let repo_dir = workspace_dir.join(&repo.relative_path);
@@ -308,8 +308,6 @@ pub(crate) async fn surface_repo_context(
 
         for skills_root in skill_roots(&repo_dir) {
             copy_skills_first_wins(&skills_root, &skills_dir, &mut copied_skills, repo).await?;
-            copy_skills_first_wins(&skills_root, &omp_skills_dir, &mut copied_omp_skills, repo)
-                .await?;
         }
     }
 

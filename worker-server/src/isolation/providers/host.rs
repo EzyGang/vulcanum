@@ -62,7 +62,8 @@ impl IsolationProvider for HostIsolation {
         )
         .await?;
         let workspace_repos =
-            workspace::prepare_repos(workdir, repos, &github_credentials.host_env).await?;
+            workspace::prepare_repos(workdir, repos, &github_credentials.host_env, agent_backend)
+                .await?;
 
         let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
         let mut combined_env: HashMap<String, String> = env_vars.clone();

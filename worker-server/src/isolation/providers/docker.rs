@@ -73,7 +73,8 @@ impl IsolationProvider for DockerIsolation {
         )
         .await?;
         let workspace_repos =
-            workspace::prepare_repos(workdir, repos, &github_credentials.host_env).await?;
+            workspace::prepare_repos(workdir, repos, &github_credentials.host_env, agent_backend)
+                .await?;
 
         let container_name = workspace::container_name(workdir);
 

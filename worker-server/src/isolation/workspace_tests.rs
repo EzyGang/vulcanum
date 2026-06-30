@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use vulcanum_shared::api_types::JobRepo;
+use vulcanum_shared::api_types::{AgentBackend, JobRepo};
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 
 use crate::isolation::github_credentials;
@@ -114,7 +114,7 @@ async fn surface_repo_context_copies_common_skill_roots() {
     .await
     .expect("non-directory skill fixture should be written");
 
-    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()])
+    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()], AgentBackend::OpenCode)
         .await
         .expect("repo context should be surfaced");
 
@@ -165,6 +165,43 @@ async fn surface_repo_context_copies_common_skill_roots() {
         .await
         .expect("ignored file existence should be checked"));
 
+    assert!(
+        !tokio::fs::try_exists(workspace_dir.join(".omp").join("skills"))
+            .await
+            .expect("omp skill target existence should be checked")
+    );
+
+    let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
+}
+
+#[tokio::test]
+async fn surface_repo_context_copies_skills_to_omp_target_for_omp_backend() {
+    let workspace_dir = std::env::temp_dir().join("vulcanum-test-omp-skill-target");
+    let repo_dir = workspace_dir.join("repo");
+    let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
+    tokio::fs::create_dir_all(&repo_dir)
+        .await
+        .expect("repo dir should be created");
+
+    write_skill(&repo_dir, ".agents", "alpha", "agents-alpha").await;
+
+    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()], AgentBackend::OmpRpc)
+        .await
+        .expect("repo context should be surfaced");
+
+    let skills_dir = workspace_dir.join(".omp").join("skills");
+    assert_eq!(
+        tokio::fs::read_to_string(skills_dir.join("alpha").join("README.md"))
+            .await
+            .expect("alpha skill should be copied"),
+        "agents-alpha"
+    );
+    assert!(
+        !tokio::fs::try_exists(workspace_dir.join(".agents").join("skills"))
+            .await
+            .expect("opencode skill target existence should be checked")
+    );
+
     let _ = tokio::fs::remove_dir_all(&workspace_dir).await;
 }
 
@@ -177,7 +214,7 @@ async fn surface_repo_context_ignores_absent_common_skill_roots() {
         .await
         .expect("repo dir should be created");
 
-    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()])
+    workspace::surface_repo_context(&workspace_dir, &[repo_fixture()], AgentBackend::OpenCode)
         .await
         .expect("missing skill roots should be ignored");
 

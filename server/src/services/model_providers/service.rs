@@ -24,8 +24,7 @@ use crate::services::model_providers::catalog::{
     is_codex_compatible_openai_model, ModelCatalogClient,
 };
 use crate::services::model_providers::renderer::{
-    render_agent_config, render_opencode_config, ModelSelection, RenderedAgentConfig,
-    RenderedModelConfig,
+    render_agent_config, ModelSelection, RenderedAgentConfig,
 };
 
 #[derive(Clone)]
@@ -70,18 +69,6 @@ impl ModelProvidersService {
             .into_iter()
             .map(|provider| to_response(provider, &self.cipher))
             .collect()
-    }
-
-    pub async fn render_opencode_config_for_team(
-        &self,
-        team_id: Uuid,
-        selection: ModelSelection<'_>,
-    ) -> Result<RenderedModelConfig, ModelProvidersError> {
-        let mut providers = self.repo.list_all(&self.db, team_id).await?;
-        for provider in &mut providers {
-            self.refresh_provider_if_needed(provider).await?;
-        }
-        render_opencode_config(&providers, &self.cipher, selection)
     }
 
     pub async fn render_agent_config_for_team(

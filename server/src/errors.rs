@@ -267,10 +267,7 @@ impl From<WorkersError> for AppError {
                 tracing::error!(error = %e, operation = "workers", "redis error");
                 Self::Internal
             }
-            WorkersError::RegistrationFailed(e) => {
-                tracing::error!(error = %e, operation = "workers", "registration failed");
-                Self::Internal
-            }
+            WorkersError::RegistrationFailed(e) => Self::BadRequest(e),
         }
     }
 }
