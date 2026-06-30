@@ -1,4 +1,5 @@
 FROM debian:bookworm-slim
+ARG OMP_VERSION=16.2.6
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
@@ -18,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     redis-tools \
     sqlite3 \
+    unzip \
     && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
        gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
@@ -29,13 +31,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && corepack enable \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/root/.opencode/bin:/root/.local/bin:$PATH"
+ENV PATH="/root/.bun/bin:/root/.opencode/bin:/root/.local/bin:$PATH"
 
 RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path \
+    && curl -fsSL https://bun.sh/install | bash \
+    && bun install -g "@oh-my-pi/pi-coding-agent@${OMP_VERSION}" \
     && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
     && curl https://mise.run | sh \
     && kaneo install-skill --scope global --agent opencode \
-    && test -x /root/.opencode/bin/opencode || (echo "ERROR: opencode binary not found at /root/.opencode/bin/opencode" && exit 1)
+    && (test -x /root/.opencode/bin/opencode || (echo "ERROR: opencode binary not found at /root/.opencode/bin/opencode" && exit 1)) \
+    && (test -x /root/.bun/bin/omp || (echo "ERROR: omp binary not found at /root/.bun/bin/omp" && exit 1))
 
 COPY docker/agent/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
