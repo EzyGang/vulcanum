@@ -3,6 +3,7 @@ use std::sync::Arc;
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
 
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::models::model_providers::errors::ModelProvidersError;
@@ -23,7 +24,8 @@ use crate::services::model_providers::catalog::{
     is_codex_compatible_openai_model, ModelCatalogClient,
 };
 use crate::services::model_providers::renderer::{
-    render_opencode_config, ModelSelection, RenderedModelConfig,
+    render_agent_config, render_opencode_config, ModelSelection, RenderedAgentConfig,
+    RenderedModelConfig,
 };
 
 #[derive(Clone)]
@@ -80,6 +82,19 @@ impl ModelProvidersService {
             self.refresh_provider_if_needed(provider).await?;
         }
         render_opencode_config(&providers, &self.cipher, selection)
+    }
+
+    pub async fn render_agent_config_for_team(
+        &self,
+        team_id: Uuid,
+        backend: AgentBackend,
+        selection: ModelSelection<'_>,
+    ) -> Result<RenderedAgentConfig, ModelProvidersError> {
+        let mut providers = self.repo.list_all(&self.db, team_id).await?;
+        for provider in &mut providers {
+            self.refresh_provider_if_needed(provider).await?;
+        }
+        render_agent_config(backend, &providers, &self.cipher, selection)
     }
 
     pub async fn create(

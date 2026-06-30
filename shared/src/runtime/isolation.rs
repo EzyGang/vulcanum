@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use std::future::Future;
 use std::path::Path;
 
-use crate::api_types::{JobRepo, WorkRunType};
+use crate::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use crate::runtime::errors::HarnessError;
 use crate::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -15,9 +16,10 @@ pub trait IsolationProvider {
         limits: &ResourceLimits,
         work_type: WorkRunType,
         agents_md: &str,
-        generated_opencode_config: &str,
+        agent_backend: AgentBackend,
+        agent_config: &AgentConfigPayload,
         repos: &[JobRepo],
-    ) -> impl std::future::Future<Output = Result<IsolatedEnvironment, HarnessError>> + Send;
+    ) -> impl Future<Output = Result<IsolatedEnvironment, HarnessError>> + Send;
 
-    fn cleanup(&self, env: &IsolatedEnvironment) -> impl std::future::Future<Output = ()> + Send;
+    fn cleanup(&self, env: &IsolatedEnvironment) -> impl Future<Output = ()> + Send;
 }

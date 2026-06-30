@@ -12,6 +12,8 @@ pub enum WorkersError {
     RefreshTokenExpired,
     #[error("worker not found")]
     WorkerNotFound,
+    #[error("registration failed: {0}")]
+    RegistrationFailed(String),
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("jwt error: {0}")]

@@ -20,8 +20,9 @@ pub(super) fn check_container_alive(entry: &JournalEntry) -> bool {
 }
 
 pub(super) fn check_host_alive(entry: &JournalEntry) -> bool {
-    let Some(pid) = entry.host_pid else {
-        return false;
+    let pid = match entry.host_pid.or(entry.agent_pid) {
+        Some(pid) => pid,
+        None => return false,
     };
 
     std::process::Command::new("kill")

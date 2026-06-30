@@ -62,6 +62,12 @@ pub struct JournalEntry {
     pub max_turns: Option<i32>,
     pub host_pid: Option<i64>,
     pub host_port: Option<i64>,
+    pub agent_backend: Option<String>,
+    pub agent_session_path: Option<String>,
+    pub agent_config_dir: Option<String>,
+    pub agent_state_dir: Option<String>,
+    pub agent_transport: Option<String>,
+    pub agent_pid: Option<i64>,
 }
 
 pub struct JournalResultUpdate<'a> {
@@ -75,6 +81,16 @@ pub struct JournalResultUpdate<'a> {
     pub pr_url: Option<&'a str>,
     pub duration_ms: i64,
     pub status: JournalStatus,
+}
+
+pub struct JournalInsert<'a> {
+    pub job_id: Uuid,
+    pub workdir: &'a str,
+    pub container_name: Option<&'a str>,
+    pub harness_type: &'a str,
+    pub started_at: DateTime<Utc>,
+    pub max_turns: i32,
+    pub agent_backend: &'a str,
 }
 
 pub struct Journal {
@@ -106,7 +122,13 @@ impl Journal {
                 error_message TEXT,
                 turn_count INTEGER NOT NULL DEFAULT 0,
                 session_id TEXT,
-                max_turns INTEGER NOT NULL DEFAULT 1
+                max_turns INTEGER NOT NULL DEFAULT 1,
+                agent_backend TEXT NOT NULL DEFAULT 'opencode',
+                agent_session_path TEXT,
+                agent_config_dir TEXT,
+                agent_state_dir TEXT,
+                agent_transport TEXT,
+                agent_pid INTEGER
             )",
         )?;
 
@@ -123,33 +145,34 @@ impl Journal {
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN output_tokens INTEGER");
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN cache_read_tokens INTEGER");
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN cache_write_tokens INTEGER");
+        let _ = conn.execute_batch(
+            "ALTER TABLE job_journal ADD COLUMN agent_backend TEXT NOT NULL DEFAULT 'opencode'",
+        );
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_session_path TEXT");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_config_dir TEXT");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_state_dir TEXT");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_transport TEXT");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_pid INTEGER");
 
         Ok(Self {
             conn: Mutex::new(conn),
         })
     }
 
-    pub fn insert_job(
-        &self,
-        job_id: Uuid,
-        workdir: &str,
-        container_name: Option<&str>,
-        harness_type: &str,
-        started_at: DateTime<Utc>,
-        max_turns: i32,
-    ) -> anyhow::Result<()> {
+    pub fn insert_job(&self, job: JournalInsert<'_>) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
-            "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at, max_turns)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at, max_turns, agent_backend)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![
-                job_id.to_string(),
-                workdir,
-                container_name,
-                harness_type,
+                job.job_id.to_string(),
+                job.workdir,
+                job.container_name,
+                job.harness_type,
                 JournalStatus::Running.as_str(),
-                started_at.to_rfc3339(),
-                max_turns,
+                job.started_at.to_rfc3339(),
+                job.max_turns,
+                job.agent_backend,
             ],
         )?;
         Ok(())
@@ -161,7 +184,8 @@ impl Journal {
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
-                    error_message, turn_count, session_id, max_turns, host_pid, host_port
+                    error_message, turn_count, session_id, max_turns, host_pid, host_port,
+                    agent_backend, agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
              FROM job_journal WHERE job_id = ?1",
         )?;
 
@@ -224,6 +248,31 @@ impl Journal {
         Ok(())
     }
 
+    pub fn set_agent_metadata(
+        &self,
+        job_id: Uuid,
+        session_path: Option<&str>,
+        config_dir: Option<&str>,
+        state_dir: Option<&str>,
+        transport: Option<&str>,
+        pid: Option<i64>,
+    ) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE job_journal SET agent_session_path = ?1, agent_config_dir = ?2,
+             agent_state_dir = ?3, agent_transport = ?4, agent_pid = ?5 WHERE job_id = ?6",
+            rusqlite::params![
+                session_path,
+                config_dir,
+                state_dir,
+                transport,
+                pid,
+                job_id.to_string(),
+            ],
+        )?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     pub fn mark_lost(&self, job_id: Uuid, error_message: &str) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
@@ -256,7 +305,8 @@ impl Journal {
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
-                    error_message, turn_count, session_id, max_turns, host_pid, host_port
+                    error_message, turn_count, session_id, max_turns, host_pid, host_port,
+                    agent_backend, agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
              FROM job_journal WHERE status = 'running'",
         )?;
 
@@ -297,6 +347,12 @@ impl Journal {
             max_turns: row.get(18)?,
             host_pid: row.get(19)?,
             host_port: row.get(20)?,
+            agent_backend: row.get(21)?,
+            agent_session_path: row.get(22)?,
+            agent_config_dir: row.get(23)?,
+            agent_state_dir: row.get(24)?,
+            agent_transport: row.get(25)?,
+            agent_pid: row.get(26)?,
         })
     }
 }

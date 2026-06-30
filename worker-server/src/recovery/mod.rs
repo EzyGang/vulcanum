@@ -7,14 +7,19 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::runtime::types::SessionExport;
 use vulcanum_shared::worker_state::WorkerState;
 
+use crate::daemon::job::execution::artifact::read_finish_artifact;
+use crate::daemon::job::execution::submit::submit_turn_result;
 use crate::providers::opencode;
 use crate::providers::opencode::api;
 use crate::providers::opencode::spawn::read_container_port;
 use crate::recovery::checks::{check_container_alive, check_host_alive};
 use crate::recovery::cleanup::cleanup_stale_job;
-use crate::recovery::recover_session::{mark_lost_and_submit, recover_session_task};
+use crate::recovery::recover_session::{
+    mark_lost_and_submit, recover_omp_rpc_session_task, recover_session_task,
+};
 use crate::state::journal::Journal;
 
 pub async fn reconcile_running_jobs(
@@ -37,6 +42,37 @@ pub async fn reconcile_running_jobs(
     tracing::info!(count = running.len(), "reconciling stale running jobs");
 
     for entry in &running {
+        let artifact_path = std::path::Path::new(&entry.workdir)
+            .join("home")
+            .join("finish_artifact.json");
+        if let Some(artifact) = read_finish_artifact(&artifact_path) {
+            tracing::info!(
+                job_id = %entry.job_id,
+                "submitting recovered finish artifact without resuming agent"
+            );
+            submit_turn_result(
+                client,
+                worker_state,
+                journal,
+                entry.job_id,
+                &recovered_artifact_export(),
+                Some(&artifact),
+            )
+            .await;
+            cleanup_stale_job(entry);
+            continue;
+        }
+        if entry.agent_backend.as_deref() == Some("omp_rpc") {
+            let task_entry = entry.clone();
+            let api_client = Arc::clone(client);
+            let worker = Arc::clone(worker_state);
+            let jrnl = Arc::clone(journal);
+            tokio::spawn(recover_omp_rpc_session_task(
+                task_entry, api_client, worker, jrnl,
+            ));
+            continue;
+        }
+
         let is_host = entry.harness_type == "host";
         let alive = if is_host {
             check_host_alive(entry)
@@ -148,5 +184,19 @@ pub async fn reconcile_running_jobs(
                 ));
             }
         }
+    }
+}
+
+fn recovered_artifact_export() -> SessionExport {
+    SessionExport {
+        exit_code: 0,
+        tokens_used: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        duration_ms: 0,
+        model_used: None,
+        failure_payload: None,
     }
 }

@@ -11,6 +11,14 @@ pub trait RunningSession: Send {
         None
     }
 
+    fn agent_session_path(&self) -> Option<&str> {
+        None
+    }
+
+    fn agent_pid(&self) -> Option<u32> {
+        None
+    }
+
     fn agent_base_url(&self) -> Option<&str> {
         None
     }
@@ -22,6 +30,13 @@ pub trait RunningSession: Send {
     fn export(
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<SessionExport, HarnessError>> + Send + '_>>;
+
+    fn export_messages(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<serde_json::Value>, HarnessError>> + Send + '_>>
+    {
+        Box::pin(async { Ok(None) })
+    }
 
     fn wait(
         &mut self,
@@ -42,5 +57,5 @@ pub trait AgentRuntime: Send + Sync {
         &self,
         prompt: &str,
         env: &IsolatedEnvironment,
-    ) -> impl std::future::Future<Output = Result<Box<dyn RunningSession>, HarnessError>> + Send;
+    ) -> impl Future<Output = Result<Box<dyn RunningSession>, HarnessError>> + Send;
 }

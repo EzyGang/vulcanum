@@ -138,6 +138,10 @@ impl RunningSession for OpenCodeRunningSession {
         Some(&self.session_id)
     }
 
+    fn agent_pid(&self) -> Option<u32> {
+        self.host_pid
+    }
+
     fn agent_base_url(&self) -> Option<&str> {
         Some(self.client.base_url())
     }
@@ -282,6 +286,18 @@ impl RunningSession for OpenCodeRunningSession {
                 model_used,
                 failure_payload,
             })
+        })
+    }
+
+    fn export_messages(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<serde_json::Value>, HarnessError>> + Send + '_>>
+    {
+        let client = self.client.clone();
+        let session_id = self.session_id.clone();
+        Box::pin(async move {
+            let messages = api::get_session_messages(&client, &session_id, None).await?;
+            Ok(Some(messages))
         })
     }
 

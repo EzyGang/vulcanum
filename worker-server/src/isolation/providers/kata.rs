@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::{JobRepo, WorkRunType};
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -32,7 +32,8 @@ impl IsolationProvider for KataIsolation {
         limits: &ResourceLimits,
         work_type: WorkRunType,
         agents_md: &str,
-        generated_opencode_config: &str,
+        agent_backend: AgentBackend,
+        agent_config: &AgentConfigPayload,
         repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, vulcanum_shared::runtime::errors::HarnessError> {
         self.inner
@@ -43,7 +44,8 @@ impl IsolationProvider for KataIsolation {
                 limits,
                 work_type,
                 agents_md,
-                generated_opencode_config,
+                agent_backend,
+                agent_config,
                 repos,
             )
             .await

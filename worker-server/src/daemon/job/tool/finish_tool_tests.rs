@@ -1,6 +1,6 @@
 use vulcanum_shared::api_types::WorkRunType;
 
-use crate::daemon::job::tool::finish_tool::finish_run_tool_ts;
+use crate::daemon::job::tool::finish_tool::{finish_run_tool_ts, omp_finish_run_tool_ts};
 
 #[test]
 fn finish_tool_returns_plain_string_result() {
@@ -69,6 +69,28 @@ fn finish_tool_omits_unused_blocked_and_column_fields() {
         assert!(!tool.contains("blocked_reason"));
         assert!(!tool.contains("next_column"));
     }
+}
+
+#[test]
+fn omp_finish_tool_writes_same_artifact_schema() {
+    let tool = omp_finish_run_tool_ts(WorkRunType::Implementation);
+
+    assert!(tool.contains("export const name = \"finish_run\""));
+    assert!(tool.contains("status: z.enum([\"completed\", \"failed\", \"blocked\"])"));
+    assert!(tool.contains("pr_urls: stringArrayOrEmpty(input.pr_urls)"));
+    assert!(tool.contains("review_url: undefined"));
+    assert!(tool.contains("writeFileSync(path, JSON.stringify(artifact, null, 2))"));
+}
+
+#[test]
+fn omp_review_finish_tool_uses_review_fields() {
+    let tool = omp_finish_run_tool_ts(WorkRunType::PullRequestReview);
+
+    assert!(tool.contains("review_url: z.string().optional()"));
+    assert!(tool.contains("review_body: z.string().optional()"));
+    assert!(tool.contains("review_already_exists: z.boolean().optional()"));
+    assert!(tool.contains("review_already_exists: input.review_already_exists === true"));
+    assert!(tool.contains("pr_urls: []"));
 }
 
 #[must_use]

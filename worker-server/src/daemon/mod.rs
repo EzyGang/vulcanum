@@ -16,7 +16,7 @@ use tokio::time::sleep;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::{load_config, WorkerConfig};
 use vulcanum_shared::paths;
-use vulcanum_shared::validate::is_environment_ready_for_backend;
+use vulcanum_shared::validate::is_environment_ready_for_config;
 use vulcanum_shared::worker_state::{load_state, WorkerState};
 
 use crate::recovery;
@@ -49,7 +49,7 @@ struct DaemonState {
 pub async fn run() -> anyhow::Result<()> {
     let config = load_config().context("failed to load worker config")?;
 
-    if !is_environment_ready_for_backend(&config.harness) {
+    if !is_environment_ready_for_config(&config) {
         tracing::error!("environment validation failed — run `vulcanum worker setup` for details");
         return Err(anyhow::anyhow!(
             "worker environment is not ready — run `vulcanum worker setup` to diagnose"

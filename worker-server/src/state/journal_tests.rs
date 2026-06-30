@@ -14,14 +14,15 @@ fn insert_and_list_running() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(
+        .insert_job(crate::state::journal::JournalInsert {
             job_id,
-            "/tmp/work",
-            Some("vulcanum-container"),
-            "kata",
-            Utc::now(),
-            1,
-        )
+            workdir: "/tmp/work",
+            container_name: Some("vulcanum-container"),
+            harness_type: "kata",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("should insert");
 
     let running = journal.list_running().expect("should list");
@@ -41,7 +42,15 @@ fn find_by_id_returns_existing_entry() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 2)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 2,
+            agent_backend: "opencode",
+        })
         .expect("should insert");
 
     let entry = journal
@@ -72,7 +81,15 @@ fn update_result_transitions_status() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("should insert");
 
     journal
@@ -100,7 +117,15 @@ fn mark_lost_sets_status_and_error() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("should insert");
 
     journal
@@ -117,7 +142,15 @@ fn mark_submitted_transitions() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("should insert");
 
     journal
@@ -156,7 +189,15 @@ fn update_result_persists_granular_tokens() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("should insert");
 
     journal
@@ -195,13 +236,37 @@ fn multiple_jobs_with_mixed_statuses() {
     let id3 = Uuid::new_v4();
 
     journal
-        .insert_job(id1, "/tmp/a", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id: id1,
+            workdir: "/tmp/a",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("insert 1");
     journal
-        .insert_job(id2, "/tmp/b", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id: id2,
+            workdir: "/tmp/b",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("insert 2");
     journal
-        .insert_job(id3, "/tmp/c", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id: id3,
+            workdir: "/tmp/c",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("insert 3");
 
     journal
@@ -229,7 +294,15 @@ fn journal_persists_host_info() {
     let job_id = Uuid::new_v4();
 
     journal
-        .insert_job(job_id, "/tmp/work", None, "host", Utc::now(), 1)
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
         .expect("insert job");
 
     journal
@@ -244,4 +317,43 @@ fn journal_persists_host_info() {
 
     assert_eq!(entry.host_pid, Some(12_345));
     assert_eq!(entry.host_port, Some(5555));
+}
+
+#[test]
+fn journal_persists_agent_metadata() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+    journal
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "omp_rpc",
+        })
+        .expect("insert job");
+
+    journal
+        .set_agent_metadata(
+            job_id,
+            Some("/tmp/work/home/.omp/sessions/session.jsonl"),
+            Some("/tmp/work/home/.omp"),
+            Some("/tmp/work/home/.local/state/omp"),
+            Some("omp_rpc"),
+            Some(1234),
+        )
+        .expect("set metadata");
+
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("find succeeds")
+        .expect("entry exists");
+    assert_eq!(entry.agent_backend.as_deref(), Some("omp_rpc"));
+    assert_eq!(
+        entry.agent_session_path.as_deref(),
+        Some("/tmp/work/home/.omp/sessions/session.jsonl")
+    );
+    assert_eq!(entry.agent_pid, Some(1234));
 }

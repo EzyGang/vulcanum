@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde_json::json;
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload};
 
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::model_providers::model::ModelProviderConfig;
@@ -9,6 +10,14 @@ use crate::services::model_providers::auth::credentials::{
 };
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::opencode_auth::openai_auth_content;
+
+const OPENAI_CODEX_OAUTH_TOKEN_ENV: &str = "OPENAI_CODEX_OAUTH_TOKEN";
+
+#[derive(Debug)]
+pub struct RenderedAgentConfig {
+    pub agent_config: AgentConfigPayload,
+    pub env: HashMap<String, String>,
+}
 
 #[derive(Debug, Default)]
 pub struct RenderedModelConfig {
@@ -23,6 +32,27 @@ pub struct ModelSelection<'a> {
     pub primary_model_id: Option<&'a str>,
     pub small_provider_key: Option<&'a str>,
     pub small_model_id: Option<&'a str>,
+}
+
+pub fn render_agent_config(
+    backend: AgentBackend,
+    connected: &[ModelProviderConfig],
+    cipher: &SecretCipher,
+    selection: ModelSelection<'_>,
+) -> Result<RenderedAgentConfig, ModelProvidersError> {
+    match backend {
+        AgentBackend::OpenCode => {
+            let rendered = render_opencode_config(connected, cipher, selection)?;
+            Ok(RenderedAgentConfig {
+                agent_config: AgentConfigPayload::OpenCode {
+                    config_json: rendered.opencode_config,
+                    auth_content: rendered.opencode_auth_content,
+                },
+                env: rendered.env,
+            })
+        }
+        AgentBackend::OmpRpc => render_omp_config(connected, cipher, selection),
+    }
 }
 
 pub fn render_opencode_config(
@@ -82,6 +112,54 @@ pub fn render_opencode_config(
     })
 }
 
+fn render_omp_config(
+    connected: &[ModelProviderConfig],
+    cipher: &SecretCipher,
+    selection: ModelSelection<'_>,
+) -> Result<RenderedAgentConfig, ModelProvidersError> {
+    let mut env: HashMap<String, String> = HashMap::new();
+
+    for provider in connected {
+        match parse_auth(&provider.credentials, cipher)? {
+            ParsedAuth::ApiKey(credentials) => {
+                for (key, secret) in credentials {
+                    if secret.is_empty() {
+                        continue;
+                    }
+                    env.insert(credential_env_key(&key), secret);
+                }
+            }
+            ParsedAuth::DeviceOAuth(credential) if provider.provider_key == OPENAI_PROVIDER_KEY => {
+                if !credential.access.is_empty() {
+                    env.insert(OPENAI_CODEX_OAUTH_TOKEN_ENV.to_owned(), credential.access);
+                }
+            }
+            ParsedAuth::DeviceOAuth(_) | ParsedAuth::None => (),
+        }
+    }
+
+    if let Some(provider) = selection.primary_provider_key {
+        if !provider.is_empty() {
+            env.insert("PI_PROVIDER".to_owned(), provider.to_owned());
+        }
+    }
+    if let Some(model) = selection.primary_model_id {
+        if !model.is_empty() {
+            env.insert("PI_MODEL".to_owned(), model.to_owned());
+        }
+    }
+    if let Some(model) = selection.small_model_id {
+        if !model.is_empty() {
+            env.insert("PI_SMALL_MODEL".to_owned(), model.to_owned());
+        }
+    }
+
+    Ok(RenderedAgentConfig {
+        agent_config: AgentConfigPayload::OmpRpc { config_yml: None },
+        env,
+    })
+}
+
 fn model_ref(provider_key: Option<&str>, model_id: Option<&str>) -> Option<String> {
     match (provider_key, model_id) {
         (Some(provider), Some(model)) if !provider.is_empty() && !model.is_empty() => {
@@ -122,19 +200,15 @@ fn decode_legacy_snake_case_env_key(key: &str) -> Option<String> {
             return None;
         }
 
-        let part = segment
-            .chars()
-            .filter(|ch| *ch != '_')
-            .collect::<String>()
-            .to_ascii_uppercase();
+        let part = segment.replace('_', "").to_ascii_uppercase();
         if part.is_empty() {
             return None;
         }
         parts.push(part);
     }
 
-    match parts.len() {
-        0 | 1 => None,
-        _ => Some(parts.join("_")),
+    match parts.is_empty() {
+        true => None,
+        false => Some(parts.join("_")),
     }
 }

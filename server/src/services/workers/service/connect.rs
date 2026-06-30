@@ -1,11 +1,9 @@
-use chrono::{Duration, Utc};
-use serde_json::json;
-
 use crate::db::workers::queries::CreateWorkerParams;
 use crate::models::workers::errors::WorkersError;
 use crate::models::workers::model;
 use crate::services::workers::service::token::{build_jwt, generate_random_token, hash_token};
 use crate::services::workers::service::WorkersService;
+use chrono::{Duration, Utc};
 use vulcanum_shared::api_types::{ConnectRequest, ConnectResponse};
 
 impl WorkersService {
@@ -26,7 +24,9 @@ impl WorkersService {
         let max_concurrent_jobs = req
             .max_concurrent_jobs
             .unwrap_or(model::DEFAULT_MAX_CONCURRENT_JOBS);
-        let capabilities = json!({});
+        let capabilities = serde_json::to_value(&req.capabilities).map_err(|e| {
+            WorkersError::RegistrationFailed(format!("invalid worker capabilities: {e}"))
+        })?;
 
         let worker = self
             .repo

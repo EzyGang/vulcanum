@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use tokio::fs;
-use vulcanum_shared::api_types::{JobRepo, WorkRunType};
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -42,15 +42,16 @@ impl IsolationProvider for HostIsolation {
         limits: &ResourceLimits,
         work_type: WorkRunType,
         agents_md: &str,
-        generated_opencode_config: &str,
+        agent_backend: AgentBackend,
+        agent_config: &AgentConfigPayload,
         repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, HarnessError> {
         fs::create_dir_all(workdir)
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;
 
-        workspace::write_env_files(workdir, agents_md, generated_opencode_config).await?;
-        workspace::write_finish_run_tool(workdir, work_type).await?;
+        workspace::write_agent_files(workdir, agents_md, agent_backend, agent_config, work_type)
+            .await?;
 
         let home_dir = workdir.join("home");
         let runtime_home = home_dir.to_string_lossy().to_string();
@@ -65,22 +66,70 @@ impl IsolationProvider for HostIsolation {
 
         let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
         let mut combined_env: HashMap<String, String> = env_vars.clone();
-        for (k, v) in sanitized_secrets.clone() {
-            combined_env.insert(k, v);
+        for (key, value) in sanitized_secrets.clone() {
+            combined_env.insert(key, value);
         }
-        let config_dir = home_dir.join(".config").join("opencode");
         combined_env.insert("HOME".to_owned(), home_dir.to_string_lossy().to_string());
         combined_env.insert(
-            "OPENCODE_CONFIG".to_owned(),
-            config_dir
-                .join("opencode.json")
+            "FINISH_ARTIFACT_PATH".to_owned(),
+            home_dir
+                .join("finish_artifact.json")
                 .to_string_lossy()
                 .to_string(),
         );
-        combined_env.insert(
-            "OPENCODE_CONFIG_DIR".to_owned(),
-            config_dir.to_string_lossy().to_string(),
-        );
+        match agent_backend {
+            AgentBackend::OpenCode => {
+                let config_dir = home_dir.join(".config").join("opencode");
+                combined_env.insert(
+                    "OPENCODE_CONFIG".to_owned(),
+                    config_dir
+                        .join("opencode.json")
+                        .to_string_lossy()
+                        .to_string(),
+                );
+                combined_env.insert(
+                    "OPENCODE_CONFIG_DIR".to_owned(),
+                    config_dir.to_string_lossy().to_string(),
+                );
+            }
+            AgentBackend::OmpRpc => {
+                let config_home = home_dir.join(".omp");
+                let state_home = home_dir.join(".local").join("state").join("omp");
+                combined_env.insert(
+                    "PI_CONFIG_HOME".to_owned(),
+                    config_home.to_string_lossy().to_string(),
+                );
+                combined_env.insert(
+                    "PI_DATA_HOME".to_owned(),
+                    home_dir
+                        .join(".local")
+                        .join("share")
+                        .join("omp")
+                        .to_string_lossy()
+                        .to_string(),
+                );
+                combined_env.insert(
+                    "PI_STATE_HOME".to_owned(),
+                    state_home.to_string_lossy().to_string(),
+                );
+                combined_env.insert(
+                    "PI_SESSION_DIR".to_owned(),
+                    config_home.join("sessions").to_string_lossy().to_string(),
+                );
+                combined_env.insert(
+                    "PI_LOG_DIR".to_owned(),
+                    state_home.join("logs").to_string_lossy().to_string(),
+                );
+                combined_env.insert(
+                    "PI_TMPDIR".to_owned(),
+                    workdir.join("tmp").to_string_lossy().to_string(),
+                );
+                combined_env.insert(
+                    "PI_PERMISSION_DEFAULT".to_owned(),
+                    "allow_always".to_owned(),
+                );
+            }
+        }
         combined_env.extend(github_credentials.host_env);
 
         Ok(IsolatedEnvironment {
@@ -101,16 +150,12 @@ impl IsolationProvider for HostIsolation {
         if !is_safe_workdir(&env.workdir) {
             tracing::warn!(
                 workdir = %env.workdir.display(),
-                "refusing to delete unsafe workdir"
+                "refusing to remove unsafe host workdir"
             );
             return;
         }
         if let Err(e) = fs::remove_dir_all(&env.workdir).await {
-            tracing::warn!(
-                workdir = %env.workdir.display(),
-                error = %e,
-                "cleanup failed"
-            );
+            tracing::warn!(workdir = %env.workdir.display(), error = %e, "failed to remove host workdir");
         }
     }
 }

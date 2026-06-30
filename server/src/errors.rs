@@ -242,6 +242,7 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::ModelProvider(e) => e.into(),
             WorkRunsError::ProjectConfig(e) => e.into(),
             WorkRunsError::Team(e) => e.into(),
+            WorkRunsError::Worker(e) => e.into(),
         }
     }
 }
@@ -264,6 +265,10 @@ impl From<WorkersError> for AppError {
             }
             WorkersError::Redis(e) => {
                 tracing::error!(error = %e, operation = "workers", "redis error");
+                Self::Internal
+            }
+            WorkersError::RegistrationFailed(e) => {
+                tracing::error!(error = %e, operation = "workers", "registration failed");
                 Self::Internal
             }
         }

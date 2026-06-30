@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, WorkRunType};
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
@@ -20,7 +20,11 @@ async fn host_isolation_creates_workdir_and_config() {
             &limits,
             WorkRunType::Implementation,
             "# AGENTS.md",
-            "{}",
+            AgentBackend::OpenCode,
+            &AgentConfigPayload::OpenCode {
+                config_json: "{}".to_owned(),
+                auth_content: None,
+            },
             &[],
         )
         .await;
@@ -76,7 +80,11 @@ async fn host_isolation_writes_agents_md() {
             &limits,
             WorkRunType::Implementation,
             agents_content,
-            "",
+            AgentBackend::OpenCode,
+            &AgentConfigPayload::OpenCode {
+                config_json: String::new(),
+                auth_content: None,
+            },
             &[],
         )
         .await;
@@ -119,7 +127,11 @@ async fn host_isolation_skips_agents_md_when_empty() {
             &limits,
             WorkRunType::Implementation,
             "",
-            "",
+            AgentBackend::OpenCode,
+            &AgentConfigPayload::OpenCode {
+                config_json: String::new(),
+                auth_content: None,
+            },
             &[],
         )
         .await;
@@ -161,7 +173,11 @@ async fn host_isolation_writes_generated_config() {
             &limits,
             WorkRunType::Implementation,
             "",
-            generated,
+            AgentBackend::OpenCode,
+            &AgentConfigPayload::OpenCode {
+                config_json: generated.to_owned(),
+                auth_content: None,
+            },
             &[],
         )
         .await
@@ -175,6 +191,59 @@ async fn host_isolation_writes_generated_config() {
         generated_contents.expect("generated config should exist"),
         generated
     );
+}
+
+#[tokio::test]
+async fn host_isolation_writes_omp_runtime_paths() {
+    let isolation = HostIsolation::new();
+    let limits = ResourceLimits::default();
+    let secrets = std::collections::HashMap::new();
+    let env_vars = std::collections::HashMap::new();
+    let workdir = std::env::temp_dir().join("vulcanum-test-host-omp-config");
+
+    let env = isolation
+        .prepare(
+            &workdir,
+            &secrets,
+            &env_vars,
+            &limits,
+            WorkRunType::Implementation,
+            "",
+            AgentBackend::OmpRpc,
+            &AgentConfigPayload::OmpRpc { config_yml: None },
+            &[],
+        )
+        .await
+        .expect("prepare should succeed");
+
+    assert_eq!(
+        env.env_vars.get("PI_SESSION_DIR"),
+        Some(
+            &workdir
+                .join("home")
+                .join(".omp")
+                .join("sessions")
+                .to_string_lossy()
+                .to_string()
+        )
+    );
+    assert_eq!(
+        env.env_vars.get("FINISH_ARTIFACT_PATH"),
+        Some(
+            &workdir
+                .join("home")
+                .join("finish_artifact.json")
+                .to_string_lossy()
+                .to_string()
+        )
+    );
+    assert!(workdir
+        .join("workspace")
+        .join(".omp")
+        .join("tools")
+        .join("finish_run.ts")
+        .exists());
+    isolation.cleanup(&env).await;
 }
 
 #[tokio::test]
@@ -193,7 +262,11 @@ async fn host_isolation_cleanup_deletes_workdir() {
             &limits,
             WorkRunType::Implementation,
             "",
-            "",
+            AgentBackend::OpenCode,
+            &AgentConfigPayload::OpenCode {
+                config_json: String::new(),
+                auth_content: None,
+            },
             &[],
         )
         .await

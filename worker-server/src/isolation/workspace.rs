@@ -3,11 +3,11 @@ use std::path::{Path, PathBuf};
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::{JobRepo, WorkRunType};
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 
-use crate::daemon::job::tool::finish_tool::finish_run_tool_ts;
+use crate::daemon::job::tool::finish_tool::{finish_run_tool_ts, omp_finish_run_tool_ts};
 
 #[must_use]
 pub fn container_name(workdir: &Path) -> String {
@@ -20,7 +20,41 @@ pub fn container_name(workdir: &Path) -> String {
     )
 }
 
-pub async fn write_env_files(
+pub async fn write_agent_files(
+    workdir: &Path,
+    agents_md: &str,
+    agent_backend: AgentBackend,
+    agent_config: &AgentConfigPayload,
+    work_type: WorkRunType,
+) -> Result<(), HarnessError> {
+    match (agent_backend, agent_config) {
+        (
+            AgentBackend::OpenCode,
+            AgentConfigPayload::OpenCode {
+                config_json,
+                auth_content: _,
+            },
+        ) => {
+            write_opencode_env_files(workdir, agents_md, config_json).await?;
+            write_opencode_finish_run_tool(workdir, work_type).await?;
+        }
+        (AgentBackend::OmpRpc, AgentConfigPayload::OmpRpc { config_yml }) => {
+            write_omp_env_files(workdir, config_yml.as_deref()).await?;
+            write_omp_finish_run_tool(workdir, work_type).await?;
+        }
+        (backend, payload) => {
+            return Err(HarnessError::Crash(format!(
+                "agent config payload {:?} does not match backend {}",
+                payload.backend(),
+                backend.as_str()
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+async fn write_opencode_env_files(
     workdir: &Path,
     agents_md: &str,
     generated_opencode_config: &str,
@@ -40,6 +74,23 @@ pub async fn write_env_files(
         fs::write(config_dir.join("opencode.json"), generated_opencode_config)
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to write opencode.json: {e}")))?;
+    }
+
+    Ok(())
+}
+
+async fn write_omp_env_files(workdir: &Path, config_yml: Option<&str>) -> Result<(), HarnessError> {
+    let config_dir = workdir.join("home").join(".omp").join("agent");
+    fs::create_dir_all(&config_dir)
+        .await
+        .map_err(|e| HarnessError::Crash(format!("failed to create OMP config dir: {e}")))?;
+
+    if let Some(config_yml) = config_yml {
+        if !config_yml.is_empty() {
+            fs::write(config_dir.join("config.yml"), config_yml)
+                .await
+                .map_err(|e| HarnessError::Crash(format!("failed to write OMP config.yml: {e}")))?;
+        }
     }
 
     Ok(())
@@ -134,7 +185,7 @@ pub(crate) fn repo_dir_name(full_name: &str) -> String {
     sanitize_repo_dir(repo_name)
 }
 
-pub async fn write_finish_run_tool(
+async fn write_opencode_finish_run_tool(
     workdir: &Path,
     work_type: WorkRunType,
 ) -> Result<(), HarnessError> {
@@ -153,6 +204,25 @@ pub async fn write_finish_run_tool(
     )
     .await
     .map_err(|e| HarnessError::Crash(format!("failed to write finish_run tool: {e}")))?;
+
+    Ok(())
+}
+
+async fn write_omp_finish_run_tool(
+    workdir: &Path,
+    work_type: WorkRunType,
+) -> Result<(), HarnessError> {
+    let tools_dir = workdir.join("workspace").join(".omp").join("tools");
+    fs::create_dir_all(&tools_dir)
+        .await
+        .map_err(|e| HarnessError::Crash(format!("failed to create OMP tools dir: {e}")))?;
+
+    fs::write(
+        tools_dir.join("finish_run.ts"),
+        omp_finish_run_tool_ts(work_type),
+    )
+    .await
+    .map_err(|e| HarnessError::Crash(format!("failed to write OMP finish_run tool: {e}")))?;
 
     Ok(())
 }
@@ -212,10 +282,15 @@ pub(crate) async fn surface_repo_context(
 ) -> Result<(), HarnessError> {
     let mut aggregate = String::new();
     let skills_dir = workspace_dir.join(".agents").join("skills");
+    let omp_skills_dir = workspace_dir.join(".omp").join("skills");
     fs::create_dir_all(&skills_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create skills dir: {e}")))?;
+    fs::create_dir_all(&omp_skills_dir)
+        .await
+        .map_err(|e| HarnessError::Crash(format!("failed to create OMP skills dir: {e}")))?;
     let mut copied_skills: HashSet<String> = HashSet::new();
+    let mut copied_omp_skills: HashSet<String> = HashSet::new();
 
     for repo in repos {
         let repo_dir = workspace_dir.join(&repo.relative_path);
@@ -233,6 +308,8 @@ pub(crate) async fn surface_repo_context(
 
         for skills_root in skill_roots(&repo_dir) {
             copy_skills_first_wins(&skills_root, &skills_dir, &mut copied_skills, repo).await?;
+            copy_skills_first_wins(&skills_root, &omp_skills_dir, &mut copied_omp_skills, repo)
+                .await?;
         }
     }
 
