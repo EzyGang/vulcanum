@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
+use vulcanum_shared::api_types::{
+    AgentBackend, AgentConfigPayload, JobRepo, OpenCodeProviderConfig, WorkRunType,
+};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 
@@ -90,11 +92,20 @@ pub async fn write_agent_files(
         (
             AgentBackend::OpenCode,
             AgentConfigPayload::OpenCode {
-                config_json,
+                providers,
+                model,
+                small_model,
                 auth_content: _,
             },
         ) => {
-            write_opencode_env_files(workdir, agents_md, config_json).await?;
+            write_opencode_env_files(
+                workdir,
+                agents_md,
+                providers,
+                model.as_deref(),
+                small_model.as_deref(),
+            )
+            .await?;
             write_opencode_finish_run_tool(workdir, work_type).await?;
         }
         (AgentBackend::OmpRpc, AgentConfigPayload::OmpRpc { config_yml }) => {
@@ -116,7 +127,9 @@ pub async fn write_agent_files(
 async fn write_opencode_env_files(
     workdir: &Path,
     agents_md: &str,
-    generated_opencode_config: &str,
+    providers: &HashMap<String, OpenCodeProviderConfig>,
+    model: Option<&str>,
+    small_model: Option<&str>,
 ) -> Result<(), HarnessError> {
     let config_dir = workdir.join("home").join(".config").join("opencode");
     fs::create_dir_all(&config_dir)
@@ -129,11 +142,30 @@ async fn write_opencode_env_files(
             .map_err(|e| HarnessError::Crash(format!("failed to write AGENTS.md: {e}")))?;
     }
 
-    if !generated_opencode_config.is_empty() {
-        fs::write(config_dir.join("opencode.json"), generated_opencode_config)
-            .await
-            .map_err(|e| HarnessError::Crash(format!("failed to write opencode.json: {e}")))?;
+    let mut config = serde_json::Map::new();
+    config.insert(
+        "permission".to_owned(),
+        serde_json::json!({
+            "*": "allow",
+            "question": "deny",
+        }),
+    );
+    if !providers.is_empty() {
+        config.insert("provider".to_owned(), serde_json::json!(providers));
     }
+    if let Some(model) = model {
+        config.insert("model".to_owned(), serde_json::json!(model));
+    }
+    if let Some(small_model) = small_model {
+        config.insert("small_model".to_owned(), serde_json::json!(small_model));
+    }
+
+    fs::write(
+        config_dir.join("opencode.json"),
+        serde_json::Value::Object(config).to_string(),
+    )
+    .await
+    .map_err(|e| HarnessError::Crash(format!("failed to write opencode.json: {e}")))?;
 
     Ok(())
 }

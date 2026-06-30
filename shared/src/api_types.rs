@@ -69,10 +69,17 @@ impl WorkerCapabilities {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OpenCodeProviderConfig {
+    pub options: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "backend", rename_all = "snake_case")]
 pub enum AgentConfigPayload {
     OpenCode {
-        config_json: String,
+        providers: HashMap<String, OpenCodeProviderConfig>,
+        model: Option<String>,
+        small_model: Option<String>,
         auth_content: Option<String>,
     },
     OmpRpc {

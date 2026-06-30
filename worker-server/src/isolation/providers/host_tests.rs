@@ -1,8 +1,19 @@
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, WorkRunType};
+use vulcanum_shared::api_types::{
+    AgentBackend, AgentConfigPayload, OpenCodeProviderConfig, WorkRunType,
+};
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
 use crate::isolation::providers::host::HostIsolation;
+
+fn opencode_config(model: Option<&str>) -> AgentConfigPayload {
+    AgentConfigPayload::OpenCode {
+        providers: std::collections::HashMap::new(),
+        model: model.map(str::to_owned),
+        small_model: None,
+        auth_content: None,
+    }
+}
 
 #[tokio::test]
 async fn host_isolation_creates_workdir_and_config() {
@@ -21,10 +32,7 @@ async fn host_isolation_creates_workdir_and_config() {
             WorkRunType::Implementation,
             "# AGENTS.md",
             AgentBackend::OpenCode,
-            &AgentConfigPayload::OpenCode {
-                config_json: "{}".to_owned(),
-                auth_content: None,
-            },
+            &opencode_config(None),
             &[],
         )
         .await;
@@ -81,10 +89,7 @@ async fn host_isolation_writes_agents_md() {
             WorkRunType::Implementation,
             agents_content,
             AgentBackend::OpenCode,
-            &AgentConfigPayload::OpenCode {
-                config_json: String::new(),
-                auth_content: None,
-            },
+            &opencode_config(None),
             &[],
         )
         .await;
@@ -128,10 +133,7 @@ async fn host_isolation_skips_agents_md_when_empty() {
             WorkRunType::Implementation,
             "",
             AgentBackend::OpenCode,
-            &AgentConfigPayload::OpenCode {
-                config_json: String::new(),
-                auth_content: None,
-            },
+            &opencode_config(None),
             &[],
         )
         .await;
@@ -163,7 +165,16 @@ async fn host_isolation_writes_generated_config() {
     let env_vars = std::collections::HashMap::new();
     let workdir = std::env::temp_dir().join("vulcanum-test-host-generated-config");
 
-    let generated = r#"{"model":"anthropic/claude-sonnet-4-5"}"#;
+    let mut providers = std::collections::HashMap::new();
+    providers.insert(
+        "anthropic".to_owned(),
+        OpenCodeProviderConfig {
+            options: std::collections::HashMap::from([(
+                "apiKey".to_owned(),
+                "{env:ANTHROPIC_API_KEY}".to_owned(),
+            )]),
+        },
+    );
     let _ = std::fs::create_dir_all(&workdir);
     let env = isolation
         .prepare(
@@ -175,7 +186,9 @@ async fn host_isolation_writes_generated_config() {
             "",
             AgentBackend::OpenCode,
             &AgentConfigPayload::OpenCode {
-                config_json: generated.to_owned(),
+                providers,
+                model: Some("anthropic/claude-sonnet-4-5".to_owned()),
+                small_model: Some("anthropic/claude-haiku-4-5".to_owned()),
                 auth_content: None,
             },
             &[],
@@ -187,10 +200,17 @@ async fn host_isolation_writes_generated_config() {
     let generated_contents = std::fs::read_to_string(config_dir.join("opencode.json"));
     isolation.cleanup(&env).await;
 
+    let generated: serde_json::Value =
+        serde_json::from_str(&generated_contents.expect("generated config should exist"))
+            .expect("generated config should be valid json");
+    assert_eq!(generated["model"], "anthropic/claude-sonnet-4-5");
+    assert_eq!(generated["small_model"], "anthropic/claude-haiku-4-5");
     assert_eq!(
-        generated_contents.expect("generated config should exist"),
-        generated
+        generated["provider"]["anthropic"]["options"]["apiKey"],
+        "{env:ANTHROPIC_API_KEY}"
     );
+    assert_eq!(generated["permission"]["*"], "allow");
+    assert_eq!(generated["permission"]["question"], "deny");
 }
 
 #[tokio::test]
@@ -263,10 +283,7 @@ async fn host_isolation_cleanup_deletes_workdir() {
             WorkRunType::Implementation,
             "",
             AgentBackend::OpenCode,
-            &AgentConfigPayload::OpenCode {
-                config_json: String::new(),
-                auth_content: None,
-            },
+            &opencode_config(None),
             &[],
         )
         .await

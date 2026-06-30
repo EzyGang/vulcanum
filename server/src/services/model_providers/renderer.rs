@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use serde_json::json;
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload};
+use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, OpenCodeProviderConfig};
 
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::model_providers::model::ModelProviderConfig;
@@ -21,7 +20,9 @@ pub struct RenderedAgentConfig {
 
 #[derive(Debug, Default)]
 pub struct RenderedModelConfig {
-    pub opencode_config: String,
+    pub providers: HashMap<String, OpenCodeProviderConfig>,
+    pub model: Option<String>,
+    pub small_model: Option<String>,
     pub env: HashMap<String, String>,
     pub opencode_auth_content: Option<String>,
 }
@@ -45,7 +46,9 @@ pub fn render_agent_config(
             let rendered = render_opencode_config(connected, cipher, selection)?;
             Ok(RenderedAgentConfig {
                 agent_config: AgentConfigPayload::OpenCode {
-                    config_json: rendered.opencode_config,
+                    providers: rendered.providers,
+                    model: rendered.model,
+                    small_model: rendered.small_model,
                     auth_content: rendered.opencode_auth_content,
                 },
                 env: rendered.env,
@@ -61,11 +64,11 @@ pub fn render_opencode_config(
     selection: ModelSelection<'_>,
 ) -> Result<RenderedModelConfig, ModelProvidersError> {
     let mut env: HashMap<String, String> = HashMap::new();
-    let mut provider_json = serde_json::Map::new();
+    let mut providers: HashMap<String, OpenCodeProviderConfig> = HashMap::new();
     let mut opencode_auth_content: Option<String> = None;
 
     for provider in connected {
-        let mut options = serde_json::Map::new();
+        let mut options = HashMap::new();
         match parse_auth(&provider.credentials, cipher)? {
             ParsedAuth::ApiKey(credentials) => {
                 for (key, secret) in credentials {
@@ -74,39 +77,32 @@ pub fn render_opencode_config(
                     }
                     let env_key = credential_env_key(&key);
                     env.insert(env_key.clone(), secret);
-                    options.insert("apiKey".to_owned(), json!(format!("{{env:{env_key}}}")));
+                    options.insert("apiKey".to_owned(), format!("{{env:{env_key}}}"));
                 }
-                provider_json.insert(provider.provider_key.clone(), json!({ "options": options }));
+                providers.insert(
+                    provider.provider_key.clone(),
+                    OpenCodeProviderConfig { options },
+                );
             }
             ParsedAuth::DeviceOAuth(credential) if provider.provider_key == OPENAI_PROVIDER_KEY => {
                 opencode_auth_content = Some(openai_auth_content(&credential)?);
-                provider_json.insert(provider.provider_key.clone(), json!({ "options": options }));
+                providers.insert(
+                    provider.provider_key.clone(),
+                    OpenCodeProviderConfig { options },
+                );
             }
             ParsedAuth::DeviceOAuth(_) => (),
             ParsedAuth::None => (),
         }
     }
 
-    let primary = model_ref(selection.primary_provider_key, selection.primary_model_id);
-    let small = model_ref(selection.small_provider_key, selection.small_model_id);
-
-    let mut root = serde_json::Map::new();
-    root.insert("permission".to_owned(), permission_config());
-    if !provider_json.is_empty() {
-        root.insert(
-            "provider".to_owned(),
-            serde_json::Value::Object(provider_json),
-        );
-    }
-    if let Some(value) = primary {
-        root.insert("model".to_owned(), json!(value));
-    }
-    if let Some(value) = small {
-        root.insert("small_model".to_owned(), json!(value));
-    }
+    let model = model_ref(selection.primary_provider_key, selection.primary_model_id);
+    let small_model = model_ref(selection.small_provider_key, selection.small_model_id);
 
     Ok(RenderedModelConfig {
-        opencode_config: serde_json::Value::Object(root).to_string(),
+        providers,
+        model,
+        small_model,
         env,
         opencode_auth_content,
     })
@@ -167,13 +163,6 @@ fn model_ref(provider_key: Option<&str>, model_id: Option<&str>) -> Option<Strin
         }
         _ => None,
     }
-}
-
-fn permission_config() -> serde_json::Value {
-    json!({
-        "*": "allow",
-        "question": "deny",
-    })
 }
 
 fn credential_env_key(key: &str) -> String {

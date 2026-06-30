@@ -39,20 +39,26 @@ fn render_opencode_config_extracts_env_and_models() {
         rendered.env.get("ANTHROPIC_API_KEY"),
         Some(&"secret".to_owned())
     );
-    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
-        .expect("rendered config should be valid json");
-    assert_eq!(config["model"], "anthropic/claude-sonnet-4-5");
-    assert_eq!(config["small_model"], "anthropic/claude-haiku-4-5");
     assert_eq!(
-        config["provider"]["anthropic"]["options"]["apiKey"],
-        "{env:ANTHROPIC_API_KEY}"
+        rendered.model.as_deref(),
+        Some("anthropic/claude-sonnet-4-5")
     );
-    assert_eq!(config["permission"]["*"], "allow");
-    assert_eq!(config["permission"]["question"], "deny");
+    assert_eq!(
+        rendered.small_model.as_deref(),
+        Some("anthropic/claude-haiku-4-5")
+    );
+    assert_eq!(
+        rendered
+            .providers
+            .get("anthropic")
+            .and_then(|provider| provider.options.get("apiKey"))
+            .map(String::as_str),
+        Some("{env:ANTHROPIC_API_KEY}")
+    );
 }
 
 #[test]
-fn render_opencode_config_includes_permissions_without_model_config() {
+fn render_opencode_config_skips_empty_model_config() {
     let rendered = render_opencode_config(
         &[],
         &test_cipher(),
@@ -65,11 +71,9 @@ fn render_opencode_config_includes_permissions_without_model_config() {
     )
     .expect("render config");
 
-    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
-        .expect("rendered config should be valid json");
-    assert_eq!(config["permission"]["*"], "allow");
-    assert_eq!(config["permission"]["question"], "deny");
-    assert!(config.get("provider").is_none());
+    assert!(rendered.providers.is_empty());
+    assert!(rendered.model.is_none());
+    assert!(rendered.small_model.is_none());
 }
 
 #[test]
@@ -100,11 +104,13 @@ fn render_opencode_config_restores_legacy_snake_cased_env_keys() {
         rendered.env.get("DEEPSEEK_API_KEY"),
         Some(&"secret".to_owned())
     );
-    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
-        .expect("rendered config should be valid json");
     assert_eq!(
-        config["provider"]["deepseek"]["options"]["apiKey"],
-        "{env:DEEPSEEK_API_KEY}"
+        rendered
+            .providers
+            .get("deepseek")
+            .and_then(|provider| provider.options.get("apiKey"))
+            .map(String::as_str),
+        Some("{env:DEEPSEEK_API_KEY}")
     );
 }
 
@@ -146,12 +152,13 @@ fn render_opencode_config_materializes_chatgpt_oauth_content() {
     .expect("render config");
 
     assert!(!rendered.env.contains_key("OPENAI_API_KEY"));
-    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
-        .expect("rendered config should be valid json");
-    assert!(config["provider"]["openai"]["options"]
-        .as_object()
-        .unwrap()
-        .is_empty());
+    assert_eq!(
+        rendered
+            .providers
+            .get("openai")
+            .map(|provider| provider.options.is_empty()),
+        Some(true)
+    );
     let auth_content: serde_json::Value = serde_json::from_str(
         rendered
             .opencode_auth_content
@@ -200,9 +207,7 @@ fn render_opencode_config_skips_unsupported_oauth_providers() {
     )
     .expect("render config");
 
-    let config: serde_json::Value = serde_json::from_str(&rendered.opencode_config)
-        .expect("rendered config should be valid json");
-    assert!(config.get("provider").is_none());
+    assert!(rendered.providers.is_empty());
     assert!(rendered.opencode_auth_content.is_none());
 }
 
