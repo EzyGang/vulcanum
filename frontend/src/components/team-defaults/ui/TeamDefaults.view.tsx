@@ -27,6 +27,7 @@ interface TeamDefaultsViewProps {
     reviewPromptTemplate: Signal<string>;
     maxInProgressTasks: Signal<number>;
     agentBackend: Signal<TeamAgentBackend>;
+    agentBackendItems: SelectOption[];
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
     smallModelItems: SelectOption[];
@@ -68,11 +69,6 @@ const SECTION_COPY: Record<
   }
 };
 
-const AGENT_BACKEND_ITEMS: SelectOption[] = [
-  { value: 'opencode', label: 'OpenCode' },
-  { value: 'omp_rpc', label: 'OMP RPC' }
-];
-
 const SaveButton = ({ saving, label }: { saving: boolean; label: string }): JSX.Element => (
   <Button type='submit' variant='primary' disabled={saving} class='self-start'>
     <span class='inline-flex items-center gap-2'>
@@ -99,7 +95,7 @@ const ModelSelectionFields = ({
         onValueChange={actions.onAgentBackendChange}
         disabled={status.saving}
         placeholder='Select an agent backend...'
-        items={AGENT_BACKEND_ITEMS}
+        items={data.agentBackendItems}
       />
       <p class='text-xs leading-relaxed text-text-muted'>
         New implementation and review runs use the selected worker runtime.

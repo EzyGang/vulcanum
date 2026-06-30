@@ -20,6 +20,43 @@ pub fn container_name(workdir: &Path) -> String {
     )
 }
 
+#[must_use]
+pub(crate) fn omp_environment_vars(home: &str, tmpdir: &str) -> HashMap<String, String> {
+    let config_home = env_path(home, ".omp");
+    let state_home = env_path(home, ".local/state/omp");
+    HashMap::from([
+        ("PI_CONFIG_HOME".to_owned(), config_home.clone()),
+        (
+            "PI_DATA_HOME".to_owned(),
+            env_path(home, ".local/share/omp"),
+        ),
+        ("PI_STATE_HOME".to_owned(), state_home.clone()),
+        (
+            "PI_SESSION_DIR".to_owned(),
+            env_path(&config_home, "sessions"),
+        ),
+        ("PI_LOG_DIR".to_owned(), env_path(&state_home, "logs")),
+        ("PI_TMPDIR".to_owned(), tmpdir.to_owned()),
+        (
+            "PI_PERMISSION_DEFAULT".to_owned(),
+            "allow_always".to_owned(),
+        ),
+    ])
+}
+
+fn env_path(base: &str, suffix: &str) -> String {
+    let separator = match base.contains('\\') && !base.contains('/') {
+        true => "\\",
+        false => "/",
+    };
+    format!(
+        "{}{}{}",
+        base.trim_end_matches(['/', '\\']),
+        separator,
+        suffix.replace('/', separator)
+    )
+}
+
 pub async fn write_agent_files(
     workdir: &Path,
     agents_md: &str,

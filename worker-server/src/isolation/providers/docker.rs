@@ -97,28 +97,10 @@ impl IsolationProvider for DockerIsolation {
                 );
             }
             AgentBackend::OmpRpc => {
-                combined_env.insert("PI_CONFIG_HOME".to_owned(), "/workdir/home/.omp".to_owned());
-                combined_env.insert(
-                    "PI_DATA_HOME".to_owned(),
-                    "/workdir/home/.local/share/omp".to_owned(),
-                );
-                combined_env.insert(
-                    "PI_STATE_HOME".to_owned(),
-                    "/workdir/home/.local/state/omp".to_owned(),
-                );
-                combined_env.insert(
-                    "PI_SESSION_DIR".to_owned(),
-                    "/workdir/home/.omp/sessions".to_owned(),
-                );
-                combined_env.insert(
-                    "PI_LOG_DIR".to_owned(),
-                    "/workdir/home/.local/state/omp/logs".to_owned(),
-                );
-                combined_env.insert("PI_TMPDIR".to_owned(), "/workdir/tmp".to_owned());
-                combined_env.insert(
-                    "PI_PERMISSION_DEFAULT".to_owned(),
-                    "allow_always".to_owned(),
-                );
+                combined_env.extend(workspace::omp_environment_vars(
+                    "/workdir/home",
+                    "/workdir/tmp",
+                ));
             }
         }
         combined_env.extend(github_credentials.runtime_env);

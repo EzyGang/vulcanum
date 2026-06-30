@@ -94,41 +94,13 @@ impl IsolationProvider for HostIsolation {
                 );
             }
             AgentBackend::OmpRpc => {
-                let config_home = home_dir.join(".omp");
-                let state_home = home_dir.join(".local").join("state").join("omp");
-                combined_env.insert(
-                    "PI_CONFIG_HOME".to_owned(),
-                    config_home.to_string_lossy().to_string(),
-                );
-                combined_env.insert(
-                    "PI_DATA_HOME".to_owned(),
-                    home_dir
-                        .join(".local")
-                        .join("share")
-                        .join("omp")
-                        .to_string_lossy()
-                        .to_string(),
-                );
-                combined_env.insert(
-                    "PI_STATE_HOME".to_owned(),
-                    state_home.to_string_lossy().to_string(),
-                );
-                combined_env.insert(
-                    "PI_SESSION_DIR".to_owned(),
-                    config_home.join("sessions").to_string_lossy().to_string(),
-                );
-                combined_env.insert(
-                    "PI_LOG_DIR".to_owned(),
-                    state_home.join("logs").to_string_lossy().to_string(),
-                );
-                combined_env.insert(
-                    "PI_TMPDIR".to_owned(),
-                    workdir.join("tmp").to_string_lossy().to_string(),
-                );
-                combined_env.insert(
-                    "PI_PERMISSION_DEFAULT".to_owned(),
-                    "allow_always".to_owned(),
-                );
+                let home_env = home_dir.to_string_lossy();
+                let tmp_dir = workdir.join("tmp");
+                let tmp_env = tmp_dir.to_string_lossy();
+                combined_env.extend(workspace::omp_environment_vars(
+                    home_env.as_ref(),
+                    tmp_env.as_ref(),
+                ));
             }
         }
         combined_env.extend(github_credentials.host_env);

@@ -10,12 +10,17 @@ import {
   listModelProviders
 } from '../../../services/model-providers/model-providers.service';
 import { getTeam, getTeamDefaults, updateTeam } from '../../../services/teams/teams.service';
+import type { SelectOption } from '../../../types/shared';
 import type { TeamAgentBackend } from '../../../types/teams';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { parsePositiveNumber } from '../../../utils/numbers';
 import { textInputHandler } from '../../../utils/signal-input';
 
+const AGENT_BACKEND_ITEMS: SelectOption[] = [
+  { value: 'opencode', label: 'OpenCode' },
+  { value: 'omp_rpc', label: 'OMP RPC' }
+];
 export const useTeamDefaults = (teamId: string | null) => {
   const promptTemplate = useSignal('');
   const agentsMd = useSignal('');
@@ -101,6 +106,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       reviewPromptTemplate,
       maxInProgressTasks,
       agentBackend,
+      agentBackendItems: AGENT_BACKEND_ITEMS,
       connectedProviderItems,
       primaryModelItems,
       smallModelItems

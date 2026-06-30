@@ -144,18 +144,12 @@ export default async function run(input: z.infer<typeof parameters>) {
   }"#;
 
 pub trait FinishToolRenderer {
-    fn relative_tool_path(&self) -> &'static str;
-
     fn render(&self, work_type: WorkRunType) -> String;
 }
 
 pub struct OpenCodeFinishToolRenderer;
 
 impl FinishToolRenderer for OpenCodeFinishToolRenderer {
-    fn relative_tool_path(&self) -> &'static str {
-        "home/.config/opencode/tools/finish_run.ts"
-    }
-
     fn render(&self, work_type: WorkRunType) -> String {
         format!(
             "{}{}{}",
@@ -169,10 +163,6 @@ impl FinishToolRenderer for OpenCodeFinishToolRenderer {
 pub struct OmpFinishToolRenderer;
 
 impl FinishToolRenderer for OmpFinishToolRenderer {
-    fn relative_tool_path(&self) -> &'static str {
-        "workspace/.omp/tools/finish_run.ts"
-    }
-
     fn render(&self, work_type: WorkRunType) -> String {
         format!(
             "{}{}{}",
@@ -186,14 +176,12 @@ impl FinishToolRenderer for OmpFinishToolRenderer {
 #[must_use]
 pub fn finish_run_tool_ts(work_type: WorkRunType) -> String {
     let renderer = OpenCodeFinishToolRenderer;
-    let _tool_path = renderer.relative_tool_path();
     renderer.render(work_type)
 }
 
 #[must_use]
 pub fn omp_finish_run_tool_ts(work_type: WorkRunType) -> String {
     let renderer = OmpFinishToolRenderer;
-    let _tool_path = renderer.relative_tool_path();
     renderer.render(work_type)
 }
 

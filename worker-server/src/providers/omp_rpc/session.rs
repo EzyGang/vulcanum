@@ -77,17 +77,15 @@ impl OmpRpcRunningSession {
             .await?;
         let response = self.wait_for_response("state-1", "get_state").await?;
         let data = response.get("data").unwrap_or(&Value::Null);
-        self.session_id = data
-            .get("sessionId")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_owned();
-        self.session_path = data
-            .get("sessionFile")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_owned();
-        self.model_used = data.get("model").map(Value::to_string);
+        if let Some(session_id) = required_state_string(data, "sessionId") {
+            self.session_id = session_id.to_owned();
+        }
+        if let Some(session_path) = required_state_string(data, "sessionFile") {
+            self.session_path = session_path.to_owned();
+        }
+        if let Some(model) = required_state_string(data, "model") {
+            self.model_used = Some(model.to_owned());
+        }
         Ok(())
     }
 
@@ -198,6 +196,16 @@ fn event(event_type: &str, payload: Value) -> AgentEvent {
         event_type: event_type.to_owned(),
         payload,
         timestamp: Utc::now(),
+    }
+}
+
+fn required_state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
+    match data.get(field).and_then(Value::as_str) {
+        Some(value) if !value.is_empty() => Some(value),
+        _ => {
+            tracing::warn!(field, response = %data, "OMP get_state response missing expected field");
+            None
+        }
     }
 }
 
