@@ -112,6 +112,56 @@ fn filter_tasks_in_column_uses_status_slug() {
 }
 
 #[test]
+fn board_deserializes_embedded_task_labels_without_metadata() {
+    let board: KaneoBoardResponse = serde_json::from_str(
+        r##"{
+            "data": {
+                "id": "p1",
+                "name": "Project",
+                "slug": "PROJ",
+                "columns": [
+                    {
+                        "id": "done",
+                        "slug": "done",
+                        "name": "Done",
+                        "isFinal": true,
+                        "tasks": [
+                            {
+                                "id": "t1",
+                                "projectId": "p1",
+                                "number": 1,
+                                "title": "Task with label",
+                                "description": null,
+                                "status": "done",
+                                "priority": "high",
+                                "createdAt": "2026-06-16T19:19:51.735Z",
+                                "labels": [
+                                    {
+                                        "id": "label-1",
+                                        "name": "Regression",
+                                        "color": "#ff00ff"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "plannedTasks": [],
+                "archivedTasks": []
+            }
+        }"##,
+    )
+    .unwrap();
+
+    let task = &board.data.columns[0].tasks[0];
+
+    assert_eq!(task.labels.len(), 1);
+    assert_eq!(task.labels[0].id, "label-1");
+    assert_eq!(task.labels[0].name, "Regression");
+    assert_eq!(task.labels[0].color, "#ff00ff");
+}
+
+#[test]
 fn kaneo_error_display() {
     let api_err = KaneoError::Api("something went wrong".to_owned());
     assert_eq!(api_err.to_string(), "kaneo API error: something went wrong");

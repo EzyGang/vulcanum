@@ -5,7 +5,7 @@ use crate::models::providers::model::{
     IntegrationProject, IntegrationTask,
 };
 use crate::services::providers::kaneo::client::types::{
-    KaneoBoardColumn, KaneoBoardResponse, KaneoTask,
+    KaneoBoardColumn, KaneoBoardResponse, KaneoTask, KaneoTaskLabel,
 };
 
 #[must_use]
@@ -19,6 +19,15 @@ pub(crate) fn column_name_to_slug(name: &str) -> String {
 
 #[must_use]
 pub(crate) fn kaneo_label_to_integration(label: &KaneoLabel) -> IntegrationLabel {
+    IntegrationLabel {
+        id: label.id.clone(),
+        name: label.name.clone(),
+        color: label.color.clone(),
+    }
+}
+
+#[must_use]
+pub(crate) fn kaneo_task_label_to_integration(label: &KaneoTaskLabel) -> IntegrationLabel {
     IntegrationLabel {
         id: label.id.clone(),
         name: label.name.clone(),
@@ -43,7 +52,11 @@ pub(crate) fn kaneo_task_to_integration(
         assignee_name: task.assignee_name.clone(),
         created_at: task.created_at.clone(),
         updated_at: task.updated_at.clone(),
-        labels: task.labels.iter().map(kaneo_label_to_integration).collect(),
+        labels: task
+            .labels
+            .iter()
+            .map(kaneo_task_label_to_integration)
+            .collect(),
     }
 }
 

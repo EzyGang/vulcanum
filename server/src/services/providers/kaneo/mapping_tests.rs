@@ -1,21 +1,18 @@
-use kaneo_cli::api::types::{Column, Label};
+use kaneo_cli::api::types::Column;
 
 use crate::services::providers::kaneo::client::types::{
-    KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask,
+    KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask, KaneoTaskLabel,
 };
 use crate::services::providers::kaneo::mapping::{
     column_name_to_slug, kaneo_board_to_integration, kaneo_column_slug,
     kaneo_column_to_integration, kaneo_task_to_integration,
 };
 
-fn label(id: &str) -> Label {
-    Label {
+fn label(id: &str) -> KaneoTaskLabel {
+    KaneoTaskLabel {
         id: id.to_owned(),
         name: format!("Label {id}"),
         color: "#6366f1".to_owned(),
-        created_at: "2026-01-01T00:00:00Z".to_owned(),
-        task_id: None,
-        workspace_id: Some("workspace-1".to_owned()),
     }
 }
 
