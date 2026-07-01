@@ -289,16 +289,34 @@ impl From<TaskBoardError> for AppError {
     fn from(err: TaskBoardError) -> Self {
         match err {
             TaskBoardError::Provider(e) => e.into(),
-            TaskBoardError::Integration(e) => {
-                tracing::error!(error = %e, operation = "task_board", "integration error");
-                Self::Internal
-            }
+            TaskBoardError::Integration(e) => match provider_request_error(&e) {
+                Some(err) => err,
+                None => {
+                    tracing::error!(error = %e, operation = "task_board", "integration error");
+                    Self::Internal
+                }
+            },
             TaskBoardError::ProjectConfig(e) => e.into(),
             TaskBoardError::EmptyTitle => Self::BadRequest("Task title is required".to_owned()),
             TaskBoardError::EmptyStatus => Self::BadRequest("Task status is required".to_owned()),
             TaskBoardError::EmptyLabel => Self::BadRequest("Task label is required".to_owned()),
         }
     }
+}
+
+fn provider_request_error(
+    err: &crate::models::providers::errors::IntegrationError,
+) -> Option<AppError> {
+    let status = err.provider_http_status_code()?;
+    if !(400..500).contains(&status) {
+        return None;
+    }
+
+    let message = err
+        .provider_public_message()
+        .filter(|message| !message.trim().is_empty())
+        .unwrap_or("Provider rejected request");
+    Some(AppError::BadRequest(message.to_owned()))
 }
 
 impl From<ModelProvidersError> for AppError {

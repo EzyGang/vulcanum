@@ -8,6 +8,9 @@ pub mod services;
 pub mod util;
 
 #[cfg(test)]
+mod errors_tests;
+
+#[cfg(test)]
 pub mod tests;
 
 #[cfg(test)]

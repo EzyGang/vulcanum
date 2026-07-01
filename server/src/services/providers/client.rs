@@ -85,7 +85,7 @@ pub trait IntegrationProviderClient: Send + Sync {
         input: UpdateIntegrationLabelInput,
     ) -> Result<IntegrationLabel, IntegrationError>;
 
-    async fn delete_label(&self, label_id: &str) -> Result<IntegrationLabel, IntegrationError>;
+    async fn delete_label(&self, label_id: &str) -> Result<(), IntegrationError>;
 
     async fn add_task_label(&self, task_id: &str, label_id: &str) -> Result<(), IntegrationError>;
 
@@ -218,7 +218,7 @@ impl IntegrationClient {
         self.inner.update_label(input).await
     }
 
-    pub async fn delete_label(&self, label_id: &str) -> Result<IntegrationLabel, IntegrationError> {
+    pub async fn delete_label(&self, label_id: &str) -> Result<(), IntegrationError> {
         self.inner.delete_label(label_id).await
     }
 

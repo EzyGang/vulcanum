@@ -196,12 +196,10 @@ impl IntegrationProviderClient for KaneoClient {
         Ok(kaneo_label_to_integration(&label))
     }
 
-    async fn delete_label(&self, label_id: &str) -> Result<IntegrationLabel, IntegrationError> {
-        let label = KaneoClient::delete_label(self, label_id)
+    async fn delete_label(&self, label_id: &str) -> Result<(), IntegrationError> {
+        KaneoClient::delete_label(self, label_id)
             .await
-            .map_err(IntegrationError::from)?;
-
-        Ok(kaneo_label_to_integration(&label))
+            .map_err(IntegrationError::from)
     }
 
     async fn add_task_label(&self, task_id: &str, label_id: &str) -> Result<(), IntegrationError> {
