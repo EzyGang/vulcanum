@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::io::ErrorKind;
 use std::pin::Pin;
 use std::time::Duration;
 
@@ -84,11 +85,16 @@ impl RunningSession for OmpRpcRunningSession {
             if self.session_path.is_empty() {
                 return Ok(None);
             }
-            let contents = tokio::fs::read_to_string(&self.session_path)
-                .await
-                .map_err(|e| {
-                    HarnessError::Crash(format!("failed to read OMP session JSONL: {e}"))
-                })?;
+            let contents = match tokio::fs::read_to_string(&self.session_path).await {
+                Ok(contents) => contents,
+                Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+                Err(error) => {
+                    return Err(HarnessError::Crash(format!(
+                        "failed to read OMP session JSONL at {}: {error}",
+                        self.session_path
+                    )));
+                }
+            };
             let mut entries = Vec::new();
             for line in contents.lines() {
                 let trimmed = line.trim();

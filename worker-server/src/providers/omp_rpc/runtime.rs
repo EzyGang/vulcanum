@@ -59,7 +59,7 @@ impl OmpRpcRuntime {
             env.limits.max_duration_secs,
         );
         running.wait_ready().await?;
-        running.refresh_state().await?;
+        running.refresh_state(env).await?;
         running
             .send_command(serde_json::json!({
                 "id": "prompt-1",

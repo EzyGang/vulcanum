@@ -8,7 +8,7 @@ use tokio::process::{Child, ChildStdin};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 use vulcanum_shared::runtime::errors::HarnessError;
-use vulcanum_shared::runtime::types::{AgentEvent, SessionStatus};
+use vulcanum_shared::runtime::types::{AgentEvent, IsolatedEnvironment, SessionStatus};
 
 use crate::providers::omp_rpc::process::ProcessOutputBuffer;
 
@@ -85,18 +85,21 @@ impl OmpRpcRunningSession {
         }
     }
 
-    pub(crate) async fn refresh_state(&mut self) -> Result<(), HarnessError> {
+    pub(crate) async fn refresh_state(
+        &mut self,
+        env: &IsolatedEnvironment,
+    ) -> Result<(), HarnessError> {
         self.send_command(serde_json::json!({"id": "state-1", "type": "get_state"}))
             .await?;
         let response = self.wait_for_response("state-1", "get_state").await?;
         let data = response.get("data").unwrap_or(&Value::Null);
-        if let Some(session_id) = required_state_string(data, "sessionId") {
+        if let Some(session_id) = state_string(data, "sessionId") {
             self.session_id = session_id.to_owned();
         }
-        if let Some(session_path) = required_state_string(data, "sessionFile") {
-            self.session_path = session_path.to_owned();
+        if let Some(session_path) = state_string(data, "sessionFile") {
+            self.session_path = host_session_path(env, session_path);
         }
-        if let Some(model) = required_state_string(data, "model") {
+        if let Some(model) = state_string(data, "model") {
             self.model_used = Some(model.to_owned());
         }
         Ok(())
@@ -232,14 +235,28 @@ fn event(event_type: &str, payload: Value) -> AgentEvent {
     }
 }
 
-fn required_state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
+fn state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
     match data.get(field).and_then(Value::as_str) {
         Some(value) if !value.is_empty() => Some(value),
-        _ => {
-            tracing::warn!(field, response = %data, "OMP get_state response missing expected field");
-            None
+        _ => None,
+    }
+}
+
+pub(super) fn host_session_path(env: &IsolatedEnvironment, session_path: &str) -> String {
+    if env.container_name.is_none() {
+        return session_path.to_owned();
+    }
+
+    let Some(relative_path) = session_path.strip_prefix("/workdir") else {
+        return session_path.to_owned();
+    };
+    let mut host_path = env.workdir.clone();
+    for component in relative_path.trim_start_matches('/').split('/') {
+        if !component.is_empty() {
+            host_path.push(component);
         }
     }
+    host_path.to_string_lossy().to_string()
 }
 
 fn is_response_for(frame: &Value, id: &str, command: &str) -> bool {
