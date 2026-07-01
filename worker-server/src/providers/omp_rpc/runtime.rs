@@ -5,7 +5,9 @@ use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
-use crate::providers::omp_rpc::process::{launch_omp, read_stdout_frames};
+use crate::providers::omp_rpc::process::{
+    launch_omp, read_stderr_tail, read_stdout_frames, ProcessOutputBuffer,
+};
 use crate::providers::omp_rpc::session::OmpRpcRunningSession;
 
 pub struct OmpRpcRuntime;
@@ -40,10 +42,22 @@ impl OmpRpcRuntime {
             .stdin
             .take()
             .ok_or_else(|| HarnessError::ServerLaunch("omp stdin was not piped".to_owned()))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| HarnessError::ServerLaunch("omp stderr was not piped".to_owned()))?;
         let (tx, rx) = mpsc::channel(256);
+        let stderr_buffer = ProcessOutputBuffer::default();
         tokio::spawn(read_stdout_frames(stdout, tx));
+        tokio::spawn(read_stderr_tail(stderr, stderr_buffer.clone()));
 
-        let mut running = OmpRpcRunningSession::new(child, stdin, rx, env.limits.max_duration_secs);
+        let mut running = OmpRpcRunningSession::new(
+            child,
+            stdin,
+            rx,
+            stderr_buffer,
+            env.limits.max_duration_secs,
+        );
         running.wait_ready().await?;
         running.refresh_state().await?;
         running

@@ -1,14 +1,45 @@
+use std::collections::VecDeque;
 use std::path::Path;
 use std::process::Stdio;
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::{Child, ChildStderr, Command};
 use tokio::sync::mpsc;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
 use crate::isolation::workspace;
+
+const STDERR_LINE_LIMIT: usize = 40;
+const OMP_APPROVAL_FLAG: &str = "--yolo";
+
+#[derive(Clone, Default)]
+pub(crate) struct ProcessOutputBuffer {
+    lines: Arc<Mutex<VecDeque<String>>>,
+}
+
+impl ProcessOutputBuffer {
+    pub(crate) fn push_line(&self, line: String) {
+        let mut lines = match self.lines.lock() {
+            Ok(lines) => lines,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if lines.len() == STDERR_LINE_LIMIT {
+            lines.pop_front();
+        }
+        lines.push_back(line);
+    }
+
+    pub(crate) fn tail(&self) -> String {
+        let lines = match self.lines.lock() {
+            Ok(lines) => lines,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        lines.iter().cloned().collect::<Vec<String>>().join("\n")
+    }
+}
 
 pub(crate) async fn launch_omp(
     env: &IsolatedEnvironment,
@@ -29,10 +60,10 @@ pub(crate) async fn launch_omp(
         .map_err(|e| HarnessError::ServerLaunch(format!("failed to launch omp rpc: {e}")))
 }
 
-fn host_omp_command(env: &IsolatedEnvironment, resume_path: Option<&Path>) -> Command {
+pub(super) fn host_omp_command(env: &IsolatedEnvironment, resume_path: Option<&Path>) -> Command {
     let mut command = Command::new("omp");
     command.arg("--mode").arg("rpc");
-    command.arg("--auto-approve");
+    command.arg(OMP_APPROVAL_FLAG);
     if let Some(session_dir) = env.env_vars.get("PI_SESSION_DIR") {
         command.arg("--session-dir").arg(session_dir);
     }
@@ -44,7 +75,7 @@ fn host_omp_command(env: &IsolatedEnvironment, resume_path: Option<&Path>) -> Co
     command
 }
 
-fn docker_omp_command(
+pub(super) fn docker_omp_command(
     env: &IsolatedEnvironment,
     container_name: &str,
     resume_path: Option<&Path>,
@@ -71,7 +102,7 @@ fn docker_omp_command(
         .get("PI_SESSION_DIR")
         .map(String::as_str)
         .unwrap_or("/workdir/home/.omp/sessions");
-    command.args(["omp", "--mode", "rpc", "--auto-approve", "--session-dir"]);
+    command.args(["omp", "--mode", "rpc", OMP_APPROVAL_FLAG, "--session-dir"]);
     command.arg(session_dir);
     if let Some(path) = resume_path {
         command
@@ -97,5 +128,12 @@ pub(crate) async fn read_stdout_frames(
                 tracing::warn!(line = line, error = %error, "failed to parse OMP RPC frame");
             }
         }
+    }
+}
+
+pub(crate) async fn read_stderr_tail(stderr: ChildStderr, buffer: ProcessOutputBuffer) {
+    let mut lines = BufReader::new(stderr).lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        buffer.push_line(line);
     }
 }

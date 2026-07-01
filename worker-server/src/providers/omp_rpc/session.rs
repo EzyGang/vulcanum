@@ -10,13 +10,16 @@ use tokio::time::timeout;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, SessionStatus};
 
-const STARTUP_TIMEOUT_SECS: u64 = 30;
+use crate::providers::omp_rpc::process::ProcessOutputBuffer;
+
+const STARTUP_TIMEOUT_SECS: u64 = 180;
 
 pub(crate) struct OmpRpcRunningSession {
     pub(super) child: Child,
     pub(super) stdin: ChildStdin,
     pub(super) frames: mpsc::Receiver<Value>,
     pub(super) pending: VecDeque<Value>,
+    pub(super) stderr: ProcessOutputBuffer,
     pub(super) session_id: String,
     pub(super) session_path: String,
     pub(super) status: SessionStatus,
@@ -41,6 +44,7 @@ impl OmpRpcRunningSession {
         child: Child,
         stdin: ChildStdin,
         frames: mpsc::Receiver<Value>,
+        stderr: ProcessOutputBuffer,
         max_duration_secs: u64,
     ) -> Self {
         Self {
@@ -48,6 +52,7 @@ impl OmpRpcRunningSession {
             stdin,
             frames,
             pending: VecDeque::new(),
+            stderr,
             session_id: String::new(),
             session_path: String::new(),
             status: SessionStatus::Running,
@@ -60,15 +65,23 @@ impl OmpRpcRunningSession {
     }
 
     pub(crate) async fn wait_ready(&mut self) -> Result<(), HarnessError> {
-        let frame = timeout(Duration::from_secs(STARTUP_TIMEOUT_SECS), self.next_frame())
-            .await
-            .map_err(|_| HarnessError::ServerLaunch("omp rpc did not become ready".to_owned()))?
-            .ok_or_else(|| HarnessError::ServerLaunch("omp rpc exited before ready".to_owned()))?;
-        match frame.get("type").and_then(Value::as_str) {
-            Some("ready") => Ok(()),
-            _ => Err(HarnessError::ServerLaunch(format!(
-                "unexpected omp startup frame: {frame}"
-            ))),
+        let result = timeout(Duration::from_secs(STARTUP_TIMEOUT_SECS), async {
+            loop {
+                match self.frames.recv().await {
+                    Some(frame) => match frame.get("type").and_then(Value::as_str) {
+                        Some("ready") => return Ok(()),
+                        _ => self.pending.push_back(frame),
+                    },
+                    None => return Err(()),
+                }
+            }
+        })
+        .await;
+
+        match result {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(())) => Err(self.startup_error("omp rpc exited before ready")),
+            Err(_) => Err(self.startup_error("omp rpc did not become ready")),
         }
     }
 
@@ -94,26 +107,19 @@ impl OmpRpcRunningSession {
         id: &str,
         command: &str,
     ) -> Result<Value, HarnessError> {
+        if let Some(frame) = self.pop_pending_response(id, command) {
+            return response_result(frame);
+        }
+
         loop {
-            let frame = self
-                .next_frame()
-                .await
-                .ok_or_else(|| HarnessError::ServerLaunch("omp rpc stream closed".to_owned()))?;
-            let is_response = frame.get("type").and_then(Value::as_str) == Some("response")
-                && frame.get("id").and_then(Value::as_str) == Some(id)
-                && frame.get("command").and_then(Value::as_str) == Some(command);
-            if !is_response {
-                self.pending.push_back(frame);
-                continue;
+            let frame =
+                self.frames.recv().await.ok_or_else(|| {
+                    HarnessError::ServerLaunch("omp rpc stream closed".to_owned())
+                })?;
+            if is_response_for(&frame, id, command) {
+                return response_result(frame);
             }
-            if frame.get("success").and_then(Value::as_bool) == Some(true) {
-                return Ok(frame);
-            }
-            let error = frame
-                .get("error")
-                .and_then(Value::as_str)
-                .unwrap_or("omp rpc command failed");
-            return Err(HarnessError::ServerLaunch(error.to_owned()));
+            self.pending.push_back(frame);
         }
     }
 
@@ -130,6 +136,33 @@ impl OmpRpcRunningSession {
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to flush OMP RPC command: {e}")))?;
         Ok(())
+    }
+
+    fn startup_error(&mut self, reason: &str) -> HarnessError {
+        let status = match self.child.try_wait() {
+            Ok(Some(status)) => Some(status),
+            Ok(None) => None,
+            Err(error) => {
+                return HarnessError::ServerLaunch(format!(
+                    "{reason}; failed to inspect omp rpc process: {error}"
+                ));
+            }
+        };
+        let status_text = status.as_ref().map(|status| status.to_string());
+        let stderr = self.stderr.tail();
+        HarnessError::ServerLaunch(format_startup_failure(
+            reason,
+            status_text.as_deref(),
+            &stderr,
+        ))
+    }
+
+    fn pop_pending_response(&mut self, id: &str, command: &str) -> Option<Value> {
+        let index = self
+            .pending
+            .iter()
+            .position(|frame| is_response_for(frame, id, command))?;
+        self.pending.remove(index)
     }
 
     pub(super) async fn next_frame(&mut self) -> Option<Value> {
@@ -207,6 +240,37 @@ fn required_state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
             None
         }
     }
+}
+
+fn is_response_for(frame: &Value, id: &str, command: &str) -> bool {
+    frame.get("type").and_then(Value::as_str) == Some("response")
+        && frame.get("id").and_then(Value::as_str) == Some(id)
+        && frame.get("command").and_then(Value::as_str) == Some(command)
+}
+
+fn response_result(frame: Value) -> Result<Value, HarnessError> {
+    if frame.get("success").and_then(Value::as_bool) == Some(true) {
+        return Ok(frame);
+    }
+    let error = frame
+        .get("error")
+        .and_then(Value::as_str)
+        .unwrap_or("omp rpc command failed");
+    Err(HarnessError::ServerLaunch(error.to_owned()))
+}
+
+fn format_startup_failure(reason: &str, status: Option<&str>, stderr: &str) -> String {
+    let mut message = reason.to_owned();
+    if let Some(status) = status {
+        message.push_str("; process ");
+        message.push_str(status);
+    }
+    let stderr = stderr.trim();
+    if !stderr.is_empty() {
+        message.push_str("; stderr: ");
+        message.push_str(stderr);
+    }
+    message
 }
 
 fn get_u64_path(value: &Value, path: &[&str]) -> Option<u64> {
