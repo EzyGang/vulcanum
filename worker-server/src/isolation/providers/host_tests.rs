@@ -261,7 +261,8 @@ async fn host_isolation_writes_omp_runtime_paths() {
         .join("workspace")
         .join(".omp")
         .join("tools")
-        .join("finish_run.ts")
+        .join("finish_run")
+        .join("index.ts")
         .exists());
     isolation.cleanup(&env).await;
 }

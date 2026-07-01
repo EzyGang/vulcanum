@@ -74,21 +74,17 @@ const OPENCODE_REVIEW_TOOL_BODY_TS: &str = r#"export default tool({
 
 const OMP_TOOL_PREFIX_TS: &str = r#"import { dirname, join } from "node:path"
 import { mkdirSync, writeFileSync } from "node:fs"
-import { z } from "zod"
 
-export const name = "finish_run"
-export const description = "Call this when the Vulcanum job is complete. REQUIRED at end of every run."
-
-function stringOrUndefined(value: unknown): string | undefined {
+function stringOrUndefined(value) {
   return typeof value === "string" && value.length > 0 ? value : undefined
 }
 
-function stringArrayOrEmpty(value: unknown): string[] {
+function stringArrayOrEmpty(value) {
   if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === "string" && item.length > 0)
+  return value.filter((item) => typeof item === "string" && item.length > 0)
 }
 
-function artifactPath(): string {
+function artifactPath() {
   const configured = stringOrUndefined(process.env.FINISH_ARTIFACT_PATH)
   if (configured) return configured
 
@@ -98,50 +94,55 @@ function artifactPath(): string {
   return join(process.cwd(), "finish_artifact.json")
 }
 
+export default function finishRunTool(api) {
+  const z = api.zod
+  return {
+    name: "finish_run",
+    label: "Finish Run",
+    description: "Call this when the Vulcanum job is complete. REQUIRED at end of every run.",
 "#;
 
 const OMP_TOOL_SUFFIX_TS: &str = r#"
-
-  const path = artifactPath()
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, JSON.stringify(artifact, null, 2))
-  return `finish artifact written to ${path}`
+      const path = artifactPath()
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, JSON.stringify(artifact, null, 2))
+      return { content: [{ type: "text", text: `finish artifact written to ${path}` }] }
+    },
+  }
 }
 "#;
 
-const OMP_IMPLEMENTATION_TOOL_BODY_TS: &str = r#"export const parameters = z.object({
-  status: z.enum(["completed", "failed", "blocked"]),
-  summary: z.string().optional(),
-  pr_urls: z.array(z.string()).optional(),
-})
+const OMP_IMPLEMENTATION_TOOL_BODY_TS: &str = r#"    parameters: z.object({
+      status: z.enum(["completed", "failed", "blocked"]),
+      summary: z.string().optional(),
+      pr_urls: z.array(z.string()).optional(),
+    }),
+    async execute(_toolCallId, input) {
+      const artifact = {
+        status: input.status,
+        pr_urls: stringArrayOrEmpty(input.pr_urls),
+        summary: stringOrUndefined(input.summary),
+        review_url: undefined,
+        review_body: undefined,
+        review_already_exists: false,
+      }"#;
 
-export default async function run(input: z.infer<typeof parameters>) {
-  const artifact = {
-    status: input.status,
-    pr_urls: stringArrayOrEmpty(input.pr_urls),
-    summary: stringOrUndefined(input.summary),
-    review_url: undefined,
-    review_body: undefined,
-    review_already_exists: false,
-  }"#;
-
-const OMP_REVIEW_TOOL_BODY_TS: &str = r#"export const parameters = z.object({
-  status: z.enum(["completed", "failed", "blocked"]),
-  summary: z.string().optional(),
-  review_url: z.string().optional(),
-  review_body: z.string().optional(),
-  review_already_exists: z.boolean().optional(),
-})
-
-export default async function run(input: z.infer<typeof parameters>) {
-  const artifact = {
-    status: input.status,
-    pr_urls: [],
-    summary: stringOrUndefined(input.summary),
-    review_url: stringOrUndefined(input.review_url),
-    review_body: stringOrUndefined(input.review_body),
-    review_already_exists: input.review_already_exists === true,
-  }"#;
+const OMP_REVIEW_TOOL_BODY_TS: &str = r#"    parameters: z.object({
+      status: z.enum(["completed", "failed", "blocked"]),
+      summary: z.string().optional(),
+      review_url: z.string().optional(),
+      review_body: z.string().optional(),
+      review_already_exists: z.boolean().optional(),
+    }),
+    async execute(_toolCallId, input) {
+      const artifact = {
+        status: input.status,
+        pr_urls: [],
+        summary: stringOrUndefined(input.summary),
+        review_url: stringOrUndefined(input.review_url),
+        review_body: stringOrUndefined(input.review_body),
+        review_already_exists: input.review_already_exists === true,
+      }"#;
 
 pub trait FinishToolRenderer {
     fn render(&self, work_type: WorkRunType) -> String;

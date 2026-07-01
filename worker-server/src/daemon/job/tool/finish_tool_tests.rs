@@ -75,11 +75,14 @@ fn finish_tool_omits_unused_blocked_and_column_fields() {
 fn omp_finish_tool_writes_same_artifact_schema() {
     let tool = omp_finish_run_tool_ts(WorkRunType::Implementation);
 
-    assert!(tool.contains("export const name = \"finish_run\""));
+    assert!(tool.contains("export default function finishRunTool(api)"));
+    assert!(tool.contains("name: \"finish_run\""));
+    assert!(tool.contains("parameters: z.object({"));
     assert!(tool.contains("status: z.enum([\"completed\", \"failed\", \"blocked\"])"));
     assert!(tool.contains("pr_urls: stringArrayOrEmpty(input.pr_urls)"));
     assert!(tool.contains("review_url: undefined"));
     assert!(tool.contains("writeFileSync(path, JSON.stringify(artifact, null, 2))"));
+    assert!(tool.contains("return { content: [{ type: \"text\""));
 }
 
 #[test]

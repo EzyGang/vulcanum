@@ -304,13 +304,17 @@ async fn write_omp_finish_run_tool(
     workdir: &Path,
     work_type: WorkRunType,
 ) -> Result<(), HarnessError> {
-    let tools_dir = workdir.join("workspace").join(".omp").join("tools");
+    let tools_dir = workdir
+        .join("workspace")
+        .join(".omp")
+        .join("tools")
+        .join("finish_run");
     fs::create_dir_all(&tools_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create OMP tools dir: {e}")))?;
 
     fs::write(
-        tools_dir.join("finish_run.ts"),
+        tools_dir.join("index.ts"),
         omp_finish_run_tool_ts(work_type),
     )
     .await
