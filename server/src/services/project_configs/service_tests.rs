@@ -141,6 +141,85 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
     assert!(matches!(err, ProjectConfigsError::NoProvider));
 }
 
+#[sqlx::test]
+async fn update_rejects_enabling_automation_without_repos(pool: sqlx::PgPool) {
+    let svc = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        model_providers_service(pool.clone()),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
+    let config_id = test_helpers::insert_project_config(&pool, "empty-repo-enable").await;
+    sqlx::query!(
+        "UPDATE project_configs SET enabled = false WHERE id = $1",
+        config_id
+    )
+    .execute(&pool)
+    .await
+    .expect("config should disable");
+
+    let err = svc
+        .update(
+            config_id,
+            test_helpers::DEFAULT_TEAM_ID,
+            UpdateProjectConfigRequest {
+                enabled: Some(true),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect_err("enabling automation without repositories must be rejected");
+
+    assert!(matches!(err, ProjectConfigsError::RepositoriesRequired));
+}
+
+#[sqlx::test]
+async fn update_allows_empty_repo_list_without_enabling_automation(pool: sqlx::PgPool) {
+    let svc = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        model_providers_service(pool.clone()),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
+    let provider_id = insert_provider(&pool).await;
+    let config_id =
+        test_helpers::insert_project_config_with_provider(&pool, "empty-repo-update", provider_id)
+            .await;
+
+    let config = svc
+        .update(
+            config_id,
+            test_helpers::DEFAULT_TEAM_ID,
+            UpdateProjectConfigRequest {
+                repo_full_names: Some(Vec::new()),
+                ..Default::default()
+            },
+        )
+        .await
+        .expect("empty repository update should be allowed unless automation is being enabled");
+
+    assert!(config.repo_full_names.is_empty());
+}
+
+async fn insert_provider(pool: &sqlx::PgPool) -> uuid::Uuid {
+    let provider_id = uuid::Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
+        provider_id,
+        test_helpers::DEFAULT_TEAM_ID,
+        "default-team-provider",
+        "cloud.kaneo.app",
+        "default-team-key",
+    )
+    .execute(pool)
+    .await
+    .expect("provider should insert");
+
+    provider_id
+}
+
 fn model_providers_service(pool: sqlx::PgPool) -> ModelProvidersService {
     ModelProvidersService::new(
         ModelProvidersRepository::new(),

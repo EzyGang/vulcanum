@@ -1,4 +1,10 @@
-import { IconBolt, IconInfoCircle, IconSettings, IconX } from '@tabler/icons-react';
+import {
+  IconAlertTriangle,
+  IconBolt,
+  IconInfoCircle,
+  IconSettings,
+  IconX
+} from '@tabler/icons-react';
 import { clsx } from 'clsx';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
@@ -88,6 +94,8 @@ export const TaskBoardView = ({
     );
   }
 
+  const showMissingRepoWarning = automationEnabled && !repositorySettings.hasSelectedRepos;
+
   return (
     <div class='flex flex-col gap-6 animate-fade-in'>
       <div class='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
@@ -152,6 +160,37 @@ export const TaskBoardView = ({
           </Button>
         </div>
       </div>
+
+      {showMissingRepoWarning && (
+        <section
+          role='alert'
+          class='flex flex-col gap-3 border border-warning/40 bg-warning-bg p-4 text-sm text-text-secondary md:flex-row md:items-center md:justify-between'
+        >
+          <div class='flex items-start gap-3'>
+            <IconAlertTriangle
+              size={18}
+              stroke={1.8}
+              class='mt-0.5 shrink-0 text-warning'
+              aria-hidden='true'
+            />
+            <div class='flex flex-col gap-1'>
+              <p class='font-medium text-warning'>Automation has no repositories set</p>
+              <p>
+                Select at least one repository for this project before relying on automation.
+                Workers need pinned repos to clone code and resolve PR review targets.
+              </p>
+            </div>
+          </div>
+          <Button
+            type='button'
+            variant='ghost'
+            onClick={actions.onOpenSettings}
+            class='shrink-0 border border-warning/40 text-warning hover:border-warning hover:bg-warning-bg'
+          >
+            Set repositories
+          </Button>
+        </section>
+      )}
 
       {helpCards.length > 0 && (
         <section class='grid grid-cols-1 gap-3 md:grid-cols-3'>

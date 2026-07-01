@@ -159,6 +159,10 @@ pub(super) fn resolve_column_slug(
         .ok_or_else(|| ProjectConfigsError::ColumnNotFound(input.to_owned()))
 }
 
+pub(super) fn has_repo_full_names(repo_full_names: &[String]) -> bool {
+    repo_full_names.iter().any(|repo| !repo.trim().is_empty())
+}
+
 pub(super) fn resolve_column_if_set(
     columns: &[IntegrationColumn],
     column: &mut Option<String>,

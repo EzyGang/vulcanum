@@ -18,6 +18,8 @@ pub enum ProjectConfigsError {
     ColumnNotFound(String),
     #[error("no provider configured for this project")]
     NoProvider,
+    #[error("at least one repository is required")]
+    RepositoriesRequired,
     #[error("model provider error: {0}")]
     ModelProvider(#[from] ModelProvidersError),
     #[error("team error: {0}")]

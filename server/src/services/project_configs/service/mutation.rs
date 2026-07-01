@@ -4,7 +4,7 @@ use crate::db::project_configs::UpdateProjectConfigParams;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
 use crate::services::project_configs::service::{
-    resolve_column_if_set, resolve_model_field, ProjectConfigsService,
+    has_repo_full_names, resolve_column_if_set, resolve_model_field, ProjectConfigsService,
 };
 use crate::util::github::github_repo_url;
 
@@ -18,6 +18,16 @@ impl ProjectConfigsService {
         let existing = self.repo.find_by_id(&self.db, id).await?;
         if existing.team_id != team_id {
             return Err(ProjectConfigsError::NotFound);
+        }
+
+        if params.enabled == Some(true) && !existing.enabled {
+            let repo_full_names = params
+                .repo_full_names
+                .as_deref()
+                .unwrap_or(&existing.repo_full_names);
+            if !has_repo_full_names(repo_full_names) {
+                return Err(ProjectConfigsError::RepositoriesRequired);
+            }
         }
 
         let provider_id = match params.provider_id {

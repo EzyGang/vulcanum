@@ -61,6 +61,8 @@ pub enum AppError {
     ColumnNotFound,
     #[error("no provider configured")]
     NoProvider,
+    #[error("at least one repository is required")]
+    RepositoriesRequired,
     #[error("internal server error")]
     Internal,
     #[error("forbidden")]
@@ -139,6 +141,9 @@ impl ResponseError for AppError {
             Self::NoProvider => HttpResponse::BadRequest().json(ErrorBody {
                 error: "No provider configured for this project".to_owned(),
             }),
+            Self::RepositoriesRequired => HttpResponse::BadRequest().json(ErrorBody {
+                error: "At least one repository is required".to_owned(),
+            }),
             Self::Internal => HttpResponse::InternalServerError().json(ErrorBody {
                 error: "Internal server error".to_owned(),
             }),
@@ -216,6 +221,7 @@ impl From<ProjectConfigsError> for AppError {
             }
             ProjectConfigsError::ColumnNotFound(_) => Self::ColumnNotFound,
             ProjectConfigsError::NoProvider => Self::NoProvider,
+            ProjectConfigsError::RepositoriesRequired => Self::RepositoriesRequired,
             ProjectConfigsError::ModelProvider(e) => e.into(),
             ProjectConfigsError::Team(e) => e.into(),
         }

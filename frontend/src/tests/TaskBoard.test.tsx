@@ -565,6 +565,27 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onToggleAutomation).toHaveBeenCalledOnce();
   });
 
+  it('warns when automation is on without pinned repositories', () => {
+    const props = makeProps();
+    props.data.automationEnabled = true;
+    props.data.automationLabel = 'Automation on';
+    const { getByText } = render(<TaskBoardView {...props} />);
+
+    expect(getByText('Automation has no repositories set')).toBeTruthy();
+    fireEvent.click(getByText('Set repositories'));
+
+    expect(props.actions.onOpenSettings).toHaveBeenCalledOnce();
+  });
+
+  it('hides the repository warning after a repository is pinned', () => {
+    const props = makeProps();
+    props.data.automationEnabled = true;
+    props.data.selectedRepoNames = ['owner/repo'];
+    const { queryByText } = render(<TaskBoardView {...props} />);
+
+    expect(queryByText('Automation has no repositories set')).toBeNull();
+  });
+
   it('dismisses lifecycle labels through the help card action', () => {
     const props = makeProps();
     const { getByLabelText } = render(<TaskBoardView {...props} />);
