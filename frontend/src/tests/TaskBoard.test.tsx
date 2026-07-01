@@ -190,7 +190,10 @@ const makeProps = (): TaskBoardViewProps => {
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
             moving: false,
             menuOpen: data.actionMenuTaskId === task.id,
-            menuPosition: data.actionMenuTaskId === task.id ? data.actionMenuPosition : null,
+            menuStyle:
+              data.actionMenuTaskId === task.id && data.actionMenuPosition
+                ? { left: `${data.actionMenuPosition.x}px`, top: `${data.actionMenuPosition.y}px` }
+                : undefined,
             moveActions: statusOptions
               .filter((option) => option.value !== task.status)
               .map((option) => ({

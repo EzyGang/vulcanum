@@ -39,13 +39,15 @@ export interface TaskBoardMenuPosition {
   y: number;
 }
 
+export type TaskBoardMenuStyle = Pick<JSX.CSSProperties, 'left' | 'top'> | undefined;
+
 export interface TaskBoardTaskCardData {
   task: TaskBoardTask;
   displayId: string;
   createdAtLabel: string;
   moving: boolean;
   menuOpen: boolean;
-  menuPosition: TaskBoardMenuPosition | null;
+  menuStyle: TaskBoardMenuStyle;
   moveActions: TaskBoardMoveAction[];
   onClick: () => void;
   onOpenMenu: JSX.MouseEventHandler<HTMLButtonElement>;

@@ -6,6 +6,7 @@ import type {
   TaskBoardColumnRoles,
   TaskBoardHelpCard,
   TaskBoardMenuPosition,
+  TaskBoardMenuStyle,
   TaskBoardMoveAction,
   TaskBoardProjectSettingsData,
   TaskBoardRepositorySettingsData,
@@ -138,6 +139,16 @@ export const formatTaskDisplayId = (task: TaskBoardTask): string => {
   return task.id.slice(0, 8);
 };
 
+export const buildTaskBoardMenuStyle = (
+  menuPosition: TaskBoardMenuPosition | null
+): TaskBoardMenuStyle =>
+  menuPosition
+    ? {
+        left: `${menuPosition.x}px`,
+        top: `${menuPosition.y}px`
+      }
+    : undefined;
+
 export const buildTaskBoardMoveActions = (
   task: TaskBoardTask,
   statusOptions: SelectOption[],
@@ -194,7 +205,8 @@ export const buildTaskBoardColumns = ({
         createdAtLabel: formatCreatedAt(task.createdAt),
         moving: moving && movingTaskId === task.id,
         menuOpen: actionMenuTaskId === task.id,
-        menuPosition: actionMenuTaskId === task.id ? actionMenuPosition : null,
+        menuStyle:
+          actionMenuTaskId === task.id ? buildTaskBoardMenuStyle(actionMenuPosition) : undefined,
         moveActions: buildTaskBoardMoveActions(task, statusOptions, onMoveTask),
         onClick: () => onOpenTask(task),
         onOpenMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
