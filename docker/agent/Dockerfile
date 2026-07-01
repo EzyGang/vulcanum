@@ -1,5 +1,4 @@
 FROM debian:bookworm-slim
-ARG OMP_VERSION=16.2.6
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
@@ -35,7 +34,7 @@ ENV PATH="/root/.bun/bin:/root/.opencode/bin:/root/.local/bin:$PATH"
 
 RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path \
     && curl -fsSL https://bun.sh/install | bash \
-    && bun install -g "@oh-my-pi/pi-coding-agent@${OMP_VERSION}" \
+    && bun install -g "@oh-my-pi/pi-coding-agent" \
     && curl -fsSL https://raw.githubusercontent.com/EzyGang/kaneo-cli/main/install.sh | bash \
     && curl https://mise.run | sh \
     && kaneo install-skill --scope global --agent opencode \

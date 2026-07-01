@@ -44,6 +44,7 @@ export const TaskBoardView = ({
     boardColumnCount,
     columns,
     helpCards,
+    dismissedHelpCards,
     automationLabel,
     statusOptions,
     selectedTask,
@@ -174,34 +175,46 @@ export const TaskBoardView = ({
         </section>
       )}
 
-      <section class='border border-border-base bg-bg-card p-4'>
-        <div class='flex flex-col gap-2 md:flex-row md:items-start md:justify-between'>
-          <div class='flex max-w-2xl flex-col gap-1'>
-            <p class='text-xs font-medium uppercase tracking-wider text-accent'>Lifecycle labels</p>
-            <p class='text-sm leading-relaxed text-text-secondary'>
-              Vulcanum keeps one managed label active on each automated ticket so the board shows
-              the current automation handoff without changing your manual provider labels.
-            </p>
+      {!dismissedHelpCards.includes('lifecycle-labels') && (
+        <section class='relative border border-border-base bg-bg-card p-4 pr-12'>
+          <button
+            type='button'
+            aria-label='Dismiss Lifecycle labels help'
+            onClick={() => actions.onDismissHelpCard('lifecycle-labels')}
+            class='absolute top-3 right-3 inline-flex size-7 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-base hover:bg-bg-hover hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-border-focus'
+          >
+            <IconX size={14} stroke={1.75} aria-hidden='true' />
+          </button>
+          <div class='flex flex-col gap-2 md:flex-row md:items-start md:justify-between'>
+            <div class='flex max-w-2xl flex-col gap-1'>
+              <p class='text-xs font-medium uppercase tracking-wider text-accent'>
+                Lifecycle labels
+              </p>
+              <p class='text-sm leading-relaxed text-text-secondary'>
+                Vulcanum keeps one managed label active on each automated ticket so the board shows
+                the current automation handoff without changing your manual provider labels.
+              </p>
+            </div>
+            <p class='text-xs uppercase tracking-wider text-text-muted'>One active at a time</p>
           </div>
-          <p class='text-xs uppercase tracking-wider text-text-muted'>One active at a time</p>
-        </div>
-        <div class='mt-4 grid grid-cols-1 gap-2 md:grid-cols-5'>
-          {LIFECYCLE_LABELS.map((label) => (
-            <article key={label.name} class='border border-border-base bg-bg-panel p-3'>
-              <div class='flex items-center gap-2'>
-                <span
-                  class='size-2 shrink-0 border border-border-base'
-                  style={{ background: label.color }}
-                />
-                <p class='text-[11px] font-medium uppercase tracking-wider text-text-primary'>
-                  {label.name}
-                </p>
-              </div>
-              <p class='mt-2 text-xs leading-relaxed text-text-muted'>{label.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+          <div class='mt-4 grid grid-cols-1 gap-2 md:grid-cols-5'>
+            {LIFECYCLE_LABELS.map((label) => (
+              <article key={label.name} class='border border-border-base bg-bg-panel p-3'>
+                <div class='flex items-center gap-2'>
+                  <span
+                    class='size-2 shrink-0 border border-border-base'
+                    style={{ background: label.color }}
+                  />
+                  <p class='text-[11px] font-medium uppercase tracking-wider text-text-primary'>
+                    {label.name}
+                  </p>
+                </div>
+                <p class='mt-2 text-xs leading-relaxed text-text-muted'>{label.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {(form.createError || form.serverError) && (
         <ErrorBanner message={form.createError ?? form.serverError ?? 'Unable to update board'} />

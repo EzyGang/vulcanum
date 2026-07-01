@@ -63,3 +63,8 @@ pub struct TaskLabelResponse {
     pub task_id: String,
     pub label_id: String,
 }
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TaskLabelDeleteResponse {
+    pub label_id: String,
+}

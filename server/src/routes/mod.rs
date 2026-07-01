@@ -150,6 +150,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route(
                         "/providers/{provider_id}/tasks/{task_id}/labels/{label_id}",
                         web::delete().to(task_board::remove_task_label),
+                    )
+                    .route(
+                        "/providers/{provider_id}/labels/{label_id}",
+                        web::delete().to(task_board::delete_label),
                     ),
             )
             .service(

@@ -10,8 +10,9 @@ use crate::models::providers::model::{
 };
 use crate::models::task_board::errors::TaskBoardError;
 use crate::models::task_board::model::{
-    CreateTaskRequest, CreateTaskResponse, MoveTaskResponse, TaskBoardResponse, TaskLabelResponse,
-    TaskProviderProject, UpdateTaskRequest, UpdateTaskResponse,
+    CreateTaskRequest, CreateTaskResponse, MoveTaskResponse, TaskBoardResponse,
+    TaskLabelDeleteResponse, TaskLabelResponse, TaskProviderProject, UpdateTaskRequest,
+    UpdateTaskResponse,
 };
 use crate::services::providers::client::IntegrationClient;
 
@@ -209,6 +210,24 @@ impl TaskBoardService {
             task_id: task_id.to_owned(),
             label_id,
         })
+    }
+
+    pub async fn delete_label<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider_id: Uuid,
+        label_id: &str,
+    ) -> Result<TaskLabelDeleteResponse, TaskBoardError>
+    where
+        Q: Queryer<'c>,
+    {
+        let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
+        let provider = self.load_provider(db, team_id, provider_id).await?;
+        let client = IntegrationClient::from_provider(&provider);
+        client.delete_label(&label_id).await?;
+
+        Ok(TaskLabelDeleteResponse { label_id })
     }
 
     async fn load_provider<'c, Q>(

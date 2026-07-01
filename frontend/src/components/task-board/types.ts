@@ -4,7 +4,7 @@ import type { TaskBoard, TaskBoardLabel, TaskBoardTask } from '../../types/task-
 
 export type TaskBoardColumnRole = 'pickup' | 'progress' | 'done';
 
-export type TaskBoardHelpCard = 'proxy' | 'roles' | 'automation';
+export type TaskBoardHelpCard = 'proxy' | 'roles' | 'automation' | 'lifecycle-labels';
 
 export interface TaskBoardColumnRoles {
   pickupColumn: string;
@@ -34,15 +34,23 @@ export interface TaskBoardMoveAction {
   onClick: JSX.MouseEventHandler<HTMLButtonElement>;
 }
 
+export interface TaskBoardMenuPosition {
+  x: number;
+  y: number;
+}
+
+export type TaskBoardMenuStyle = Pick<JSX.CSSProperties, 'left' | 'top'> | undefined;
+
 export interface TaskBoardTaskCardData {
   task: TaskBoardTask;
   displayId: string;
   createdAtLabel: string;
   moving: boolean;
   menuOpen: boolean;
+  menuStyle: TaskBoardMenuStyle;
   moveActions: TaskBoardMoveAction[];
   onClick: () => void;
-  onContextMenu: JSX.MouseEventHandler<HTMLElement>;
+  onOpenMenu: JSX.MouseEventHandler<HTMLButtonElement>;
   onDragStart: JSX.DragEventHandler<HTMLElement>;
   onDragEnd: () => void;
   onKeyDown: JSX.KeyboardEventHandler<HTMLElement>;
@@ -139,6 +147,7 @@ export interface TaskBoardViewData {
   createDialogOpen: boolean;
   settingsDialogOpen: boolean;
   actionMenuTaskId: string | null;
+  actionMenuPosition: TaskBoardMenuPosition | null;
   visibleTaskCounts: Record<string, number>;
   columnRoles: TaskBoardColumnRoles;
   dropPreviewColumn: string | null;
@@ -193,6 +202,7 @@ export interface TaskBoardActions {
   onEditTaskBodyInput: (event: Event) => void;
   onSubmitTaskEdit: (event: Event) => void;
   onToggleTaskLabel: (labelId: string, checked: boolean) => void;
+  onDeleteLabel: (labelId: string) => void;
   onToggleRepo: (repoFullName: string) => void;
   onFilterRepos: (event: Event) => void;
   onSettingsPromptInput: (event: Event) => void;

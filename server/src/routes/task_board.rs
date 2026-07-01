@@ -167,3 +167,21 @@ pub async fn remove_task_label(
 
     Ok(HttpResponse::Ok().json(result))
 }
+
+pub async fn delete_label(
+    state: web::Data<AppState>,
+    path: web::Path<(Uuid, String)>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let (provider_id, label_id) = path.into_inner();
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let result = state
+        .task_board
+        .delete_label(&state.project_configs.db, team_id, provider_id, &label_id)
+        .await?;
+
+    Ok(HttpResponse::Ok().json(result))
+}

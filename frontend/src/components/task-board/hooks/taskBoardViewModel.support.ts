@@ -5,6 +5,8 @@ import type {
   TaskBoardColumnRole,
   TaskBoardColumnRoles,
   TaskBoardHelpCard,
+  TaskBoardMenuPosition,
+  TaskBoardMenuStyle,
   TaskBoardMoveAction,
   TaskBoardProjectSettingsData,
   TaskBoardRepositorySettingsData,
@@ -23,6 +25,7 @@ export interface UseTaskBoardViewModelInput {
   moving: boolean;
   movingTaskId: string | null;
   actionMenuTaskId: string | null;
+  actionMenuPosition: TaskBoardMenuPosition | null;
   configuringColumns: boolean;
   dropPreviewColumn: string | null;
   automationEnabled: boolean;
@@ -79,6 +82,7 @@ interface BuildTaskBoardColumnsInput {
   moving: boolean;
   movingTaskId: string | null;
   actionMenuTaskId: string | null;
+  actionMenuPosition: TaskBoardMenuPosition | null;
   configuringColumns: boolean;
   dropPreviewColumn: string | null;
   openRoleMenuColumn: string | null;
@@ -135,6 +139,16 @@ export const formatTaskDisplayId = (task: TaskBoardTask): string => {
   return task.id.slice(0, 8);
 };
 
+export const buildTaskBoardMenuStyle = (
+  menuPosition: TaskBoardMenuPosition | null
+): TaskBoardMenuStyle =>
+  menuPosition
+    ? {
+        left: `${menuPosition.x}px`,
+        top: `${menuPosition.y}px`
+      }
+    : undefined;
+
 export const buildTaskBoardMoveActions = (
   task: TaskBoardTask,
   statusOptions: SelectOption[],
@@ -159,6 +173,7 @@ export const buildTaskBoardColumns = ({
   moving,
   movingTaskId,
   actionMenuTaskId,
+  actionMenuPosition,
   configuringColumns,
   dropPreviewColumn,
   openRoleMenuColumn,
@@ -190,9 +205,11 @@ export const buildTaskBoardColumns = ({
         createdAtLabel: formatCreatedAt(task.createdAt),
         moving: moving && movingTaskId === task.id,
         menuOpen: actionMenuTaskId === task.id,
+        menuStyle:
+          actionMenuTaskId === task.id ? buildTaskBoardMenuStyle(actionMenuPosition) : undefined,
         moveActions: buildTaskBoardMoveActions(task, statusOptions, onMoveTask),
         onClick: () => onOpenTask(task),
-        onContextMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
+        onOpenMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
         onDragStart: () => onDragStart(task.id, task.status),
         onDragEnd,
         onKeyDown: (event) => {

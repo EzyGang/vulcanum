@@ -2,6 +2,7 @@ import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
 import {
   addTaskLabel,
+  deleteLabel,
   moveTask,
   removeTaskLabel,
   updateTask
@@ -30,6 +31,7 @@ export const useTaskBoardMovement = (
   const draggedTask = useSignal<{ id: string; status: string } | null>(null);
   const dragTargetStatus = useSignal<string | null>(null);
   const actionMenuTaskId = useSignal<string | null>(null);
+  const actionMenuPosition = useSignal<{ x: number; y: number } | null>(null);
   const visibleTaskCounts = useSignal<Record<string, number>>({});
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export const useTaskBoardMovement = (
 
     const closeOpenMenu = () => {
       actionMenuTaskId.value = null;
+      actionMenuPosition.value = null;
     };
 
     window.addEventListener('click', closeOpenMenu);
@@ -54,7 +57,7 @@ export const useTaskBoardMovement = (
     return () => {
       window.removeEventListener('click', closeOpenMenu);
     };
-  }, [actionMenuTaskId, actionMenuTaskId.value]);
+  }, [actionMenuPosition, actionMenuTaskId, actionMenuTaskId.value]);
 
   const moveMutation = useApiMutation(
     ({ taskId, nextStatus }: { taskId: string; nextStatus: string }) =>
@@ -106,24 +109,53 @@ export const useTaskBoardMovement = (
     }
   );
 
+  const deleteLabelMutation = useApiMutation(
+    (labelId: string) => deleteLabel(selection?.providerId ?? '', labelId),
+    {
+      onSuccess: (response) => {
+        const nextLabelIds = editLabelIds.value.filter((labelId) => labelId !== response.labelId);
+        editLabelIds.value = nextLabelIds;
+
+        if (selectedTask.value) {
+          selectedTask.value = {
+            ...selectedTask.value,
+            labels: selectedTask.value.labels.filter((label) => label.id !== response.labelId)
+          };
+        }
+
+        invalidate(...boardQueryKey(selection?.providerId, selection?.externalProjectId));
+      }
+    }
+  );
+
   const moveTaskToStatus = useCallback(
     (taskId: string, nextStatus: string) => {
       actionMenuTaskId.value = null;
+      actionMenuPosition.value = null;
       moveMutation.mutate({ taskId, nextStatus });
     },
-    [actionMenuTaskId, moveMutation]
+    [actionMenuPosition, actionMenuTaskId, moveMutation]
   );
 
   const openTask = useCallback(
     (task: TaskBoardTask) => {
       actionMenuTaskId.value = null;
+      actionMenuPosition.value = null;
       selectedTask.value = task;
       editTitle.value = task.title;
       editBody.value = task.description ?? '';
       editLabelIds.value = task.labels.map((label) => label.id);
       editError.value = null;
     },
-    [actionMenuTaskId, editBody, editError, editLabelIds, editTitle, selectedTask]
+    [
+      actionMenuPosition,
+      actionMenuTaskId,
+      editBody,
+      editError,
+      editLabelIds,
+      editTitle,
+      selectedTask
+    ]
   );
 
   const closeTask = useCallback(() => {
@@ -156,6 +188,13 @@ export const useTaskBoardMovement = (
       labelMutation.mutate({ taskId: task.id, labelId, checked });
     },
     [labelMutation, selectedTask]
+  );
+
+  const deleteProviderLabel = useCallback(
+    (labelId: string) => {
+      deleteLabelMutation.mutate(labelId);
+    },
+    [deleteLabelMutation]
   );
 
   const startDrag = useCallback(
@@ -196,14 +235,33 @@ export const useTaskBoardMovement = (
     (event: MouseEvent, taskId: string) => {
       event.preventDefault();
       event.stopPropagation();
-      actionMenuTaskId.value = actionMenuTaskId.value === taskId ? null : taskId;
+
+      if (actionMenuTaskId.value === taskId) {
+        actionMenuTaskId.value = null;
+        actionMenuPosition.value = null;
+        return;
+      }
+
+      const target = event.currentTarget as HTMLElement | null;
+      const rect = target?.getBoundingClientRect();
+      const rawX = event.clientX || rect?.left || 8;
+      const rawY = event.clientY || rect?.bottom || 8;
+      const viewportWidth = typeof window === 'undefined' ? rawX + 192 : window.innerWidth;
+      const viewportHeight = typeof window === 'undefined' ? rawY + 160 : window.innerHeight;
+
+      actionMenuTaskId.value = taskId;
+      actionMenuPosition.value = {
+        x: Math.max(8, Math.min(rawX, viewportWidth - 192)),
+        y: Math.max(8, Math.min(rawY, viewportHeight - 160))
+      };
     },
-    [actionMenuTaskId]
+    [actionMenuPosition, actionMenuTaskId]
   );
 
   const closeTaskMenu = useCallback(() => {
     actionMenuTaskId.value = null;
-  }, [actionMenuTaskId]);
+    actionMenuPosition.value = null;
+  }, [actionMenuPosition, actionMenuTaskId]);
 
   const loadMoreColumn = useCallback(
     (columnSlug: string) => {
@@ -231,6 +289,7 @@ export const useTaskBoardMovement = (
     data: {
       selectedTask: selectedTask.value,
       actionMenuTaskId: actionMenuTaskId.value,
+      actionMenuPosition: actionMenuPosition.value,
       visibleTaskCounts: visibleTaskCounts.value,
       dropPreviewColumn: dragTargetStatus.value
     },
@@ -244,12 +303,13 @@ export const useTaskBoardMovement = (
       movingTaskId: moveMutation.variables?.taskId ?? null,
       moving: moveMutation.isPending,
       updatingTask: updateMutation.isPending,
-      updatingTaskLabel: labelMutation.isPending
+      updatingTaskLabel: labelMutation.isPending || deleteLabelMutation.isPending
     },
     error:
       moveMutation.error?.message ??
       updateMutation.error?.message ??
       labelMutation.error?.message ??
+      deleteLabelMutation.error?.message ??
       null,
     actions: {
       onMoveTask: moveTaskToStatus,
@@ -262,6 +322,7 @@ export const useTaskBoardMovement = (
       onEditTaskBodyInput: textInputHandler(editBody),
       onSubmitTaskEdit: submitTaskEdit,
       onToggleTaskLabel: toggleTaskLabel,
+      onDeleteLabel: deleteProviderLabel,
       onDragStart: startDrag,
       onDragOverStatus: allowDropOnStatus,
       onDragEnd: clearDrag,

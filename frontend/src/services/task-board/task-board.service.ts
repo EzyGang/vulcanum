@@ -4,6 +4,7 @@ import type {
   MoveTaskRequest,
   MoveTaskResponse,
   TaskBoardResponse,
+  TaskLabelDeleteResponse,
   TaskLabelResponse,
   TaskProviderProject,
   UpdateTaskRequest,
@@ -59,7 +60,6 @@ export const addTaskLabel = (
     `/task-board/providers/${providerId}/tasks/${encodeURIComponent(taskId)}/labels/${encodeURIComponent(labelId)}`,
     {}
   );
-
 export const removeTaskLabel = (
   providerId: string,
   taskId: string,
@@ -67,4 +67,12 @@ export const removeTaskLabel = (
 ): Promise<TaskLabelResponse> =>
   del<TaskLabelResponse>(
     `/task-board/providers/${providerId}/tasks/${encodeURIComponent(taskId)}/labels/${encodeURIComponent(labelId)}`
+  );
+
+export const deleteLabel = (
+  providerId: string,
+  labelId: string
+): Promise<TaskLabelDeleteResponse> =>
+  del<TaskLabelDeleteResponse>(
+    `/task-board/providers/${providerId}/labels/${encodeURIComponent(labelId)}`
   );
