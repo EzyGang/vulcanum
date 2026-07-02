@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,\n             prompt_text, repo_url, agents_md, task_body, task_title, task_slug, review_target_pr_url, review_target_repo_full_name)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\n               ON CONFLICT DO NOTHING",
+  "query": "INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,\n             review_target_pr_url, review_target_repo_full_name)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n               ON CONFLICT DO NOTHING",
   "describe": {
     "columns": [],
     "parameters": {
@@ -37,16 +37,10 @@
         },
         "Uuid",
         "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
         "Text"
       ]
     },
     "nullable": []
   },
-  "hash": "86ff2797a6b5f51ac35aa543888b84c611728b0bea50188eb8d2a6b449f20ef3"
+  "hash": "b6f404a71a943b901a264c7108aea9dd98652d0d5fd8680868cf5f4fb452798e"
 }

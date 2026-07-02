@@ -1,10 +1,14 @@
 use uuid::Uuid;
 use vulcanum_shared::api_types::JobResponse;
 
-use crate::models::project_configs::model::JobConfigFields;
+use crate::models::project_configs::model::EffectiveProjectSettings;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::WorkRunType;
 use crate::services::model_providers::renderer::ModelSelection;
+use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
+use crate::services::poller::service::repo_layout;
+use crate::services::poller::template::{self, TemplateVars};
+use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {
@@ -16,10 +20,10 @@ impl WorkRunsService {
 
         let config = self.project_configs.find_by_id(run.project_config_id).await;
 
-        let cfg = match &config {
+        let settings = match &config {
             Ok(c) => {
-                let settings = self.project_configs.effective_settings(c).await?;
-                c.job_fields(settings)
+                let s = self.project_configs.effective_settings(c).await?;
+                s
             }
             Err(_) => {
                 tracing::warn!(
@@ -27,11 +31,96 @@ impl WorkRunsService {
                     work_run_id = %id,
                     "project config not found for work run"
                 );
-                JobConfigFields::empty_for_team(run.team_id)
+                EffectiveProjectSettings::empty_for_team(run.team_id)
             }
         };
+
+        let cfg = match &config {
+            Ok(c) => c.job_fields(settings.clone()),
+            Err(_) => {
+                tracing::warn!(
+                    project_config_id = %run.project_config_id,
+                    work_run_id = %id,
+                    "project config not found for work run (job fields)"
+                );
+                crate::models::project_configs::model::JobConfigFields::empty_for_team(run.team_id)
+            }
+        };
+
         let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
+
+        let repo_urls_str = repos
+            .iter()
+            .map(|r| r.url.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let repo_names_str = repos
+            .iter()
+            .map(|r| r.full_name.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let repo_layout_str = repo_layout(
+            &repos
+                .iter()
+                .map(|r| r.full_name.clone())
+                .collect::<Vec<_>>(),
+        );
+
+        // Reconstruct prompt_text from template + task data
+        let (task_title, task_body) = match cfg.provider_id {
+            Some(pid) => match self
+                .providers_repo
+                .find_by_id(&self.db, pid, cfg.team_id)
+                .await
+            {
+                Ok(provider) => {
+                    let client = IntegrationClient::from_provider(&provider);
+                    match client.fetch_task_by_id(&run.external_task_ref).await {
+                        Ok(Some(task)) => (task.title, task.description.unwrap_or_default()),
+                        Ok(None) | Err(_) => {
+                            tracing::warn!(
+                                work_run_id = %id,
+                                task_ref = %run.external_task_ref,
+                                "failed to fetch task data from provider for prompt reconstruction"
+                            );
+                            (String::new(), String::new())
+                        }
+                    }
+                }
+                Err(_) => (String::new(), String::new()),
+            },
+            None => (String::new(), String::new()),
+        };
+
+        let review_target_pr_url = run.review_target_pr_url.as_deref().unwrap_or("");
+        let is_review = matches!(run.work_type, WorkRunType::PullRequestReview);
+
+        let prompt_template = if is_review {
+            &settings.review_prompt_template
+        } else {
+            &settings.prompt_template
+        };
+
+        let mut prompt_text = template::render_template(
+            prompt_template,
+            &TemplateVars {
+                task_title: &task_title,
+                task_body: &task_body,
+                repo_url: repos.first().map(|r| r.url.as_str()).unwrap_or(""),
+                repo_urls: &repo_urls_str,
+                repo_names: &repo_names_str,
+                repo_layout: &repo_layout_str,
+                review_target_pr_url,
+            },
+        );
+
+        if !is_review {
+            prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
+            if !repos.is_empty() {
+                prompt_text.push_str(GITHUB_INSTRUCTION);
+            }
+        }
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
             Some(pid) => match self
@@ -65,9 +154,9 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),
-            prompt_text: run.prompt_text,
+            prompt_text,
             repos,
-            agents_md: run.agents_md,
+            agents_md: settings.agents_md,
             agent_backend: cfg.agent_backend,
             agent_config: rendered.agent_config,
             model_provider_env: rendered.env,

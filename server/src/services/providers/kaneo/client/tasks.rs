@@ -78,6 +78,18 @@ impl KaneoClient {
         })
     }
 
+    pub(crate) async fn get_task(&self, task_id: &str) -> Result<Option<KaneoTask>, KaneoError> {
+        let client = self.build_client()?;
+        let path = format!("/task/{task_id}");
+
+        let start = std::time::Instant::now();
+        let result = client.get(&path).await.map_err(api_err);
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        log_kaneo_result("GET", &path, duration_ms, &result);
+        result
+    }
+
     pub async fn update_task_status(
         &self,
         task_id: &str,

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE work_runs SET result_pr_url = $2, result_exit_code = $3, tokens_used = $4,\n             duration_ms = $5, status = $6, input_tokens = $7, output_tokens = $8,\n             cache_read_tokens = $9, cache_write_tokens = $10, model_used = $11,\n             finish_status = $12, finish_summary = $13, finish_blocked_reason = $14,\n             finish_next_column = $15, review_url = $16, review_body = $17,\n             review_already_exists = $18\n             WHERE id = $1 AND status = 'running'::work_run_status\n             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n              work_type as \"work_type: WorkRunType\", parent_work_run_id,\n              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,\n              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,\n             result_pr_url, result_exit_code, tokens_used, duration_ms,\n             input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n             cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n             model_used,\n             finish_status, finish_summary, finish_blocked_reason, finish_next_column,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,\n             review_target_pr_url, review_target_repo_full_name)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n                         work_type as \"work_type: WorkRunType\", parent_work_run_id,\n                         review_target_pr_url, review_target_repo_full_name,\n                         result_pr_url, result_exit_code, tokens_used, duration_ms,\n                        input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n                        cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n                        model_used,\n                        finish_status, result_summary, finish_blocked_reason, finish_next_column,\n                        created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -69,131 +69,86 @@
       },
       {
         "ordinal": 8,
-        "name": "prompt_text",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 9,
-        "name": "repo_url",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 10,
-        "name": "agents_md",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 11,
-        "name": "task_body",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 12,
-        "name": "task_title",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 13,
-        "name": "task_slug",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 14,
         "name": "review_target_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 9,
         "name": "review_target_repo_full_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
-        "name": "review_url",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 17,
-        "name": "review_body",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 18,
-        "name": "review_already_exists",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 19,
+        "ordinal": 10,
         "name": "result_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 20,
+        "ordinal": 11,
         "name": "result_exit_code",
         "type_info": "Int4"
       },
       {
-        "ordinal": 21,
+        "ordinal": 12,
         "name": "tokens_used",
         "type_info": "Int8"
       },
       {
-        "ordinal": 22,
+        "ordinal": 13,
         "name": "duration_ms",
         "type_info": "Int8"
       },
       {
-        "ordinal": 23,
+        "ordinal": 14,
         "name": "input_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 24,
+        "ordinal": 15,
         "name": "output_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 25,
+        "ordinal": 16,
         "name": "cache_read_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 26,
+        "ordinal": 17,
         "name": "cache_write_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 27,
+        "ordinal": 18,
         "name": "model_used",
         "type_info": "Text"
       },
       {
-        "ordinal": 28,
+        "ordinal": 19,
         "name": "finish_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 29,
-        "name": "finish_summary",
+        "ordinal": 20,
+        "name": "result_summary",
         "type_info": "Text"
       },
       {
-        "ordinal": 30,
+        "ordinal": 21,
         "name": "finish_blocked_reason",
         "type_info": "Text"
       },
       {
-        "ordinal": 31,
+        "ordinal": 22,
         "name": "finish_next_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 32,
+        "ordinal": 23,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 33,
+        "ordinal": 24,
         "name": "updated_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
@@ -201,10 +156,9 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Uuid",
         "Text",
-        "Int4",
-        "Int8",
-        "Int8",
+        "Uuid",
         {
           "Custom": {
             "name": "work_run_status",
@@ -220,18 +174,20 @@
             }
           }
         },
-        "Int8",
-        "Int8",
-        "Int8",
-        "Int8",
+        {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        },
+        "Uuid",
         "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Bool"
+        "Text"
       ]
     },
     "nullable": [
@@ -243,17 +199,8 @@
       false,
       false,
       true,
-      false,
-      false,
-      false,
-      false,
       true,
       true,
-      true,
-      true,
-      true,
-      true,
-      false,
       true,
       true,
       true,
@@ -271,5 +218,5 @@
       true
     ]
   },
-  "hash": "fcddb6cc92d7ecec8d84c8845e709c1c31e19e8b29f2e8b704a0079e6d08c0ea"
+  "hash": "749ea7827d5c216e3ccde6be6de4b34bf647bf84c8ffaa880b076f6f6a115941"
 }

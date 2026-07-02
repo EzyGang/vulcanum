@@ -219,6 +219,25 @@ pub struct EffectiveProjectSettings {
     pub agent_backend: AgentBackend,
 }
 
+impl EffectiveProjectSettings {
+    #[must_use]
+    pub fn empty_for_team(_team_id: Uuid) -> Self {
+        Self {
+            prompt_template: String::new(),
+            agents_md: String::new(),
+            primary_model_provider_key: None,
+            primary_model_id: None,
+            small_model_provider_key: None,
+            small_model_id: None,
+            review_enabled: false,
+            review_max_turns: 0,
+            review_prompt_template: String::new(),
+            max_in_progress_tasks: 0,
+            agent_backend: AgentBackend::default(),
+        }
+    }
+}
+
 pub struct JobConfigFields {
     pub team_id: Uuid,
     pub external_project_id: String,

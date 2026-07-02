@@ -94,6 +94,11 @@ pub trait IntegrationProviderClient: Send + Sync {
         task_id: &str,
         label_id: &str,
     ) -> Result<(), IntegrationError>;
+
+    async fn fetch_task_by_id(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<IntegrationTask>, IntegrationError>;
 }
 
 impl IntegrationClient {
@@ -236,6 +241,13 @@ impl IntegrationClient {
         label_id: &str,
     ) -> Result<(), IntegrationError> {
         self.inner.remove_task_label(task_id, label_id).await
+    }
+
+    pub async fn fetch_task_by_id(
+        &self,
+        task_id: &str,
+    ) -> Result<Option<IntegrationTask>, IntegrationError> {
+        self.inner.fetch_task_by_id(task_id).await
     }
 }
 
