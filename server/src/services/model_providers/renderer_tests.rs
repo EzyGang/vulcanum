@@ -259,7 +259,7 @@ fn render_omp_config_extracts_env_and_models() {
 }
 
 #[test]
-fn render_omp_config_exports_openai_codex_oauth_token() {
+fn render_omp_config_maps_openai_oauth_provider_for_omp() {
     let cipher = test_cipher();
     let provider = ModelProviderConfig {
         id: Uuid::new_v4(),
@@ -300,7 +300,10 @@ fn render_omp_config_exports_openai_codex_oauth_token() {
         Some(&"access-secret".to_owned())
     );
     assert!(!rendered.env.contains_key("OPENAI_API_KEY"));
-    assert_eq!(rendered.env.get("PI_PROVIDER"), Some(&"openai".to_owned()));
+    assert_eq!(
+        rendered.env.get("PI_PROVIDER"),
+        Some(&"openai-codex".to_owned())
+    );
     assert_eq!(
         rendered.env.get("PI_MODEL"),
         Some(&"gpt-5-codex".to_owned())

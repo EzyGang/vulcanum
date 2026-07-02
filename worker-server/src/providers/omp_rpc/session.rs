@@ -64,6 +64,12 @@ impl OmpRpcRunningSession {
         }
     }
 
+    pub(crate) fn set_configured_model(&mut self, env: &IsolatedEnvironment) {
+        if self.model_used.is_none() {
+            self.model_used = configured_model(env).map(str::to_owned);
+        }
+    }
+
     pub(crate) async fn wait_ready(&mut self) -> Result<(), HarnessError> {
         let result = timeout(Duration::from_secs(STARTUP_TIMEOUT_SECS), async {
             loop {
@@ -102,6 +108,18 @@ impl OmpRpcRunningSession {
         if let Some(model) = state_string(data, "model") {
             self.model_used = Some(model.to_owned());
         }
+        self.set_configured_model(env);
+        Ok(())
+    }
+
+    pub(crate) async fn refresh_usage_stats(&mut self) -> Result<(), HarnessError> {
+        self.send_command(serde_json::json!({"id": "stats-1", "type": "get_session_stats"}))
+            .await?;
+        let response = self
+            .wait_for_response("stats-1", "get_session_stats")
+            .await?;
+        let data = response.get("data").unwrap_or(&Value::Null);
+        self.update_usage(data);
         Ok(())
     }
 
@@ -183,7 +201,7 @@ impl OmpRpcRunningSession {
         match frame_type {
             "agent_end" => {
                 self.status = SessionStatus::Completed;
-                self.update_usage(&frame);
+                self.update_usage(frame.get("data").unwrap_or(&Value::Null));
                 Some(event("session.completed", frame))
             }
             "tool_execution_start" => Some(event("tool.called", frame)),
@@ -204,26 +222,22 @@ impl OmpRpcRunningSession {
         }
     }
 
-    fn update_usage(&mut self, frame: &Value) {
-        let Some(telemetry) = frame.get("telemetry") else {
+    fn update_usage(&mut self, data: &Value) {
+        let Some(tokens) = data.get("tokens") else {
             return;
         };
-        let usage = telemetry.get("usage").unwrap_or(telemetry);
-        self.tokens.input = get_u64_path(usage, &["inputTokens"])
-            .or_else(|| get_u64_path(usage, &["input_tokens"]))
-            .unwrap_or(self.tokens.input);
-        self.tokens.output = get_u64_path(usage, &["outputTokens"])
-            .or_else(|| get_u64_path(usage, &["output_tokens"]))
-            .unwrap_or(self.tokens.output);
-        self.tokens.cache_read = get_u64_path(usage, &["cacheReadTokens"])
-            .or_else(|| get_u64_path(usage, &["cache_read_tokens"]))
-            .unwrap_or(self.tokens.cache_read);
-        self.tokens.cache_write = get_u64_path(usage, &["cacheWriteTokens"])
-            .or_else(|| get_u64_path(usage, &["cache_write_tokens"]))
-            .unwrap_or(self.tokens.cache_write);
-        self.tokens.total = get_u64_path(usage, &["totalTokens"])
-            .or_else(|| get_u64_path(usage, &["tokensUsed"]))
-            .unwrap_or(self.tokens.input + self.tokens.output);
+
+        self.tokens.input = token_count(tokens, "input").unwrap_or(self.tokens.input);
+        self.tokens.output = token_count(tokens, "output").unwrap_or(self.tokens.output);
+        self.tokens.cache_read = token_count(tokens, "cacheRead").unwrap_or(self.tokens.cache_read);
+        self.tokens.cache_write =
+            token_count(tokens, "cacheWrite").unwrap_or(self.tokens.cache_write);
+        self.tokens.total = token_count(tokens, "total").unwrap_or(
+            self.tokens.input
+                + self.tokens.output
+                + self.tokens.cache_read
+                + self.tokens.cache_write,
+        );
     }
 }
 
@@ -240,6 +254,13 @@ fn state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
         Some(value) if !value.is_empty() => Some(value),
         _ => None,
     }
+}
+
+fn configured_model(env: &IsolatedEnvironment) -> Option<&str> {
+    env.env_vars
+        .get("PI_MODEL")
+        .map(String::as_str)
+        .filter(|model| !model.is_empty())
 }
 
 pub(super) fn host_session_path(env: &IsolatedEnvironment, session_path: &str) -> String {
@@ -290,10 +311,6 @@ fn format_startup_failure(reason: &str, status: Option<&str>, stderr: &str) -> S
     message
 }
 
-fn get_u64_path(value: &Value, path: &[&str]) -> Option<u64> {
-    let mut current = value;
-    for key in path {
-        current = current.get(key)?;
-    }
-    current.as_u64()
+fn token_count(tokens: &Value, field: &str) -> Option<u64> {
+    tokens.get(field).and_then(Value::as_u64)
 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, OpenCodeProviderConfig};
 
@@ -11,6 +11,7 @@ use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::opencode_auth::openai_auth_content;
 
 const OPENAI_CODEX_OAUTH_TOKEN_ENV: &str = "OPENAI_CODEX_OAUTH_TOKEN";
+const OMP_OPENAI_CODEX_PROVIDER_KEY: &str = "openai-codex";
 
 #[derive(Debug)]
 pub struct RenderedAgentConfig {
@@ -114,7 +115,7 @@ fn render_omp_config(
     selection: ModelSelection<'_>,
 ) -> Result<RenderedAgentConfig, ModelProvidersError> {
     let mut env: HashMap<String, String> = HashMap::new();
-
+    let mut omp_oauth_provider_keys: HashSet<String> = HashSet::new();
     for provider in connected {
         match parse_auth(&provider.credentials, cipher)? {
             ParsedAuth::ApiKey(credentials) => {
@@ -128,6 +129,7 @@ fn render_omp_config(
             ParsedAuth::DeviceOAuth(credential) if provider.provider_key == OPENAI_PROVIDER_KEY => {
                 if !credential.access.is_empty() {
                     env.insert(OPENAI_CODEX_OAUTH_TOKEN_ENV.to_owned(), credential.access);
+                    omp_oauth_provider_keys.insert(provider.provider_key.clone());
                 }
             }
             ParsedAuth::DeviceOAuth(_) | ParsedAuth::None => (),
@@ -136,7 +138,10 @@ fn render_omp_config(
 
     if let Some(provider) = selection.primary_provider_key {
         if !provider.is_empty() {
-            env.insert("PI_PROVIDER".to_owned(), provider.to_owned());
+            env.insert(
+                "PI_PROVIDER".to_owned(),
+                omp_provider_key(provider, &omp_oauth_provider_keys).to_owned(),
+            );
         }
     }
     if let Some(model) = selection.primary_model_id {
@@ -162,6 +167,15 @@ fn model_ref(provider_key: Option<&str>, model_id: Option<&str>) -> Option<Strin
             Some(format!("{provider}/{model}"))
         }
         _ => None,
+    }
+}
+
+fn omp_provider_key<'a>(provider_key: &'a str, oauth_provider_keys: &HashSet<String>) -> &'a str {
+    match provider_key {
+        OPENAI_PROVIDER_KEY if oauth_provider_keys.contains(provider_key) => {
+            OMP_OPENAI_CODEX_PROVIDER_KEY
+        }
+        _ => provider_key,
     }
 }
 

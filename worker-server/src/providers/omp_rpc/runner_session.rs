@@ -140,6 +140,12 @@ impl RunningSession for OmpRpcRunningSession {
                 let _ = self.child.kill().await;
             }
 
+            if self.status == SessionStatus::Completed {
+                if let Err(error) = self.refresh_usage_stats().await {
+                    tracing::warn!(error = %error, "failed to refresh OMP session usage stats");
+                }
+            }
+
             self.export().await
         })
     }
