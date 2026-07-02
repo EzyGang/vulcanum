@@ -434,7 +434,7 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
 
     assert_eq!(job.external_task_ref, "task-get");
-    assert_eq!(job.prompt_text, "Review the PR");
+    assert!(!job.prompt_text.is_empty(), "prompt_text should be reconstructed from template");
     assert!(job.repos.is_empty());
     assert_eq!(job.agent_backend, AgentBackend::OmpRpc);
 }

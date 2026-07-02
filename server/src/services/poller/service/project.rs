@@ -135,15 +135,19 @@ impl PollerService {
                     error = %e,
                     "failed to load blocked work runs for reconciliation",
                 );
-                Vec::new()
+                return Ok(());
             }
         };
 
-        for run in &blocked_runs {
-            let tasks = fetcher
-                .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
-                .await?;
+        if blocked_runs.is_empty() {
+            return Ok(());
+        }
 
+        let tasks = fetcher
+            .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
+            .await?;
+
+        for run in &blocked_runs {
             if tasks.iter().any(|t| t.id == run.external_task_ref) {
                 match self
                     .work_runs_repo

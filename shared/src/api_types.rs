@@ -203,10 +203,6 @@ pub struct SubmitResultRequest {
     pub model_used: Option<String>,
     pub finish_status: Option<FinishStatus>,
     pub result_summary: Option<String>,
-    pub review_url: Option<String>,
-    pub review_body: Option<String>,
-    #[serde(default)]
-    pub review_already_exists: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

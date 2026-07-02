@@ -71,9 +71,6 @@ pub(crate) async fn submit_failed_result(
         model_used: None,
         finish_status: result.finish_status,
         finish_summary: result.finish_summary.clone(),
-        review_url: result.review_url.clone(),
-        review_body: result.review_body.clone(),
-        review_already_exists: result.review_already_exists,
     });
     match with_retry_on_401(&client, &worker_state, |token| {
         let client = client.clone();
@@ -132,11 +129,6 @@ pub(crate) async fn submit_turn_result(
         model_used: session_export.model_used.clone(),
         finish_status: finish_artifact.map(|a| a.status),
         finish_summary: finish_artifact.and_then(|a| a.summary.clone()),
-        review_url: finish_artifact.and_then(|a| a.review_url.clone()),
-        review_body: finish_artifact.and_then(|a| a.review_body.clone()),
-        review_already_exists: finish_artifact
-            .map(|a| a.review_already_exists)
-            .unwrap_or(false),
     });
 
     match with_retry_on_401(client, worker_state, |token| {
@@ -199,9 +191,6 @@ pub(crate) struct SubmitResultParams {
     pub(crate) model_used: Option<String>,
     pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
-    pub(crate) review_url: Option<String>,
-    pub(crate) review_body: Option<String>,
-    pub(crate) review_already_exists: bool,
 }
 
 #[must_use]
@@ -217,10 +206,7 @@ pub(crate) fn submit_result_request(params: SubmitResultParams) -> SubmitResultR
         cache_write_tokens: params.cache_write_tokens,
         model_used: params.model_used,
         finish_status: params.finish_status,
-        finish_summary: params.finish_summary,
-        review_url: params.review_url,
-        review_body: params.review_body,
-        review_already_exists: params.review_already_exists,
+        result_summary: params.finish_summary,
     }
 }
 
@@ -246,9 +232,6 @@ pub(crate) fn submit_result_from_journal(entry: &JournalEntry) -> SubmitResultRe
         model_used: None,
         finish_status: None,
         finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
     })
 }
 
