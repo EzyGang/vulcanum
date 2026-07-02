@@ -19,6 +19,7 @@ use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
 use super::github_credentials::spawn_refresh_task;
 use super::prompts::text::initial_prompt;
+use super::runtime_secrets::job_runtime_secrets;
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::factory::create_isolation_provider;
@@ -199,31 +200,7 @@ pub(crate) async fn handle_job(
 
     let provider = create_isolation_provider(config);
     let limits = ResourceLimits::default();
-    let mut secrets = HashMap::new();
-    secrets.insert(
-        "PROVIDER_INSTANCE_URL".to_owned(),
-        job.provider_instance_url,
-    );
-    secrets.insert("PROVIDER_API_KEY".to_owned(), job.provider_api_key);
-    secrets.insert("EXTERNAL_PROJECT_ID".to_owned(), job.external_project_id);
-    secrets.insert(
-        "EXTERNAL_WORKSPACE_ID".to_owned(),
-        job.external_workspace_id,
-    );
-    secrets.insert("EXTERNAL_TASK_ID".to_owned(), job.external_task_ref.clone());
-    if let Some(token) = &job.github_token {
-        secrets.insert("GITHUB_TOKEN".to_owned(), token.clone());
-    }
-    for (key, value) in &job.model_provider_env {
-        secrets.insert(key.clone(), value.clone());
-    }
-    if let vulcanum_shared::api_types::AgentConfigPayload::OpenCode {
-        auth_content: Some(auth_content),
-        ..
-    } = &job.agent_config
-    {
-        secrets.insert("OPENCODE_AUTH_CONTENT".to_owned(), auth_content.clone());
-    }
+    let secrets = job_runtime_secrets(&job);
     let env_vars = HashMap::new();
 
     let isolated_env = match provider

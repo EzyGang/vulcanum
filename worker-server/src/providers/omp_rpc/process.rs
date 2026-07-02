@@ -54,6 +54,7 @@ pub(crate) async fn launch_omp(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    command.kill_on_drop(true);
 
     command
         .spawn()

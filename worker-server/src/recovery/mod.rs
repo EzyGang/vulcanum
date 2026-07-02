@@ -1,6 +1,8 @@
 pub(crate) mod checks;
 pub(crate) mod cleanup;
 pub(crate) mod recover_session;
+#[cfg(test)]
+mod recover_session_tests;
 
 use std::sync::Arc;
 

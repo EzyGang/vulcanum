@@ -127,9 +127,9 @@ fn render_omp_config(
                 }
             }
             ParsedAuth::DeviceOAuth(credential) if provider.provider_key == OPENAI_PROVIDER_KEY => {
+                omp_oauth_provider_keys.insert(provider.provider_key.clone());
                 if !credential.access.is_empty() {
                     env.insert(OPENAI_CODEX_OAUTH_TOKEN_ENV.to_owned(), credential.access);
-                    omp_oauth_provider_keys.insert(provider.provider_key.clone());
                 }
             }
             ParsedAuth::DeviceOAuth(_) | ParsedAuth::None => (),

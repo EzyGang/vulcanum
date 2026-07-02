@@ -3,6 +3,7 @@ pub(crate) mod github_credentials;
 pub(crate) mod orchestrate;
 mod prompts;
 pub(crate) mod review;
+pub(crate) mod runtime_secrets;
 pub(crate) mod tool;
 pub(crate) mod turn_loop;
 

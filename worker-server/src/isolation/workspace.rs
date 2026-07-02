@@ -385,7 +385,7 @@ pub(crate) async fn surface_repo_context(
     fs::create_dir_all(&skills_dir)
         .await
         .map_err(|e| HarnessError::Crash(format!("failed to create skills dir: {e}")))?;
-    let mut copied_skills: HashSet<String> = HashSet::new();
+    let mut copied_skills: HashMap<String, CopiedSkillOrigin> = HashMap::new();
 
     for repo in repos {
         let repo_dir = workspace_dir.join(&repo.relative_path);
@@ -426,10 +426,15 @@ fn skill_roots(repo_dir: &Path) -> [PathBuf; 4] {
     ]
 }
 
+struct CopiedSkillOrigin {
+    repo_full_name: String,
+    source_path: PathBuf,
+}
+
 async fn copy_skills_first_wins(
     source: &Path,
     target: &Path,
-    copied: &mut HashSet<String>,
+    copied: &mut HashMap<String, CopiedSkillOrigin>,
     repo: &WorkspaceRepo,
 ) -> Result<(), HarnessError> {
     let mut entries = match fs::read_dir(source).await {
@@ -459,19 +464,46 @@ async fn copy_skills_first_wins(
     skill_entries.sort_by(|(left_name, _), (right_name, _)| left_name.cmp(right_name));
 
     for (skill_name, source_path) in skill_entries {
-        if copied.contains(&skill_name) {
-            tracing::warn!(
-                repo = %repo.full_name,
-                skill = %skill_name,
-                "skipping duplicate repo skill"
-            );
+        if let Some(origin) = copied.get(&skill_name) {
+            log_duplicate_skill(repo, &skill_name, &source_path, origin);
             continue;
         }
         copy_dir(&source_path, &target.join(&skill_name)).await?;
-        copied.insert(skill_name);
+        copied.insert(
+            skill_name,
+            CopiedSkillOrigin {
+                repo_full_name: repo.full_name.clone(),
+                source_path,
+            },
+        );
     }
 
     Ok(())
+}
+
+fn log_duplicate_skill(
+    repo: &WorkspaceRepo,
+    skill_name: &str,
+    source_path: &Path,
+    origin: &CopiedSkillOrigin,
+) {
+    match origin.repo_full_name == repo.full_name {
+        true => tracing::debug!(
+            repo = %repo.full_name,
+            skill = %skill_name,
+            source = %source_path.display(),
+            existing_source = %origin.source_path.display(),
+            "skipping duplicate repo skill"
+        ),
+        false => tracing::warn!(
+            repo = %repo.full_name,
+            existing_repo = %origin.repo_full_name,
+            skill = %skill_name,
+            source = %source_path.display(),
+            existing_source = %origin.source_path.display(),
+            "skipping duplicate repo skill from another repository"
+        ),
+    }
 }
 
 async fn copy_dir(source: &Path, target: &Path) -> Result<(), HarnessError> {

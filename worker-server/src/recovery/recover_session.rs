@@ -1,11 +1,13 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api_types::{JobResponse, WorkRunType};
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::agent::RunningSession;
+use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 use vulcanum_shared::worker_state::WorkerState;
@@ -13,8 +15,11 @@ use vulcanum_shared::worker_state::WorkerState;
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::execution::submit::{submit_result_request, SubmitResultParams};
 use crate::daemon::job::github_credentials::{setup_recovered_credentials, spawn_refresh_task};
+use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::isolation::github_credentials as isolation_github_credentials;
 use crate::isolation::providers::host::HostIsolation;
+use crate::isolation::workspace;
 use crate::providers::omp_rpc::runtime::OmpRpcRuntime;
 use crate::providers::opencode::events;
 use crate::providers::opencode::runner::OpenCodeRunningSession;
@@ -39,6 +44,57 @@ fn recovery_continuation_prompt(turn: i32, max_turns: i32) -> String {
     )
 }
 
+pub(super) async fn recovered_omp_env(
+    entry: &JournalEntry,
+    job: &JobResponse,
+) -> Result<IsolatedEnvironment, HarnessError> {
+    let workdir = std::path::PathBuf::from(&entry.workdir);
+    let secrets = job_runtime_secrets(job);
+    let sanitized_secrets = isolation_github_credentials::without_direct_token_env(&secrets);
+    let github_credentials =
+        setup_recovered_credentials(&workdir, &entry.harness_type, job.github_token.as_deref())
+            .await?;
+    let runtime_home = match entry.harness_type.as_str() {
+        "docker" | "kata" => "/workdir/home".to_owned(),
+        _ => workdir.join("home").to_string_lossy().to_string(),
+    };
+    let runtime_tmpdir = match entry.harness_type.as_str() {
+        "docker" | "kata" => "/workdir/tmp".to_owned(),
+        _ => workdir.join("tmp").to_string_lossy().to_string(),
+    };
+    let finish_artifact = match entry.harness_type.as_str() {
+        "docker" | "kata" => "/workdir/home/finish_artifact.json".to_owned(),
+        _ => workdir
+            .join("home")
+            .join("finish_artifact.json")
+            .to_string_lossy()
+            .to_string(),
+    };
+    let mut env_vars = sanitized_secrets.clone();
+    env_vars.extend(workspace::omp_environment_vars(
+        &runtime_home,
+        &runtime_tmpdir,
+    ));
+    env_vars.insert("FINISH_ARTIFACT_PATH".to_owned(), finish_artifact);
+    env_vars.extend(match entry.harness_type.as_str() {
+        "docker" | "kata" => github_credentials.runtime_env,
+        _ => github_credentials.host_env,
+    });
+
+    Ok(IsolatedEnvironment {
+        workdir: workdir.clone(),
+        workspace_dir: workdir.join("workspace"),
+        repos: Vec::new(),
+        container_name: entry.container_name.clone(),
+        secrets: sanitized_secrets,
+        env_vars,
+        runtime: (entry.harness_type == "kata").then_some("kata-runtime"),
+        image: Some(DEFAULT_IMAGE.to_owned()),
+        server_host_port: None,
+        limits: ResourceLimits::default(),
+    })
+}
+
 pub(crate) async fn recover_omp_rpc_session_task(
     entry: JournalEntry,
     api_client: Arc<ApiClient>,
@@ -61,52 +117,33 @@ pub(crate) async fn recover_omp_rpc_session_task(
     })
     .await
     {
-        Ok(job) => Some(job),
+        Ok(job) => job,
         Err(e) => {
             tracing::warn!(
                 job_id = %entry.job_id,
                 error = %e,
-                "failed to load OMP job during recovery, using implementation turn loop without github credential refresh"
+                "failed to load OMP job during recovery"
             );
-            None
+            cleanup_recovery(&entry);
+            mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
+            return;
         }
     };
-    let work_type = recovered_job
-        .as_ref()
-        .map_or(WorkRunType::Implementation, |job| job.work_type);
+    let work_type = recovered_job.work_type;
     let workdir = std::path::PathBuf::from(&entry.workdir);
-    if let Some(job) = recovered_job.as_ref() {
-        if let Err(e) =
-            setup_recovered_credentials(&workdir, &entry.harness_type, job.github_token.as_deref())
-                .await
-        {
-            tracing::warn!(
-                job_id = %entry.job_id,
-                error = %e,
-                "failed to restore github credential bridge during OMP recovery"
-            );
-        }
-    }
 
     cleanup_stale_job(&entry);
-    let mut env_vars = std::collections::HashMap::new();
-    if let Some(config_dir) = entry.agent_config_dir.as_ref() {
-        env_vars.insert("PI_CONFIG_HOME".to_owned(), config_dir.clone());
-    }
-    if let Some(state_dir) = entry.agent_state_dir.as_ref() {
-        env_vars.insert("PI_STATE_HOME".to_owned(), state_dir.clone());
-    }
-    let env = IsolatedEnvironment {
-        workdir: workdir.clone(),
-        workspace_dir: workdir.join("workspace"),
-        repos: Vec::new(),
-        container_name: entry.container_name.clone(),
-        secrets: std::collections::HashMap::new(),
-        env_vars,
-        runtime: (entry.harness_type == "kata").then_some("kata-runtime"),
-        image: Some(DEFAULT_IMAGE.to_owned()),
-        server_host_port: None,
-        limits: ResourceLimits::default(),
+    let env = match recovered_omp_env(&entry, &recovered_job).await {
+        Ok(env) => env,
+        Err(e) => {
+            tracing::error!(
+                job_id = %entry.job_id,
+                error = %e,
+                "failed to restore OMP recovery environment"
+            );
+            mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
+            return;
+        }
     };
     let prompt = recovery_continuation_prompt(current_turn, max_turns);
     let runtime = OmpRpcRuntime::new();
@@ -145,16 +182,14 @@ pub(crate) async fn recover_omp_rpc_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
-    let github_refresh_stop = recovered_job.as_ref().and_then(|job| {
-        job.github_token.as_ref().map(|_| {
-            spawn_refresh_task(
-                api_client.clone(),
-                worker_state.clone(),
-                entry.job_id,
-                workdir.clone(),
-                job.github_token_expires_at,
-            )
-        })
+    let github_refresh_stop = recovered_job.github_token.as_ref().map(|_| {
+        spawn_refresh_task(
+            api_client.clone(),
+            worker_state.clone(),
+            entry.job_id,
+            workdir.clone(),
+            recovered_job.github_token_expires_at,
+        )
     });
     run_turn_loop(
         &mut running_session,
@@ -311,8 +346,8 @@ fn cleanup_recovery(entry: &JournalEntry) {
             workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
             repos: Vec::new(),
             container_name: entry.container_name.clone(),
-            secrets: std::collections::HashMap::new(),
-            env_vars: std::collections::HashMap::new(),
+            secrets: HashMap::new(),
+            env_vars: HashMap::new(),
             runtime: None,
             image: None,
             server_host_port: None,

@@ -122,6 +122,7 @@ async fn surface_repo_context_copies_common_skill_roots() {
         "omp-codex-omp-shared",
     )
     .await;
+    write_skill(&repo_dir, ".omp", "shared", "omp-shared").await;
     tokio::fs::write(
         repo_dir.join(".claude").join("skills").join("ignored.md"),
         "ignored",

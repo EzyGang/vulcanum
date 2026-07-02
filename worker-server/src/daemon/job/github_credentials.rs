@@ -40,15 +40,16 @@ pub(crate) async fn setup_recovered_credentials(
     workdir: &Path,
     harness_type: &str,
     token: Option<&str>,
-) -> Result<(), vulcanum_shared::runtime::errors::HarnessError> {
+) -> Result<
+    isolation_github_credentials::GitHubCredentialBridge,
+    vulcanum_shared::runtime::errors::HarnessError,
+> {
     let runtime_home = match harness_type {
         "docker" | "kata" => "/workdir/home".to_owned(),
         _ => workdir.join("home").to_string_lossy().to_string(),
     };
 
-    isolation_github_credentials::setup(workdir, token, &runtime_home)
-        .await
-        .map(|_| ())
+    isolation_github_credentials::setup(workdir, token, &runtime_home).await
 }
 
 async fn refresh_loop(
