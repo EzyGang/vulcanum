@@ -87,10 +87,10 @@ impl WorkRunsService {
         }
 
         let comment = if is_review {
-            review_comment(run, params)
+            review_comment(run)
         } else {
             params
-                .finish_summary
+                .result_summary
                 .as_ref()
                 .map(|summary| format!("**Summary:** {summary}"))
                 .unwrap_or_else(|| format!("PR: {}", pr_urls.join(", ")))

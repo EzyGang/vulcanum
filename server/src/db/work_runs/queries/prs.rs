@@ -9,9 +9,6 @@ pub struct InsertReviewResultParams<'a> {
     pub work_run_id: Uuid,
     pub pr_url: &'a str,
     pub repo_full_name: &'a str,
-    pub review_url: Option<&'a str>,
-    pub review_body: Option<&'a str>,
-    pub review_already_exists: bool,
 }
 
 pub struct UpsertTaskPrParams<'a> {
@@ -83,18 +80,12 @@ impl WorkRunsRepository {
         Q: Queryer<'c>,
     {
         sqlx::query!(
-            r#"INSERT INTO work_run_reviews (work_run_id, pr_url, repo_full_name, review_url, review_body, review_already_exists)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (work_run_id, pr_url) DO UPDATE SET
-                 review_url = EXCLUDED.review_url,
-                 review_body = EXCLUDED.review_body,
-                 review_already_exists = EXCLUDED.review_already_exists"#,
+            r#"INSERT INTO work_run_reviews (work_run_id, pr_url, repo_full_name)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (work_run_id, pr_url) DO NOTHING"#,
             params.work_run_id,
             params.pr_url,
             params.repo_full_name,
-            params.review_url,
-            params.review_body,
-            params.review_already_exists,
         )
         .execute(db)
         .await

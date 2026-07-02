@@ -4,7 +4,6 @@ use crate::db::work_runs::queries::InsertWorkRunParams;
 use crate::models::project_configs::model::ProjectConfig;
 use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
-use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
 use crate::services::providers::client::{IntegrationClient, TaskFetcher};
 
 use super::{PollError, PollerService};
@@ -81,8 +80,7 @@ impl PollerService {
                 continue;
             }
 
-            let params =
-                build_work_run_params(config, &settings.agents_md, &settings.prompt_template, task);
+            let params = build_work_run_params(config, task);
 
             match self
                 .work_runs_repo
@@ -255,46 +253,16 @@ impl PollerService {
 
 fn build_work_run_params(
     config: &ProjectConfig,
-    agents_md: &str,
-    prompt_template: &str,
     task: &IntegrationTask,
 ) -> InsertWorkRunParams {
-    let repo_urls = config.repo_urls.join("\n");
-    let repo_names = config.repo_full_names.join("\n");
-    let repo_layout = repo_layout(&config.repo_full_names);
-    let mut prompt_text = crate::services::poller::template::render_template(
-        prompt_template,
-        &crate::services::poller::template::TemplateVars {
-            task_title: &task.title,
-            task_body: task.description.as_deref().unwrap_or(""),
-            repo_url: &config.repo_url,
-            repo_urls: &repo_urls,
-            repo_names: &repo_names,
-            repo_layout: &repo_layout,
-            review_target_pr_url: "",
-        },
-    );
-
-    prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
-
-    if !config.repo_full_names.is_empty() {
-        prompt_text.push_str(GITHUB_INSTRUCTION);
-    }
-
     InsertWorkRunParams {
         team_id: config.team_id,
         external_task_ref: task.id.clone(),
         project_config_id: config.id,
-        prompt_text,
-        repo_url: config.repo_url.clone(),
         repo_full_names: config.repo_full_names.clone(),
-        agents_md: agents_md.to_owned(),
         status: WorkRunStatus::Pending,
         work_type: WorkRunType::Implementation,
         parent_work_run_id: None,
-        task_body: task.description.clone().unwrap_or_default(),
-        task_title: Some(task.title.clone()),
-        task_slug: build_task_slug(task),
         review_target_pr_url: None,
         review_target_repo_full_name: None,
     }
@@ -307,17 +275,4 @@ pub(crate) fn repo_layout(repo_full_names: &[String]) -> String {
         .map(|name| format!("{name}: ./{}", name.replace('/', "-")))
         .collect::<Vec<String>>()
         .join("\n")
-}
-
-#[must_use]
-fn build_task_slug(task: &IntegrationTask) -> Option<String> {
-    let project_slug = task.project_slug.as_deref()?;
-    let number = match task.number {
-        Some(n) => n.to_string(),
-        None => {
-            let id_prefix = &task.id[..task.id.len().min(8)];
-            id_prefix.to_owned()
-        }
-    };
-    Some(format!("{project_slug}-{number}"))
 }

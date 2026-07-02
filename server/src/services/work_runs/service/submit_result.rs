@@ -57,12 +57,9 @@ impl WorkRunsService {
                     cache_write_tokens: params.cache_write_tokens,
                     model_used: params.model_used.as_deref(),
                     finish_status: params.finish_status.as_ref().map(|s| s.as_str()),
-                    finish_summary: params.finish_summary.as_deref(),
+                    result_summary: params.result_summary.as_deref(),
                     finish_blocked_reason: None,
                     finish_next_column: None,
-                    review_url: params.review_url.as_deref(),
-                    review_body: params.review_body.as_deref(),
-                    review_already_exists: params.review_already_exists,
                 },
             )
             .await?;
@@ -185,7 +182,7 @@ impl WorkRunsService {
         .await;
 
         if matches!(run.work_type, WorkRunType::PullRequestReview) {
-            self.record_review_result(&run, &params).await;
+            self.record_review_result(&run).await;
         }
 
         self.set_lifecycle_label_after_result(&run, status, review_outcome)

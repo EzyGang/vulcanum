@@ -80,6 +80,10 @@ impl TaskFetcher for MockTaskFetcher {
         }
     }
 
+    async fn fetch_task(&self, _task_id: &str) -> Result<IntegrationTask, IntegrationError> {
+        Err(IntegrationError::Other("not implemented".to_owned()))
+    }
+
     async fn update_task_status(
         &self,
         task_id: &str,
@@ -164,16 +168,10 @@ pub(crate) async fn insert_active_run(pool: &PgPool, project_config_id: Uuid, ta
                 team_id: DEFAULT_TEAM_ID,
                 external_task_ref: task_ref.to_owned(),
                 project_config_id,
-                prompt_text: "Work".to_owned(),
-                repo_url: String::new(),
                 repo_full_names: Vec::new(),
-                agents_md: String::new(),
                 status: WorkRunStatus::Running,
                 work_type: WorkRunType::Implementation,
                 parent_work_run_id: None,
-                task_body: String::new(),
-                task_title: Some("Existing work".to_owned()),
-                task_slug: None,
                 review_target_pr_url: None,
                 review_target_repo_full_name: None,
             },
