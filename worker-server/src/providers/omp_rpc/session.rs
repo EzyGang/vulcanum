@@ -65,8 +65,9 @@ impl OmpRpcRunningSession {
     }
 
     pub(crate) fn set_configured_model(&mut self, env: &IsolatedEnvironment) {
-        if self.model_used.is_none() {
-            self.model_used = configured_model(env).map(str::to_owned);
+        if let Some(model) = configured_model(env) {
+            self.model_used
+                .get_or_insert_with(|| model_used_name(env, model));
         }
     }
 
@@ -106,7 +107,7 @@ impl OmpRpcRunningSession {
             self.session_path = host_session_path(env, session_path);
         }
         if let Some(model) = state_string(data, "model") {
-            self.model_used = Some(model.to_owned());
+            self.model_used = Some(model_used_name(env, model));
         }
         self.set_configured_model(env);
         Ok(())
@@ -261,6 +262,24 @@ fn configured_model(env: &IsolatedEnvironment) -> Option<&str> {
         .get("PI_MODEL")
         .map(String::as_str)
         .filter(|model| !model.is_empty())
+}
+
+fn configured_provider(env: &IsolatedEnvironment) -> Option<&str> {
+    env.env_vars
+        .get("PI_PROVIDER")
+        .map(String::as_str)
+        .filter(|provider| !provider.is_empty())
+}
+
+fn model_used_name(env: &IsolatedEnvironment, model: &str) -> String {
+    if model.contains('/') {
+        return model.to_owned();
+    }
+
+    match configured_provider(env) {
+        Some(provider) => format!("{provider}/{model}"),
+        None => model.to_owned(),
+    }
 }
 
 pub(super) fn host_session_path(env: &IsolatedEnvironment, session_path: &str) -> String {

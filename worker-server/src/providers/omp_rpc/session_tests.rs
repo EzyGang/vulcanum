@@ -112,11 +112,66 @@ async fn configured_model_sets_export_model_used() -> Result<(), Box<dyn Error>>
     let mut env = docker_env();
     env.env_vars
         .insert("PI_MODEL".to_owned(), "gpt-5-codex".to_owned());
+    env.env_vars
+        .insert("PI_PROVIDER".to_owned(), "openai-codex".to_owned());
 
     session.set_configured_model(&env);
     let export = session.export().await?;
 
-    assert_eq!(export.model_used, Some("gpt-5-codex".to_owned()));
+    assert_eq!(
+        export.model_used,
+        Some("openai-codex/gpt-5-codex".to_owned())
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn configured_openai_model_sets_provider_prefixed_export_model_used(
+) -> Result<(), Box<dyn Error>> {
+    let stderr = ProcessOutputBuffer::default();
+    let (mut session, _tx) = test_session(stderr).await?;
+    let mut env = docker_env();
+    env.env_vars
+        .insert("PI_MODEL".to_owned(), "gpt-5.5".to_owned());
+    env.env_vars
+        .insert("PI_PROVIDER".to_owned(), "openai".to_owned());
+
+    session.set_configured_model(&env);
+    let export = session.export().await?;
+
+    assert_eq!(export.model_used, Some("openai/gpt-5.5".to_owned()));
+    Ok(())
+}
+
+#[tokio::test]
+async fn reported_model_sets_provider_prefixed_model_used() -> Result<(), Box<dyn Error>> {
+    let stderr = ProcessOutputBuffer::default();
+    let (mut session, tx) = test_session(stderr).await?;
+    let mut env = docker_env();
+    env.env_vars
+        .insert("PI_PROVIDER".to_owned(), "openai-codex".to_owned());
+    env.env_vars
+        .insert("PI_MODEL".to_owned(), "configured-fallback".to_owned());
+
+    tx.send(serde_json::json!({
+        "id": "state-1",
+        "type": "response",
+        "command": "get_state",
+        "success": true,
+        "data": {
+            "sessionId": "abc",
+            "model": "gpt-5-codex"
+        }
+    }))
+    .await?;
+
+    session.refresh_state(&env).await?;
+    let export = session.export().await?;
+
+    assert_eq!(
+        export.model_used,
+        Some("openai-codex/gpt-5-codex".to_owned())
+    );
     Ok(())
 }
 

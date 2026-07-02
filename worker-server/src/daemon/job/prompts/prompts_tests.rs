@@ -13,6 +13,8 @@ fn implementation_initial_prompt_requires_finish_run() {
     assert!(prompt.contains("call the `finish_run` tool exactly once"));
     assert!(prompt.contains("formatter, validation"));
     assert!(prompt.contains("every repository you changed"));
+    assert!(prompt.contains("install missing project dependencies"));
+    assert!(prompt.contains("local services"));
     assert!(prompt.contains("`pr_urls`"));
     assert!(!prompt.contains("`pr_url`"));
 }
@@ -36,6 +38,8 @@ fn review_initial_prompt_uses_review_artifact_fields() {
     assert!(prompt.contains("SUGGESTIONS"));
     assert!(prompt.contains("missing"));
     assert!(prompt.contains("formatter, validation"));
+    assert!(prompt.contains("install missing project dependencies"));
+    assert!(prompt.contains("local services"));
     assert!(!prompt.contains("`pr_url`"));
 }
 
@@ -45,6 +49,8 @@ fn continuation_prompt_mentions_final_turn() {
 
     assert!(prompt.contains("[Continuation turn 3/3]"));
     assert!(prompt.contains("final allowed turn"));
+    assert!(prompt.contains("Install missing project dependencies"));
+    assert!(prompt.contains("local services"));
 }
 
 #[test]
@@ -54,6 +60,8 @@ fn review_fix_prompt_switches_to_existing_pr_fix_mode() {
     assert!(prompt.contains("Switch to implementation mode"));
     assert!(prompt.contains("existing pull request"));
     assert!(prompt.contains("formatter, validation, and test commands"));
+    assert!(prompt.contains("install missing project dependencies"));
+    assert!(prompt.contains("local services"));
     assert!(prompt.contains("Do not create a new pull request"));
     assert!(prompt.contains("do not call finish_run"));
 }
