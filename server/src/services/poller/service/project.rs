@@ -255,10 +255,7 @@ impl PollerService {
     }
 }
 
-fn build_work_run_params(
-    config: &ProjectConfig,
-    task: &IntegrationTask,
-) -> InsertWorkRunParams {
+fn build_work_run_params(config: &ProjectConfig, task: &IntegrationTask) -> InsertWorkRunParams {
     InsertWorkRunParams {
         team_id: config.team_id,
         external_task_ref: task.id.clone(),

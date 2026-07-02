@@ -153,11 +153,13 @@ impl WorkRunsRepository {
             "INSERT INTO work_run_result_pr_urls (work_run_id, pr_url, position) ",
         );
         builder.push_values(pr_urls.iter().enumerate(), |mut b, (i, url)| {
-            b.push_bind(work_run_id)
-                .push_bind(url)
-                .push_bind(i as i32);
+            b.push_bind(work_run_id).push_bind(url).push_bind(i as i32);
         });
-        builder.build().execute(db).await.map_err(WorkRunsError::from)?;
+        builder
+            .build()
+            .execute(db)
+            .await
+            .map_err(WorkRunsError::from)?;
 
         Ok(())
     }

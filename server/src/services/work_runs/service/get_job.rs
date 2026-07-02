@@ -5,9 +5,9 @@ use crate::models::project_configs::model::JobConfigFields;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::WorkRunType;
 use crate::services::model_providers::renderer::ModelSelection;
+use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
 use crate::services::poller::service::repo_layout;
 use crate::services::poller::template::{render_template, TemplateVars};
-use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
 use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_repo_full_name_from_url;
@@ -117,18 +117,15 @@ impl WorkRunsService {
         let repo_names_joined = repo_names_str.join("\n");
         let repo_layout = repo_layout(&cfg.repo_urls);
 
-        let (task_title, task_body) = self
-            .fetch_task_data(run, cfg)
-            .await
-            .unwrap_or_else(|e| {
-                tracing::warn!(
-                    work_run_id = %run.id,
-                    external_task_ref = %run.external_task_ref,
-                    error = %e,
-                    "failed to fetch task data, using empty defaults"
-                );
-                (String::new(), String::new())
-            });
+        let (task_title, task_body) = self.fetch_task_data(run, cfg).await.unwrap_or_else(|e| {
+            tracing::warn!(
+                work_run_id = %run.id,
+                external_task_ref = %run.external_task_ref,
+                error = %e,
+                "failed to fetch task data, using empty defaults"
+            );
+            (String::new(), String::new())
+        });
 
         let repo_url = cfg.repo_urls.first().cloned().unwrap_or_default();
         let review_target_pr_url = run.review_target_pr_url.as_deref().unwrap_or("");
@@ -177,11 +174,12 @@ impl WorkRunsService {
             })?;
 
         let client = IntegrationClient::from_provider(&provider);
-        let task = client.fetch_task(&run.external_task_ref).await.map_err(|e| {
-            WorkRunsError::Database(sqlx::Error::Protocol(format!(
-                "failed to fetch task: {e}"
-            )))
-        })?;
+        let task = client
+            .fetch_task(&run.external_task_ref)
+            .await
+            .map_err(|e| {
+                WorkRunsError::Database(sqlx::Error::Protocol(format!("failed to fetch task: {e}")))
+            })?;
 
         Ok((task.title, task.description.unwrap_or_default()))
     }

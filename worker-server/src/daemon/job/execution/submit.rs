@@ -18,9 +18,6 @@ pub(crate) struct FailedResult {
     pub(crate) duration_ms: i64,
     pub(crate) finish_status: Option<FinishStatus>,
     pub(crate) finish_summary: Option<String>,
-    pub(crate) review_url: Option<String>,
-    pub(crate) review_body: Option<String>,
-    pub(crate) review_already_exists: bool,
 }
 
 impl FailedResult {
@@ -33,9 +30,6 @@ impl FailedResult {
             duration_ms: 0,
             finish_status: None,
             finish_summary: None,
-            review_url: None,
-            review_body: None,
-            review_already_exists: false,
         }
     }
 }

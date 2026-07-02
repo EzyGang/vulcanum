@@ -1,11 +1,8 @@
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::daemon::job::execution::submit::{
-    submit_result_from_journal, SubmitResultParams,
-};
+use crate::daemon::job::execution::submit::submit_result_from_journal;
 use crate::state::journal::{JournalEntry, JournalStatus};
-
 
 #[test]
 fn submit_result_from_journal_replays_stored_result() {
