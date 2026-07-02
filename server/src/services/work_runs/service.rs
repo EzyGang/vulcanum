@@ -13,9 +13,13 @@ pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;
 
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use sqlx::PgPool;
+use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::work_runs::WorkRunsRepository;
@@ -25,6 +29,11 @@ use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
+
+/// TTL for cached task data from external providers.
+const TASK_CACHE_TTL: Duration = Duration::from_secs(60);
+
+type TaskCache = Arc<Mutex<HashMap<(Uuid, String), (String, String, Instant)>>>;
 
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
@@ -37,6 +46,7 @@ pub struct WorkRunsService {
     pub providers_repo: IntegrationProvidersRepository,
     pub model_providers: ModelProvidersService,
     pub unhealthy_threshold: i32,
+    task_cache: TaskCache,
 }
 
 impl Clone for WorkRunsService {
@@ -52,6 +62,7 @@ impl Clone for WorkRunsService {
             providers_repo: self.providers_repo.clone(),
             model_providers: self.model_providers.clone(),
             unhealthy_threshold: self.unhealthy_threshold,
+            task_cache: self.task_cache.clone(),
         }
     }
 }
@@ -81,6 +92,7 @@ impl WorkRunsService {
             providers_repo,
             model_providers,
             unhealthy_threshold,
+            task_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 

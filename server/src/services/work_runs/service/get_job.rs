@@ -1,7 +1,11 @@
+use std::time::Instant;
+
 use uuid::Uuid;
 use vulcanum_shared::api_types::JobResponse;
 
+use super::TaskCache;
 use crate::models::project_configs::model::EffectiveProjectSettings;
+use crate::models::provider_configs::model::IntegrationProvider;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::WorkRunType;
 use crate::services::model_providers::renderer::ModelSelection;
@@ -77,23 +81,40 @@ impl WorkRunsService {
             None => None,
         };
 
-        // Reconstruct prompt_text from template + task data
-        let (task_title, task_body) = match &provider {
-            Some(p) => {
-                let client = IntegrationClient::from_provider(p);
-                match client.fetch_task_by_id(&run.external_task_ref).await {
-                    Ok(Some(task)) => (task.title, task.description.unwrap_or_default()),
-                    Ok(None) | Err(_) => {
-                        tracing::warn!(
-                            work_run_id = %id,
-                            task_ref = %run.external_task_ref,
-                            "failed to fetch task data from provider for prompt reconstruction"
-                        );
-                        (String::new(), String::new())
-                    }
+        // Reconstruct prompt_text from template + task data.
+        // Check a short-lived in-memory cache before hitting the provider API.
+        let cache_key = (
+            cfg.provider_id.unwrap_or_default(),
+            run.external_task_ref.clone(),
+        );
+        let (task_title, task_body) = {
+            let mut cache = self.task_cache.lock().await;
+            if let Some((title, body, ts)) = cache.get(&cache_key) {
+                if ts.elapsed() < super::TASK_CACHE_TTL {
+                    (title.clone(), body.clone())
+                } else {
+                    cache.remove(&cache_key);
+                    drop(cache);
+                    fetch_and_cache_task(
+                        &self.task_cache,
+                        cache_key,
+                        &provider,
+                        &run.external_task_ref,
+                        id,
+                    )
+                    .await
                 }
+            } else {
+                drop(cache);
+                fetch_and_cache_task(
+                    &self.task_cache,
+                    cache_key,
+                    &provider,
+                    &run.external_task_ref,
+                    id,
+                )
+                .await
             }
-            None => (String::new(), String::new()),
         };
 
         let review_target_pr_url = run.review_target_pr_url.as_deref().unwrap_or("");
@@ -172,6 +193,40 @@ impl WorkRunsService {
             review_target_repo_full_name: run.review_target_repo_full_name,
         })
     }
+}
+
+/// Fetches task data from the provider API and caches the result.
+async fn fetch_and_cache_task(
+    cache: &TaskCache,
+    cache_key: (Uuid, String),
+    provider: &Option<IntegrationProvider>,
+    task_ref: &str,
+    work_run_id: Uuid,
+) -> (String, String) {
+    let result = match provider {
+        Some(p) => {
+            let client = IntegrationClient::from_provider(p);
+            match client.fetch_task_by_id(task_ref).await {
+                Ok(Some(task)) => (task.title, task.description.unwrap_or_default()),
+                Ok(None) | Err(_) => {
+                    tracing::warn!(
+                        work_run_id = %work_run_id,
+                        task_ref = %task_ref,
+                        "failed to fetch task data from provider for prompt reconstruction"
+                    );
+                    (String::new(), String::new())
+                }
+            }
+        }
+        None => (String::new(), String::new()),
+    };
+    if !result.0.is_empty() || !result.1.is_empty() {
+        cache.lock().await.insert(
+            cache_key,
+            (result.0.clone(), result.1.clone(), Instant::now()),
+        );
+    }
+    result
 }
 
 #[must_use]
