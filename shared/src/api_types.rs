@@ -203,6 +203,9 @@ pub struct SubmitResultRequest {
     pub model_used: Option<String>,
     pub finish_status: Option<FinishStatus>,
     pub result_summary: Option<String>,
+    // review_url, review_body, and review_already_exists are kept on the wire
+    // (not stored in `work_runs`) so `record_review_result` can persist them
+    // into the `work_run_reviews` table on the server side.
     pub review_url: Option<String>,
     pub review_body: Option<String>,
     #[serde(default)]

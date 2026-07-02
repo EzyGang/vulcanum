@@ -67,29 +67,32 @@ impl WorkRunsService {
                 .collect::<Vec<_>>(),
         );
 
-        // Reconstruct prompt_text from template + task data
-        let (task_title, task_body) = match cfg.provider_id {
-            Some(pid) => match self
+        // Fetch the integration provider once — used for task reconstruction and API credentials
+        let provider = match cfg.provider_id {
+            Some(pid) => self
                 .providers_repo
                 .find_by_id(&self.db, pid, cfg.team_id)
                 .await
-            {
-                Ok(provider) => {
-                    let client = IntegrationClient::from_provider(&provider);
-                    match client.fetch_task_by_id(&run.external_task_ref).await {
-                        Ok(Some(task)) => (task.title, task.description.unwrap_or_default()),
-                        Ok(None) | Err(_) => {
-                            tracing::warn!(
-                                work_run_id = %id,
-                                task_ref = %run.external_task_ref,
-                                "failed to fetch task data from provider for prompt reconstruction"
-                            );
-                            (String::new(), String::new())
-                        }
+                .ok(),
+            None => None,
+        };
+
+        // Reconstruct prompt_text from template + task data
+        let (task_title, task_body) = match &provider {
+            Some(p) => {
+                let client = IntegrationClient::from_provider(p);
+                match client.fetch_task_by_id(&run.external_task_ref).await {
+                    Ok(Some(task)) => (task.title, task.description.unwrap_or_default()),
+                    Ok(None) | Err(_) => {
+                        tracing::warn!(
+                            work_run_id = %id,
+                            task_ref = %run.external_task_ref,
+                            "failed to fetch task data from provider for prompt reconstruction"
+                        );
+                        (String::new(), String::new())
                     }
                 }
-                Err(_) => (String::new(), String::new()),
-            },
+            }
             None => (String::new(), String::new()),
         };
 
@@ -122,15 +125,8 @@ impl WorkRunsService {
             }
         }
 
-        let (provider_instance_url, provider_api_key) = match cfg.provider_id {
-            Some(pid) => match self
-                .providers_repo
-                .find_by_id(&self.db, pid, cfg.team_id)
-                .await
-            {
-                Ok(provider) => (provider.instance_url, provider.api_key),
-                Err(_) => (String::new(), String::new()),
-            },
+        let (provider_instance_url, provider_api_key) = match &provider {
+            Some(p) => (p.instance_url.clone(), p.api_key.clone()),
             None => (String::new(), String::new()),
         };
 
