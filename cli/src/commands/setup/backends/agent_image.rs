@@ -1,13 +1,9 @@
 use std::process::{Command, Output};
-use std::thread;
-use std::time::Duration;
 
 use vulcanum_shared::constants::DEFAULT_IMAGE;
+use vulcanum_shared::runtime::docker::retry_docker_pull_blocking;
 
 use crate::commands::setup::host::which;
-
-const PULL_ATTEMPTS: u8 = 3;
-const PULL_RETRY_DELAY: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone, Copy)]
 enum DockerAccess {
@@ -24,31 +20,19 @@ pub fn pull_agent_image() -> anyhow::Result<()> {
 
     let access = docker_access()?;
 
-    for attempt in 1..=PULL_ATTEMPTS {
+    retry_docker_pull_blocking(DEFAULT_IMAGE, || {
         let output = docker_pull_command(access)
             .output()
-            .map_err(|e| anyhow::anyhow!("failed to run docker pull: {e}"))?;
+            .map_err(|e| format!("failed to run docker pull: {e}"))?;
 
         if output.status.success() {
-            return Ok(());
+            Ok(())
+        } else {
+            Err(docker_failure_message(&output))
         }
+    })?;
 
-        let message = docker_failure_message(&output);
-
-        if attempt < PULL_ATTEMPTS {
-            tracing::debug!(
-                attempt,
-                error = %message,
-                "docker pull failed; retrying"
-            );
-            thread::sleep(PULL_RETRY_DELAY);
-            continue;
-        }
-
-        anyhow::bail!("docker pull '{DEFAULT_IMAGE}' failed: {message}");
-    }
-
-    anyhow::bail!("docker pull '{DEFAULT_IMAGE}' failed");
+    Ok(())
 }
 
 fn docker_access() -> anyhow::Result<DockerAccess> {

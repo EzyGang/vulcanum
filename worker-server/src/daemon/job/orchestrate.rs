@@ -242,6 +242,17 @@ pub(crate) async fn handle_job(
         }
     };
 
+    let github_refresh_stop = match job.github_token.as_ref() {
+        Some(_) => Some(spawn_refresh_task(
+            client.clone(),
+            worker_state.clone(),
+            job_id,
+            workdir.clone(),
+            job.github_token_expires_at,
+        )),
+        None => None,
+    };
+
     if let (Some(pr_url), Some(repo_full_name)) = (
         job.review_target_pr_url.as_deref(),
         job.review_target_repo_full_name.as_deref(),
@@ -265,6 +276,9 @@ pub(crate) async fn handle_job(
                     error = %e,
                     "pull request checkout failed",
                 );
+                if let Some(stop) = github_refresh_stop {
+                    let _ = stop.send(true);
+                }
                 provider.cleanup(&isolated_env).await;
                 submit_failed_result(
                     client,
@@ -299,6 +313,9 @@ pub(crate) async fn handle_job(
                     "session.failed",
                     serde_json::json!({"reason": "runtime_execute_failed"}),
                 );
+                if let Some(stop) = github_refresh_stop {
+                    let _ = stop.send(true);
+                }
                 provider.cleanup(&isolated_env).await;
                 submit_failed_result(
                     client,
@@ -343,16 +360,6 @@ pub(crate) async fn handle_job(
 
     reporter.emit("session.started", serde_json::json!({}));
     let heartbeat_stop = spawn_heartbeat(reporter.clone());
-    let github_refresh_stop = match job.github_token.as_ref() {
-        Some(_) => Some(spawn_refresh_task(
-            client.clone(),
-            worker_state.clone(),
-            job_id,
-            workdir.clone(),
-            job.github_token_expires_at,
-        )),
-        None => None,
-    };
     let ctx = TurnLoopCtx {
         client: client.clone(),
         worker_state: worker_state.clone(),

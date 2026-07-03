@@ -147,6 +147,16 @@ pub(crate) async fn recover_omp_rpc_session_task(
             return;
         }
     };
+    let github_refresh_stop = recovered_job.github_token.as_ref().map(|_| {
+        spawn_refresh_task(
+            api_client.clone(),
+            worker_state.clone(),
+            entry.job_id,
+            workdir.clone(),
+            recovered_job.github_token_expires_at,
+        )
+    });
+
     let prompt = recovery_continuation_prompt(current_turn, max_turns);
     let runtime = OmpRpcRuntime::new();
     let mut running_session = match runtime
@@ -160,6 +170,9 @@ pub(crate) async fn recover_omp_rpc_session_task(
                 error = %e,
                 "failed to resume OMP RPC session"
             );
+            if let Some(stop) = github_refresh_stop {
+                let _ = stop.send(true);
+            }
             mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
             return;
         }
@@ -184,15 +197,6 @@ pub(crate) async fn recover_omp_rpc_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
-    let github_refresh_stop = recovered_job.github_token.as_ref().map(|_| {
-        spawn_refresh_task(
-            api_client.clone(),
-            worker_state.clone(),
-            entry.job_id,
-            workdir.clone(),
-            recovered_job.github_token_expires_at,
-        )
-    });
     run_turn_loop(
         &mut running_session,
         &artifact_path,
