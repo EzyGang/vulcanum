@@ -14,7 +14,9 @@ use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::execution::submit::{submit_result_request, SubmitResultParams};
-use crate::daemon::job::github_credentials::{setup_recovered_credentials, spawn_refresh_task};
+use crate::daemon::job::github_credentials::{
+    setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
+};
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::github_credentials as isolation_github_credentials;
@@ -147,6 +149,16 @@ pub(crate) async fn recover_omp_rpc_session_task(
             return;
         }
     };
+    let github_refresh_stop = recovered_job.github_token.as_ref().map(|_| {
+        spawn_refresh_task(
+            api_client.clone(),
+            worker_state.clone(),
+            entry.job_id,
+            workdir.clone(),
+            recovered_job.github_token_expires_at,
+        )
+    });
+
     let prompt = recovery_continuation_prompt(current_turn, max_turns);
     let runtime = OmpRpcRuntime::new();
     let mut running_session = match runtime
@@ -160,6 +172,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
                 error = %e,
                 "failed to resume OMP RPC session"
             );
+            stop_refresh_task(github_refresh_stop);
             mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
             return;
         }
@@ -184,15 +197,6 @@ pub(crate) async fn recover_omp_rpc_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
-    let github_refresh_stop = recovered_job.github_token.as_ref().map(|_| {
-        spawn_refresh_task(
-            api_client.clone(),
-            worker_state.clone(),
-            entry.job_id,
-            workdir.clone(),
-            recovered_job.github_token_expires_at,
-        )
-    });
     run_turn_loop(
         &mut running_session,
         &artifact_path,
@@ -202,9 +206,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
         &ctx,
     )
     .await;
-    if let Some(stop) = github_refresh_stop {
-        let _ = stop.send(true);
-    }
+    stop_refresh_task(github_refresh_stop);
 
     cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "OMP RPC recovery session completed");
@@ -331,9 +333,7 @@ pub(crate) async fn recover_session_task(
         &ctx,
     )
     .await;
-    if let Some(stop) = github_refresh_stop {
-        let _ = stop.send(true);
-    }
+    stop_refresh_task(github_refresh_stop);
 
     cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "recovery session completed");

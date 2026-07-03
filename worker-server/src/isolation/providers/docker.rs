@@ -5,6 +5,7 @@ use std::process::Stdio;
 use tokio::fs;
 
 use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
+use vulcanum_shared::runtime::docker::retry_docker_pull;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -28,23 +29,26 @@ impl DockerIsolation {
     }
 
     pub(crate) async fn ensure_image(&self) -> Result<(), HarnessError> {
-        let status = tokio::process::Command::new("docker")
-            .args(["pull", &self.image])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
+        retry_docker_pull(&self.image, || docker_pull_once(&self.image))
             .await
-            .map_err(|e| HarnessError::Install(format!("failed to pull agent image: {e}")))?;
-
-        if !status.success() {
-            return Err(HarnessError::Install(format!(
-                "docker pull '{}' failed",
-                &self.image
-            )));
-        }
-
-        Ok(())
+            .map_err(|e| HarnessError::Install(e.to_string()))
     }
+}
+
+async fn docker_pull_once(image: &str) -> Result<(), String> {
+    let status = tokio::process::Command::new("docker")
+        .args(["pull", image])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map_err(|e| format!("failed to pull agent image: {e}"))?;
+
+    if status.success() {
+        return Ok(());
+    }
+
+    Err(format!("exited with status {status}"))
 }
 
 impl IsolationProvider for DockerIsolation {
