@@ -28,10 +28,6 @@ pub struct ProjectConfig {
     pub repo_full_names: Vec<String>,
     pub repo_urls: Vec<String>,
     pub agents_md: Option<String>,
-    pub primary_model_provider_key: Option<String>,
-    pub primary_model_id: Option<String>,
-    pub small_model_provider_key: Option<String>,
-    pub small_model_id: Option<String>,
     pub review_enabled: Option<bool>,
     pub review_max_turns: Option<i32>,
     pub review_prompt_template: Option<String>,
@@ -64,14 +60,6 @@ pub struct CreateProjectConfigRequest {
     #[serde(default)]
     pub agents_md: Option<String>,
     #[serde(default)]
-    pub primary_model_provider_key: Option<String>,
-    #[serde(default)]
-    pub primary_model_id: Option<String>,
-    #[serde(default)]
-    pub small_model_provider_key: Option<String>,
-    #[serde(default)]
-    pub small_model_id: Option<String>,
-    #[serde(default)]
     pub review_enabled: Option<bool>,
     #[serde(default)]
     pub review_max_turns: Option<i32>,
@@ -102,14 +90,6 @@ pub struct UpdateProjectConfigRequest {
     pub repo_full_names: Option<Vec<String>>,
     #[serde(default)]
     pub agents_md: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_nullable_string")]
-    pub primary_model_provider_key: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_nullable_string")]
-    pub primary_model_id: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_nullable_string")]
-    pub small_model_provider_key: Option<Option<String>>,
-    #[serde(default, deserialize_with = "deserialize_nullable_string")]
-    pub small_model_id: Option<Option<String>>,
     #[serde(default)]
     pub review_enabled: Option<Option<bool>>,
     #[serde(default)]
@@ -191,10 +171,6 @@ impl ProjectConfig {
             team_id: self.team_id,
             external_project_id: self.external_project_id.clone(),
             external_workspace_id: self.external_workspace_id.clone(),
-            primary_model_provider_key: settings.primary_model_provider_key,
-            primary_model_id: settings.primary_model_id,
-            small_model_provider_key: settings.small_model_provider_key,
-            small_model_id: settings.small_model_id,
             max_turns: self.max_turns,
             review_max_turns: settings.review_max_turns,
             provider_id: self.provider_id,
@@ -208,10 +184,6 @@ impl ProjectConfig {
 pub struct EffectiveProjectSettings {
     pub prompt_template: String,
     pub agents_md: String,
-    pub primary_model_provider_key: Option<String>,
-    pub primary_model_id: Option<String>,
-    pub small_model_provider_key: Option<String>,
-    pub small_model_id: Option<String>,
     pub review_enabled: bool,
     pub review_max_turns: i32,
     pub review_prompt_template: String,
@@ -223,10 +195,6 @@ pub struct JobConfigFields {
     pub team_id: Uuid,
     pub external_project_id: String,
     pub external_workspace_id: String,
-    pub primary_model_provider_key: Option<String>,
-    pub primary_model_id: Option<String>,
-    pub small_model_provider_key: Option<String>,
-    pub small_model_id: Option<String>,
     pub max_turns: i32,
     pub review_max_turns: i32,
     pub provider_id: Option<Uuid>,
@@ -240,10 +208,6 @@ impl JobConfigFields {
             team_id,
             external_project_id: String::new(),
             external_workspace_id: String::new(),
-            primary_model_provider_key: None,
-            primary_model_id: None,
-            small_model_provider_key: None,
-            small_model_id: None,
             max_turns: 0,
             review_max_turns: 1,
             provider_id: None,

@@ -4,7 +4,7 @@ use crate::db::project_configs::UpdateProjectConfigParams;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::{ProjectConfig, UpdateProjectConfigRequest};
 use crate::services::project_configs::service::{
-    has_repo_full_names, resolve_column_if_set, resolve_model_field, ProjectConfigsService,
+    has_repo_full_names, resolve_column_if_set, ProjectConfigsService,
 };
 use crate::util::github::github_repo_url;
 
@@ -54,26 +54,6 @@ impl ProjectConfigsService {
             resolve_column_if_set(&all_columns, &mut params.target_column)?;
         }
 
-        let primary_provider_key = resolve_model_field(
-            &params.primary_model_provider_key,
-            existing.primary_model_provider_key.as_deref(),
-        );
-        let primary_model_id = resolve_model_field(
-            &params.primary_model_id,
-            existing.primary_model_id.as_deref(),
-        );
-        let small_provider_key = resolve_model_field(
-            &params.small_model_provider_key,
-            existing.small_model_provider_key.as_deref(),
-        );
-        let small_model_id =
-            resolve_model_field(&params.small_model_id, existing.small_model_id.as_deref());
-
-        self.validate_model_selection(team_id, primary_provider_key, primary_model_id)
-            .await?;
-        self.validate_model_selection(team_id, small_provider_key, small_model_id)
-            .await?;
-
         let repo_url = params
             .repo_full_names
             .as_ref()
@@ -102,19 +82,6 @@ impl ProjectConfigsService {
                         .map(|value| value.as_deref()),
                     repo_url: repo_url.as_deref(),
                     agents_md: params.agents_md.as_ref().map(|value| value.as_deref()),
-                    primary_model_provider_key: params
-                        .primary_model_provider_key
-                        .as_ref()
-                        .map(|value| value.as_deref()),
-                    primary_model_id: params
-                        .primary_model_id
-                        .as_ref()
-                        .map(|value| value.as_deref()),
-                    small_model_provider_key: params
-                        .small_model_provider_key
-                        .as_ref()
-                        .map(|value| value.as_deref()),
-                    small_model_id: params.small_model_id.as_ref().map(|value| value.as_deref()),
                     review_enabled: params.review_enabled,
                     review_max_turns: params.review_max_turns,
                     review_prompt_template: params

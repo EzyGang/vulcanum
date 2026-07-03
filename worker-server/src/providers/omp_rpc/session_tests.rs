@@ -13,6 +13,7 @@ use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
 use crate::providers::omp_rpc::process::ProcessOutputBuffer;
 use crate::providers::omp_rpc::session::{host_session_path, OmpRpcRunningSession};
+use crate::providers::omp_rpc::{VULCANUM_OMP_MODEL_ENV, VULCANUM_OMP_PROVIDER_ENV};
 
 #[tokio::test]
 async fn wait_ready_preserves_startup_frames_until_ready() -> Result<(), Box<dyn Error>> {
@@ -111,9 +112,11 @@ async fn configured_model_sets_export_model_used() -> Result<(), Box<dyn Error>>
     let (mut session, _tx) = test_session(stderr).await?;
     let mut env = docker_env();
     env.env_vars
-        .insert("PI_MODEL".to_owned(), "gpt-5-codex".to_owned());
-    env.env_vars
-        .insert("PI_PROVIDER".to_owned(), "openai-codex".to_owned());
+        .insert(VULCANUM_OMP_MODEL_ENV.to_owned(), "gpt-5-codex".to_owned());
+    env.env_vars.insert(
+        VULCANUM_OMP_PROVIDER_ENV.to_owned(),
+        "openai-codex".to_owned(),
+    );
 
     session.set_configured_model(&env);
     let export = session.export().await?;
@@ -132,9 +135,9 @@ async fn configured_openai_model_sets_provider_prefixed_export_model_used(
     let (mut session, _tx) = test_session(stderr).await?;
     let mut env = docker_env();
     env.env_vars
-        .insert("PI_MODEL".to_owned(), "gpt-5.5".to_owned());
+        .insert(VULCANUM_OMP_MODEL_ENV.to_owned(), "gpt-5.5".to_owned());
     env.env_vars
-        .insert("PI_PROVIDER".to_owned(), "openai".to_owned());
+        .insert(VULCANUM_OMP_PROVIDER_ENV.to_owned(), "openai".to_owned());
 
     session.set_configured_model(&env);
     let export = session.export().await?;
@@ -148,10 +151,14 @@ async fn reported_model_sets_provider_prefixed_model_used() -> Result<(), Box<dy
     let stderr = ProcessOutputBuffer::default();
     let (mut session, tx) = test_session(stderr).await?;
     let mut env = docker_env();
-    env.env_vars
-        .insert("PI_PROVIDER".to_owned(), "openai-codex".to_owned());
-    env.env_vars
-        .insert("PI_MODEL".to_owned(), "configured-fallback".to_owned());
+    env.env_vars.insert(
+        VULCANUM_OMP_PROVIDER_ENV.to_owned(),
+        "openai-codex".to_owned(),
+    );
+    env.env_vars.insert(
+        VULCANUM_OMP_MODEL_ENV.to_owned(),
+        "configured-fallback".to_owned(),
+    );
 
     tx.send(serde_json::json!({
         "id": "state-1",

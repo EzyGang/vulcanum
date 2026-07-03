@@ -6,7 +6,6 @@ use sqlx::PgPool;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::db::model_providers::ModelProvidersRepository;
 use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::teams::TeamsRepository;
@@ -15,11 +14,6 @@ use crate::db::work_runs::WorkRunsRepository;
 use crate::models::providers::errors::IntegrationError;
 use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
-use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
-use crate::services::model_providers::auth::encryption::SecretCipher;
-use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
-use crate::services::model_providers::catalog::ModelCatalogClient;
-use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::poller::service::PollerService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::providers::client::TaskFetcher;
@@ -184,19 +178,10 @@ pub(crate) async fn insert_active_run(pool: &PgPool, project_config_id: Uuid, ta
 
 pub(crate) fn build_service(mock: Arc<MockTaskFetcher>, db: PgPool) -> PollerService {
     let repo = ProjectConfigsRepository::new();
-    let model_providers = ModelProvidersService::new(
-        ModelProvidersRepository::new(),
-        db.clone(),
-        ModelCatalogClient::new(),
-        SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
-        Arc::new(InMemoryDeviceFlowStore::new()),
-        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
-    );
     let project_configs = ProjectConfigsService::new(
         repo.clone(),
         db.clone(),
         IntegrationProvidersRepository::new(),
-        model_providers,
         TeamsService::new(TeamsRepository::new(), db.clone()),
     );
     let service = PollerService::new(

@@ -245,17 +245,20 @@ fn render_omp_config_extracts_env_and_models() {
         Some(&"secret".to_owned())
     );
     assert_eq!(
-        rendered.env.get("PI_PROVIDER"),
+        rendered.env.get("VULCANUM_OMP_PROVIDER"),
         Some(&"anthropic".to_owned())
     );
     assert_eq!(
-        rendered.env.get("PI_MODEL"),
+        rendered.env.get("VULCANUM_OMP_MODEL"),
         Some(&"claude-sonnet-4-5".to_owned())
     );
     assert_eq!(
-        rendered.env.get("PI_SMALL_MODEL"),
+        rendered.env.get("VULCANUM_OMP_SMOL"),
         Some(&"claude-haiku-4-5".to_owned())
     );
+    assert!(!rendered.env.contains_key("PI_PROVIDER"));
+    assert!(!rendered.env.contains_key("PI_MODEL"));
+    assert!(!rendered.env.contains_key("PI_SMALL_MODEL"));
 }
 
 #[test]
@@ -301,11 +304,11 @@ fn render_omp_config_maps_openai_oauth_provider_for_omp() {
     );
     assert!(!rendered.env.contains_key("OPENAI_API_KEY"));
     assert_eq!(
-        rendered.env.get("PI_PROVIDER"),
+        rendered.env.get("VULCANUM_OMP_PROVIDER"),
         Some(&"openai-codex".to_owned())
     );
     assert_eq!(
-        rendered.env.get("PI_MODEL"),
+        rendered.env.get("VULCANUM_OMP_MODEL"),
         Some(&"gpt-5-codex".to_owned())
     );
 }
@@ -349,11 +352,11 @@ fn render_omp_config_maps_openai_oauth_provider_without_access_token() {
 
     assert!(!rendered.env.contains_key("OPENAI_CODEX_OAUTH_TOKEN"));
     assert_eq!(
-        rendered.env.get("PI_PROVIDER"),
+        rendered.env.get("VULCANUM_OMP_PROVIDER"),
         Some(&"openai-codex".to_owned())
     );
     assert_eq!(
-        rendered.env.get("PI_MODEL"),
+        rendered.env.get("VULCANUM_OMP_MODEL"),
         Some(&"gpt-5-codex".to_owned())
     );
 }

@@ -11,10 +11,6 @@ export interface ProjectConfig {
   repoFullNames?: string[];
   repoUrls?: string[];
   agentsMd?: string | null;
-  primaryModelProviderKey?: string | null;
-  primaryModelId?: string | null;
-  smallModelProviderKey?: string | null;
-  smallModelId?: string | null;
   reviewEnabled?: boolean | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
@@ -35,10 +31,6 @@ export interface CreateProjectRequest {
   promptTemplate?: string | null;
   repoFullNames?: string[];
   agentsMd?: string | null;
-  primaryModelProviderKey?: string | null;
-  primaryModelId?: string | null;
-  smallModelProviderKey?: string | null;
-  smallModelId?: string | null;
   reviewEnabled?: boolean | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;
@@ -55,10 +47,6 @@ export interface UpdateProjectRequest {
   promptTemplate?: string | null;
   repoFullNames?: string[];
   agentsMd?: string | null;
-  primaryModelProviderKey?: string | null;
-  primaryModelId?: string | null;
-  smallModelProviderKey?: string | null;
-  smallModelId?: string | null;
   reviewEnabled?: boolean | null;
   reviewMaxTurns?: number | null;
   reviewPromptTemplate?: string | null;

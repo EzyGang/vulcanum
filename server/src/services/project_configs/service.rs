@@ -10,7 +10,6 @@ use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::{CreateProjectConfigRequest, ProjectConfig};
 use crate::models::providers::model::IntegrationColumn;
-use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::providers::client::IntegrationClient;
 use crate::services::teams::service::TeamsService;
 
@@ -19,7 +18,6 @@ pub struct ProjectConfigsService {
     repo: ProjectConfigsRepository,
     pub db: PgPool,
     pub providers_repo: IntegrationProvidersRepository,
-    pub model_providers: ModelProvidersService,
     pub teams: TeamsService,
 }
 
@@ -28,14 +26,12 @@ impl ProjectConfigsService {
         repo: ProjectConfigsRepository,
         db: PgPool,
         providers_repo: IntegrationProvidersRepository,
-        model_providers: ModelProvidersService,
         teams: TeamsService,
     ) -> Self {
         Self {
             repo,
             db,
             providers_repo,
-            model_providers,
             teams,
         }
     }
@@ -83,19 +79,6 @@ impl ProjectConfigsService {
         params.progress_column = resolve_column_slug(&all_columns, &params.progress_column)?;
         params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
 
-        self.validate_model_selection(
-            team_id,
-            params.primary_model_provider_key.as_deref(),
-            params.primary_model_id.as_deref(),
-        )
-        .await?;
-        self.validate_model_selection(
-            team_id,
-            params.small_model_provider_key.as_deref(),
-            params.small_model_id.as_deref(),
-        )
-        .await?;
-
         let mut tx = self
             .db
             .begin()
@@ -123,28 +106,6 @@ impl ProjectConfigsService {
             .map_err(|_| ProjectConfigsError::NoProvider)?;
 
         Ok(IntegrationClient::from_provider(&provider))
-    }
-
-    pub(super) async fn validate_model_selection(
-        &self,
-        team_id: Uuid,
-        provider_key: Option<&str>,
-        model_id: Option<&str>,
-    ) -> Result<(), ProjectConfigsError> {
-        self.model_providers
-            .validate_model_selection(team_id, provider_key, model_id)
-            .await
-            .map_err(ProjectConfigsError::ModelProvider)
-    }
-}
-
-pub(super) fn resolve_model_field<'a>(
-    field: &'a Option<Option<String>>,
-    existing: Option<&'a str>,
-) -> Option<&'a str> {
-    match field {
-        Some(value) => value.as_deref(),
-        None => existing,
     }
 }
 

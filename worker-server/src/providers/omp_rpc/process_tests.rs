@@ -5,6 +5,9 @@ use std::path::PathBuf;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
 use crate::providers::omp_rpc::process::{docker_omp_command, host_omp_command};
+use crate::providers::omp_rpc::{
+    VULCANUM_OMP_MODEL_ENV, VULCANUM_OMP_PROVIDER_ENV, VULCANUM_OMP_SMOL_ENV,
+};
 
 #[test]
 fn host_omp_command_uses_yolo_flag() {
@@ -27,8 +30,86 @@ fn docker_omp_command_uses_yolo_flag() -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
+#[test]
+fn host_omp_command_maps_launch_metadata() {
+    let mut env = test_env(None);
+    insert_omp_launch_metadata(&mut env);
+    env.env_vars.insert(
+        "OPENAI_CODEX_OAUTH_TOKEN".to_owned(),
+        "access-secret".to_owned(),
+    );
+
+    let command = host_omp_command(&env, None);
+    let args = command_args(&command);
+    assert_arg_pair(&args, "--provider", "openai-codex");
+    assert_arg_pair(&args, "--model", "gpt-5.5");
+    assert_arg_pair(&args, "--smol", "anthropic/claude-haiku-4-5");
+    assert_eq!(command_env_value(&command, VULCANUM_OMP_PROVIDER_ENV), None);
+    assert_eq!(command_env_value(&command, VULCANUM_OMP_MODEL_ENV), None);
+    assert_eq!(command_env_value(&command, VULCANUM_OMP_SMOL_ENV), None);
+    assert_eq!(
+        command_env_value(&command, "OPENAI_CODEX_OAUTH_TOKEN"),
+        Some(OsString::from("access-secret"))
+    );
+}
+
+#[test]
+fn docker_omp_command_maps_launch_metadata() -> Result<(), Box<dyn std::error::Error>> {
+    let mut env = test_env(Some("ghcr.io/ezygang/vulcanum/agent:latest".to_owned()));
+    insert_omp_launch_metadata(&mut env);
+    env.env_vars.insert(
+        "OPENAI_CODEX_OAUTH_TOKEN".to_owned(),
+        "access-secret".to_owned(),
+    );
+
+    let command = docker_omp_command(&env, "vulcanum-test", None)?;
+    let args = command_args(&command);
+
+    assert_arg_pair(&args, "--provider", "openai-codex");
+    assert_arg_pair(&args, "--model", "gpt-5.5");
+    assert_arg_pair(&args, "--smol", "anthropic/claude-haiku-4-5");
+    assert!(!args.contains(&OsString::from(format!(
+        "{VULCANUM_OMP_PROVIDER_ENV}=openai-codex"
+    ))));
+    assert!(!args.contains(&OsString::from(format!("{VULCANUM_OMP_MODEL_ENV}=gpt-5.5"))));
+    assert!(!args.contains(&OsString::from(format!(
+        "{VULCANUM_OMP_SMOL_ENV}=anthropic/claude-haiku-4-5"
+    ))));
+    assert!(args.contains(&OsString::from("OPENAI_CODEX_OAUTH_TOKEN=access-secret")));
+    Ok(())
+}
+
 fn command_args(command: &tokio::process::Command) -> Vec<OsString> {
     command.as_std().get_args().map(OsString::from).collect()
+}
+
+fn command_env_value(command: &tokio::process::Command, key: &str) -> Option<OsString> {
+    command
+        .as_std()
+        .get_envs()
+        .find(|(env_key, _)| *env_key == key)
+        .and_then(|(_, value)| value.map(OsString::from))
+}
+
+fn assert_arg_pair(args: &[OsString], flag: &str, value: &str) {
+    let expected_flag = OsString::from(flag);
+    let expected_value = OsString::from(value);
+    assert!(args
+        .windows(2)
+        .any(|pair| pair[0] == expected_flag && pair[1] == expected_value));
+}
+
+fn insert_omp_launch_metadata(env: &mut IsolatedEnvironment) {
+    env.env_vars.insert(
+        VULCANUM_OMP_PROVIDER_ENV.to_owned(),
+        "openai-codex".to_owned(),
+    );
+    env.env_vars
+        .insert(VULCANUM_OMP_MODEL_ENV.to_owned(), "gpt-5.5".to_owned());
+    env.env_vars.insert(
+        VULCANUM_OMP_SMOL_ENV.to_owned(),
+        "anthropic/claude-haiku-4-5".to_owned(),
+    );
 }
 
 fn test_env(image: Option<String>) -> IsolatedEnvironment {

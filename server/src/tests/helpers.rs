@@ -317,7 +317,6 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         project_configs_repo.clone(),
         pool.clone(),
         providers_repo.clone(),
-        model_providers.clone(),
         teams.clone(),
     );
 

@@ -11,6 +11,7 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, IsolatedEnvironment, SessionStatus};
 
 use crate::providers::omp_rpc::process::ProcessOutputBuffer;
+use crate::providers::omp_rpc::{VULCANUM_OMP_MODEL_ENV, VULCANUM_OMP_PROVIDER_ENV};
 
 const STARTUP_TIMEOUT_SECS: u64 = 180;
 
@@ -259,14 +260,14 @@ fn state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
 
 fn configured_model(env: &IsolatedEnvironment) -> Option<&str> {
     env.env_vars
-        .get("PI_MODEL")
+        .get(VULCANUM_OMP_MODEL_ENV)
         .map(String::as_str)
         .filter(|model| !model.is_empty())
 }
 
 fn configured_provider(env: &IsolatedEnvironment) -> Option<&str> {
     env.env_vars
-        .get("PI_PROVIDER")
+        .get(VULCANUM_OMP_PROVIDER_ENV)
         .map(String::as_str)
         .filter(|provider| !provider.is_empty())
 }

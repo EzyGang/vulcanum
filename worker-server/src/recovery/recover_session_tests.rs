@@ -15,8 +15,11 @@ async fn recovered_omp_env_preserves_model_provider_env_for_docker() {
         .expect("create workdir");
 
     let mut model_provider_env = HashMap::new();
-    model_provider_env.insert("PI_PROVIDER".to_owned(), "openai-codex".to_owned());
-    model_provider_env.insert("PI_MODEL".to_owned(), "gpt-5-codex".to_owned());
+    model_provider_env.insert(
+        "VULCANUM_OMP_PROVIDER".to_owned(),
+        "openai-codex".to_owned(),
+    );
+    model_provider_env.insert("VULCANUM_OMP_MODEL".to_owned(), "gpt-5-codex".to_owned());
     model_provider_env.insert(
         "OPENAI_CODEX_OAUTH_TOKEN".to_owned(),
         "access-secret".to_owned(),
@@ -29,11 +32,11 @@ async fn recovered_omp_env_preserves_model_provider_env_for_docker() {
         .expect("recover OMP env");
 
     assert_eq!(
-        env.env_vars.get("PI_PROVIDER"),
+        env.env_vars.get("VULCANUM_OMP_PROVIDER"),
         Some(&"openai-codex".to_owned())
     );
     assert_eq!(
-        env.env_vars.get("PI_MODEL"),
+        env.env_vars.get("VULCANUM_OMP_MODEL"),
         Some(&"gpt-5-codex".to_owned())
     );
     assert_eq!(

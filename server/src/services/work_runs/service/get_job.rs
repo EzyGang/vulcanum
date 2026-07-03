@@ -49,16 +49,17 @@ impl WorkRunsService {
             .mint_github_token_for_repos(id, cfg.team_id, &repos)
             .await?;
 
+        let team = self.project_configs.teams.get_team(cfg.team_id).await?;
         let rendered = self
             .model_providers
             .render_agent_config_for_team(
                 cfg.team_id,
                 cfg.agent_backend,
                 ModelSelection {
-                    primary_provider_key: cfg.primary_model_provider_key.as_deref(),
-                    primary_model_id: cfg.primary_model_id.as_deref(),
-                    small_provider_key: cfg.small_model_provider_key.as_deref(),
-                    small_model_id: cfg.small_model_id.as_deref(),
+                    primary_provider_key: team.primary_model_provider_key.as_deref(),
+                    primary_model_id: team.primary_model_id.as_deref(),
+                    small_provider_key: team.small_model_provider_key.as_deref(),
+                    small_model_id: team.small_model_id.as_deref(),
                 },
             )
             .await?;

@@ -12,6 +12,9 @@ use crate::services::model_providers::auth::opencode_auth::openai_auth_content;
 
 const OPENAI_CODEX_OAUTH_TOKEN_ENV: &str = "OPENAI_CODEX_OAUTH_TOKEN";
 const OMP_OPENAI_CODEX_PROVIDER_KEY: &str = "openai-codex";
+const VULCANUM_OMP_PROVIDER_ENV: &str = "VULCANUM_OMP_PROVIDER";
+const VULCANUM_OMP_MODEL_ENV: &str = "VULCANUM_OMP_MODEL";
+const VULCANUM_OMP_SMOL_ENV: &str = "VULCANUM_OMP_SMOL";
 
 #[derive(Debug)]
 pub struct RenderedAgentConfig {
@@ -139,20 +142,23 @@ fn render_omp_config(
     if let Some(provider) = selection.primary_provider_key {
         if !provider.is_empty() {
             env.insert(
-                "PI_PROVIDER".to_owned(),
+                VULCANUM_OMP_PROVIDER_ENV.to_owned(),
                 omp_provider_key(provider, &omp_oauth_provider_keys).to_owned(),
             );
         }
     }
     if let Some(model) = selection.primary_model_id {
         if !model.is_empty() {
-            env.insert("PI_MODEL".to_owned(), model.to_owned());
+            env.insert(VULCANUM_OMP_MODEL_ENV.to_owned(), model.to_owned());
         }
     }
-    if let Some(model) = selection.small_model_id {
-        if !model.is_empty() {
-            env.insert("PI_SMALL_MODEL".to_owned(), model.to_owned());
-        }
+    if let Some(smol) = omp_smol_ref(
+        selection.small_provider_key,
+        selection.small_model_id,
+        selection.primary_provider_key,
+        &omp_oauth_provider_keys,
+    ) {
+        env.insert(VULCANUM_OMP_SMOL_ENV.to_owned(), smol);
     }
 
     Ok(RenderedAgentConfig {
@@ -167,6 +173,29 @@ fn model_ref(provider_key: Option<&str>, model_id: Option<&str>) -> Option<Strin
             Some(format!("{provider}/{model}"))
         }
         _ => None,
+    }
+}
+
+fn omp_smol_ref(
+    provider_key: Option<&str>,
+    model_id: Option<&str>,
+    primary_provider_key: Option<&str>,
+    oauth_provider_keys: &HashSet<String>,
+) -> Option<String> {
+    let model = model_id?;
+    if model.is_empty() {
+        return None;
+    }
+
+    match provider_key {
+        Some(provider) if !provider.is_empty() && primary_provider_key != Some(provider) => {
+            Some(format!(
+                "{}/{}",
+                omp_provider_key(provider, oauth_provider_keys),
+                model
+            ))
+        }
+        _ => Some(model.to_owned()),
     }
 }
 

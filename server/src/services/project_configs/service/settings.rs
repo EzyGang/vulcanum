@@ -16,16 +16,6 @@ impl ProjectConfigsService {
                 &team.prompt_template,
             ),
             agents_md: config.agents_md.clone().unwrap_or(team.agents_md),
-            primary_model_provider_key: config
-                .primary_model_provider_key
-                .clone()
-                .or(team.primary_model_provider_key),
-            primary_model_id: config.primary_model_id.clone().or(team.primary_model_id),
-            small_model_provider_key: config
-                .small_model_provider_key
-                .clone()
-                .or(team.small_model_provider_key),
-            small_model_id: config.small_model_id.clone().or(team.small_model_id),
             review_enabled: config.review_enabled.unwrap_or(team.review_enabled),
             review_max_turns: config.review_max_turns.unwrap_or(team.review_max_turns),
             review_prompt_template: effective_review_prompt_template(

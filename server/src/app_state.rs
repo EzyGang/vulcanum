@@ -95,7 +95,6 @@ impl AppState {
             project_configs_repo.clone(),
             db_pool.clone(),
             providers_repo.clone(),
-            model_providers.clone(),
             teams.clone(),
         );
         let workers_repo = WorkersRepository::new();

@@ -70,7 +70,6 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         ProjectConfigsRepository::new(),
         pool.clone(),
         IntegrationProvidersRepository::new(),
-        model_providers.clone(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     WorkRunsService::new(
