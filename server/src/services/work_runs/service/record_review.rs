@@ -6,6 +6,10 @@ use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {
     pub(crate) async fn record_review_result(&self, run: &WorkRun, params: &SubmitResultRequest) {
+        let review = match params.review_result.as_ref() {
+            Some(review) => review,
+            None => return,
+        };
         let pr_url = match run.review_target_pr_url.as_deref() {
             Some(url) => url,
             None => return,
@@ -20,9 +24,9 @@ impl WorkRunsService {
                     work_run_id: run.id,
                     pr_url,
                     repo_full_name: repo,
-                    review_url: params.review_url.as_deref(),
-                    review_body: params.review_body.as_deref(),
-                    review_already_exists: params.review_already_exists,
+                    review_url: review.review_url.as_deref(),
+                    review_body: review.review_body.as_deref(),
+                    review_already_exists: review.review_already_exists,
                 },
             )
             .await
@@ -38,12 +42,20 @@ pub(crate) fn review_comment(run: &WorkRun, params: &SubmitResultRequest) -> Str
         .review_target_pr_url
         .as_deref()
         .unwrap_or("the pull request");
-    let prefix = match params.review_already_exists {
-        true => "Review already existed",
-        false => "Review posted",
+    let prefix = match params
+        .review_result
+        .as_ref()
+        .map(|review| review.review_already_exists)
+    {
+        Some(true) => "Review already existed",
+        Some(false) | None => "Review posted",
     };
 
-    match params.review_url.as_deref() {
+    match params
+        .review_result
+        .as_ref()
+        .and_then(|review| review.review_url.as_deref())
+    {
         Some(review_url) => format!("{prefix} for {pr_url}: {review_url}"),
         None => format!("{prefix} for {pr_url}"),
     }

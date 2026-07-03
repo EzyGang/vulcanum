@@ -29,16 +29,8 @@ export interface WorkRunListItem {
   status: WorkRunStatus;
   workType: WorkRunType;
   parentWorkRunId: string | null;
-  promptText: string;
-  repoUrl: string;
-  taskBody: string;
-  taskTitle: string | null;
-  taskSlug: string | null;
   reviewTargetPrUrl: string | null;
   reviewTargetRepoFullName: string | null;
-  reviewUrl: string | null;
-  reviewBody: string | null;
-  reviewAlreadyExists: boolean;
   resultPrUrl: string | null;
   resultExitCode: number | null;
   tokensUsed: number | null;
@@ -47,6 +39,10 @@ export interface WorkRunListItem {
   cacheReadTokens?: number | null;
   cacheWriteTokens?: number | null;
   modelUsed?: string | null;
+  finishStatus?: string | null;
+  resultSummary?: string | null;
+  finishBlockedReason?: string | null;
+  finishNextColumn?: string | null;
   durationMs: number | null;
   createdAt: string;
 }

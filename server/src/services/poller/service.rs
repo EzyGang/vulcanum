@@ -144,3 +144,38 @@ impl PollerService {
 pub(crate) fn repo_layout(repo_full_names: &[String]) -> String {
     project::repo_layout(repo_full_names)
 }
+
+pub(crate) struct RenderPromptInput<'a> {
+    pub prompt_template: &'a str,
+    pub task_title: &'a str,
+    pub task_body: &'a str,
+    pub repo_url: &'a str,
+    pub repo_urls: &'a str,
+    pub repo_names: &'a str,
+    pub repo_layout: &'a str,
+    pub review_target_pr_url: &'a str,
+    pub has_github_repos: bool,
+}
+
+pub(crate) fn render_work_run_prompt(input: RenderPromptInput<'_>) -> String {
+    let mut prompt_text = crate::services::poller::template::render_template(
+        input.prompt_template,
+        &crate::services::poller::template::TemplateVars {
+            task_title: input.task_title,
+            task_body: input.task_body,
+            repo_url: input.repo_url,
+            repo_urls: input.repo_urls,
+            repo_names: input.repo_names,
+            repo_layout: input.repo_layout,
+            review_target_pr_url: input.review_target_pr_url,
+        },
+    );
+
+    prompt_text.push_str(crate::services::poller::prompts::ENVIRONMENT_INSTRUCTION);
+
+    if input.has_github_repos {
+        prompt_text.push_str(crate::services::poller::prompts::GITHUB_INSTRUCTION);
+    }
+
+    prompt_text
+}

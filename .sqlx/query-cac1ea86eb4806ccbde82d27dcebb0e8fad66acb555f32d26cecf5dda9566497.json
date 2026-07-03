@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,\n             w.name as \"worker_name: Option<String>\",\n             wr.status as \"status: WorkRunStatus\", wr.work_type as \"work_type: WorkRunType\", wr.parent_work_run_id,\n             wr.prompt_text, wr.repo_url, wr.task_body,\n             wr.task_title, wr.task_slug,\n             wr.review_target_pr_url, wr.review_target_repo_full_name, wr.review_url, wr.review_body, wr.review_already_exists,\n             wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,\n             wr.input_tokens as \"input_tokens?: i64\", wr.output_tokens as \"output_tokens?: i64\",\n             wr.cache_read_tokens as \"cache_read_tokens?: i64\", wr.cache_write_tokens as \"cache_write_tokens?: i64\",\n             wr.model_used,\n             wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,\n             wr.created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id\n              WHERE wr.team_id = $1 AND ($2::work_run_status IS NULL OR wr.status = $2)\n              ORDER BY wr.created_at DESC LIMIT $3 OFFSET $4",
+  "query": "INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,\n             review_target_pr_url, review_target_repo_full_name)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n                         work_type as \"work_type: WorkRunType\", parent_work_run_id,\n                         review_target_pr_url, review_target_repo_full_name,\n                         result_pr_url, result_exit_code, tokens_used, duration_ms,\n                         input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n                         cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n                         model_used,\n                         finish_status, result_summary, finish_blocked_reason, finish_next_column,\n                         created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -30,11 +30,6 @@
       },
       {
         "ordinal": 5,
-        "name": "worker_name: Option<String>",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 6,
         "name": "status: WorkRunStatus",
         "type_info": {
           "Custom": {
@@ -53,7 +48,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "work_type: WorkRunType",
         "type_info": {
           "Custom": {
@@ -68,133 +63,101 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "parent_work_run_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 9,
-        "name": "prompt_text",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 10,
-        "name": "repo_url",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 11,
-        "name": "task_body",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 12,
-        "name": "task_title",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 13,
-        "name": "task_slug",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 14,
+        "ordinal": 8,
         "name": "review_target_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 9,
         "name": "review_target_repo_full_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
-        "name": "review_url",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 17,
-        "name": "review_body",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 18,
-        "name": "review_already_exists",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 19,
+        "ordinal": 10,
         "name": "result_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 20,
+        "ordinal": 11,
         "name": "result_exit_code",
         "type_info": "Int4"
       },
       {
-        "ordinal": 21,
+        "ordinal": 12,
         "name": "tokens_used",
         "type_info": "Int8"
       },
       {
-        "ordinal": 22,
+        "ordinal": 13,
         "name": "duration_ms",
         "type_info": "Int8"
       },
       {
-        "ordinal": 23,
+        "ordinal": 14,
         "name": "input_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 24,
+        "ordinal": 15,
         "name": "output_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 25,
+        "ordinal": 16,
         "name": "cache_read_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 26,
+        "ordinal": 17,
         "name": "cache_write_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 27,
+        "ordinal": 18,
         "name": "model_used",
         "type_info": "Text"
       },
       {
-        "ordinal": 28,
+        "ordinal": 19,
         "name": "finish_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 29,
-        "name": "finish_summary",
+        "ordinal": 20,
+        "name": "result_summary",
         "type_info": "Text"
       },
       {
-        "ordinal": 30,
+        "ordinal": 21,
         "name": "finish_blocked_reason",
         "type_info": "Text"
       },
       {
-        "ordinal": 31,
+        "ordinal": 22,
         "name": "finish_next_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 32,
+        "ordinal": 23,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 24,
+        "name": "updated_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
         "Uuid",
         {
           "Custom": {
@@ -211,8 +174,20 @@
             }
           }
         },
-        "Int8",
-        "Int8"
+        {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -223,18 +198,10 @@
       true,
       false,
       false,
-      false,
-      true,
-      false,
-      false,
-      false,
       true,
       true,
       true,
       true,
-      true,
-      true,
-      false,
       true,
       true,
       true,
@@ -251,5 +218,5 @@
       true
     ]
   },
-  "hash": "8d269931091bdf0fe0e7076eeba2ba0aff78db028e43d8e0777725f4a69f97a7"
+  "hash": "cac1ea86eb4806ccbde82d27dcebb0e8fad66acb555f32d26cecf5dda9566497"
 }

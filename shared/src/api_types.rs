@@ -190,6 +190,14 @@ pub struct JobRepo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubmitReviewResult {
+    pub review_url: Option<String>,
+    pub review_body: Option<String>,
+    #[serde(default)]
+    pub review_already_exists: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubmitResultRequest {
     #[serde(default)]
     pub pr_urls: Vec<String>,
@@ -202,11 +210,8 @@ pub struct SubmitResultRequest {
     pub cache_write_tokens: i64,
     pub model_used: Option<String>,
     pub finish_status: Option<FinishStatus>,
-    pub finish_summary: Option<String>,
-    pub review_url: Option<String>,
-    pub review_body: Option<String>,
-    #[serde(default)]
-    pub review_already_exists: bool,
+    pub result_summary: Option<String>,
+    pub review_result: Option<SubmitReviewResult>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -69,16 +69,10 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
                 team_id: test_helpers::DEFAULT_TEAM_ID,
                 external_task_ref: "task-review-fix".to_owned(),
                 project_config_id,
-                prompt_text: "Review".to_owned(),
-                repo_url: "https://github.com/acme/app".to_owned(),
                 repo_full_names: vec!["acme/app".to_owned()],
-                agents_md: String::new(),
                 status: WorkRunStatus::Completed,
                 work_type: WorkRunType::PullRequestReview,
                 parent_work_run_id: None,
-                task_body: "Fix the issue".to_owned(),
-                task_title: Some("Fix issue".to_owned()),
-                task_slug: Some("APP-1".to_owned()),
                 review_target_pr_url: Some("https://github.com/acme/app/pull/7".to_owned()),
                 review_target_repo_full_name: Some("acme/app".to_owned()),
             },
@@ -89,10 +83,14 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
         false,
         Some("https://github.com/acme/app/pull/7#pullrequestreview-1"),
     );
-    params.review_body = Some(
+    let review_body =
         "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None"
-            .to_owned(),
-    );
+            .to_owned();
+    params
+        .review_result
+        .as_mut()
+        .expect("review result should exist")
+        .review_body = Some(review_body.clone());
 
     state.jobs.record_review_result(&run, &params).await;
 
@@ -110,7 +108,7 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
         review.review_url.as_deref(),
         Some("https://github.com/acme/app/pull/7#pullrequestreview-1")
     );
-    assert_eq!(review.review_body, params.review_body);
+    assert_eq!(review.review_body, Some(review_body));
     assert!(!review.review_already_exists);
 
     let child_count = sqlx::query!(
@@ -136,17 +134,8 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
         status: WorkRunStatus::Running,
         work_type: WorkRunType::PullRequestReview,
         parent_work_run_id: None,
-        prompt_text: String::new(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        task_body: String::new(),
-        task_title: None,
-        task_slug: None,
         review_target_pr_url: review_target_pr_url.map(str::to_owned),
         review_target_repo_full_name: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
         result_pr_url: None,
         result_exit_code: None,
         tokens_used: None,
@@ -157,7 +146,7 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
         cache_write_tokens: None,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         finish_blocked_reason: None,
         finish_next_column: None,
         created_at: now,
@@ -177,9 +166,11 @@ fn submit_params(review_already_exists: bool, review_url: Option<&str>) -> Submi
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: review_url.map(str::to_owned),
-        review_body: None,
-        review_already_exists,
+        result_summary: None,
+        review_result: Some(vulcanum_shared::api_types::SubmitReviewResult {
+            review_url: review_url.map(str::to_owned),
+            review_body: None,
+            review_already_exists,
+        }),
     }
 }

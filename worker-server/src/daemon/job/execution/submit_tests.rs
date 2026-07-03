@@ -19,18 +19,28 @@ fn submit_result_includes_review_fields() {
         cache_write_tokens: 4,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1".to_owned()),
-        review_body: Some("Looks good".to_owned()),
-        review_already_exists: true,
+        result_summary: None,
+        review_result: Some(vulcanum_shared::api_types::SubmitReviewResult {
+            review_url: Some(
+                "https://github.com/acme/widgets/pull/42#pullrequestreview-1".to_owned(),
+            ),
+            review_body: Some("Looks good".to_owned()),
+            review_already_exists: true,
+        }),
     });
 
     assert_eq!(
-        request.review_url.as_deref(),
+        request
+            .review_result
+            .as_ref()
+            .and_then(|review| review.review_url.as_deref()),
         Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1")
     );
-    assert_eq!(request.review_body.as_deref(), Some("Looks good"));
-    assert!(request.review_already_exists);
+    let review = request
+        .review_result
+        .expect("review result should be present");
+    assert_eq!(review.review_body.as_deref(), Some("Looks good"));
+    assert!(review.review_already_exists);
 }
 
 #[test]
