@@ -172,10 +172,13 @@ impl ProjectConfig {
             external_project_id: self.external_project_id.clone(),
             external_workspace_id: self.external_workspace_id.clone(),
             max_turns: self.max_turns,
+            prompt_template: settings.prompt_template,
             review_max_turns: settings.review_max_turns,
+            review_prompt_template: settings.review_prompt_template,
             provider_id: self.provider_id,
             agent_backend: settings.agent_backend,
             repo_urls: self.repo_urls.clone(),
+            agents_md: settings.agents_md,
         }
     }
 }
@@ -195,11 +198,14 @@ pub struct JobConfigFields {
     pub team_id: Uuid,
     pub external_project_id: String,
     pub external_workspace_id: String,
+    pub prompt_template: String,
     pub max_turns: i32,
     pub review_max_turns: i32,
+    pub review_prompt_template: String,
     pub provider_id: Option<Uuid>,
     pub repo_urls: Vec<String>,
     pub agent_backend: AgentBackend,
+    pub agents_md: String,
 }
 
 impl JobConfigFields {
@@ -209,10 +215,13 @@ impl JobConfigFields {
             external_project_id: String::new(),
             external_workspace_id: String::new(),
             max_turns: 0,
+            prompt_template: String::new(),
             review_max_turns: 1,
+            review_prompt_template: String::new(),
             provider_id: None,
             repo_urls: Vec::new(),
             agent_backend: AgentBackend::default(),
+            agents_md: String::new(),
         }
     }
 }

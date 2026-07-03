@@ -49,16 +49,10 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
                 team_id: test_helpers::DEFAULT_TEAM_ID,
                 external_task_ref: "task-review-warning".to_owned(),
                 project_config_id: project_id,
-                prompt_text: "Review the PR".to_owned(),
-                repo_url: String::new(),
                 repo_full_names: Vec::new(),
-                agents_md: String::new(),
                 status: WorkRunStatus::Pending,
                 work_type: WorkRunType::PullRequestReview,
                 parent_work_run_id: None,
-                task_body: "Implement auth checks".to_owned(),
-                task_title: Some("Auth hardening".to_owned()),
-                task_slug: Some("APP-7".to_owned()),
                 review_target_pr_url: Some("https://github.com/acme/app/pull/42".to_owned()),
                 review_target_repo_full_name: Some("acme/app".to_owned()),
             },
@@ -106,19 +100,14 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
             "cache_write_tokens": 0,
             "model_used": null,
             "finish_status": "completed",
-            "review_url": "https://github.com/acme/app/pull/42#pullrequestreview-1",
-            "review_body": "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None",
-            "review_already_exists": false
+            "result_summary": "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None"
         }))
         .to_request();
     let result_resp = test::call_service(&app, result_req).await;
     assert_eq!(result_resp.status(), 200);
     let result_body: serde_json::Value = test::read_body_json(result_resp).await;
     assert_eq!(result_body["status"], "completed");
-    assert_eq!(
-        result_body["review_url"],
-        "https://github.com/acme/app/pull/42#pullrequestreview-1"
-    );
+    assert_eq!(result_body["result_summary"], "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None");
 
     let review = sqlx::query!(
         r#"SELECT review_url, review_body, review_already_exists
@@ -129,10 +118,7 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
     .await
     .expect("review result should be recorded");
 
-    assert_eq!(
-        review.review_url.as_deref(),
-        Some("https://github.com/acme/app/pull/42#pullrequestreview-1")
-    );
+    assert_eq!(review.review_url, None);
     assert!(review
         .review_body
         .as_deref()

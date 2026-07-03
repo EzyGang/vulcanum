@@ -98,7 +98,10 @@ async fn get_job_returns_200(pool: sqlx::PgPool) {
 
     let body: serde_json::Value = test::read_body_json(resp).await;
     assert_eq!(body["external_task_ref"], "task-get-test");
-    assert_eq!(body["prompt_text"], "Review the PR");
+    assert!(body["prompt_text"]
+        .as_str()
+        .unwrap()
+        .starts_with("Review the PR"));
     assert_eq!(body["repos"], serde_json::json!([]));
     assert_eq!(body["github_token"], serde_json::Value::Null);
     assert_eq!(body["github_token_expires_at"], serde_json::Value::Null);
@@ -291,6 +294,7 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
             "cache_read_tokens": 0,
             "cache_write_tokens": 0,
             "model_used": null,
+            "result_summary": "Implemented the route-level result handling",
         }))
         .to_request();
     let resp = test::call_service(&app, req).await;
@@ -303,6 +307,10 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
     assert_eq!(body["result_exit_code"], 0);
     assert_eq!(body["tokens_used"], 1000);
     assert_eq!(body["duration_ms"], 60000);
+    assert_eq!(
+        body["result_summary"],
+        "Implemented the route-level result handling"
+    );
 }
 
 #[sqlx::test]

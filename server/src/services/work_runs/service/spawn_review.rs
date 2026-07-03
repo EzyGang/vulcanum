@@ -1,8 +1,6 @@
 use crate::db::work_runs::queries::prs::UpsertTaskPrParams;
 use crate::db::work_runs::queries::InsertWorkRunParams;
 use crate::models::work_runs::model::{TaskPr, WorkRun, WorkRunStatus, WorkRunType};
-use crate::services::poller::service::repo_layout;
-use crate::services::poller::template::{render_template, TemplateVars};
 use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::parse_github_pr_url;
@@ -95,35 +93,14 @@ impl WorkRunsService {
         let mut review_running = false;
 
         for task_pr in &task_prs {
-            let repo_names = task_pr.repo_full_name.clone();
-            let repo_urls = crate::util::github::github_repo_url(&task_pr.repo_full_name);
-            let prompt_text = render_template(
-                &settings.review_prompt_template,
-                &TemplateVars {
-                    task_title: run.task_title.as_deref().unwrap_or(""),
-                    task_body: &run.task_body,
-                    repo_url: &repo_urls,
-                    repo_urls: &repo_urls,
-                    repo_names: &repo_names,
-                    repo_layout: &repo_layout(std::slice::from_ref(&repo_names)),
-                    review_target_pr_url: &task_pr.pr_url,
-                },
-            );
-
             let params = InsertWorkRunParams {
                 team_id: run.team_id,
                 external_task_ref: run.external_task_ref.clone(),
                 project_config_id: run.project_config_id,
-                prompt_text,
-                repo_url: repo_urls,
-                repo_full_names: vec![task_pr.repo_full_name.clone()],
-                agents_md: run.agents_md.clone(),
                 status: WorkRunStatus::Pending,
                 work_type: WorkRunType::PullRequestReview,
                 parent_work_run_id: Some(run.id),
-                task_body: run.task_body.clone(),
-                task_title: run.task_title.clone(),
-                task_slug: run.task_slug.clone(),
+                repo_full_names: vec![task_pr.repo_full_name.clone()],
                 review_target_pr_url: Some(task_pr.pr_url.clone()),
                 review_target_repo_full_name: Some(task_pr.repo_full_name.clone()),
             };
@@ -167,8 +144,15 @@ impl WorkRunsService {
             }
         };
         let client = IntegrationClient::from_provider(&provider);
+        let task_body = match client.fetch_task(&run.external_task_ref).await {
+            Ok(task) => task.description.unwrap_or_default(),
+            Err(e) => {
+                tracing::warn!(work_run_id = %run.id, error = %e, "failed to fetch task for PR block update");
+                return;
+            }
+        };
         let body = upsert_pr_block(
-            &run.task_body,
+            &task_body,
             &task_prs
                 .iter()
                 .map(|pr| pr.pr_url.clone())
@@ -186,7 +170,7 @@ impl WorkRunsService {
 #[must_use]
 pub(crate) fn upsert_pr_block(body: &str, pr_urls: &[String]) -> String {
     let block = format!(
-        "{PR_BLOCK_START}\nVulcanum PRs:\n{}\n{PR_BLOCK_END}",
+        "{PR_BLOCK_START}\nPull requests:\n{}\n{PR_BLOCK_END}",
         pr_urls
             .iter()
             .map(|url| format!("- {url}"))
@@ -195,13 +179,11 @@ pub(crate) fn upsert_pr_block(body: &str, pr_urls: &[String]) -> String {
     );
 
     match (body.find(PR_BLOCK_START), body.find(PR_BLOCK_END)) {
-        (Some(start), Some(end)) if start < end => {
-            let end = end + PR_BLOCK_END.len();
-            format!("{}{}{}", &body[..start], block, &body[end..])
+        (Some(start), Some(end)) if start <= end => {
+            let after = end + PR_BLOCK_END.len();
+            format!("{}{}{}", &body[..start], block, &body[after..])
         }
-        _ => match body.trim().is_empty() {
-            true => block,
-            false => format!("{}\n\n{}", body.trim_end(), block),
-        },
+        _ if body.trim().is_empty() => block,
+        _ => format!("{}\n\n{}", body.trim_end(), block),
     }
 }

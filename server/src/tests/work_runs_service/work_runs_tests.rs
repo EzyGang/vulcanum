@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use uuid::Uuid;
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api_types::{AgentBackend, SubmitResultRequest};
 
 use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
@@ -20,11 +20,11 @@ use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::service::ModelProvidersService;
+use crate::services::poller::prompts::ENVIRONMENT_INSTRUCTION;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::teams::service::TeamsService;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::test_helpers;
-use vulcanum_shared::api_types::SubmitResultRequest;
 
 fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
     let cfg = crate::config::AppConfig {
@@ -290,10 +290,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: Some("Implemented the task and opened a pull request".to_owned()),
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -308,6 +305,10 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     assert_eq!(job.result_exit_code, Some(0));
     assert_eq!(job.tokens_used, Some(500));
     assert_eq!(job.duration_ms, Some(30000));
+    assert_eq!(
+        job.result_summary.as_deref(),
+        Some("Implemented the task and opened a pull request")
+    );
 }
 
 #[sqlx::test]
@@ -335,10 +336,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -366,10 +364,7 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let err = svc
         .submit_result(wr_id, worker_id, params)
@@ -407,10 +402,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let err = svc
         .submit_result(wr_id, worker_b, params)
@@ -421,11 +413,36 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn get_job_returns_full_details(pool: sqlx::PgPool) {
+async fn get_job_reconstructs_implementation_prompt_from_effective_settings(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "get-job-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get").await;
+    let prompt_template = concat!(
+        "Team implementation prompt\n",
+        "Title: {{task_title}}\n",
+        "Body: {{task_body}}\n",
+        "Repos: {{repo_urls}}\n",
+        "Names: {{repo_names}}\n",
+        "Layout: {{repo_layout}}"
+    );
+    let agents_md = "Follow the team AGENTS instructions";
+    sqlx::query(
+        r#"INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position)
+           VALUES ($1, $2, $3, $4)"#,
+    )
+    .bind(project_id)
+    .bind("acme/current-config")
+    .bind("https://github.com/acme/current-config")
+    .bind(0_i32)
+    .execute(&pool)
+    .await
+    .expect("Should insert current project repo");
+    sqlx::query("UPDATE project_configs SET prompt_template = NULL WHERE id = $1")
+        .bind(project_id)
+        .execute(&pool)
+        .await
+        .expect("Should clear project prompt override");
     sqlx::query!(
         "UPDATE work_runs SET worker_id = $1 WHERE id = $2",
         worker_id,
@@ -434,19 +451,28 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     .execute(&pool)
     .await
     .expect("Should assign worker");
-    sqlx::query!(
-        "UPDATE teams SET agent_backend = 'omp_rpc' WHERE id = $1",
-        test_helpers::DEFAULT_TEAM_ID,
-    )
+    sqlx::query(concat!(
+        "UPDATE teams SET agent_backend = 'omp_rpc', ",
+        "prompt_template = $1, agents_md = $2 WHERE id = $3",
+    ))
+    .bind(prompt_template)
+    .bind(agents_md)
+    .bind(test_helpers::DEFAULT_TEAM_ID)
     .execute(&pool)
     .await
-    .expect("Should set team backend");
+    .expect("Should set team job settings");
 
     let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
 
     assert_eq!(job.external_task_ref, "task-get");
-    assert_eq!(job.prompt_text, "Review the PR");
+    assert_eq!(
+        job.prompt_text,
+        format!(
+            "Team implementation prompt\nTitle: \nBody: \nRepos: \nNames: \nLayout: {ENVIRONMENT_INSTRUCTION}"
+        )
+    );
     assert!(job.repos.is_empty());
+    assert_eq!(job.agents_md, agents_md);
     assert_eq!(job.agent_backend, AgentBackend::OmpRpc);
 }
 

@@ -7,7 +7,7 @@ use crate::daemon::job::execution::submit::{
 use crate::state::journal::{JournalEntry, JournalStatus};
 
 #[test]
-fn submit_result_includes_review_fields() {
+fn submit_result_includes_result_summary() {
     let request = submit_result_request(SubmitResultParams {
         pr_urls: Vec::new(),
         exit_code: 0,
@@ -19,18 +19,10 @@ fn submit_result_includes_review_fields() {
         cache_write_tokens: 4,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1".to_owned()),
-        review_body: Some("Looks good".to_owned()),
-        review_already_exists: true,
+        result_summary: Some("Looks good".to_owned()),
     });
 
-    assert_eq!(
-        request.review_url.as_deref(),
-        Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1")
-    );
-    assert_eq!(request.review_body.as_deref(), Some("Looks good"));
-    assert!(request.review_already_exists);
+    assert_eq!(request.result_summary.as_deref(), Some("Looks good"));
 }
 
 #[test]

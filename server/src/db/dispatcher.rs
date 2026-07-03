@@ -24,11 +24,8 @@ impl DispatchRepository {
     ) -> Result<Vec<Worker>, DispatchError> {
         sqlx::query_as!(
             Worker,
-            r#"SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
-             status as "status: WorkerStatus", capabilities, created_at as "created_at!: chrono::DateTime<chrono::Utc>",
-             active_jobs, max_concurrent_jobs, consecutive_errors
-             FROM workers WHERE active_jobs < max_concurrent_jobs AND status IN ('idle'::worker_status, 'busy'::worker_status)
-             ORDER BY last_seen DESC NULLS LAST"#,
+            r#"SELECT id, team_id, name, refresh_token_hash, refresh_expires_at, status as "status: WorkerStatus", current_jobs, max_concurrent_jobs, last_seen_at, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+             FROM workers WHERE status = 'idle'::worker_status AND current_jobs < max_concurrent_jobs ORDER BY last_seen_at ASC NULLS FIRST"#,
         )
         .fetch_all(db)
         .await
@@ -43,13 +40,12 @@ impl DispatchRepository {
             WorkRun,
             r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
-             prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
-             review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
+             review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
-             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL AND finish_blocked_reason IS NULL
              ORDER BY created_at ASC"#,
@@ -72,13 +68,12 @@ impl DispatchRepository {
              AND team_id = (SELECT team_id FROM workers WHERE id = $2)
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
-              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
-              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
+              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
-             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             work_run_id,
             worker_id,
@@ -94,13 +89,12 @@ impl DispatchRepository {
         worker_id: Uuid,
     ) -> Result<(), DispatchError> {
         sqlx::query!(
-            "UPDATE workers SET active_jobs = active_jobs + 1, status = 'busy'::worker_status
-             WHERE id = $1 AND active_jobs < max_concurrent_jobs",
-            worker_id,
+            "UPDATE workers SET current_jobs = current_jobs + 1 WHERE id = $1",
+            worker_id
         )
         .execute(db)
         .await
-        .map_err(map_sqlx_error)?;
-        Ok(())
+        .map(|_| ())
+        .map_err(map_sqlx_error)
     }
 }
