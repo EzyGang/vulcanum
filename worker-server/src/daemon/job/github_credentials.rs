@@ -36,6 +36,12 @@ pub(crate) fn spawn_refresh_task(
     stop_tx
 }
 
+pub(crate) fn stop_refresh_task(stop: Option<watch::Sender<bool>>) {
+    if let Some(stop) = stop {
+        let _ = stop.send(true);
+    }
+}
+
 pub(crate) async fn setup_recovered_credentials(
     workdir: &Path,
     harness_type: &str,

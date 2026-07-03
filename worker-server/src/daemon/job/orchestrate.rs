@@ -17,7 +17,7 @@ use vulcanum_shared::worker_state::WorkerState;
 
 use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
-use super::github_credentials::spawn_refresh_task;
+use super::github_credentials::{spawn_refresh_task, stop_refresh_task};
 use super::prompts::text::initial_prompt;
 use super::runtime_secrets::job_runtime_secrets;
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
@@ -276,9 +276,7 @@ pub(crate) async fn handle_job(
                     error = %e,
                     "pull request checkout failed",
                 );
-                if let Some(stop) = github_refresh_stop {
-                    let _ = stop.send(true);
-                }
+                stop_refresh_task(github_refresh_stop);
                 provider.cleanup(&isolated_env).await;
                 submit_failed_result(
                     client,
@@ -313,9 +311,7 @@ pub(crate) async fn handle_job(
                     "session.failed",
                     serde_json::json!({"reason": "runtime_execute_failed"}),
                 );
-                if let Some(stop) = github_refresh_stop {
-                    let _ = stop.send(true);
-                }
+                stop_refresh_task(github_refresh_stop);
                 provider.cleanup(&isolated_env).await;
                 submit_failed_result(
                     client,
@@ -378,9 +374,7 @@ pub(crate) async fn handle_job(
         &ctx,
     )
     .await;
-    if let Some(stop) = github_refresh_stop {
-        let _ = stop.send(true);
-    }
+    stop_refresh_task(github_refresh_stop);
     let _ = heartbeat_stop.send(true);
 
     if let Some(sid) = running_session.session_id() {

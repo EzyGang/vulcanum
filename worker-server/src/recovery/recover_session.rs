@@ -14,7 +14,9 @@ use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::execution::submit::{submit_result_request, SubmitResultParams};
-use crate::daemon::job::github_credentials::{setup_recovered_credentials, spawn_refresh_task};
+use crate::daemon::job::github_credentials::{
+    setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
+};
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::github_credentials as isolation_github_credentials;
@@ -170,9 +172,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
                 error = %e,
                 "failed to resume OMP RPC session"
             );
-            if let Some(stop) = github_refresh_stop {
-                let _ = stop.send(true);
-            }
+            stop_refresh_task(github_refresh_stop);
             mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
             return;
         }
@@ -206,9 +206,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
         &ctx,
     )
     .await;
-    if let Some(stop) = github_refresh_stop {
-        let _ = stop.send(true);
-    }
+    stop_refresh_task(github_refresh_stop);
 
     cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "OMP RPC recovery session completed");
@@ -335,9 +333,7 @@ pub(crate) async fn recover_session_task(
         &ctx,
     )
     .await;
-    if let Some(stop) = github_refresh_stop {
-        let _ = stop.send(true);
-    }
+    stop_refresh_task(github_refresh_stop);
 
     cleanup_recovery(&entry);
     tracing::info!(job_id = %entry.job_id, "recovery session completed");

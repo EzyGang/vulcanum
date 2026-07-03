@@ -1,13 +1,14 @@
-use std::error::Error;
 use std::fmt;
 use std::future::Future;
 use std::thread;
 use std::time::Duration;
 
+use thiserror::Error;
+
 pub const PULL_ATTEMPTS: u8 = 3;
 pub const PULL_RETRY_DELAY: Duration = Duration::from_secs(2);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub struct DockerPullError {
     image: String,
     message: Option<String>,
@@ -38,8 +39,7 @@ impl fmt::Display for DockerPullError {
     }
 }
 
-impl Error for DockerPullError {}
-
+#[must_use = "the Docker pull result must be handled"]
 pub async fn retry_docker_pull<F, Fut>(image: &str, pull: F) -> Result<(), DockerPullError>
 where
     F: FnMut() -> Fut,
@@ -48,6 +48,7 @@ where
     retry_docker_pull_with(image, PULL_ATTEMPTS, PULL_RETRY_DELAY, pull).await
 }
 
+#[must_use = "the Docker pull result must be handled"]
 pub(crate) async fn retry_docker_pull_with<F, Fut>(
     image: &str,
     attempts: u8,
@@ -72,6 +73,7 @@ where
     Err(DockerPullError::without_message(image))
 }
 
+#[must_use = "the Docker pull result must be handled"]
 pub fn retry_docker_pull_blocking<F>(image: &str, pull: F) -> Result<(), DockerPullError>
 where
     F: FnMut() -> Result<(), String>,
@@ -79,6 +81,7 @@ where
     retry_docker_pull_blocking_with(image, PULL_ATTEMPTS, PULL_RETRY_DELAY, pull)
 }
 
+#[must_use = "the Docker pull result must be handled"]
 pub(crate) fn retry_docker_pull_blocking_with<F>(
     image: &str,
     attempts: u8,
