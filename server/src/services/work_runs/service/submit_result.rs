@@ -57,18 +57,15 @@ impl WorkRunsService {
                     cache_write_tokens: params.cache_write_tokens,
                     model_used: params.model_used.as_deref(),
                     finish_status: params.finish_status.as_ref().map(|s| s.as_str()),
-                    finish_summary: params.finish_summary.as_deref(),
+                    result_summary: params.result_summary.as_deref(),
                     finish_blocked_reason: None,
                     finish_next_column: None,
-                    review_url: params.review_url.as_deref(),
-                    review_body: params.review_body.as_deref(),
-                    review_already_exists: params.review_already_exists,
                 },
             )
             .await?;
 
         self.work_runs_repo
-            .replace_pr_urls(&mut *tx, id, &pr_urls)
+            .replace_pr_urls(&mut tx, id, &pr_urls)
             .await?;
 
         if let Err(e) = self

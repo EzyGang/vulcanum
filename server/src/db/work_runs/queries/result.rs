@@ -1,4 +1,3 @@
-use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
 
 use crate::db::queryer::Queryer;
@@ -20,13 +19,12 @@ impl WorkRunsRepository {
              WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
-              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
-              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
+              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
-             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             worker_id,
@@ -49,13 +47,12 @@ impl WorkRunsRepository {
              WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
-              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
-              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
+              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
-             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
         )
@@ -75,19 +72,17 @@ impl WorkRunsRepository {
             r#"UPDATE work_runs SET result_pr_url = $2, result_exit_code = $3, tokens_used = $4,
              duration_ms = $5, status = $6, input_tokens = $7, output_tokens = $8,
              cache_read_tokens = $9, cache_write_tokens = $10, model_used = $11,
-             finish_status = $12, finish_summary = $13, finish_blocked_reason = $14,
-             finish_next_column = $15, review_url = $16, review_body = $17,
-             review_already_exists = $18
+             finish_status = $12, result_summary = $13, finish_blocked_reason = $14,
+             finish_next_column = $15
              WHERE id = $1 AND status = 'running'::work_run_status
              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
-              prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
-              review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
+              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
-             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             params.pr_url,
@@ -101,12 +96,9 @@ impl WorkRunsRepository {
             params.cache_write_tokens,
             params.model_used,
             params.finish_status,
-            params.finish_summary,
+            params.result_summary,
             params.finish_blocked_reason,
             params.finish_next_column,
-            params.review_url,
-            params.review_body,
-            params.review_already_exists,
         )
         .fetch_optional(db)
         .await
@@ -124,9 +116,7 @@ impl WorkRunsRepository {
         Q: Queryer<'c>,
     {
         sqlx::query!(
-            r#"UPDATE work_runs SET updated_at = NOW()
-             WHERE id = $1 AND worker_id = $2
-             AND status IN ('dispatched'::work_run_status, 'running'::work_run_status)"#,
+            "UPDATE work_runs SET updated_at = NOW() WHERE id = $1 AND worker_id = $2 AND status = 'running'::work_run_status",
             id,
             worker_id,
         )
@@ -137,48 +127,36 @@ impl WorkRunsRepository {
         Ok(())
     }
 
-    pub async fn replace_pr_urls<'c, Q>(
+    pub async fn replace_pr_urls(
         &self,
-        db: Q,
+        db: &mut sqlx::PgConnection,
         work_run_id: Uuid,
         pr_urls: &[String],
-    ) -> Result<(), WorkRunsError>
-    where
-        Q: Queryer<'c>,
-    {
-        if pr_urls.is_empty() {
-            sqlx::query!(
-                "DELETE FROM work_run_prs WHERE work_run_id = $1",
-                work_run_id
-            )
-            .execute(db)
-            .await
-            .map_err(WorkRunsError::from)?;
+    ) -> Result<(), WorkRunsError> {
+        sqlx::query!(
+            "DELETE FROM work_run_prs WHERE work_run_id = $1",
+            work_run_id,
+        )
+        .execute(&mut *db)
+        .await
+        .map_err(WorkRunsError::from)?;
 
+        if pr_urls.is_empty() {
             return Ok(());
         }
 
-        let mut query = QueryBuilder::<Postgres>::new(
-            "WITH deleted AS (DELETE FROM work_run_prs WHERE work_run_id = ",
-        );
-        query.push_bind(work_run_id);
-        query.push(") INSERT INTO work_run_prs (work_run_id, pr_url, position) ");
-
-        query.push_values(
-            pr_urls.iter().enumerate(),
-            |mut builder, (position, pr_url)| {
-                builder
-                    .push_bind(work_run_id)
-                    .push_bind(pr_url)
-                    .push_bind(position as i32);
-            },
-        );
-
-        query
-            .build()
-            .execute(db)
-            .await
-            .map_err(WorkRunsError::from)?;
+        let positions: Vec<i32> = (0..pr_urls.len() as i32).collect();
+        sqlx::query(
+            r#"INSERT INTO work_run_prs (work_run_id, pr_url, position)
+             SELECT $1, pr_url, position
+             FROM UNNEST($2::text[], $3::int4[]) AS prs(pr_url, position)"#,
+        )
+        .bind(work_run_id)
+        .bind(pr_urls)
+        .bind(&positions)
+        .execute(&mut *db)
+        .await
+        .map_err(WorkRunsError::from)?;
 
         Ok(())
     }

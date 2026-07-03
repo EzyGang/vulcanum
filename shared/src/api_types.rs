@@ -202,7 +202,7 @@ pub struct SubmitResultRequest {
     pub cache_write_tokens: i64,
     pub model_used: Option<String>,
     pub finish_status: Option<FinishStatus>,
-    pub finish_summary: Option<String>,
+    pub result_summary: Option<String>,
     pub review_url: Option<String>,
     pub review_body: Option<String>,
     #[serde(default)]

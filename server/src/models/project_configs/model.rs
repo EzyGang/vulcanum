@@ -200,6 +200,8 @@ impl ProjectConfig {
             provider_id: self.provider_id,
             agent_backend: settings.agent_backend,
             repo_urls: self.repo_urls.clone(),
+            prompt_template: settings.prompt_template,
+            agents_md: settings.agents_md,
         }
     }
 }
@@ -232,6 +234,8 @@ pub struct JobConfigFields {
     pub provider_id: Option<Uuid>,
     pub repo_urls: Vec<String>,
     pub agent_backend: AgentBackend,
+    pub prompt_template: String,
+    pub agents_md: String,
 }
 
 impl JobConfigFields {
@@ -249,6 +253,8 @@ impl JobConfigFields {
             provider_id: None,
             repo_urls: Vec::new(),
             agent_backend: AgentBackend::default(),
+            prompt_template: String::new(),
+            agents_md: String::new(),
         }
     }
 }

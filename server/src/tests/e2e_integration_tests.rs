@@ -127,7 +127,10 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
     assert_eq!(get_resp.status(), 200);
     let get_body: serde_json::Value = test::read_body_json(get_resp).await;
     assert_eq!(get_body["external_task_ref"], "task-lifecycle");
-    assert_eq!(get_body["prompt_text"], "Review the PR");
+    assert!(get_body["prompt_text"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("repository instructions"));
 
     let ack_req = test::TestRequest::post()
         .uri(&format!("/api/v1/jobs/{wr_id}/ack"))

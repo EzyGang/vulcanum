@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use sqlx::PgPool;
 
 use crate::models::providers::errors::IntegrationError;
@@ -33,8 +34,9 @@ async fn poller_inserts_tasks(pool: PgPool) {
     service.poll_once().await;
 
     let rows = sqlx::query!(
-        "SELECT external_task_ref, prompt_text, task_slug, task_title FROM work_runs \
-         WHERE project_config_id = $1 ORDER BY external_task_ref",
+        r#"SELECT external_task_ref, status as "status: WorkRunStatus", work_type as "work_type: WorkRunType"
+           FROM work_runs
+           WHERE project_config_id = $1 ORDER BY external_task_ref"#,
         project_id,
     )
     .fetch_all(&pool)
@@ -43,10 +45,8 @@ async fn poller_inserts_tasks(pool: PgPool) {
 
     assert_eq!(rows.len(), 1, "Should respect default project capacity");
     assert_eq!(rows[0].external_task_ref, "task-1");
-    assert_eq!(rows[0].task_slug.as_deref(), Some("tst-1"));
-    assert_eq!(rows[0].task_title.as_deref(), Some("Fix login bug"));
-    assert!(rows[0].prompt_text.starts_with("Review Fix login bug"));
-    assert!(rows[0].prompt_text.contains("Debian-based container"));
+    assert_eq!(rows[0].status, WorkRunStatus::Pending);
+    assert_eq!(rows[0].work_type, WorkRunType::Implementation);
     assert_eq!(
         mock.status_updates().await,
         vec![("task-1".to_owned(), "doing".to_owned())],

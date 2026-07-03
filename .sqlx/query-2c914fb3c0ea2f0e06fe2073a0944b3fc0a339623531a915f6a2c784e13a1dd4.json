@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT external_task_ref, status as \"status: WorkRunStatus\", work_type as \"work_type: WorkRunType\"\n           FROM work_runs\n           WHERE project_config_id = $1 ORDER BY external_task_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "status: WorkRunStatus",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "work_type: WorkRunType",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2c914fb3c0ea2f0e06fe2073a0944b3fc0a339623531a915f6a2c784e13a1dd4"
+}
