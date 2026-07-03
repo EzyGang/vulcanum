@@ -18,14 +18,16 @@ use crate::daemon::job::github_credentials::{setup_recovered_credentials, spawn_
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::github_credentials as isolation_github_credentials;
+use crate::isolation::providers::docker::DockerIsolation;
 use crate::isolation::providers::host::HostIsolation;
+use crate::isolation::providers::kata::KataIsolation;
 use crate::isolation::workspace;
 use crate::providers::omp_rpc::runtime::OmpRpcRuntime;
 use crate::providers::opencode::events;
 use crate::providers::opencode::runner::OpenCodeRunningSession;
 use crate::providers::opencode::runner::SessionConfig;
 use crate::providers::opencode::OpenCodeClient;
-use crate::recovery::cleanup::{cleanup_stale_job, kill_host_process_group, remove_container};
+use crate::recovery::cleanup::{cleanup_stale_job, kill_host_process_group};
 use crate::state::journal::{Journal, JournalEntry, JournalResultUpdate, JournalStatus};
 
 fn recovery_continuation_prompt(turn: i32, max_turns: i32) -> String {
@@ -338,26 +340,40 @@ pub(crate) async fn recover_session_task(
 }
 
 fn cleanup_recovery(entry: &JournalEntry) {
-    if entry.harness_type == "host" {
-        kill_host_process_group(entry);
-        let provider = HostIsolation::new();
-        let env = IsolatedEnvironment {
-            workdir: std::path::PathBuf::from(&entry.workdir),
-            workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
-            repos: Vec::new(),
-            container_name: entry.container_name.clone(),
-            secrets: HashMap::new(),
-            env_vars: HashMap::new(),
-            runtime: None,
-            image: None,
-            server_host_port: None,
-            limits: ResourceLimits::default(),
-        };
-        tokio::spawn(async move {
-            provider.cleanup(&env).await;
-        });
-    } else if let Some(ref name) = entry.container_name {
-        remove_container(Some(name));
+    let env = IsolatedEnvironment {
+        workdir: std::path::PathBuf::from(&entry.workdir),
+        workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
+        repos: Vec::new(),
+        container_name: entry.container_name.clone(),
+        secrets: HashMap::new(),
+        env_vars: HashMap::new(),
+        runtime: (entry.harness_type == "kata").then_some("kata-runtime"),
+        image: Some(DEFAULT_IMAGE.to_owned()),
+        server_host_port: None,
+        limits: ResourceLimits::default(),
+    };
+
+    match entry.harness_type.as_str() {
+        "host" => {
+            kill_host_process_group(entry);
+            tokio::spawn(async move {
+                HostIsolation::new().cleanup(&env).await;
+            });
+        }
+        "kata" => {
+            tokio::spawn(async move {
+                KataIsolation::new(DEFAULT_IMAGE.to_owned())
+                    .cleanup(&env)
+                    .await;
+            });
+        }
+        _ => {
+            tokio::spawn(async move {
+                DockerIsolation::new(None, DEFAULT_IMAGE.to_owned())
+                    .cleanup(&env)
+                    .await;
+            });
+        }
     }
 }
 

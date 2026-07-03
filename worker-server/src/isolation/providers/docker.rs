@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::process::Stdio;
+
+use tokio::fs;
 
 use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::errors::HarnessError;
@@ -27,8 +30,8 @@ impl DockerIsolation {
     pub(crate) async fn ensure_image(&self) -> Result<(), HarnessError> {
         let status = tokio::process::Command::new("docker")
             .args(["pull", &self.image])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .status()
             .await
             .map_err(|e| HarnessError::Install(format!("failed to pull agent image: {e}")))?;
@@ -120,18 +123,103 @@ impl IsolationProvider for DockerIsolation {
     }
 
     async fn cleanup(&self, env: &IsolatedEnvironment) {
-        let Some(name) = &env.container_name else {
-            return;
-        };
+        if let Some(name) = &env.container_name {
+            let result = tokio::process::Command::new("docker")
+                .args(["rm", "-f", name])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn();
 
-        let result = tokio::process::Command::new("docker")
-            .args(["rm", "-f", name])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
+            if let Ok(mut child) = result {
+                let _ = child.wait().await;
+            }
+        }
 
-        if let Ok(mut child) = result {
-            let _ = child.wait().await;
+        cleanup_docker_workdir(&env.workdir, &self.image, self.runtime).await;
+    }
+}
+
+pub(crate) async fn cleanup_docker_workdir(
+    workdir: &Path,
+    image: &str,
+    runtime: Option<&'static str>,
+) {
+    if !is_safe_workdir(workdir) {
+        tracing::warn!(
+            workdir = %workdir.display(),
+            "refusing to remove unsafe docker workdir"
+        );
+        return;
+    }
+
+    match fs::remove_dir_all(workdir).await {
+        Ok(()) => return,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return,
+        Err(e) => {
+            tracing::warn!(
+                workdir = %workdir.display(),
+                error = %e,
+                "host docker workdir removal failed, trying container cleanup"
+            );
         }
     }
+
+    if let Err(e) = remove_workdir_contents_with_container(workdir, image, runtime).await {
+        tracing::warn!(
+            workdir = %workdir.display(),
+            error = %e,
+            "container docker workdir cleanup failed"
+        );
+    }
+
+    match fs::remove_dir_all(workdir).await {
+        Ok(()) => (),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+        Err(e) => {
+            tracing::warn!(workdir = %workdir.display(), error = %e, "failed to remove docker workdir");
+        }
+    }
+}
+
+fn is_safe_workdir(path: &Path) -> bool {
+    let temp = std::env::temp_dir();
+    path.starts_with(&temp)
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("vulcanum-work-"))
+}
+
+async fn remove_workdir_contents_with_container(
+    workdir: &Path,
+    image: &str,
+    runtime: Option<&'static str>,
+) -> Result<(), String> {
+    let mut command = tokio::process::Command::new("docker");
+    command.args(["run", "--rm"]);
+    if let Some(runtime) = runtime {
+        command.args(["--runtime", runtime]);
+    }
+    command
+        .arg("-v")
+        .arg(format!("{}:/workdir", workdir.display()))
+        .args(["--workdir", "/workdir"])
+        .arg(image)
+        .args([
+            "sh",
+            "-c",
+            "rm -rf /workdir/* /workdir/.[!.]* /workdir/..?*",
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    let status = command
+        .status()
+        .await
+        .map_err(|e| format!("failed to start cleanup container: {e}"))?;
+    if status.success() {
+        return Ok(());
+    }
+
+    Err(format!("cleanup container exited with status {status}"))
 }
