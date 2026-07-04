@@ -20,7 +20,15 @@ export const WORK_RUN_PR_LINK_LABELS: Record<WorkRunType, string> = {
   pull_request_review: 'PR'
 };
 
-export interface WorkRunListItem {
+export interface WorkRunTokenUsage {
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  cacheReadTokens?: number | null;
+  cacheWriteTokens?: number | null;
+  modelUsed?: string | null;
+}
+
+export interface WorkRunListItem extends WorkRunTokenUsage {
   id: string;
   externalTaskRef: string;
   projectConfigId: string;
@@ -42,11 +50,6 @@ export interface WorkRunListItem {
   resultPrUrl: string | null;
   resultExitCode: number | null;
   tokensUsed: number | null;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  cacheReadTokens?: number | null;
-  cacheWriteTokens?: number | null;
-  modelUsed?: string | null;
   durationMs: number | null;
   createdAt: string;
 }

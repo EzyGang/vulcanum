@@ -1,4 +1,4 @@
-import type { WorkRunStatus, WorkRunType } from './runs';
+import type { WorkRunStatus, WorkRunTokenUsage, WorkRunType } from './runs';
 
 export interface TaskProviderProject {
   providerId: string;
@@ -15,16 +15,11 @@ export interface TaskBoardLabel {
   color: string;
 }
 
-export interface TaskBoardRelatedWorkRun {
+export interface TaskBoardRelatedWorkRun extends WorkRunTokenUsage {
   id: string;
   status: WorkRunStatus;
   workType: WorkRunType;
   tokensUsed: number | null;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  cacheReadTokens?: number | null;
-  cacheWriteTokens?: number | null;
-  modelUsed?: string | null;
   createdAt: string;
 }
 

@@ -1,4 +1,5 @@
 import { Fragment, type JSX } from 'preact';
+import type { WorkRunTokenUsage } from '../../../../types/runs';
 import { formatTokenCount } from '../../../../utils/format';
 import { Tooltip } from '../../../shared/ui/Tooltip.view';
 
@@ -14,14 +15,6 @@ interface UsageStatConfig {
   field: UsageTokenField;
   icon: string;
   label: string;
-}
-
-export interface RunUsageStatsData {
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  cacheReadTokens?: number | null;
-  cacheWriteTokens?: number | null;
-  modelUsed?: string | null;
 }
 
 export const RUN_USAGE_STATS = [
@@ -43,7 +36,7 @@ const UsageStat = ({ icon, label, value }: UsageStatProps): JSX.Element => (
   </span>
 );
 
-const UsageTooltipContent = ({ run }: { run: RunUsageStatsData }): JSX.Element => (
+const UsageTooltipContent = ({ run }: { run: WorkRunTokenUsage }): JSX.Element => (
   <div class='flex flex-col gap-2 font-mono'>
     <div class='grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-1'>
       {RUN_USAGE_STATS.map((stat) => (
@@ -61,6 +54,8 @@ const UsageTooltipContent = ({ run }: { run: RunUsageStatsData }): JSX.Element =
     )}
   </div>
 );
+
+export type RunUsageStatsData = WorkRunTokenUsage;
 
 export const hasRunUsageStats = (run: RunUsageStatsData): boolean =>
   RUN_USAGE_STATS.some((stat) => run[stat.field] !== null && run[stat.field] !== undefined);

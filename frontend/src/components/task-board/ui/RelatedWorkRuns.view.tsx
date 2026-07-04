@@ -1,9 +1,8 @@
 import type { JSX } from 'preact';
 import { WORK_RUN_TYPE_LABELS } from '../../../types/runs';
 import type { TaskBoardRelatedWorkRun } from '../../../types/task-board';
-import { formatTokenCount } from '../../../utils/format';
-import { hasRunUsageStats, RunUsageStats } from '../../runs/ui/runs-table/RunUsageStats';
 import { StatusBadge } from '../../shared/ui/StatusBadge.view';
+import { RelatedWorkRunUsage } from './RelatedWorkRunUsage';
 
 interface RelatedWorkRunsProps {
   runs: TaskBoardRelatedWorkRun[];
@@ -11,22 +10,6 @@ interface RelatedWorkRunsProps {
 }
 
 const MAX_RELATED_RUNS = 3;
-
-const UsageSummary = ({ run }: { run: TaskBoardRelatedWorkRun }): JSX.Element => {
-  if (hasRunUsageStats(run)) {
-    return <RunUsageStats run={run} />;
-  }
-
-  if (run.tokensUsed !== null) {
-    return (
-      <span class='font-mono text-xs tabular-nums text-text-secondary'>
-        {formatTokenCount(run.tokensUsed)} tokens
-      </span>
-    );
-  }
-
-  return <span class='text-xs text-text-muted'>No usage recorded</span>;
-};
 
 const RelatedRunRow = ({ run, compact }: { run: TaskBoardRelatedWorkRun; compact: boolean }) => (
   <li class='flex flex-col gap-2 border border-border-base bg-bg-card p-2'>
@@ -37,7 +20,7 @@ const RelatedRunRow = ({ run, compact }: { run: TaskBoardRelatedWorkRun; compact
       <StatusBadge status={run.status} />
     </div>
     <div class={compact ? 'max-w-full overflow-hidden' : ''}>
-      <UsageSummary run={run} />
+      <RelatedWorkRunUsage run={run} />
     </div>
   </li>
 );
