@@ -3,7 +3,7 @@ use vulcanum_shared::api_types::JobResponse;
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::work_runs::errors::WorkRunsError;
-use crate::models::work_runs::model::WorkRunType;
+use crate::models::work_runs::model::{WorkRun, WorkRunType};
 use crate::services::model_providers::renderer::ModelSelection;
 use crate::services::work_runs::service::WorkRunsService;
 
@@ -14,22 +14,7 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
-        let config = self.project_configs.find_by_id(run.project_config_id).await;
-
-        let cfg = match &config {
-            Ok(c) => {
-                let settings = self.project_configs.effective_settings(c).await?;
-                c.job_fields(settings)
-            }
-            Err(_) => {
-                tracing::warn!(
-                    project_config_id = %run.project_config_id,
-                    work_run_id = %id,
-                    "project config not found for work run"
-                );
-                JobConfigFields::empty_for_team(run.team_id)
-            }
-        };
+        let cfg = self.job_config_fields_for_run(&run).await?;
         let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
 
@@ -87,6 +72,26 @@ impl WorkRunsService {
             review_target_pr_url: run.review_target_pr_url,
             review_target_repo_full_name: run.review_target_repo_full_name,
         })
+    }
+
+    pub(crate) async fn job_config_fields_for_run(
+        &self,
+        run: &WorkRun,
+    ) -> Result<JobConfigFields, WorkRunsError> {
+        match self.project_configs.find_by_id(run.project_config_id).await {
+            Ok(config) => {
+                let settings = self.project_configs.effective_settings(&config).await?;
+                Ok(config.job_fields(settings))
+            }
+            Err(_) => {
+                tracing::warn!(
+                    project_config_id = %run.project_config_id,
+                    work_run_id = %run.id,
+                    "project config not found for work run"
+                );
+                Ok(JobConfigFields::empty_for_team(run.team_id))
+            }
+        }
     }
 }
 

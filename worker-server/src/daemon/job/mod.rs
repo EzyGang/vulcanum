@@ -7,4 +7,7 @@ pub(crate) mod runtime_secrets;
 pub(crate) mod tool;
 pub(crate) mod turn_loop;
 
+#[cfg(test)]
+mod github_credentials_tests;
+
 pub(crate) use orchestrate::handle_job;

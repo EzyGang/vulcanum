@@ -139,6 +139,8 @@ impl ApiClient {
             .http
             .post(&url)
             .bearer_auth(access_token)
+            .header(reqwest::header::CONTENT_LENGTH, "0")
+            .body(String::new())
             .send()
             .await
             .context("refresh github token request failed")?;

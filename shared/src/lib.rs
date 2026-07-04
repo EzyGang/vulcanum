@@ -15,6 +15,8 @@ pub mod worker_state;
 #[cfg(test)]
 mod api_types_tests;
 #[cfg(test)]
+mod client_tests;
+#[cfg(test)]
 mod review_feedback_tests;
 #[cfg(test)]
 mod telemetry_tests;

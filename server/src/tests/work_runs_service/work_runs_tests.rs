@@ -451,6 +451,33 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn job_config_fields_use_project_config_team_for_existing_config(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let stale_team_id = test_helpers::insert_team(&pool, "stale-work-run-team").await;
+    let project_id =
+        test_helpers::insert_project_config(&pool, "kaneo-project-team-for-refresh").await;
+    let wr_id = test_helpers::insert_pending_work_run_for_team(
+        &pool,
+        stale_team_id,
+        project_id,
+        "task-team-refresh",
+    )
+    .await;
+    let run = WorkRunsRepository::new()
+        .find_by_id(&pool, wr_id)
+        .await
+        .expect("Should load work run");
+
+    let cfg = svc
+        .job_config_fields_for_run(&run)
+        .await
+        .expect("Should load job config fields");
+
+    assert_eq!(cfg.team_id, test_helpers::DEFAULT_TEAM_ID);
+    assert_ne!(cfg.team_id, run.team_id);
+}
+
+#[sqlx::test]
 async fn get_job_returns_not_found(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let worker_id = test_helpers::insert_worker(&pool, "missing-job-worker").await;

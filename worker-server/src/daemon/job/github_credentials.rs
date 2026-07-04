@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
+use vulcanum_shared::api_error::ApiError;
 use vulcanum_shared::api_types::RefreshGithubTokenResponse;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
@@ -83,7 +84,7 @@ async fn refresh_loop(
             Ok(next_expires_at) => {
                 expires_at = next_expires_at;
             }
-            Err(e) => {
+            Err(e) if is_retryable_refresh_error(&e) => {
                 tracing::warn!(
                     work_run_id = %job_id,
                     error = %e,
@@ -95,6 +96,26 @@ async fn refresh_loop(
                 }
                 expires_at =
                     Some(Utc::now() + chrono::Duration::seconds(RETRY_INTERVAL_SECS as i64));
+            }
+            Err(e) => {
+                match e.downcast_ref::<ApiError>() {
+                    Some(api_error) => {
+                        tracing::warn!(
+                            work_run_id = %job_id,
+                            http_status = api_error.status,
+                            response_body = %api_error.body,
+                            "stopping github token refresh after non-retryable error"
+                        );
+                    }
+                    None => {
+                        tracing::warn!(
+                            work_run_id = %job_id,
+                            error = %e,
+                            "stopping github token refresh after non-retryable error"
+                        );
+                    }
+                }
+                return;
             }
         }
     }
@@ -136,6 +157,15 @@ async fn apply_refresh_response(
     }
 
     Ok(response.github_token_expires_at)
+}
+
+pub(crate) fn is_retryable_refresh_error(error: &anyhow::Error) -> bool {
+    match error.downcast_ref::<ApiError>() {
+        Some(api_error) => {
+            !matches!(api_error.status, 400..=499) || matches!(api_error.status, 408 | 429)
+        }
+        None => true,
+    }
 }
 
 async fn should_stop_after_retry(stop_rx: &mut watch::Receiver<bool>) -> bool {

@@ -23,7 +23,8 @@ impl WorkRunsService {
         }
 
         let repos = self.github_repos_for_work_run(&run).await?;
-        self.mint_github_token_for_repos(id, run.team_id, &repos)
+        let cfg = self.job_config_fields_for_run(&run).await?;
+        self.mint_github_token_for_repos(id, cfg.team_id, &repos)
             .await
     }
 
