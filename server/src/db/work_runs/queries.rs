@@ -17,16 +17,10 @@ pub struct InsertWorkRunParams {
     pub team_id: Uuid,
     pub external_task_ref: String,
     pub project_config_id: Uuid,
-    pub prompt_text: String,
-    pub repo_url: String,
     pub repo_full_names: Vec<String>,
-    pub agents_md: String,
     pub status: WorkRunStatus,
     pub work_type: WorkRunType,
     pub parent_work_run_id: Option<Uuid>,
-    pub task_body: String,
-    pub task_title: Option<String>,
-    pub task_slug: Option<String>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,
 }
@@ -51,17 +45,16 @@ impl WorkRunsRepository {
         let run = sqlx::query_as!(
             WorkRun,
             r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
-             prompt_text, repo_url, agents_md, task_body, task_title, task_slug, review_target_pr_url, review_target_repo_full_name)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus", prompt_text,
-                         work_type as "work_type: WorkRunType", parent_work_run_id,
-                         repo_url, agents_md, task_body, task_title, task_slug,
-                         review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
-                         result_pr_url, result_exit_code, tokens_used, duration_ms,
+             review_target_pr_url, review_target_repo_full_name)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+                        work_type as "work_type: WorkRunType", parent_work_run_id,
+                        review_target_pr_url, review_target_repo_full_name,
+                        result_pr_url, result_exit_code, tokens_used, duration_ms,
                         input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
                         cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
                         model_used,
-                        finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+                        finish_status, result_summary, finish_blocked_reason, finish_next_column,
                         created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             params.team_id,
@@ -70,12 +63,6 @@ impl WorkRunsRepository {
             &params.status as &WorkRunStatus,
             &params.work_type as &WorkRunType,
             params.parent_work_run_id,
-            &params.prompt_text,
-            &params.repo_url,
-            &params.agents_md,
-            &params.task_body,
-            params.task_title.as_deref(),
-            params.task_slug.as_deref(),
             params.review_target_pr_url.as_deref(),
             params.review_target_repo_full_name.as_deref(),
         )
@@ -99,8 +86,8 @@ impl WorkRunsRepository {
 
         let result = sqlx::query!(
             r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
-             prompt_text, repo_url, agents_md, task_body, task_title, task_slug, review_target_pr_url, review_target_repo_full_name)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+             review_target_pr_url, review_target_repo_full_name)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                ON CONFLICT DO NOTHING"#,
             id,
             params.team_id,
@@ -109,12 +96,6 @@ impl WorkRunsRepository {
             &params.status as &WorkRunStatus,
             &params.work_type as &WorkRunType,
             params.parent_work_run_id,
-            &params.prompt_text,
-            &params.repo_url,
-            &params.agents_md,
-            &params.task_body,
-            params.task_title.as_deref(),
-            params.task_slug.as_deref(),
             params.review_target_pr_url.as_deref(),
             params.review_target_repo_full_name.as_deref(),
         )
@@ -227,13 +208,12 @@ impl WorkRunsRepository {
             WorkRun,
             r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
-             prompt_text, repo_url, agents_md, task_body, task_title, task_slug,
-             review_target_pr_url, review_target_repo_full_name, review_url, review_body, review_already_exists,
+             review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
              model_used,
-             finish_status, finish_summary, finish_blocked_reason, finish_next_column,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs WHERE id = $1"#,
             id,
@@ -257,14 +237,12 @@ impl WorkRunsRepository {
             r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
-             wr.prompt_text, wr.repo_url, wr.task_body,
-             wr.task_title, wr.task_slug,
-             wr.review_target_pr_url, wr.review_target_repo_full_name, wr.review_url, wr.review_body, wr.review_already_exists,
+             wr.review_target_pr_url, wr.review_target_repo_full_name,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
              wr.model_used,
-             wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,
+             wr.finish_status, wr.result_summary, wr.finish_blocked_reason, wr.finish_next_column,
              wr.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
               WHERE wr.team_id = $1 AND ($2::work_run_status IS NULL OR wr.status = $2)
@@ -306,10 +284,7 @@ pub struct SetResultParams<'a> {
     pub cache_write_tokens: i64,
     pub model_used: Option<&'a str>,
     pub finish_status: Option<&'a str>,
-    pub finish_summary: Option<&'a str>,
+    pub result_summary: Option<&'a str>,
     pub finish_blocked_reason: Option<&'a str>,
     pub finish_next_column: Option<&'a str>,
-    pub review_url: Option<&'a str>,
-    pub review_body: Option<&'a str>,
-    pub review_already_exists: bool,
 }

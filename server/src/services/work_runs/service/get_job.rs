@@ -1,10 +1,15 @@
 use uuid::Uuid;
+use vulcanum_shared::api_types::JobRepo;
 use vulcanum_shared::api_types::JobResponse;
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::WorkRunType;
 use crate::services::model_providers::renderer::ModelSelection;
+use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
+use crate::services::poller::service::repo_layout;
+use crate::services::poller::template::{render_template, TemplateVars};
+use crate::services::work_runs::service::task_data::TaskRenderData;
 use crate::services::work_runs::service::WorkRunsService;
 
 impl WorkRunsService {
@@ -14,12 +19,13 @@ impl WorkRunsService {
             return Err(WorkRunsError::NotOwned);
         }
 
-        let config = self.project_configs.find_by_id(run.project_config_id).await;
-
-        let cfg = match &config {
-            Ok(c) => {
-                let settings = self.project_configs.effective_settings(c).await?;
-                c.job_fields(settings)
+        let (cfg, task_data) = match self.project_configs.find_by_id(run.project_config_id).await {
+            Ok(config) => {
+                let settings = self.project_configs.effective_settings(&config).await?;
+                let task_data = self
+                    .fetch_task_render_data(&config, &run.external_task_ref)
+                    .await?;
+                (config.job_fields(settings), task_data)
             }
             Err(_) => {
                 tracing::warn!(
@@ -27,11 +33,21 @@ impl WorkRunsService {
                     work_run_id = %id,
                     "project config not found for work run"
                 );
-                JobConfigFields::empty_for_team(run.team_id)
+                (
+                    JobConfigFields::empty_for_team(run.team_id),
+                    TaskRenderData::default(),
+                )
             }
         };
         let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
+        let prompt_text = render_job_prompt(
+            &cfg,
+            run.work_type,
+            &task_data,
+            &repos,
+            run.review_target_pr_url.as_deref().unwrap_or(""),
+        );
 
         let (provider_instance_url, provider_api_key) = match cfg.provider_id {
             Some(pid) => match self
@@ -66,9 +82,9 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),
-            prompt_text: run.prompt_text,
+            prompt_text,
             repos,
-            agents_md: run.agents_md,
+            agents_md: cfg.agents_md,
             agent_backend: cfg.agent_backend,
             agent_config: rendered.agent_config,
             model_provider_env: rendered.env,
@@ -98,4 +114,54 @@ fn shared_work_type(work_type: WorkRunType) -> vulcanum_shared::api_types::WorkR
             vulcanum_shared::api_types::WorkRunType::PullRequestReview
         }
     }
+}
+
+#[must_use]
+fn render_job_prompt(
+    cfg: &JobConfigFields,
+    work_type: WorkRunType,
+    task_data: &TaskRenderData,
+    repos: &[JobRepo],
+    review_target_pr_url: &str,
+) -> String {
+    let repo_urls = repos
+        .iter()
+        .map(|repo| repo.url.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n");
+    let repo_names = repos
+        .iter()
+        .map(|repo| repo.full_name.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n");
+    let full_names = repos
+        .iter()
+        .map(|repo| repo.full_name.clone())
+        .collect::<Vec<String>>();
+    let repo_layout = repo_layout(&full_names);
+    let template = match work_type {
+        WorkRunType::Implementation => cfg.prompt_template.as_str(),
+        WorkRunType::PullRequestReview => cfg.review_prompt_template.as_str(),
+    };
+    let mut prompt_text = render_template(
+        template,
+        &TemplateVars {
+            task_title: &task_data.title,
+            task_body: &task_data.body,
+            repo_url: repos.first().map(|repo| repo.url.as_str()).unwrap_or(""),
+            repo_urls: &repo_urls,
+            repo_names: &repo_names,
+            repo_layout: &repo_layout,
+            review_target_pr_url,
+        },
+    );
+
+    if matches!(work_type, WorkRunType::Implementation) {
+        prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
+        if !repos.is_empty() {
+            prompt_text.push_str(GITHUB_INSTRUCTION);
+        }
+    }
+
+    prompt_text
 }

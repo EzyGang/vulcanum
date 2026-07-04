@@ -19,7 +19,7 @@ fn submit_result_includes_review_fields() {
         cache_write_tokens: 4,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         review_url: Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1".to_owned()),
         review_body: Some("Looks good".to_owned()),
         review_already_exists: true,

@@ -78,6 +78,22 @@ impl KaneoClient {
         })
     }
 
+    pub(crate) async fn fetch_task(
+        &self,
+        project_id: &str,
+        task_id: &str,
+    ) -> Result<(KaneoTask, String), KaneoError> {
+        let board = self.fetch_board(project_id).await?;
+        let project_slug = board.data.slug.clone();
+        let task = find_task(board, task_id).ok_or_else(|| {
+            KaneoError::Api(format!(
+                "task {task_id} was not found in project {project_id}"
+            ))
+        })?;
+
+        Ok((task, project_slug))
+    }
+
     pub async fn update_task_status(
         &self,
         task_id: &str,
@@ -233,4 +249,15 @@ pub(crate) fn filter_tasks_in_column(
         .chain(board.data.archived_tasks)
         .filter(|task| task.status == column_slug)
         .collect()
+}
+
+fn find_task(board: KaneoBoardResponse, task_id: &str) -> Option<KaneoTask> {
+    board
+        .data
+        .columns
+        .into_iter()
+        .flat_map(|column| column.tasks)
+        .chain(board.data.planned_tasks)
+        .chain(board.data.archived_tasks)
+        .find(|task| task.id == task_id)
 }

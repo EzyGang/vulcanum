@@ -54,6 +54,21 @@ impl IntegrationProviderClient for KaneoClient {
             .collect())
     }
 
+    async fn fetch_task(
+        &self,
+        project_id: &str,
+        task_id: &str,
+    ) -> Result<IntegrationTask, IntegrationError> {
+        let (task, project_slug) = KaneoClient::fetch_task(self, project_id, task_id)
+            .await
+            .map_err(IntegrationError::from)?;
+
+        Ok(kaneo_task_to_integration(
+            &task,
+            Some(project_slug.as_str()),
+        ))
+    }
+
     async fn create_task(
         &self,
         input: CreateIntegrationTaskInput,

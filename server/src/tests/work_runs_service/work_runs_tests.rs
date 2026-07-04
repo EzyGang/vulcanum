@@ -290,7 +290,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -335,7 +335,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -366,7 +366,7 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -407,7 +407,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -445,7 +445,8 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
 
     assert_eq!(job.external_task_ref, "task-get");
-    assert_eq!(job.prompt_text, "Review the PR");
+    assert!(job.prompt_text.contains("Task title:"));
+    assert!(job.prompt_text.contains("Debian-based container"));
     assert!(job.repos.is_empty());
     assert_eq!(job.agent_backend, AgentBackend::OmpRpc);
 }

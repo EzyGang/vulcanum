@@ -247,6 +247,14 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::GithubApp(e) => e.into(),
             WorkRunsError::ModelProvider(e) => e.into(),
             WorkRunsError::ProjectConfig(e) => e.into(),
+            WorkRunsError::Provider(e) => e.into(),
+            WorkRunsError::Integration(e) => match provider_request_error(&e) {
+                Some(err) => err,
+                None => {
+                    tracing::error!(error = %e, operation = "work_runs", "integration error");
+                    Self::Internal
+                }
+            },
             WorkRunsError::Team(e) => e.into(),
             WorkRunsError::Worker(e) => e.into(),
         }

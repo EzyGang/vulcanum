@@ -175,6 +175,9 @@ impl ProjectConfig {
             review_max_turns: settings.review_max_turns,
             provider_id: self.provider_id,
             agent_backend: settings.agent_backend,
+            prompt_template: settings.prompt_template,
+            agents_md: settings.agents_md,
+            review_prompt_template: settings.review_prompt_template,
             repo_urls: self.repo_urls.clone(),
         }
     }
@@ -198,6 +201,9 @@ pub struct JobConfigFields {
     pub max_turns: i32,
     pub review_max_turns: i32,
     pub provider_id: Option<Uuid>,
+    pub prompt_template: String,
+    pub agents_md: String,
+    pub review_prompt_template: String,
     pub repo_urls: Vec<String>,
     pub agent_backend: AgentBackend,
 }
@@ -211,6 +217,9 @@ impl JobConfigFields {
             max_turns: 0,
             review_max_turns: 1,
             provider_id: None,
+            prompt_template: String::new(),
+            agents_md: String::new(),
+            review_prompt_template: String::new(),
             repo_urls: Vec::new(),
             agent_backend: AgentBackend::default(),
         }

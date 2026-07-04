@@ -2,6 +2,8 @@ use crate::models::dispatcher::errors::DispatchError;
 use crate::models::github_app::errors::GithubAppError;
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::provider_configs::errors::IntegrationProvidersError;
+use crate::models::providers::errors::IntegrationError;
 use crate::models::teams::errors::TeamsError;
 use crate::models::workers::errors::WorkersError;
 
@@ -27,6 +29,10 @@ pub enum WorkRunsError {
     ModelProvider(#[from] ModelProvidersError),
     #[error("project config error: {0}")]
     ProjectConfig(#[from] ProjectConfigsError),
+    #[error("provider error: {0}")]
+    Provider(#[from] IntegrationProvidersError),
+    #[error("integration error: {0}")]
+    Integration(#[from] IntegrationError),
     #[error("team error: {0}")]
     Team(#[from] TeamsError),
     #[error("worker error: {0}")]
