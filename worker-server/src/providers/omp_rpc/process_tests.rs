@@ -54,6 +54,20 @@ fn host_omp_command_maps_launch_metadata() {
 }
 
 #[test]
+fn host_omp_command_removes_direct_github_token_env() {
+    let mut env = test_env(None);
+    env.env_vars
+        .insert("GITHUB_TOKEN".to_owned(), "expired-token".to_owned());
+    env.env_vars
+        .insert("GH_TOKEN".to_owned(), "expired-gh-token".to_owned());
+
+    let command = host_omp_command(&env, None);
+
+    assert_eq!(command_env_value(&command, "GITHUB_TOKEN"), None);
+    assert_eq!(command_env_value(&command, "GH_TOKEN"), None);
+}
+
+#[test]
 fn docker_omp_command_maps_launch_metadata() -> Result<(), Box<dyn std::error::Error>> {
     let mut env = test_env(Some("ghcr.io/ezygang/vulcanum/agent:latest".to_owned()));
     insert_omp_launch_metadata(&mut env);
@@ -76,6 +90,23 @@ fn docker_omp_command_maps_launch_metadata() -> Result<(), Box<dyn std::error::E
         "{VULCANUM_OMP_SMOL_ENV}=anthropic/claude-haiku-4-5"
     ))));
     assert!(args.contains(&OsString::from("OPENAI_CODEX_OAUTH_TOKEN=access-secret")));
+    Ok(())
+}
+
+#[test]
+fn docker_omp_command_does_not_pass_direct_github_token_env(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut env = test_env(Some("ghcr.io/ezygang/vulcanum/agent:latest".to_owned()));
+    env.env_vars
+        .insert("GITHUB_TOKEN".to_owned(), "expired-token".to_owned());
+    env.env_vars
+        .insert("GH_TOKEN".to_owned(), "expired-gh-token".to_owned());
+
+    let command = docker_omp_command(&env, "vulcanum-test", None)?;
+    let args = command_args(&command);
+
+    assert!(!args.contains(&OsString::from("GITHUB_TOKEN=expired-token")));
+    assert!(!args.contains(&OsString::from("GH_TOKEN=expired-gh-token")));
     Ok(())
 }
 

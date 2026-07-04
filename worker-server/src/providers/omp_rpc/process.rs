@@ -17,6 +17,7 @@ use crate::providers::omp_rpc::{
 
 const STDERR_LINE_LIMIT: usize = 40;
 const OMP_APPROVAL_FLAG: &str = "--yolo";
+const DIRECT_GITHUB_TOKEN_ENVS: &[&str] = &["GITHUB_TOKEN", "GH_TOKEN"];
 
 #[derive(Clone, Default)]
 pub(crate) struct ProcessOutputBuffer {
@@ -77,11 +78,11 @@ pub(super) fn host_omp_command(env: &IsolatedEnvironment, resume_path: Option<&P
     }
     command.current_dir(&env.workspace_dir);
     for (key, value) in &env.env_vars {
-        if !is_omp_launch_metadata(key) {
+        if !is_omp_launch_metadata(key) && !is_direct_github_token_env(key) {
             command.env(key, value);
         }
     }
-    remove_omp_launch_metadata(&mut command);
+    remove_unsafe_inherited_env(&mut command);
     command
 }
 
@@ -104,7 +105,7 @@ pub(super) fn docker_omp_command(
         .arg(format!("{}:/workdir", env.workdir.display()));
     command.args(["--workdir", "/workdir/workspace"]);
     for (key, value) in &env.env_vars {
-        if !is_omp_launch_metadata(key) {
+        if !is_omp_launch_metadata(key) && !is_direct_github_token_env(key) {
             command.arg("-e").arg(format!("{key}={value}"));
         }
     }
@@ -148,6 +149,17 @@ fn remove_omp_launch_metadata(command: &mut Command) {
     command.env_remove(VULCANUM_OMP_PROVIDER_ENV);
     command.env_remove(VULCANUM_OMP_MODEL_ENV);
     command.env_remove(VULCANUM_OMP_SMOL_ENV);
+}
+
+fn remove_unsafe_inherited_env(command: &mut Command) {
+    remove_omp_launch_metadata(command);
+    for key in DIRECT_GITHUB_TOKEN_ENVS {
+        command.env_remove(key);
+    }
+}
+
+fn is_direct_github_token_env(key: &str) -> bool {
+    DIRECT_GITHUB_TOKEN_ENVS.contains(&key)
 }
 
 fn is_omp_launch_metadata(key: &str) -> bool {

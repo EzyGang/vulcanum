@@ -13,7 +13,7 @@ use vulcanum_shared::worker_state::WorkerState;
 use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::github_credentials as isolation_github_credentials;
 
-const REFRESH_BEFORE_EXPIRY_SECS: i64 = 300;
+const REFRESH_BEFORE_EXPIRY_SECS: i64 = 600;
 const FALLBACK_REFRESH_INTERVAL_SECS: u64 = 3_000;
 const RETRY_INTERVAL_SECS: u64 = 60;
 
