@@ -62,6 +62,36 @@ impl ProjectConfigsRepository {
         .ok_or(ProjectConfigsError::NotFound)
     }
 
+    pub async fn find_by_provider_project<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider_id: Uuid,
+        external_project_id: &str,
+    ) -> Result<Option<ProjectConfig>, ProjectConfigsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            ProjectConfig,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
+             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
+             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
+              pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
+              pc.created_at, pc.provider_id as "provider_id?"
+             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id
+             WHERE pc.team_id = $1 AND pc.provider_id = $2 AND pc.external_project_id = $3
+             GROUP BY pc.id"#,
+            team_id,
+            provider_id,
+            external_project_id,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(ProjectConfigsError::from)
+    }
+
     pub async fn list_enabled<'c, Q>(
         &self,
         db: Q,

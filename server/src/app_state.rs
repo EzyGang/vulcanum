@@ -89,8 +89,11 @@ impl AppState {
             cfg,
         );
         let project_configs_repo = ProjectConfigsRepository::new();
-        let task_board =
-            TaskBoardService::new(providers_repo.clone(), project_configs_repo.clone());
+        let task_board = TaskBoardService::new(
+            providers_repo.clone(),
+            project_configs_repo.clone(),
+            WorkRunsRepository::new(),
+        );
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),
             db_pool.clone(),

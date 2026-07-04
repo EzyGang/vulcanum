@@ -17,6 +17,7 @@ export const useTaskBoardViewModel = ({
   repoItems,
   selectedRepoNames,
   selectedTask,
+  relatedRunsByTaskRef,
   visibleTaskCounts,
   columnRoles,
   moving,
@@ -117,6 +118,7 @@ export const useTaskBoardViewModel = ({
   const columns = buildTaskBoardColumns({
     boardColumns,
     statusOptions,
+    relatedRunsByTaskRef,
     visibleTaskCounts,
     columnRoles,
     moving,
@@ -200,7 +202,8 @@ export const useTaskBoardViewModel = ({
       selectedTaskCreatedAtLabel: selectedTask
         ? new Date(selectedTask.createdAt).toLocaleString()
         : null,
-      selectedTaskMoveActions
+      selectedTaskMoveActions,
+      selectedTaskRelatedRuns: selectedTask ? (relatedRunsByTaskRef.get(selectedTask.id) ?? []) : []
     },
     actions: {
       onFilterRepos: filterRepos,

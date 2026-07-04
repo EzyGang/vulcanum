@@ -57,6 +57,7 @@ export const TaskBoardView = ({
     availableLabels,
     selectedTaskCreatedAtLabel,
     selectedTaskMoveActions,
+    selectedTaskRelatedRuns,
     createDialogOpen,
     settingsDialogOpen,
     automationEnabled,
@@ -286,6 +287,7 @@ export const TaskBoardView = ({
       <TaskDetailsDialog
         createdAtLabel={selectedTaskCreatedAtLabel}
         task={selectedTask}
+        relatedRuns={selectedTaskRelatedRuns}
         availableLabels={availableLabels}
         form={form}
         moveActions={selectedTaskMoveActions}

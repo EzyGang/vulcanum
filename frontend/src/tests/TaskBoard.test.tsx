@@ -78,9 +78,23 @@ vi.mock('../components/shared/ui/Dialog.view', () => {
   return { Dialog };
 });
 
+vi.mock('../components/shared/ui/Tooltip.view', () => {
+  const Tooltip = ({ children }: { children: ComponentChildren }) => <div>{children}</div>;
+  Tooltip.Trigger = ({
+    children,
+    class: className
+  }: {
+    children: ComponentChildren;
+    class?: string;
+  }) => <div class={className}>{children}</div>;
+  Tooltip.Popup = ({ children }: { children: ComponentChildren }) => <div>{children}</div>;
+  return { Tooltip };
+});
+
 import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
+import type { TaskBoardRelatedWorkRun } from '../types/task-board';
 
 const makeTask = (id: string, title = `Task ${id}`) => ({
   id,
@@ -97,7 +111,25 @@ const makeTask = (id: string, title = `Task ${id}`) => ({
   labels: [{ id: 'label-1', name: 'Bug', color: '#ef4444' }]
 });
 
-const makeProps = (): TaskBoardViewProps => {
+const makeRelatedRun = (
+  overrides: Partial<TaskBoardRelatedWorkRun> = {}
+): TaskBoardRelatedWorkRun => ({
+  id: 'run-1',
+  status: 'running',
+  workType: 'implementation',
+  tokensUsed: 1545,
+  inputTokens: 1200,
+  outputTokens: 345,
+  cacheReadTokens: 80,
+  cacheWriteTokens: 12,
+  modelUsed: 'gpt-5.1',
+  createdAt: '2026-01-02T00:00:00Z',
+  ...overrides
+});
+
+const makeProps = (
+  relatedRunsByTaskRef: Readonly<Record<string, TaskBoardRelatedWorkRun[]>> = {}
+): TaskBoardViewProps => {
   const statusOptions = [
     { value: 'to-do', label: 'To Do' },
     { value: 'in-progress', label: 'In Progress' },
@@ -185,6 +217,7 @@ const makeProps = (): TaskBoardViewProps => {
         return {
           column,
           visibleTasks: visibleTasks.map((task) => ({
+            relatedRuns: relatedRunsByTaskRef[task.id] ?? [],
             task,
             displayId: formatTaskDisplayId(task),
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
@@ -241,6 +274,9 @@ const makeProps = (): TaskBoardViewProps => {
     repoItems: [{ value: 'owner/repo', label: 'owner/repo' }],
     selectedRepoNames: [],
     selectedTask: null,
+    get selectedTaskRelatedRuns() {
+      return data.selectedTask ? (relatedRunsByTaskRef[data.selectedTask.id] ?? []) : [];
+    },
     availableLabels: board.labels,
     createDialogOpen: false,
     settingsDialogOpen: false,
@@ -460,6 +496,71 @@ describe('TaskBoard.view', () => {
     const { getByDisplayValue } = render(<TaskBoardView {...props} />);
 
     expect(getByDisplayValue('Hidden task body')).toBeTruthy();
+  });
+
+  it('renders related run type, status, and usage on task cards', () => {
+    const props = makeProps({
+      'task-1': [makeRelatedRun({ id: 'implementation-run' })]
+    });
+    const { getByLabelText } = render(<TaskBoardView {...props} />);
+
+    const relatedRuns = getByLabelText('Related work runs');
+
+    expect(relatedRuns.textContent).toContain('Implement');
+    expect(relatedRuns.textContent).toContain('running');
+    expect(relatedRuns.textContent).toContain('1.2K');
+    expect(relatedRuns.textContent).toContain('345');
+    expect(relatedRuns.textContent).toContain('gpt-5.1');
+  });
+
+  it('keeps task cards without related runs quiet', () => {
+    const props = makeProps();
+    const { queryByLabelText, queryByText } = render(<TaskBoardView {...props} />);
+
+    expect(queryByLabelText('Related work runs')).toBeNull();
+    expect(queryByText('No related work runs yet.')).toBeNull();
+  });
+
+  it('renders related run type, status, and usage in the task details modal', () => {
+    const props = makeProps({
+      'task-1': [
+        makeRelatedRun({
+          id: 'review-run',
+          status: 'completed',
+          workType: 'pull_request_review',
+          tokensUsed: null,
+          inputTokens: 900,
+          outputTokens: 125,
+          modelUsed: 'claude-opus-4.5'
+        })
+      ]
+    });
+    const board = requireBoard(props);
+    props.data.selectedTask = board.columns[0].tasks[0];
+
+    const { getByText } = render(<TaskBoardView {...props} />);
+
+    const relatedRunsSection = getByText('Related runs').closest('section');
+
+    expect(relatedRunsSection).toBeTruthy();
+    expect(relatedRunsSection?.textContent).toContain('Latest 3');
+    expect(relatedRunsSection?.textContent).toContain('Review');
+    expect(relatedRunsSection?.textContent).toContain('completed');
+    expect(relatedRunsSection?.textContent).toContain('900');
+    expect(relatedRunsSection?.textContent).toContain('125');
+    expect(relatedRunsSection?.textContent).toContain('claude-opus-4.5');
+  });
+
+  it('shows the related run empty state in the task details modal', () => {
+    const props = makeProps();
+    const board = requireBoard(props);
+    props.data.selectedTask = board.columns[0].tasks[0];
+
+    const { getByText, queryByText } = render(<TaskBoardView {...props} />);
+
+    expect(getByText('Related runs')).toBeTruthy();
+    expect(getByText('No related work runs yet.')).toBeTruthy();
+    expect(queryByText('Latest 3')).toBeNull();
   });
 
   it('opens board settings from the icon button', () => {

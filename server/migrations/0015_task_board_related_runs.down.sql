@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_work_runs_team_config_task_created;

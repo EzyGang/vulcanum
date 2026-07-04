@@ -303,6 +303,7 @@ impl From<TaskBoardError> for AppError {
                 }
             },
             TaskBoardError::ProjectConfig(e) => e.into(),
+            TaskBoardError::WorkRuns(e) => e.into(),
             TaskBoardError::EmptyTitle => Self::BadRequest("Task title is required".to_owned()),
             TaskBoardError::EmptyStatus => Self::BadRequest("Task status is required".to_owned()),
             TaskBoardError::EmptyLabel => Self::BadRequest("Task label is required".to_owned()),

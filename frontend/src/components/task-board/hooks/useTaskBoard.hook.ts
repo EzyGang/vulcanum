@@ -1,3 +1,4 @@
+import { useMemo } from 'preact/hooks';
 import { listRepos } from '../../../services/github/github.service';
 import { listProjects } from '../../../services/projects/projects.service';
 import { getTaskBoard } from '../../../services/task-board/task-board.service';
@@ -44,6 +45,13 @@ export const useTaskBoard = () => {
   const columnRoles = columnRolesForProject(projectConfig, columns);
   const statusOptions = columns.map((column) => ({ value: column.slug, label: column.name }));
   const repoItems = repos.map((repo) => ({ value: repo.fullName, label: repo.fullName }));
+  const relatedRunsByTaskRef = useMemo(
+    () =>
+      new Map(
+        (boardQuery.data?.relatedTaskRuns ?? []).map((item) => [item.externalTaskRef, item.runs])
+      ),
+    [boardQuery.data?.relatedTaskRuns]
+  );
 
   const create = useTaskBoardCreate(selection, columns);
   const movement = useTaskBoardMovement(selection, columns, board?.labels ?? []);
@@ -54,6 +62,7 @@ export const useTaskBoard = () => {
     repoItems,
     selectedRepoNames,
     selectedTask: movement.data.selectedTask,
+    relatedRunsByTaskRef,
     visibleTaskCounts: movement.data.visibleTaskCounts,
     columnRoles,
     moving: movement.status.moving,
