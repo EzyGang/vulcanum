@@ -1,5 +1,9 @@
 import type { JSX } from 'preact';
-import type { TaskBoardLabel, TaskBoardTask } from '../../../types/task-board';
+import type {
+  TaskBoardLabel,
+  TaskBoardRelatedWorkRun,
+  TaskBoardTask
+} from '../../../types/task-board';
 import { Button } from '../../shared/ui/Button.view';
 import { Checkbox } from '../../shared/ui/Checkbox.view';
 import { Dialog } from '../../shared/ui/Dialog.view';
@@ -13,6 +17,7 @@ import type {
   TaskBoardMoveAction,
   TaskBoardStatusState
 } from '../types';
+import { RelatedWorkRuns } from './RelatedWorkRuns.view';
 
 interface TaskDetailsMoveButtonProps {
   action: TaskBoardMoveAction;
@@ -24,6 +29,7 @@ interface TaskDetailsDialogProps {
   availableLabels: TaskBoardLabel[];
   createdAtLabel: string | null;
   moveActions: TaskBoardMoveAction[];
+  relatedRuns: TaskBoardRelatedWorkRun[];
   form: Pick<TaskBoardFormState, 'editTitle' | 'editBody' | 'editLabelIds' | 'editError'>;
   status: Pick<TaskBoardStatusState, 'moving' | 'updatingTask' | 'updatingTaskLabel'>;
   actions: Pick<
@@ -48,6 +54,7 @@ export const TaskDetailsDialog = ({
   availableLabels,
   createdAtLabel,
   moveActions,
+  relatedRuns,
   form,
   status,
   actions
@@ -75,6 +82,7 @@ export const TaskDetailsDialog = ({
               <span>Assignee: {task.assigneeName ?? 'Unassigned'}</span>
               <span>Created: {createdAtLabel}</span>
             </div>
+            <RelatedWorkRuns runs={relatedRuns} variant='dialog' />
             <form
               class='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'
               onSubmit={actions.onSubmitTaskEdit}

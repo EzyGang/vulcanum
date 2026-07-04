@@ -308,7 +308,11 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo = WorkRunsRepository::new();
     let work_runs_repo_for_workers = WorkRunsRepository::new();
     let project_configs_repo = ProjectConfigsRepository::new();
-    let task_board = TaskBoardService::new(providers_repo.clone(), project_configs_repo.clone());
+    let task_board = TaskBoardService::new(
+        providers_repo.clone(),
+        project_configs_repo.clone(),
+        WorkRunsRepository::new(),
+    );
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
     let providers_repo_clone = providers_repo.clone();

@@ -1,6 +1,8 @@
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::models::providers::model::{IntegrationBoard, IntegrationTask, IntegrationType};
+use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TaskProviderProject {
@@ -17,6 +19,27 @@ pub struct TaskBoardResponse {
     pub provider_id: Uuid,
     pub provider_type: IntegrationType,
     pub board: IntegrationBoard,
+    pub related_task_runs: Vec<TaskBoardTaskRelatedRuns>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TaskBoardTaskRelatedRuns {
+    pub external_task_ref: String,
+    pub runs: Vec<TaskBoardRelatedWorkRun>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TaskBoardRelatedWorkRun {
+    pub id: Uuid,
+    pub status: WorkRunStatus,
+    pub work_type: WorkRunType,
+    pub tokens_used: Option<i64>,
+    pub input_tokens: Option<i64>,
+    pub output_tokens: Option<i64>,
+    pub cache_read_tokens: Option<i64>,
+    pub cache_write_tokens: Option<i64>,
+    pub model_used: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]

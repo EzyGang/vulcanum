@@ -1,6 +1,11 @@
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../types/shared';
-import type { TaskBoard, TaskBoardLabel, TaskBoardTask } from '../../types/task-board';
+import type {
+  TaskBoard,
+  TaskBoardLabel,
+  TaskBoardRelatedWorkRun,
+  TaskBoardTask
+} from '../../types/task-board';
 
 export type TaskBoardColumnRole = 'pickup' | 'progress' | 'done';
 
@@ -43,6 +48,7 @@ export type TaskBoardMenuStyle = Pick<JSX.CSSProperties, 'left' | 'top'> | undef
 
 export interface TaskBoardTaskCardData {
   task: TaskBoardTask;
+  relatedRuns: TaskBoardRelatedWorkRun[];
   displayId: string;
   createdAtLabel: string;
   moving: boolean;
@@ -143,6 +149,7 @@ export interface TaskBoardViewData {
   repoItems: SelectOption[];
   selectedRepoNames: string[];
   selectedTask: TaskBoardTask | null;
+  selectedTaskRelatedRuns: TaskBoardRelatedWorkRun[];
   availableLabels: TaskBoardLabel[];
   createDialogOpen: boolean;
   settingsDialogOpen: boolean;
