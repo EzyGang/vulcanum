@@ -73,6 +73,11 @@ fn submit_result_from_journal_replays_stored_result() {
         cache_write_tokens: Some(3),
         pr_url: Some("https://github.com/EzyGang/vulcanum/pull/101".to_owned()),
         duration_ms: Some(5_000),
+        review_url: Some(
+            "https://github.com/EzyGang/vulcanum/pull/101#pullrequestreview-1".to_owned(),
+        ),
+        review_body: Some("Looks good".to_owned()),
+        review_already_exists: true,
         error_message: None,
         turn_count: Some(1),
         session_id: Some("ses_1".to_owned()),
@@ -100,4 +105,10 @@ fn submit_result_from_journal_replays_stored_result() {
         request.pr_urls,
         vec!["https://github.com/EzyGang/vulcanum/pull/101".to_owned()]
     );
+    assert_eq!(
+        request.review_url.as_deref(),
+        Some("https://github.com/EzyGang/vulcanum/pull/101#pullrequestreview-1")
+    );
+    assert_eq!(request.review_body.as_deref(), Some("Looks good"));
+    assert!(request.review_already_exists);
 }

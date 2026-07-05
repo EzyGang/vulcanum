@@ -51,6 +51,9 @@ pub(crate) async fn submit_failed_result(
         cache_write_tokens: 0,
         pr_url: result.pr_urls.first().map(String::as_str),
         duration_ms: result.duration_ms,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
         status: JournalStatus::Failed,
     });
     let submit = submit_result_request(SubmitResultParams {
@@ -111,6 +114,11 @@ pub(crate) async fn submit_turn_result(
         cache_write_tokens: to_i64_saturating(session_export.cache_write_tokens),
         pr_url,
         duration_ms: to_i64_saturating(session_export.duration_ms),
+        review_url: finish_artifact.and_then(|a| a.review_url.as_deref()),
+        review_body: finish_artifact.and_then(|a| a.review_body.as_deref()),
+        review_already_exists: finish_artifact
+            .map(|a| a.review_already_exists)
+            .unwrap_or(false),
         status: journal_status,
     });
 
@@ -240,9 +248,9 @@ pub(crate) fn submit_result_from_journal(entry: &JournalEntry) -> SubmitResultRe
         model_used: None,
         finish_status: None,
         result_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        review_url: entry.review_url.clone(),
+        review_body: entry.review_body.clone(),
+        review_already_exists: entry.review_already_exists,
     })
 }
 

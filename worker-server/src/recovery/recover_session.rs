@@ -393,6 +393,9 @@ pub(crate) async fn mark_lost_and_submit(
         cache_write_tokens: 0,
         pr_url: None,
         duration_ms: 0,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
         status: JournalStatus::Lost,
     });
 
