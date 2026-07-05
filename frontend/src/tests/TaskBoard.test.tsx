@@ -2,8 +2,11 @@ import { fireEvent, render } from '@testing-library/preact';
 import type { ComponentChildren } from 'preact';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  normalizeTaskBoardColumnPreferences,
   readDismissedHelpCards,
-  writeDismissedHelpCards
+  readTaskBoardColumnPreferences,
+  writeDismissedHelpCards,
+  writeTaskBoardColumnPreferences
 } from '../components/task-board/hooks/taskBoard.helpers';
 
 vi.mock('../components/shared/ui/Select.view', () => ({
@@ -191,7 +194,12 @@ const makeProps = (
     onColumnScroll: vi.fn(),
     onPickupColumnChange: vi.fn(),
     onProgressColumnChange: vi.fn(),
-    onDoneColumnChange: vi.fn()
+    onDoneColumnChange: vi.fn(),
+    onShowColumn: vi.fn(),
+    onHideColumn: vi.fn(),
+    onMoveColumnLeft: vi.fn(),
+    onMoveColumnRight: vi.fn(),
+    onResetColumnView: vi.fn()
   };
   const data: TaskBoardViewProps['data'] = {
     selectedProjectKey: 'provider-1/project-1',
@@ -261,6 +269,13 @@ const makeProps = (
               onClick: () => actions.onSetColumnRole(column.slug, role)
             }))
           },
+          viewControls: {
+            canMoveLeft: column.slug !== board.columns[0]?.slug,
+            canMoveRight: column.slug !== board.columns[board.columns.length - 1]?.slug,
+            onHide: () => actions.onHideColumn(column.slug),
+            onMoveLeft: () => actions.onMoveColumnLeft(column.slug),
+            onMoveRight: () => actions.onMoveColumnRight(column.slug)
+          },
           onDragOver: (event: DragEvent) => actions.onDragOverStatus(event, column.slug),
           onDrop: (event: DragEvent) => actions.onDropOnStatus(event, column.slug),
           onScroll: (event: Event) => actions.onColumnScroll(event, column.slug),
@@ -268,6 +283,8 @@ const makeProps = (
         };
       });
     },
+    hiddenColumns: [],
+    hasCustomColumnView: false,
     helpCards: [],
     automationLabel: 'Automation off',
     statusOptions,
@@ -399,6 +416,36 @@ describe('taskBoard.helpers', () => {
 
     expect(readDismissedHelpCards()).toEqual(['proxy', 'lifecycle-labels']);
   });
+
+  it('persists column view preferences per board in local storage', () => {
+    writeTaskBoardColumnPreferences('provider-1/project-1', {
+      hiddenColumnSlugs: ['done'],
+      columnOrder: ['done', 'to-do']
+    });
+
+    expect(readTaskBoardColumnPreferences('provider-1/project-1')).toEqual({
+      hiddenColumnSlugs: ['done'],
+      columnOrder: ['done', 'to-do']
+    });
+    expect(readTaskBoardColumnPreferences('provider-1/project-2')).toEqual({
+      hiddenColumnSlugs: [],
+      columnOrder: []
+    });
+  });
+
+  it('normalizes column preferences against provider columns', () => {
+    const board = requireBoard(makeProps());
+
+    expect(
+      normalizeTaskBoardColumnPreferences(board.columns, {
+        hiddenColumnSlugs: ['missing', 'done', 'done'],
+        columnOrder: ['missing', 'done', 'done']
+      })
+    ).toEqual({
+      hiddenColumnSlugs: ['done'],
+      columnOrder: ['done', 'to-do']
+    });
+  });
 });
 
 describe('TaskBoard.view', () => {
@@ -412,6 +459,40 @@ describe('TaskBoard.view', () => {
     expect(queryByText('Hidden task body')).toBeNull();
     expect(getAllByText('To Do').length).toBeGreaterThan(0);
     expect(getAllByText('Done').length).toBeGreaterThan(0);
+  });
+
+  it('sends column hide and reorder actions from column headers', () => {
+    const props = makeProps();
+    const { getByLabelText } = render(<TaskBoardView {...props} />);
+
+    fireEvent.click(getByLabelText('Hide To Do column'));
+    fireEvent.click(getByLabelText('Move Done column left'));
+
+    expect(props.actions.onHideColumn).toHaveBeenCalledWith('to-do');
+    expect(props.actions.onMoveColumnLeft).toHaveBeenCalledWith('done');
+  });
+
+  it('restores hidden columns and can reset the local board view', () => {
+    const props = makeProps();
+    const board = requireBoard(props);
+    const doneColumn = board.columns[1];
+    props.data.hasCustomColumnView = true;
+    props.data.hiddenColumns = doneColumn
+      ? [
+          {
+            column: doneColumn,
+            onShow: () => props.actions.onShowColumn(doneColumn.slug)
+          }
+        ]
+      : [];
+
+    const { getByText } = render(<TaskBoardView {...props} />);
+
+    fireEvent.click(getByText('Show Done'));
+    fireEvent.click(getByText('Reset view'));
+
+    expect(props.actions.onShowColumn).toHaveBeenCalledWith('done');
+    expect(props.actions.onResetColumnView).toHaveBeenCalledOnce();
   });
 
   it('opens task creation from the board button', () => {

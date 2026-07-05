@@ -1,8 +1,14 @@
 import { useSignal } from '@preact/signals';
 import { useCallback, useEffect } from 'preact/hooks';
 import type { SelectOption } from '../../../types/shared';
-import type { TaskBoardRepositoryItem } from '../types';
-import { HELP_CARDS } from './taskBoard.helpers';
+import type { TaskBoardColumnPreferences, TaskBoardRepositoryItem } from '../types';
+import {
+  HELP_CARDS,
+  hasCustomTaskBoardColumnView,
+  normalizeTaskBoardColumnPreferences,
+  readTaskBoardColumnPreferences,
+  writeTaskBoardColumnPreferences
+} from './taskBoard.helpers';
 import {
   buildTaskBoardColumns,
   buildTaskBoardMoveActions,
@@ -12,6 +18,7 @@ import {
 } from './taskBoardViewModel.support';
 
 export const useTaskBoardViewModel = ({
+  selectedProjectKey,
   board,
   statusOptions,
   repoItems,
@@ -44,6 +51,9 @@ export const useTaskBoardViewModel = ({
 }: UseTaskBoardViewModelInput): UseTaskBoardViewModelResult => {
   const repoFilter = useSignal('');
   const openRoleMenuColumn = useSignal<string | null>(null);
+  const columnPreferences = useSignal<TaskBoardColumnPreferences>(
+    readTaskBoardColumnPreferences(selectedProjectKey)
+  );
 
   useEffect(() => {
     if (openRoleMenuColumn.value === null) return;
@@ -58,6 +68,10 @@ export const useTaskBoardViewModel = ({
       window.removeEventListener('click', closeRoleMenu);
     };
   }, [openRoleMenuColumn.value]);
+
+  useEffect(() => {
+    columnPreferences.value = readTaskBoardColumnPreferences(selectedProjectKey);
+  }, [selectedProjectKey]);
 
   const filterRepos = useCallback(
     (event: Event) => {
@@ -115,8 +129,106 @@ export const useTaskBoardViewModel = ({
     ? buildTaskBoardMoveActions(selectedTask, statusOptions, onMoveTask)
     : [];
   const boardColumns = board?.columns ?? [];
-  const columns = buildTaskBoardColumns({
+  const normalizedColumnPreferences = normalizeTaskBoardColumnPreferences(
     boardColumns,
+    columnPreferences.value
+  );
+  const orderedBoardColumns = normalizedColumnPreferences.columnOrder
+    .map((columnSlug) => boardColumns.find((column) => column.slug === columnSlug))
+    .filter((column): column is NonNullable<typeof column> => Boolean(column));
+  const hiddenColumnSlugSet = new Set(normalizedColumnPreferences.hiddenColumnSlugs);
+  const visibleBoardColumns = orderedBoardColumns.filter(
+    (column) => !hiddenColumnSlugSet.has(column.slug)
+  );
+
+  const saveColumnPreferences = useCallback(
+    (preferences: TaskBoardColumnPreferences) => {
+      const nextPreferences = normalizeTaskBoardColumnPreferences(boardColumns, preferences);
+      const storedPreferences = hasCustomTaskBoardColumnView(boardColumns, nextPreferences)
+        ? nextPreferences
+        : { hiddenColumnSlugs: [], columnOrder: [] };
+      columnPreferences.value = storedPreferences;
+      writeTaskBoardColumnPreferences(selectedProjectKey, storedPreferences);
+    },
+    [boardColumns, columnPreferences, selectedProjectKey]
+  );
+
+  const showColumn = useCallback(
+    (columnSlug: string) => {
+      saveColumnPreferences({
+        ...normalizedColumnPreferences,
+        hiddenColumnSlugs: normalizedColumnPreferences.hiddenColumnSlugs.filter(
+          (hiddenColumnSlug) => hiddenColumnSlug !== columnSlug
+        )
+      });
+    },
+    [normalizedColumnPreferences, saveColumnPreferences]
+  );
+
+  const hideColumn = useCallback(
+    (columnSlug: string) => {
+      if (normalizedColumnPreferences.hiddenColumnSlugs.includes(columnSlug)) {
+        return;
+      }
+
+      saveColumnPreferences({
+        ...normalizedColumnPreferences,
+        hiddenColumnSlugs: [...normalizedColumnPreferences.hiddenColumnSlugs, columnSlug]
+      });
+    },
+    [normalizedColumnPreferences, saveColumnPreferences]
+  );
+
+  const moveColumn = useCallback(
+    (columnSlug: string, offset: -1 | 1) => {
+      const visibleColumnSlugs = visibleBoardColumns.map((column) => column.slug);
+      const visibleIndex = visibleColumnSlugs.indexOf(columnSlug);
+      const targetSlug = visibleColumnSlugs[visibleIndex + offset];
+
+      if (visibleIndex < 0 || !targetSlug) {
+        return;
+      }
+
+      const columnOrder = [...normalizedColumnPreferences.columnOrder];
+      const currentIndex = columnOrder.indexOf(columnSlug);
+      const targetIndex = columnOrder.indexOf(targetSlug);
+
+      if (currentIndex < 0 || targetIndex < 0) {
+        return;
+      }
+
+      columnOrder[currentIndex] = targetSlug;
+      columnOrder[targetIndex] = columnSlug;
+      saveColumnPreferences({ ...normalizedColumnPreferences, columnOrder });
+    },
+    [normalizedColumnPreferences, saveColumnPreferences, visibleBoardColumns]
+  );
+
+  const moveColumnLeft = useCallback(
+    (columnSlug: string) => {
+      moveColumn(columnSlug, -1);
+    },
+    [moveColumn]
+  );
+  const moveColumnRight = useCallback(
+    (columnSlug: string) => {
+      moveColumn(columnSlug, 1);
+    },
+    [moveColumn]
+  );
+  const resetColumnView = useCallback(() => {
+    columnPreferences.value = { hiddenColumnSlugs: [], columnOrder: [] };
+    writeTaskBoardColumnPreferences(selectedProjectKey, { hiddenColumnSlugs: [], columnOrder: [] });
+  }, [columnPreferences, selectedProjectKey]);
+
+  const hiddenColumns = orderedBoardColumns
+    .filter((column) => hiddenColumnSlugSet.has(column.slug))
+    .map((column) => ({
+      column,
+      onShow: () => showColumn(column.slug)
+    }));
+  const columns = buildTaskBoardColumns({
+    boardColumns: visibleBoardColumns,
     statusOptions,
     relatedRunsByTaskRef,
     visibleTaskCounts,
@@ -140,13 +252,18 @@ export const useTaskBoardViewModel = ({
     onDropOnStatus,
     onLoadMoreColumn,
     onColumnScroll,
-    onSetColumnRole
+    onSetColumnRole,
+    onHideColumn: hideColumn,
+    onMoveColumnLeft: moveColumnLeft,
+    onMoveColumnRight: moveColumnRight
   });
 
   return {
     data: {
-      boardColumnCount: Math.max(boardColumns.length, 1),
+      boardColumnCount: Math.max(visibleBoardColumns.length, 1),
       columns,
+      hiddenColumns,
+      hasCustomColumnView: hasCustomTaskBoardColumnView(boardColumns, columnPreferences.value),
       helpCards: HELP_CARDS.filter((card) => !dismissedHelpCards.includes(card.id)).map((card) => ({
         ...card,
         onDismiss: () => onDismissHelpCard(card.id)
@@ -209,7 +326,12 @@ export const useTaskBoardViewModel = ({
       onFilterRepos: filterRepos,
       onPickupColumnChange: setPickupColumn,
       onProgressColumnChange: setProgressColumn,
-      onDoneColumnChange: setDoneColumn
+      onDoneColumnChange: setDoneColumn,
+      onShowColumn: showColumn,
+      onHideColumn: hideColumn,
+      onMoveColumnLeft: moveColumnLeft,
+      onMoveColumnRight: moveColumnRight,
+      onResetColumnView: resetColumnView
     }
   };
 };

@@ -1,7 +1,9 @@
 import {
   IconAlertTriangle,
   IconBolt,
+  IconEye,
   IconInfoCircle,
+  IconRefresh,
   IconSettings,
   IconX
 } from '@tabler/icons-react';
@@ -49,6 +51,8 @@ export const TaskBoardView = ({
     board,
     boardColumnCount,
     columns,
+    hiddenColumns,
+    hasCustomColumnView,
     helpCards,
     dismissedHelpCards,
     automationLabel,
@@ -260,14 +264,67 @@ export const TaskBoardView = ({
         <ErrorBanner message={form.createError ?? form.serverError ?? 'Unable to update board'} />
       )}
 
-      <div
-        class='grid grid-cols-1 gap-4 lg:grid-cols-[repeat(var(--board-column-count),minmax(0,1fr))]'
-        style={`--board-column-count: ${boardColumnCount}`}
-      >
-        {columns.map((column) => (
-          <TaskBoardColumn key={column.column.id} data={column} />
-        ))}
-      </div>
+      {hasCustomColumnView && (
+        <section class='flex flex-col gap-3 border border-border-base bg-bg-card p-4 md:flex-row md:items-center md:justify-between'>
+          <div class='flex flex-col gap-1'>
+            <p class='text-xs font-medium uppercase tracking-wider text-accent'>Board view</p>
+            <p class='text-sm text-text-muted'>
+              Hidden and reordered columns are saved in this browser only.
+            </p>
+          </div>
+          <div class='flex flex-wrap items-center gap-2'>
+            {hiddenColumns.map(({ column, onShow }) => (
+              <Button
+                key={column.id}
+                type='button'
+                variant='ghost'
+                onClick={onShow}
+                class='h-10 gap-2 border border-border-base px-3 hover:border-border-focus'
+              >
+                <IconEye size={15} stroke={1.75} aria-hidden='true' />
+                Show {column.name}
+              </Button>
+            ))}
+            <Button
+              type='button'
+              variant='ghost'
+              onClick={actions.onResetColumnView}
+              class='h-10 gap-2 border border-border-base px-3 hover:border-border-focus'
+            >
+              <IconRefresh size={15} stroke={1.75} aria-hidden='true' />
+              Reset view
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {columns.length > 0 ? (
+        <div
+          class='grid grid-cols-1 gap-4 lg:grid-cols-[repeat(var(--board-column-count),minmax(0,1fr))]'
+          style={`--board-column-count: ${boardColumnCount}`}
+        >
+          {columns.map((column) => (
+            <TaskBoardColumn key={column.column.id} data={column} />
+          ))}
+        </div>
+      ) : (
+        <section class='flex flex-col items-start gap-3 border border-dashed border-border-base bg-bg-card p-6'>
+          <p class='text-sm font-medium uppercase tracking-wider text-text-primary'>
+            All columns are hidden
+          </p>
+          <p class='text-sm text-text-muted'>
+            Restore a hidden column or reset the board view to return to the full board.
+          </p>
+          <Button
+            type='button'
+            variant='secondary'
+            onClick={actions.onResetColumnView}
+            class='h-10 px-3 py-0'
+          >
+            Reset view
+          </Button>
+        </section>
+      )}
       <TaskCreateDialog
         open={createDialogOpen}
         form={form}
