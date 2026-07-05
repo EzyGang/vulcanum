@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use crate::api_types::AgentBackend;
 use crate::config::WorkerConfig;
+#[cfg(target_os = "macos")]
+use crate::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
 
 /// Severity of a validation issue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,7 +156,7 @@ fn macos_app_binary(name: &str) -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         if name == "docker" {
-            let path = PathBuf::from("/Applications/Docker.app/Contents/Resources/bin/docker");
+            let path = PathBuf::from(MACOS_DOCKER_DESKTOP_CLI_PATH);
             if path.is_file() {
                 return Some(path);
             }

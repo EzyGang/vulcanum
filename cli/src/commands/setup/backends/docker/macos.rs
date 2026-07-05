@@ -3,10 +3,11 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
+use vulcanum_shared::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
+
 use super::{docker_binary_path, docker_info_status, DockerAccess};
 
 const DOCKER_APP: &str = "/Applications/Docker.app";
-const DOCKER_CLI: &str = "/Applications/Docker.app/Contents/Resources/bin/docker";
 const DOCKER_START_ATTEMPTS: u16 = 120;
 const DOCKER_START_DELAY: Duration = Duration::from_secs(2);
 
@@ -21,7 +22,7 @@ pub(super) fn install_docker() -> anyhow::Result<()> {
 
 #[must_use]
 pub(super) fn docker_cli_path() -> Option<PathBuf> {
-    let path = PathBuf::from(DOCKER_CLI);
+    let path = PathBuf::from(MACOS_DOCKER_DESKTOP_CLI_PATH);
     match path.is_file() {
         true => Some(path),
         false => None,
@@ -38,6 +39,7 @@ fn install_docker_desktop() -> anyhow::Result<()> {
     attach_dmg(&dmg_path, &mount_path)?;
     let install_result = install_app_from_mount(&mount_path);
     detach_dmg(&mount_path);
+    remove_downloaded_dmg(&dmg_path);
     install_result
 }
 
@@ -113,6 +115,16 @@ fn detach_dmg(mount_path: &Path) {
         Ok(_) => (),
         Err(err) => {
             tracing::warn!(error = %err, mount = %mount_path.display(), "failed to detach Docker Desktop DMG")
+        }
+    }
+}
+
+fn remove_downloaded_dmg(dmg_path: &Path) {
+    match std::fs::remove_file(dmg_path) {
+        Ok(()) => (),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
+        Err(err) => {
+            tracing::warn!(error = %err, path = %dmg_path.display(), "failed to remove Docker Desktop DMG")
         }
     }
 }

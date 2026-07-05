@@ -41,7 +41,11 @@ enum WorkerCommand {
         /// Force re-registration even if already connected
         #[arg(long)]
         force: bool,
-        #[arg(long, value_enum)]
+        #[arg(
+            long,
+            value_enum,
+            help = "Isolation backend. Defaults to docker when --instance and --code are supplied."
+        )]
         isolation: Option<IsolationBackend>,
         /// Agent backend to use (opencode or omp-rpc)
         #[arg(long, value_enum)]
