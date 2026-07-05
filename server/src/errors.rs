@@ -246,6 +246,10 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
             WorkRunsError::GithubApp(e) => e.into(),
             WorkRunsError::ModelProvider(e) => e.into(),
+            WorkRunsError::Provider(e) => {
+                tracing::error!(error = %e, operation = "work_runs", "provider error");
+                Self::Internal
+            }
             WorkRunsError::ProjectConfig(e) => e.into(),
             WorkRunsError::Team(e) => e.into(),
             WorkRunsError::Worker(e) => e.into(),

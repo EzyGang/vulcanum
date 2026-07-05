@@ -1,4 +1,6 @@
 use std::sync::Arc;
+
+use async_trait::async_trait;
 use uuid::Uuid;
 use vulcanum_shared::api_types::AgentBackend;
 
@@ -9,6 +11,8 @@ use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::teams::TeamsRepository;
 use crate::db::work_runs::WorkRunsRepository;
 use crate::db::workers::WorkersRepository;
+use crate::models::providers::errors::IntegrationError;
+use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::WorkRunStatus;
 use crate::models::workers::model::WorkerStatus;
@@ -21,6 +25,7 @@ use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceA
 use crate::services::model_providers::catalog::ModelCatalogClient;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
+use crate::services::providers::client::TaskFetcher;
 use crate::services::teams::service::TeamsService;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::test_helpers;
@@ -84,6 +89,52 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         Arc::new(InMemoryCancelStore::new()),
         3,
     )
+}
+
+struct StaticTaskFetcher {
+    task: IntegrationTask,
+}
+
+#[async_trait]
+impl TaskFetcher for StaticTaskFetcher {
+    async fn fetch_tasks_in_column(
+        &self,
+        _project_id: &str,
+        _column_name: &str,
+    ) -> Result<Vec<IntegrationTask>, IntegrationError> {
+        Ok(vec![self.task.clone()])
+    }
+
+    async fn fetch_task(&self, _task_id: &str) -> Result<IntegrationTask, IntegrationError> {
+        Ok(self.task.clone())
+    }
+
+    async fn update_task_status(
+        &self,
+        _task_id: &str,
+        _new_status: &str,
+    ) -> Result<(), IntegrationError> {
+        Ok(())
+    }
+}
+
+fn static_task(title: &str, description: &str) -> Arc<StaticTaskFetcher> {
+    Arc::new(StaticTaskFetcher {
+        task: IntegrationTask {
+            id: "task-get".to_owned(),
+            title: title.to_owned(),
+            project_id: "kaneo-get-1".to_owned(),
+            description: Some(description.to_owned()),
+            status: "in-progress".to_owned(),
+            priority: "low".to_owned(),
+            number: None,
+            project_slug: None,
+            assignee_name: None,
+            created_at: "2026-01-01T00:00:00Z".to_owned(),
+            updated_at: None,
+            labels: Vec::new(),
+        },
+    })
 }
 
 #[sqlx::test]
@@ -290,10 +341,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -335,10 +383,7 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -366,10 +411,7 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let err = svc
         .submit_result(wr_id, worker_id, params)
@@ -407,10 +449,7 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
+        result_summary: None,
     };
     let err = svc
         .submit_result(wr_id, worker_b, params)
@@ -422,7 +461,10 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn get_job_returns_full_details(pool: sqlx::PgPool) {
-    let svc = build_service(pool.clone());
+    let svc = build_service(pool.clone()).with_task_fetcher(static_task(
+        "Fix login bug",
+        "The login form crashes on submit.",
+    ));
     let worker_id = test_helpers::insert_worker(&pool, "get-job-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-get-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-get").await;
@@ -435,17 +477,21 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     .await
     .expect("Should assign worker");
     sqlx::query!(
-        "UPDATE teams SET agent_backend = 'omp_rpc' WHERE id = $1",
+        "UPDATE teams SET agent_backend = 'omp_rpc', prompt_template = $2 WHERE id = $1",
         test_helpers::DEFAULT_TEAM_ID,
+        "Task {{task_title}}: {{task_body}}",
     )
     .execute(&pool)
     .await
-    .expect("Should set team backend");
+    .expect("Should set team backend and prompt");
 
     let job = svc.get_job(wr_id, worker_id).await.expect("Should get job");
 
     assert_eq!(job.external_task_ref, "task-get");
-    assert_eq!(job.prompt_text, "Review the PR");
+    assert!(job
+        .prompt_text
+        .starts_with("Task Fix login bug: The login form crashes on submit."));
+    assert!(job.prompt_text.contains("Debian-based container"));
     assert!(job.repos.is_empty());
     assert_eq!(job.agent_backend, AgentBackend::OmpRpc);
 }

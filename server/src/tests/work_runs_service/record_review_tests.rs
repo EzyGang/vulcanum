@@ -9,52 +9,35 @@ use crate::services::work_runs::service::record_review::review_comment;
 use crate::test_helpers;
 
 #[test]
-fn review_comment_reports_posted_review_with_url() {
+fn review_comment_reports_summary_with_target_pr() {
     let run = review_run(Some("https://github.com/acme/app/pull/7"));
-    let params = submit_params(
-        false,
-        Some("https://github.com/acme/app/pull/7#pullrequestreview-1"),
-    );
+    let params = submit_params(Some("Looks good"));
 
     assert_eq!(
         review_comment(&run, &params),
-        "Review posted for https://github.com/acme/app/pull/7: https://github.com/acme/app/pull/7#pullrequestreview-1"
+        "Review completed for https://github.com/acme/app/pull/7: Looks good"
     );
 }
 
 #[test]
-fn review_comment_reports_posted_review_without_url() {
+fn review_comment_reports_without_summary() {
     let run = review_run(Some("https://github.com/acme/app/pull/7"));
-    let params = submit_params(false, None);
+    let params = submit_params(None);
 
     assert_eq!(
         review_comment(&run, &params),
-        "Review posted for https://github.com/acme/app/pull/7"
+        "Review completed for https://github.com/acme/app/pull/7"
     );
 }
 
 #[test]
-fn review_comment_reports_existing_review_with_url() {
-    let run = review_run(Some("https://github.com/acme/app/pull/7"));
-    let params = submit_params(
-        true,
-        Some("https://github.com/acme/app/pull/7#pullrequestreview-1"),
-    );
-
-    assert_eq!(
-        review_comment(&run, &params),
-        "Review already existed for https://github.com/acme/app/pull/7: https://github.com/acme/app/pull/7#pullrequestreview-1"
-    );
-}
-
-#[test]
-fn review_comment_reports_existing_review_without_target_pr() {
+fn review_comment_reports_without_target_pr() {
     let run = review_run(None);
-    let params = submit_params(true, None);
+    let params = submit_params(None);
 
     assert_eq!(
         review_comment(&run, &params),
-        "Review already existed for the pull request"
+        "Review completed for the pull request"
     );
 }
 
@@ -69,30 +52,19 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
                 team_id: test_helpers::DEFAULT_TEAM_ID,
                 external_task_ref: "task-review-fix".to_owned(),
                 project_config_id,
-                prompt_text: "Review".to_owned(),
-                repo_url: "https://github.com/acme/app".to_owned(),
                 repo_full_names: vec!["acme/app".to_owned()],
-                agents_md: String::new(),
                 status: WorkRunStatus::Completed,
                 work_type: WorkRunType::PullRequestReview,
                 parent_work_run_id: None,
-                task_body: "Fix the issue".to_owned(),
-                task_title: Some("Fix issue".to_owned()),
-                task_slug: Some("APP-1".to_owned()),
                 review_target_pr_url: Some("https://github.com/acme/app/pull/7".to_owned()),
                 review_target_repo_full_name: Some("acme/app".to_owned()),
             },
         )
         .await
         .expect("review run should insert");
-    let mut params = submit_params(
-        false,
-        Some("https://github.com/acme/app/pull/7#pullrequestreview-1"),
-    );
-    params.review_body = Some(
-        "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None"
-            .to_owned(),
-    );
+    let params = submit_params(Some(
+        "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None",
+    ));
 
     state.jobs.record_review_result(&run, &params).await;
 
@@ -106,11 +78,8 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
     .await
     .expect("review result should be recorded");
 
-    assert_eq!(
-        review.review_url.as_deref(),
-        Some("https://github.com/acme/app/pull/7#pullrequestreview-1")
-    );
-    assert_eq!(review.review_body, params.review_body);
+    assert!(review.review_url.is_none());
+    assert_eq!(review.review_body, params.result_summary);
     assert!(!review.review_already_exists);
 
     let child_count = sqlx::query!(
@@ -136,17 +105,8 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
         status: WorkRunStatus::Running,
         work_type: WorkRunType::PullRequestReview,
         parent_work_run_id: None,
-        prompt_text: String::new(),
-        repo_url: String::new(),
-        agents_md: String::new(),
-        task_body: String::new(),
-        task_title: None,
-        task_slug: None,
         review_target_pr_url: review_target_pr_url.map(str::to_owned),
         review_target_repo_full_name: None,
-        review_url: None,
-        review_body: None,
-        review_already_exists: false,
         result_pr_url: None,
         result_exit_code: None,
         tokens_used: None,
@@ -157,7 +117,7 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
         cache_write_tokens: None,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
+        result_summary: None,
         finish_blocked_reason: None,
         finish_next_column: None,
         created_at: now,
@@ -165,7 +125,7 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
     }
 }
 
-fn submit_params(review_already_exists: bool, review_url: Option<&str>) -> SubmitResultRequest {
+fn submit_params(result_summary: Option<&str>) -> SubmitResultRequest {
     SubmitResultRequest {
         pr_urls: Vec::new(),
         exit_code: 0,
@@ -177,9 +137,6 @@ fn submit_params(review_already_exists: bool, review_url: Option<&str>) -> Submi
         cache_write_tokens: 0,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: review_url.map(str::to_owned),
-        review_body: None,
-        review_already_exists,
+        result_summary: result_summary.map(str::to_owned),
     }
 }

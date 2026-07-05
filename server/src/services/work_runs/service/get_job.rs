@@ -2,10 +2,16 @@ use uuid::Uuid;
 use vulcanum_shared::api_types::JobResponse;
 
 use crate::models::project_configs::model::JobConfigFields;
+use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunType};
 use crate::services::model_providers::renderer::ModelSelection;
+use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
+use crate::services::poller::service::repo_layout;
+use crate::services::poller::template::{render_template, TemplateVars};
+use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::service::WorkRunsService;
+use crate::util::github::github_repo_url;
 
 impl WorkRunsService {
     pub async fn get_job(&self, id: Uuid, worker_id: Uuid) -> Result<JobResponse, WorkRunsError> {
@@ -15,6 +21,7 @@ impl WorkRunsService {
         }
 
         let cfg = self.job_config_fields_for_run(&run).await?;
+        let task = self.fetch_task_for_run(&run, &cfg).await?;
         let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
 
@@ -51,17 +58,17 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),
-            prompt_text: run.prompt_text,
+            prompt_text: render_prompt_text(&run, &cfg, &task),
             repos,
-            agents_md: run.agents_md,
+            agents_md: cfg.agents_md.clone(),
             agent_backend: cfg.agent_backend,
             agent_config: rendered.agent_config,
             model_provider_env: rendered.env,
-            external_task_ref: run.external_task_ref,
+            external_task_ref: run.external_task_ref.clone(),
             provider_instance_url,
             provider_api_key,
-            external_project_id: cfg.external_project_id,
-            external_workspace_id: cfg.external_workspace_id,
+            external_project_id: cfg.external_project_id.clone(),
+            external_workspace_id: cfg.external_workspace_id.clone(),
             max_turns: match run.work_type {
                 WorkRunType::Implementation => cfg.max_turns,
                 WorkRunType::PullRequestReview => cfg.review_max_turns,
@@ -69,8 +76,8 @@ impl WorkRunsService {
             github_token: github_token.github_token,
             github_token_expires_at: github_token.github_token_expires_at,
             pr_urls,
-            review_target_pr_url: run.review_target_pr_url,
-            review_target_repo_full_name: run.review_target_repo_full_name,
+            review_target_pr_url: run.review_target_pr_url.clone(),
+            review_target_repo_full_name: run.review_target_repo_full_name.clone(),
         })
     }
 
@@ -92,6 +99,126 @@ impl WorkRunsService {
                 Ok(JobConfigFields::empty_for_team(run.team_id))
             }
         }
+    }
+
+    pub(crate) async fn fetch_task_for_run(
+        &self,
+        run: &WorkRun,
+        cfg: &JobConfigFields,
+    ) -> Result<IntegrationTask, WorkRunsError> {
+        if let Some(fetcher) = &self.task_fetcher {
+            return Ok(fetcher.fetch_task(&run.external_task_ref).await?);
+        }
+
+        let provider_id = match cfg.provider_id {
+            Some(provider_id) => provider_id,
+            None => {
+                tracing::warn!(
+                    work_run_id = %run.id,
+                    task_ref = %run.external_task_ref,
+                    "reconstructing work run prompt without provider task data"
+                );
+                return Ok(empty_task(run, cfg));
+            }
+        };
+
+        let provider = self
+            .providers_repo
+            .find_by_id(&self.db, provider_id, cfg.team_id)
+            .await
+            .map_err(|e| {
+                WorkRunsError::Provider(crate::models::providers::errors::IntegrationError::Other(
+                    e.to_string(),
+                ))
+            })?;
+        IntegrationClient::from_provider(&provider)
+            .fetch_task(&run.external_task_ref)
+            .await
+            .map_err(WorkRunsError::from)
+    }
+}
+
+#[must_use]
+fn render_prompt_text(run: &WorkRun, cfg: &JobConfigFields, task: &IntegrationTask) -> String {
+    match run.work_type {
+        WorkRunType::Implementation => render_implementation_prompt(cfg, task),
+        WorkRunType::PullRequestReview => render_review_prompt(run, cfg, task),
+    }
+}
+
+#[must_use]
+fn render_implementation_prompt(cfg: &JobConfigFields, task: &IntegrationTask) -> String {
+    let repo_urls = cfg.repo_urls.join("\n");
+    let repo_names = cfg.repo_full_names.join("\n");
+    let repo_layout = repo_layout(&cfg.repo_full_names);
+    let repo_url = cfg.repo_urls.first().map(String::as_str).unwrap_or("");
+    let mut prompt_text = render_template(
+        &cfg.prompt_template,
+        &TemplateVars {
+            task_title: &task.title,
+            task_body: task.description.as_deref().unwrap_or(""),
+            repo_url,
+            repo_urls: &repo_urls,
+            repo_names: &repo_names,
+            repo_layout: &repo_layout,
+            review_target_pr_url: "",
+        },
+    );
+
+    prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
+
+    if !cfg.repo_full_names.is_empty() {
+        prompt_text.push_str(GITHUB_INSTRUCTION);
+    }
+
+    prompt_text
+}
+
+#[must_use]
+fn render_review_prompt(run: &WorkRun, cfg: &JobConfigFields, task: &IntegrationTask) -> String {
+    let repo_names = match run.review_target_repo_full_name.as_deref() {
+        Some(repo) => repo.to_owned(),
+        None => cfg.repo_full_names.join("\n"),
+    };
+    let repo_urls = match run.review_target_repo_full_name.as_deref() {
+        Some(repo) => github_repo_url(repo),
+        None => cfg.repo_urls.join("\n"),
+    };
+    let repo_full_names = match run.review_target_repo_full_name.as_ref() {
+        Some(repo) => vec![repo.clone()],
+        None => cfg.repo_full_names.clone(),
+    };
+    let repo_layout = repo_layout(&repo_full_names);
+
+    render_template(
+        &cfg.review_prompt_template,
+        &TemplateVars {
+            task_title: &task.title,
+            task_body: task.description.as_deref().unwrap_or(""),
+            repo_url: &repo_urls,
+            repo_urls: &repo_urls,
+            repo_names: &repo_names,
+            repo_layout: &repo_layout,
+            review_target_pr_url: run.review_target_pr_url.as_deref().unwrap_or(""),
+        },
+    )
+}
+
+#[must_use]
+fn empty_task(run: &WorkRun, cfg: &JobConfigFields) -> IntegrationTask {
+    IntegrationTask {
+        id: run.external_task_ref.clone(),
+        title: String::new(),
+        project_id: cfg.external_project_id.clone(),
+        description: None,
+        status: String::new(),
+        priority: String::new(),
+        number: None,
+        project_slug: None,
+        assignee_name: None,
+        created_at: String::new(),
+        updated_at: None,
+        labels: Vec::new(),
     }
 }
 

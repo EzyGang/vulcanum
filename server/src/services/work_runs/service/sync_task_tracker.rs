@@ -90,7 +90,7 @@ impl WorkRunsService {
             review_comment(run, params)
         } else {
             params
-                .finish_summary
+                .result_summary
                 .as_ref()
                 .map(|summary| format!("**Summary:** {summary}"))
                 .unwrap_or_else(|| format!("PR: {}", pr_urls.join(", ")))

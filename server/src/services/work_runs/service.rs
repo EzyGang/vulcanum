@@ -25,6 +25,7 @@ use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
+use crate::services::providers::client::TaskFetcher;
 
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
@@ -37,6 +38,7 @@ pub struct WorkRunsService {
     pub providers_repo: IntegrationProvidersRepository,
     pub model_providers: ModelProvidersService,
     pub unhealthy_threshold: i32,
+    pub task_fetcher: Option<Arc<dyn TaskFetcher>>,
 }
 
 impl Clone for WorkRunsService {
@@ -52,6 +54,7 @@ impl Clone for WorkRunsService {
             providers_repo: self.providers_repo.clone(),
             model_providers: self.model_providers.clone(),
             unhealthy_threshold: self.unhealthy_threshold,
+            task_fetcher: self.task_fetcher.clone(),
         }
     }
 }
@@ -81,6 +84,7 @@ impl WorkRunsService {
             providers_repo,
             model_providers,
             unhealthy_threshold,
+            task_fetcher: None,
         }
     }
 
@@ -94,5 +98,12 @@ impl WorkRunsService {
     #[must_use]
     pub(crate) fn cancel_store(&self) -> Arc<dyn CancelStore> {
         self.cancel_store.clone()
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn with_task_fetcher(mut self, task_fetcher: Arc<dyn TaskFetcher>) -> Self {
+        self.task_fetcher = Some(task_fetcher);
+        self
     }
 }

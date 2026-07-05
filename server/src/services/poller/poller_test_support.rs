@@ -74,6 +74,17 @@ impl TaskFetcher for MockTaskFetcher {
         }
     }
 
+    async fn fetch_task(&self, task_id: &str) -> Result<IntegrationTask, IntegrationError> {
+        let responses = self.responses.read().await;
+        responses
+            .values()
+            .filter_map(|result| result.as_ref().ok())
+            .flat_map(|tasks| tasks.iter())
+            .find(|task| task.id == task_id)
+            .cloned()
+            .ok_or_else(|| IntegrationError::Other(format!("task {task_id} not found")))
+    }
+
     async fn update_task_status(
         &self,
         task_id: &str,
@@ -158,16 +169,10 @@ pub(crate) async fn insert_active_run(pool: &PgPool, project_config_id: Uuid, ta
                 team_id: DEFAULT_TEAM_ID,
                 external_task_ref: task_ref.to_owned(),
                 project_config_id,
-                prompt_text: "Work".to_owned(),
-                repo_url: String::new(),
                 repo_full_names: Vec::new(),
-                agents_md: String::new(),
                 status: WorkRunStatus::Running,
                 work_type: WorkRunType::Implementation,
                 parent_work_run_id: None,
-                task_body: String::new(),
-                task_title: Some("Existing work".to_owned()),
-                task_slug: None,
                 review_target_pr_url: None,
                 review_target_repo_full_name: None,
             },
