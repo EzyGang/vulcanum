@@ -23,31 +23,30 @@ pub(crate) enum DockerAccess {
     Sudo,
 }
 
+#[cfg(target_os = "macos")]
 pub fn install_docker() -> anyhow::Result<()> {
-    #[cfg(target_os = "macos")]
-    {
-        return macos::install_docker();
-    }
-    #[cfg(target_os = "linux")]
-    {
-        return install_linux_docker();
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    {
-        anyhow::bail!("Docker auto-installation is only supported on Linux and macOS");
-    }
+    macos::install_docker()
+}
+
+#[cfg(target_os = "linux")]
+pub fn install_docker() -> anyhow::Result<()> {
+    install_linux_docker()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+pub fn install_docker() -> anyhow::Result<()> {
+    anyhow::bail!("Docker auto-installation is only supported on Linux and macOS");
 }
 
 #[must_use]
+#[cfg(target_os = "macos")]
 pub(crate) fn docker_binary_path() -> Option<PathBuf> {
-    #[cfg(target_os = "macos")]
-    {
-        return which_path("docker").or_else(macos::docker_cli_path);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        which_path("docker")
-    }
+    which_path("docker").or_else(macos::docker_cli_path)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) fn docker_binary_path() -> Option<PathBuf> {
+    which_path("docker")
 }
 
 pub(crate) fn docker_command() -> Command {
