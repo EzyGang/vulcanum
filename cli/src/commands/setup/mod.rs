@@ -12,8 +12,12 @@ mod backends;
 mod connect;
 pub(crate) mod docker_daemon;
 pub(crate) mod host;
+#[cfg(target_os = "macos")]
+mod launchd;
 mod prompts;
-pub(crate) mod systemd;
+pub(crate) mod service;
+#[cfg(target_os = "linux")]
+mod systemd;
 
 #[cfg(test)]
 mod setup_tests;
@@ -54,7 +58,10 @@ pub async fn run(
     }
 
     console::step("Agent image", backends::agent_image::pull_agent_image)?;
-    console::step("Systemd service", systemd::configure_systemd)?;
+    console::step(
+        service::worker_service_label(),
+        service::configure_worker_service,
+    )?;
 
     eprintln!();
     console::info("Running final environment validation...");
@@ -120,11 +127,12 @@ pub async fn run(
 
     eprintln!();
     console::info("Enabling and starting worker service...");
-    systemd::enable_and_restart_service()?;
+    service::enable_and_restart_worker_service()?;
 
     eprintln!();
     eprintln!(
-        "Worker setup complete — daemon is running via systemd with '{harness_name}' harness."
+        "Worker setup complete — daemon is running via {} with '{harness_name}' harness.",
+        service::worker_service_label()
     );
     Ok(())
 }

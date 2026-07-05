@@ -23,6 +23,11 @@ pub(super) fn resolve_backend(
 ) -> anyhow::Result<Backend> {
     let backend = match isolation {
         Some(crate::IsolationBackend::Kata) => {
+            if cfg!(target_os = "macos") {
+                anyhow::bail!(
+                    "--isolation=kata is not supported on macOS because Kata requires Linux KVM"
+                );
+            }
             if !is_kvm_available() {
                 anyhow::bail!("--isolation=kata requires KVM, but /dev/kvm is not available");
             }
@@ -31,11 +36,7 @@ pub(super) fn resolve_backend(
         Some(crate::IsolationBackend::Docker) => Backend::Docker,
         Some(crate::IsolationBackend::None) => Backend::None,
         None => match mode {
-            super::InteractionMode::NonInteractive => {
-                anyhow::bail!(
-                    "--isolation is required in non-interactive mode (kata, docker, or none)"
-                );
-            }
+            super::InteractionMode::NonInteractive => Backend::Docker,
             super::InteractionMode::Interactive => {
                 return prompt_backend();
             }
@@ -46,6 +47,33 @@ pub(super) fn resolve_backend(
 }
 
 fn prompt_backend() -> anyhow::Result<Backend> {
+    if cfg!(target_os = "macos") {
+        return prompt_macos_backend();
+    }
+
+    prompt_linux_backend()
+}
+
+fn prompt_macos_backend() -> anyhow::Result<Backend> {
+    let items = vec![
+        "Docker (container isolation, no sandbox)",
+        "None (run directly on host)",
+    ];
+
+    let selection = dialoguer::Select::new()
+        .with_prompt("Choose an isolation backend")
+        .items(&items)
+        .default(0)
+        .interact()?;
+
+    match selection {
+        0 => Ok(Backend::Docker),
+        1 => Ok(Backend::None),
+        _ => anyhow::bail!("invalid backend selection"),
+    }
+}
+
+fn prompt_linux_backend() -> anyhow::Result<Backend> {
     let kvm_available = is_kvm_available();
 
     let items = vec![

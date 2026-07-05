@@ -1,5 +1,7 @@
 use crate::commands::setup::host::capacity_from_resources;
-use crate::console;
+use crate::commands::setup::prompts::resolve_backend;
+use crate::commands::setup::{Backend, InteractionMode};
+use crate::{console, IsolationBackend};
 
 #[test]
 fn test_step_ok() {
@@ -39,6 +41,29 @@ fn test_severity_discrimination() {
 
     assert_eq!(critical_count, 1);
     assert_eq!(warning_count, 1);
+}
+
+#[test]
+fn noninteractive_setup_defaults_to_docker_when_isolation_is_omitted() {
+    let backend = resolve_backend(InteractionMode::NonInteractive, None)
+        .expect("noninteractive setup without isolation should not prompt");
+
+    assert_eq!(backend, Backend::Docker);
+}
+
+#[test]
+fn explicit_docker_and_none_isolation_select_requested_backend() {
+    let cases = [
+        (IsolationBackend::Docker, Backend::Docker),
+        (IsolationBackend::None, Backend::None),
+    ];
+
+    for (isolation, expected) in cases {
+        let backend = resolve_backend(InteractionMode::NonInteractive, Some(isolation))
+            .expect("explicit Docker or host isolation should resolve without probing KVM");
+
+        assert_eq!(backend, expected);
+    }
 }
 
 #[test]

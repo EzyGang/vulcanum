@@ -1,6 +1,6 @@
 use crate::commands::setup::host;
 use crate::commands::setup::prompts::{prompt_code, prompt_instance_url};
-use crate::commands::setup::systemd;
+use crate::commands::setup::service;
 use crate::console;
 
 pub async fn verify_connection() -> anyhow::Result<()> {
@@ -73,9 +73,9 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
         resp.expires_at
     );
 
-    if systemd::is_unit_installed() {
-        tracing::info!("restarting systemd service after connect");
-        systemd::enable_and_restart_service()?;
+    if service::is_worker_service_installed() {
+        tracing::info!("restarting worker service after connect");
+        service::enable_and_restart_worker_service()?;
     }
 
     Ok(())

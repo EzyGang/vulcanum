@@ -20,3 +20,5 @@ mod client_tests;
 mod review_feedback_tests;
 #[cfg(test)]
 mod telemetry_tests;
+#[cfg(test)]
+mod validate_tests;

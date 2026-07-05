@@ -5,7 +5,7 @@ use vulcanum_shared::paths;
 use vulcanum_shared::token::ensure_valid_token;
 use vulcanum_shared::worker_state::{self, WorkerState};
 
-use crate::commands::setup::systemd;
+use crate::commands::setup::service;
 use crate::console;
 
 #[cfg(test)]
@@ -56,7 +56,7 @@ async fn deregister_worker(state: &mut WorkerState) {
 }
 
 fn cleanup_local_environment() {
-    systemd::remove_worker_service_best_effort();
+    service::remove_worker_service_best_effort();
 
     match paths::vulcanum_dir() {
         Ok(dir) => remove_directory_best_effort(&dir),

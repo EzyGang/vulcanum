@@ -1,18 +1,15 @@
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::docker::retry_docker_pull_blocking;
 
-use crate::commands::setup::host::which;
-
-#[derive(Debug, Clone, Copy)]
-enum DockerAccess {
-    Direct,
-    Sudo,
-}
+use crate::commands::setup::backends::docker::{
+    docker_binary_path, docker_command, docker_info_status, DockerAccess,
+};
 
 pub fn pull_agent_image() -> anyhow::Result<()> {
-    if !which("docker") {
+    if docker_binary_path().is_none() {
         anyhow::bail!(
             "docker is not installed — run `vulcanum worker setup` to install dependencies"
         );
@@ -47,35 +44,13 @@ fn docker_access() -> anyhow::Result<DockerAccess> {
     anyhow::bail!("docker daemon is not reachable by the current user or passwordless sudo")
 }
 
-fn docker_info_status(access: DockerAccess) -> anyhow::Result<bool> {
-    let status = match access {
-        DockerAccess::Direct => {
-            Command::new("docker")
-                .arg("info")
-                .output()
-                .map_err(|e| anyhow::anyhow!("failed to check docker daemon readiness: {e}"))?
-                .status
-        }
-        DockerAccess::Sudo => {
-            Command::new("sudo")
-                .args(["-n", "docker", "info"])
-                .output()
-                .map_err(|e| {
-                    anyhow::anyhow!("failed to check docker daemon readiness with sudo: {e}")
-                })?
-                .status
-        }
-    };
-
-    Ok(status.success())
-}
-
 fn docker_pull_command(access: DockerAccess) -> Command {
     let mut command = match access {
-        DockerAccess::Direct => Command::new("docker"),
+        DockerAccess::Direct => docker_command(),
         DockerAccess::Sudo => {
+            let docker = docker_binary_path().unwrap_or_else(|| PathBuf::from("docker"));
             let mut command = Command::new("sudo");
-            command.arg("-n").arg("docker");
+            command.arg("-n").arg(docker);
             command
         }
     };

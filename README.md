@@ -259,7 +259,12 @@ single-use, expire after 30 minutes, and can be accepted only by GitHub-authenti
 ```bash
 # Generate a registration code from the dashboard (/workers)
 
-# Auto-provision the machine (installs Docker, Kata, OpenCode, agent image, systemd service)
+# Auto-provision the machine and register the worker.
+# Linux installs Docker Engine and a systemd service.
+# macOS installs Docker Desktop and a launchd service.
+vulcanum worker setup --instance http://<instance>:8080 --code <code>
+
+# Linux-only: Kata isolation requires Linux KVM.
 vulcanum worker setup --instance http://<instance>:8080 --code <code> --isolation kata
 
 # Or run the daemon directly if already set up

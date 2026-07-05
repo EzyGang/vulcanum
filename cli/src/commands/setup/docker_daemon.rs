@@ -2,8 +2,10 @@ use std::process::Command;
 
 use serde_json::Value;
 
+use crate::commands::setup::backends::docker::docker_command;
+
 pub fn docker_runtime_registered(runtime: &str) -> bool {
-    Command::new("docker")
+    docker_command()
         .args(["info", "--format", "{{json .Runtimes}}"])
         .output()
         .ok()
@@ -16,7 +18,7 @@ pub fn docker_runtime_registered(runtime: &str) -> bool {
 pub fn read_daemon_json() -> anyhow::Result<Value> {
     let raw = std::fs::read_to_string("/etc/docker/daemon.json").or_else(|_| {
         Command::new("sudo")
-            .args(["cat", "/etc/docker/daemon.json"])
+            .args(["-n", "cat", "/etc/docker/daemon.json"])
             .output()
             .ok()
             .filter(|o| o.status.success())
@@ -40,7 +42,7 @@ pub fn write_daemon_json(config: &Value) -> anyhow::Result<()> {
     );
 
     let status = Command::new("sudo")
-        .args(["sh", "-c", &mv_script])
+        .args(["-n", "sh", "-c", &mv_script])
         .status()
         .map_err(|e| anyhow::anyhow!("failed to move daemon.json into place: {e}"))?;
 
