@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
+use crate::console;
 use vulcanum_shared::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
 
 use super::{docker_binary_path, docker_info_status, DockerAccess};
@@ -35,9 +36,21 @@ fn install_docker_desktop() -> anyhow::Result<()> {
     let dmg_path = std::env::temp_dir().join(format!("vulcanum-docker-{arch}.dmg"));
     let mount_path = std::env::temp_dir().join(format!("vulcanum-docker-mount-{arch}"));
 
-    download_dmg(&url, &dmg_path)?;
-    attach_dmg(&dmg_path, &mount_path)?;
-    let install_result = install_app_from_mount(&mount_path);
+    console::progress(
+        "Downloading Docker Desktop DMG",
+        "Docker Desktop DMG download",
+        || download_dmg(&url, &dmg_path),
+    )?;
+    console::progress(
+        "Mounting Docker Desktop DMG",
+        "Docker Desktop DMG mount",
+        || attach_dmg(&dmg_path, &mount_path),
+    )?;
+    let install_result = console::progress(
+        "Installing Docker.app from DMG",
+        "Docker.app install",
+        || install_app_from_mount(&mount_path),
+    );
     detach_dmg(&mount_path);
     remove_downloaded_dmg(&dmg_path);
     install_result
