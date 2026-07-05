@@ -16,14 +16,12 @@ impl WorkRunsRepository {
             r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
-             wr.prompt_text, wr.repo_url, wr.task_body,
-             wr.task_title, wr.task_slug,
-             wr.review_target_pr_url, wr.review_target_repo_full_name, wr.review_url, wr.review_body, wr.review_already_exists,
+             wr.review_target_pr_url, wr.review_target_repo_full_name,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",
              wr.model_used,
-             wr.finish_status, wr.finish_summary, wr.finish_blocked_reason, wr.finish_next_column,
+             wr.finish_status, wr.result_summary, wr.finish_blocked_reason, wr.finish_next_column,
              wr.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM work_runs wr LEFT JOIN workers w ON wr.worker_id = w.id
              WHERE wr.project_config_id = $1 AND wr.status = 'failed'::work_run_status AND wr.finish_blocked_reason IS NOT NULL

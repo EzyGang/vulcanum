@@ -56,6 +56,9 @@ pub struct JournalEntry {
     pub cache_write_tokens: Option<i64>,
     pub pr_url: Option<String>,
     pub duration_ms: Option<i64>,
+    pub review_url: Option<String>,
+    pub review_body: Option<String>,
+    pub review_already_exists: bool,
     pub error_message: Option<String>,
     pub turn_count: Option<i32>,
     pub session_id: Option<String>,
@@ -80,6 +83,9 @@ pub struct JournalResultUpdate<'a> {
     pub cache_write_tokens: i64,
     pub pr_url: Option<&'a str>,
     pub duration_ms: i64,
+    pub review_url: Option<&'a str>,
+    pub review_body: Option<&'a str>,
+    pub review_already_exists: bool,
     pub status: JournalStatus,
 }
 
@@ -119,6 +125,9 @@ impl Journal {
                 cache_write_tokens INTEGER,
                 pr_url TEXT,
                 duration_ms INTEGER,
+                review_url TEXT,
+                review_body TEXT,
+                review_already_exists INTEGER NOT NULL DEFAULT 0,
                 error_message TEXT,
                 turn_count INTEGER NOT NULL DEFAULT 0,
                 session_id TEXT,
@@ -153,6 +162,11 @@ impl Journal {
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_state_dir TEXT");
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_transport TEXT");
         let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_pid INTEGER");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN review_url TEXT");
+        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN review_body TEXT");
+        let _ = conn.execute_batch(
+            "ALTER TABLE job_journal ADD COLUMN review_already_exists INTEGER NOT NULL DEFAULT 0",
+        );
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -184,8 +198,9 @@ impl Journal {
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
-                    error_message, turn_count, session_id, max_turns, host_pid, host_port,
-                    agent_backend, agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
+                    review_url, review_body, review_already_exists, error_message,
+                    turn_count, session_id, max_turns, host_pid, host_port, agent_backend,
+                    agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
              FROM job_journal WHERE job_id = ?1",
         )?;
 
@@ -202,8 +217,9 @@ impl Journal {
         conn.execute(
             "UPDATE job_journal SET status = ?1, finished_at = ?2, exit_code = ?3, tokens_used = ?4,
              input_tokens = ?5, output_tokens = ?6, cache_read_tokens = ?7, cache_write_tokens = ?8,
-             pr_url = ?9, duration_ms = ?10
-             WHERE job_id = ?11",
+             pr_url = ?9, duration_ms = ?10, review_url = ?11, review_body = ?12,
+             review_already_exists = ?13
+             WHERE job_id = ?14",
             rusqlite::params![
                 result.status.as_str(),
                 now,
@@ -215,6 +231,9 @@ impl Journal {
                 result.cache_write_tokens,
                 result.pr_url.unwrap_or(""),
                 result.duration_ms,
+                result.review_url,
+                result.review_body,
+                result.review_already_exists,
                 result.job_id.to_string(),
             ],
         )?;
@@ -305,8 +324,9 @@ impl Journal {
             "SELECT job_id, workdir, container_name, harness_type, status, started_at,
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
-                    error_message, turn_count, session_id, max_turns, host_pid, host_port,
-                    agent_backend, agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
+                    review_url, review_body, review_already_exists, error_message,
+                    turn_count, session_id, max_turns, host_pid, host_port, agent_backend,
+                    agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
              FROM job_journal WHERE status = 'running'",
         )?;
 
@@ -341,18 +361,21 @@ impl Journal {
             cache_write_tokens: row.get(12)?,
             pr_url: row.get(13)?,
             duration_ms: row.get(14)?,
-            error_message: row.get(15)?,
-            turn_count: row.get(16)?,
-            session_id: row.get(17)?,
-            max_turns: row.get(18)?,
-            host_pid: row.get(19)?,
-            host_port: row.get(20)?,
-            agent_backend: row.get(21)?,
-            agent_session_path: row.get(22)?,
-            agent_config_dir: row.get(23)?,
-            agent_state_dir: row.get(24)?,
-            agent_transport: row.get(25)?,
-            agent_pid: row.get(26)?,
+            review_url: row.get(15)?,
+            review_body: row.get(16)?,
+            review_already_exists: row.get(17)?,
+            error_message: row.get(18)?,
+            turn_count: row.get(19)?,
+            session_id: row.get(20)?,
+            max_turns: row.get(21)?,
+            host_pid: row.get(22)?,
+            host_port: row.get(23)?,
+            agent_backend: row.get(24)?,
+            agent_session_path: row.get(25)?,
+            agent_config_dir: row.get(26)?,
+            agent_state_dir: row.get(27)?,
+            agent_transport: row.get(28)?,
+            agent_pid: row.get(29)?,
         })
     }
 }

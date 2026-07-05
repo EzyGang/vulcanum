@@ -7,7 +7,7 @@ use crate::daemon::job::execution::submit::{
 use crate::state::journal::{JournalEntry, JournalStatus};
 
 #[test]
-fn submit_result_includes_review_fields() {
+fn submit_result_maps_summary_to_result_summary() {
     let request = submit_result_request(SubmitResultParams {
         pr_urls: Vec::new(),
         exit_code: 0,
@@ -19,15 +19,37 @@ fn submit_result_includes_review_fields() {
         cache_write_tokens: 4,
         model_used: None,
         finish_status: None,
-        finish_summary: None,
-        review_url: Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1".to_owned()),
+        result_summary: Some("Looks good".to_owned()),
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
+    });
+
+    assert_eq!(request.result_summary.as_deref(), Some("Looks good"));
+}
+
+#[test]
+fn submit_result_maps_review_metadata() {
+    let request = submit_result_request(SubmitResultParams {
+        pr_urls: Vec::new(),
+        exit_code: 0,
+        tokens_used: 10,
+        duration_ms: 100,
+        input_tokens: 1,
+        output_tokens: 2,
+        cache_read_tokens: 3,
+        cache_write_tokens: 4,
+        model_used: None,
+        finish_status: None,
+        result_summary: Some("Review complete".to_owned()),
+        review_url: Some("https://github.com/acme/app/pull/1#pullrequestreview-1".to_owned()),
         review_body: Some("Looks good".to_owned()),
         review_already_exists: true,
     });
 
     assert_eq!(
         request.review_url.as_deref(),
-        Some("https://github.com/acme/widgets/pull/42#pullrequestreview-1")
+        Some("https://github.com/acme/app/pull/1#pullrequestreview-1")
     );
     assert_eq!(request.review_body.as_deref(), Some("Looks good"));
     assert!(request.review_already_exists);
@@ -51,6 +73,11 @@ fn submit_result_from_journal_replays_stored_result() {
         cache_write_tokens: Some(3),
         pr_url: Some("https://github.com/EzyGang/vulcanum/pull/101".to_owned()),
         duration_ms: Some(5_000),
+        review_url: Some(
+            "https://github.com/EzyGang/vulcanum/pull/101#pullrequestreview-1".to_owned(),
+        ),
+        review_body: Some("Looks good".to_owned()),
+        review_already_exists: true,
         error_message: None,
         turn_count: Some(1),
         session_id: Some("ses_1".to_owned()),
@@ -78,4 +105,10 @@ fn submit_result_from_journal_replays_stored_result() {
         request.pr_urls,
         vec!["https://github.com/EzyGang/vulcanum/pull/101".to_owned()]
     );
+    assert_eq!(
+        request.review_url.as_deref(),
+        Some("https://github.com/EzyGang/vulcanum/pull/101#pullrequestreview-1")
+    );
+    assert_eq!(request.review_body.as_deref(), Some("Looks good"));
+    assert!(request.review_already_exists);
 }

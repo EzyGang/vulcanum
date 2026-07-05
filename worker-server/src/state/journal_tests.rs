@@ -103,6 +103,9 @@ fn update_result_transitions_status() {
             cache_write_tokens: 2,
             pr_url: None,
             duration_ms: 5_000,
+            review_url: None,
+            review_body: None,
+            review_already_exists: false,
             status: JournalStatus::Completed,
         })
         .expect("should update");
@@ -164,6 +167,9 @@ fn mark_submitted_transitions() {
             cache_write_tokens: 2,
             pr_url: None,
             duration_ms: 5_000,
+            review_url: None,
+            review_body: None,
+            review_already_exists: false,
             status: JournalStatus::Completed,
         })
         .expect("should update");
@@ -211,6 +217,9 @@ fn update_result_persists_granular_tokens() {
             cache_write_tokens: 50,
             pr_url: Some("https://github.com/EzyGang/vulcanum/pull/1"),
             duration_ms: 12_345,
+            review_url: Some("https://github.com/EzyGang/vulcanum/pull/1#pullrequestreview-1"),
+            review_body: Some("Looks good"),
+            review_already_exists: true,
             status: JournalStatus::Running,
         })
         .expect("should update");
@@ -226,6 +235,12 @@ fn update_result_persists_granular_tokens() {
     assert_eq!(entry.output_tokens, Some(300));
     assert_eq!(entry.cache_read_tokens, Some(150));
     assert_eq!(entry.cache_write_tokens, Some(50));
+    assert_eq!(
+        entry.review_url.as_deref(),
+        Some("https://github.com/EzyGang/vulcanum/pull/1#pullrequestreview-1")
+    );
+    assert_eq!(entry.review_body.as_deref(), Some("Looks good"));
+    assert!(entry.review_already_exists);
 }
 
 #[test]
@@ -280,6 +295,9 @@ fn multiple_jobs_with_mixed_statuses() {
             cache_write_tokens: 25,
             pr_url: None,
             duration_ms: 10_000,
+            review_url: None,
+            review_body: None,
+            review_already_exists: false,
             status: JournalStatus::Completed,
         })
         .expect("complete 1");
