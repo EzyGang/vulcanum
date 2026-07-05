@@ -265,36 +265,34 @@ export const TaskBoardView = ({
       )}
 
       {hasCustomColumnView && (
-        <section class='flex flex-col gap-3 border border-border-base bg-bg-card p-4 md:flex-row md:items-center md:justify-between'>
-          <div class='flex flex-col gap-1'>
-            <p class='text-xs font-medium uppercase tracking-wider text-accent'>Board view</p>
-            <p class='text-sm text-text-muted'>
-              Hidden and reordered columns are saved in this browser only.
-            </p>
-          </div>
-          <div class='flex flex-wrap items-center gap-2'>
-            {hiddenColumns.map(({ column, onShow }) => (
-              <Button
-                key={column.id}
-                type='button'
-                variant='ghost'
-                onClick={onShow}
-                class='h-10 gap-2 border border-border-base px-3 hover:border-border-focus'
-              >
-                <IconEye size={15} stroke={1.75} aria-hidden='true' />
-                Show {column.name}
-              </Button>
-            ))}
+        <section
+          class='flex flex-wrap items-center gap-2 border border-border-base bg-bg-card px-3 py-2'
+          aria-label='Board view controls'
+        >
+          <p class='shrink-0 text-xs font-medium uppercase tracking-wider text-accent'>
+            Custom view
+          </p>
+          {hiddenColumns.map(({ column, onShow }) => (
             <Button
+              key={column.id}
               type='button'
               variant='ghost'
-              onClick={actions.onResetColumnView}
-              class='h-10 gap-2 border border-border-base px-3 hover:border-border-focus'
+              onClick={onShow}
+              class='h-8 gap-2 border border-border-base px-2 hover:border-border-focus'
             >
-              <IconRefresh size={15} stroke={1.75} aria-hidden='true' />
-              Reset view
+              <IconEye size={14} stroke={1.75} aria-hidden='true' />
+              Show {column.name}
             </Button>
-          </div>
+          ))}
+          <Button
+            type='button'
+            variant='ghost'
+            onClick={actions.onResetColumnView}
+            class='h-8 gap-2 border border-border-base px-2 hover:border-border-focus'
+          >
+            <IconRefresh size={14} stroke={1.75} aria-hidden='true' />
+            Reset view
+          </Button>
         </section>
       )}
 

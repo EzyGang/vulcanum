@@ -486,8 +486,9 @@ describe('TaskBoard.view', () => {
         ]
       : [];
 
-    const { getByText } = render(<TaskBoardView {...props} />);
+    const { getByText, queryByText } = render(<TaskBoardView {...props} />);
 
+    expect(queryByText(/saved in this browser only/i)).toBeNull();
     fireEvent.click(getByText('Show Done'));
     fireEvent.click(getByText('Reset view'));
 
