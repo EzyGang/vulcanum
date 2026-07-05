@@ -5,6 +5,7 @@ import type {
   TaskBoardColumnRole,
   TaskBoardColumnRoles,
   TaskBoardHelpCard,
+  TaskBoardHiddenColumnData,
   TaskBoardMenuPosition,
   TaskBoardMenuStyle,
   TaskBoardMoveAction,
@@ -15,6 +16,7 @@ import type {
 } from '../types';
 
 export interface UseTaskBoardViewModelInput {
+  selectedProjectKey: string | null;
   board?: TaskBoard;
   statusOptions: SelectOption[];
   repoItems: SelectOption[];
@@ -50,6 +52,8 @@ export interface UseTaskBoardViewModelResult {
   data: {
     boardColumnCount: number;
     columns: TaskBoardColumnData[];
+    hiddenColumns: TaskBoardHiddenColumnData[];
+    hasCustomColumnView: boolean;
     helpCards: {
       id: TaskBoardHelpCard;
       title: string;
@@ -73,6 +77,11 @@ export interface UseTaskBoardViewModelResult {
     onPickupColumnChange: (value: string) => void;
     onProgressColumnChange: (value: string) => void;
     onDoneColumnChange: (value: string) => void;
+    onShowColumn: (columnSlug: string) => void;
+    onHideColumn: (columnSlug: string) => void;
+    onMoveColumnLeft: (columnSlug: string) => void;
+    onMoveColumnRight: (columnSlug: string) => void;
+    onResetColumnView: () => void;
   };
 }
 
@@ -100,6 +109,9 @@ interface BuildTaskBoardColumnsInput {
   onLoadMoreColumn: (columnSlug: string) => void;
   onColumnScroll: (event: Event, columnSlug: string) => void;
   onSetColumnRole: (columnSlug: string | null, role: TaskBoardColumnRole) => void;
+  onHideColumn: (columnSlug: string) => void;
+  onMoveColumnLeft: (columnSlug: string) => void;
+  onMoveColumnRight: (columnSlug: string) => void;
 }
 
 export const ROLE_LABELS: Record<TaskBoardColumnRole, string> = {
@@ -191,9 +203,12 @@ export const buildTaskBoardColumns = ({
   onDropOnStatus,
   onLoadMoreColumn,
   onColumnScroll,
-  onSetColumnRole
+  onSetColumnRole,
+  onHideColumn,
+  onMoveColumnLeft,
+  onMoveColumnRight
 }: BuildTaskBoardColumnsInput): TaskBoardColumnData[] =>
-  boardColumns.map((column): TaskBoardColumnData => {
+  boardColumns.map((column, index): TaskBoardColumnData => {
     const visibleCount = visibleTaskCounts[column.slug] ?? 20;
     const visibleTasks = column.tasks.slice(0, visibleCount);
     const activeRoles = ROLE_ORDER.filter((role) =>
@@ -262,6 +277,13 @@ export const buildTaskBoardColumns = ({
             }
           };
         })
+      },
+      viewControls: {
+        canMoveLeft: index > 0,
+        canMoveRight: index < boardColumns.length - 1,
+        onHide: () => onHideColumn(column.slug),
+        onMoveLeft: () => onMoveColumnLeft(column.slug),
+        onMoveRight: () => onMoveColumnRight(column.slug)
       },
       onDragOver: (event) => onDragOverStatus(event as unknown as DragEvent, column.slug),
       onDrop: (event) => onDropOnStatus(event as unknown as DragEvent, column.slug),

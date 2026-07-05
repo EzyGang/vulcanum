@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::Context;
@@ -6,12 +7,22 @@ use vulcanum_shared::constants::MAX_WORKER_CAPACITY;
 const MIN_WORKER_CAPACITY: i32 = 1;
 const KB_PER_GB: u64 = 1024 * 1024;
 
+#[must_use]
 pub fn which(binary: &str) -> bool {
-    Command::new("which")
-        .arg(binary)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    which_path(binary).is_some()
+}
+
+#[must_use]
+pub(crate) fn which_path(binary: &str) -> Option<PathBuf> {
+    std::env::var_os("PATH").and_then(|path| {
+        std::env::split_paths(&path).find_map(|dir| {
+            let candidate = dir.join(binary);
+            match candidate.is_file() {
+                true => Some(candidate),
+                false => None,
+            }
+        })
+    })
 }
 
 /// Verifies that the current user has passwordless sudo access.

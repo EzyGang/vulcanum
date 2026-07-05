@@ -6,11 +6,17 @@ use crate::commands::setup::docker_daemon::{
     docker_runtime_registered, read_daemon_json, write_daemon_json,
 };
 use crate::commands::setup::host::which;
-use crate::commands::setup::systemd::run_systemctl;
+use crate::commands::setup::service;
 
 pub(super) const KATA_MANAGER_URL: &str =
     "https://raw.githubusercontent.com/kata-containers/kata-containers/main/utils/kata-manager.sh";
 
+#[cfg(target_os = "macos")]
+pub fn install_kata() -> anyhow::Result<()> {
+    anyhow::bail!("Kata Containers are not supported on macOS because Kata requires Linux KVM");
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn install_kata() -> anyhow::Result<()> {
     if which("kata-runtime") {
         tracing::debug!("kata-runtime already installed");
@@ -20,7 +26,7 @@ pub fn install_kata() -> anyhow::Result<()> {
     let status = Command::new("sh")
         .args([
             "-c",
-            &format!("curl -fsSL {KATA_MANAGER_URL} | sudo bash -s -- -D"),
+            &format!("curl -fsSL {KATA_MANAGER_URL} | sudo -n bash -s -- -D"),
         ])
         .current_dir("/")
         .stdout(Stdio::null())
@@ -35,6 +41,12 @@ pub fn install_kata() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+pub fn configure_docker_for_kata() -> anyhow::Result<()> {
+    anyhow::bail!("Kata Containers are not supported on macOS because Kata requires Linux KVM");
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn configure_docker_for_kata() -> anyhow::Result<()> {
     let kata_path =
         kata_runtime_path().ok_or_else(|| anyhow::anyhow!("kata-runtime not found in PATH"))?;
@@ -59,7 +71,7 @@ pub fn configure_docker_for_kata() -> anyhow::Result<()> {
         tracing::debug!(
             "kata-runtime in daemon.json but not picked up by Docker, restarting daemon"
         );
-        run_systemctl("restart docker")?;
+        service::restart_docker_service()?;
         return Ok(());
     }
 
@@ -68,10 +80,11 @@ pub fn configure_docker_for_kata() -> anyhow::Result<()> {
     runtimes.insert("kata-runtime".to_owned(), Value::Object(runtime_entry));
 
     write_daemon_json(&config)?;
-    run_systemctl("restart docker")?;
+    service::restart_docker_service()?;
     Ok(())
 }
 
+#[cfg(not(target_os = "macos"))]
 fn kata_runtime_path() -> Option<String> {
     Command::new("which")
         .arg("kata-runtime")

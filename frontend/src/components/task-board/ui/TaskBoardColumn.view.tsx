@@ -1,4 +1,4 @@
-import { IconSettings } from '@tabler/icons-react';
+import { IconArrowLeft, IconArrowRight, IconEyeOff, IconSettings } from '@tabler/icons-react';
 import { clsx } from 'clsx';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
@@ -109,6 +109,44 @@ export const TaskBoardColumn = ({ data }: TaskBoardColumnProps): JSX.Element => 
         </div>
         <div class='flex shrink-0 items-center gap-2'>
           <span class='text-xs tabular-nums text-text-muted'>{data.taskCount}</span>
+          <div
+            role='group'
+            class='flex items-center gap-1'
+            aria-label={`View controls for ${data.column.name}`}
+          >
+            <Button
+              type='button'
+              variant='ghost'
+              aria-label={`Move ${data.column.name} column left`}
+              title={`Move ${data.column.name} column left`}
+              disabled={!data.viewControls.canMoveLeft}
+              onClick={data.viewControls.onMoveLeft}
+              class='h-10 w-10 justify-center border border-border-base p-0 hover:border-border-focus disabled:cursor-not-allowed disabled:opacity-40'
+            >
+              <IconArrowLeft size={15} stroke={1.75} aria-hidden='true' />
+            </Button>
+            <Button
+              type='button'
+              variant='ghost'
+              aria-label={`Move ${data.column.name} column right`}
+              title={`Move ${data.column.name} column right`}
+              disabled={!data.viewControls.canMoveRight}
+              onClick={data.viewControls.onMoveRight}
+              class='h-10 w-10 justify-center border border-border-base p-0 hover:border-border-focus disabled:cursor-not-allowed disabled:opacity-40'
+            >
+              <IconArrowRight size={15} stroke={1.75} aria-hidden='true' />
+            </Button>
+            <Button
+              type='button'
+              variant='ghost'
+              aria-label={`Hide ${data.column.name} column`}
+              title={`Hide ${data.column.name} column`}
+              onClick={data.viewControls.onHide}
+              class='h-10 w-10 justify-center border border-border-base p-0 hover:border-border-focus'
+            >
+              <IconEyeOff size={15} stroke={1.75} aria-hidden='true' />
+            </Button>
+          </div>
           <RoleMenu data={data.roleMenu} />
         </div>
       </div>

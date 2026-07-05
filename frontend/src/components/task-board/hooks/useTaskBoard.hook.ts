@@ -57,6 +57,7 @@ export const useTaskBoard = () => {
   const movement = useTaskBoardMovement(selection, columns, board?.labels ?? []);
   const settings = useTaskBoardSettings(selection, columns, projectConfig, selectedRepoNames);
   const viewModel = useTaskBoardViewModel({
+    selectedProjectKey: selectedTaskProjectKey.value,
     board,
     statusOptions,
     repoItems,

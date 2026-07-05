@@ -86,6 +86,14 @@ export interface TaskBoardRoleMenuData {
   items: TaskBoardRoleMenuItem[];
 }
 
+export interface TaskBoardColumnViewControls {
+  canMoveLeft: boolean;
+  canMoveRight: boolean;
+  onHide: () => void;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
+}
+
 export interface TaskBoardColumnData {
   column: TaskBoard['columns'][number];
   visibleTasks: TaskBoardTaskCardData[];
@@ -94,10 +102,21 @@ export interface TaskBoardColumnData {
   hasMoreTasks: boolean;
   dropPreviewActive: boolean;
   roleMenu: TaskBoardRoleMenuData;
+  viewControls: TaskBoardColumnViewControls;
   onDragOver: JSX.DragEventHandler<HTMLElement>;
   onDrop: JSX.DragEventHandler<HTMLElement>;
   onScroll: JSX.UIEventHandler<HTMLDivElement>;
   onLoadMore: () => void;
+}
+
+export interface TaskBoardHiddenColumnData {
+  column: TaskBoard['columns'][number];
+  onShow: () => void;
+}
+
+export interface TaskBoardColumnPreferences {
+  hiddenColumnSlugs: string[];
+  columnOrder: string[];
 }
 
 export interface TaskBoardRepositoryItem {
@@ -143,6 +162,8 @@ export interface TaskBoardViewData {
   board?: TaskBoard;
   boardColumnCount: number;
   columns: TaskBoardColumnData[];
+  hiddenColumns: TaskBoardHiddenColumnData[];
+  hasCustomColumnView: boolean;
   helpCards: TaskBoardHelpCardItem[];
   automationLabel: string;
   statusOptions: SelectOption[];
@@ -242,6 +263,11 @@ export interface TaskBoardActions {
   onPickupColumnChange: (value: string) => void;
   onProgressColumnChange: (value: string) => void;
   onDoneColumnChange: (value: string) => void;
+  onShowColumn: (columnSlug: string) => void;
+  onHideColumn: (columnSlug: string) => void;
+  onMoveColumnLeft: (columnSlug: string) => void;
+  onMoveColumnRight: (columnSlug: string) => void;
+  onResetColumnView: () => void;
 }
 
 export interface TaskBoardViewProps {
