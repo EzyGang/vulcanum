@@ -4,7 +4,6 @@ use vulcanum_shared::api_types::{JobRepo, RefreshGithubTokenResponse};
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunStatus};
 use crate::services::work_runs::service::WorkRunsService;
-use crate::util::github::github_repo_full_name_from_url;
 
 impl WorkRunsService {
     pub async fn refresh_github_token(
@@ -32,15 +31,7 @@ impl WorkRunsService {
         &self,
         run: &WorkRun,
     ) -> Result<Vec<JobRepo>, WorkRunsError> {
-        let mut repos = self.work_runs_repo.list_repos(&self.db, run.id).await?;
-        if repos.is_empty() && !run.repo_url.is_empty() {
-            repos.push(JobRepo {
-                full_name: github_repo_full_name_from_url(&run.repo_url),
-                url: run.repo_url.clone(),
-            });
-        }
-
-        Ok(repos)
+        self.work_runs_repo.list_repos(&self.db, run.id).await
     }
 
     pub(crate) async fn mint_github_token_for_repos(

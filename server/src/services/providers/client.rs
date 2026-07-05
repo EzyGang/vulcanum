@@ -28,6 +28,8 @@ pub trait IntegrationProviderClient: Send + Sync {
 
     async fn fetch_board(&self, project_id: &str) -> Result<IntegrationBoard, IntegrationError>;
 
+    async fn fetch_task(&self, task_id: &str) -> Result<IntegrationTask, IntegrationError>;
+
     async fn fetch_tasks_in_column(
         &self,
         project_id: &str,
@@ -143,6 +145,10 @@ impl IntegrationClient {
         self.inner.fetch_board(project_id).await
     }
 
+    pub async fn fetch_task(&self, task_id: &str) -> Result<IntegrationTask, IntegrationError> {
+        self.inner.fetch_task(task_id).await
+    }
+
     pub async fn create_task(
         &self,
         input: CreateIntegrationTaskInput,
@@ -251,6 +257,10 @@ impl TaskFetcher for IntegrationClient {
             .await
     }
 
+    async fn fetch_task(&self, task_id: &str) -> Result<IntegrationTask, IntegrationError> {
+        self.inner.fetch_task(task_id).await
+    }
+
     async fn update_task_status(
         &self,
         task_id: &str,
@@ -267,6 +277,8 @@ pub trait TaskFetcher: Send + Sync {
         project_id: &str,
         column_name: &str,
     ) -> Result<Vec<IntegrationTask>, IntegrationError>;
+
+    async fn fetch_task(&self, task_id: &str) -> Result<IntegrationTask, IntegrationError>;
 
     async fn update_task_status(
         &self,
