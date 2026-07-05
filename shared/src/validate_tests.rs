@@ -72,6 +72,23 @@ fn host_backend_requires_missing_selected_agent_binary_as_critical_issue() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn host_backend_treats_non_executable_matching_agent_binary_as_missing() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = PathOverride::empty("non-executable-opencode");
+    let binary_path = path.temp_dir.join("opencode");
+    std::fs::write(&binary_path, b"not executable")
+        .expect("non-executable agent binary placeholder should be written");
+    std::fs::set_permissions(&binary_path, std::fs::Permissions::from_mode(0o644))
+        .expect("agent binary placeholder should be made non-executable");
+
+    let issues = validate_environment("host", AgentBackend::OpenCode);
+
+    assert_has_critical_issue(&issues, "opencode not found in PATH");
+}
+
 fn assert_has_critical_issue(issues: &[ValidationIssue], expected_message: &str) {
     assert!(
         issues.iter().any(|issue| {

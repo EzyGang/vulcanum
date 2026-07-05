@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::api_types::AgentBackend;
 use crate::config::WorkerConfig;
@@ -132,13 +132,13 @@ fn find_in_path(name: &str) -> Option<PathBuf> {
     };
     let path_match = std::env::split_paths(&path_var).find_map(|dir| {
         let candidate = dir.join(name);
-        if candidate.is_file() {
+        if is_executable_file(&candidate) {
             Some(candidate)
         } else {
             #[cfg(windows)]
             {
                 let with_exe = dir.join(format!("{name}.exe"));
-                if with_exe.is_file() {
+                if is_executable_file(&with_exe) {
                     return Some(with_exe);
                 }
             }
@@ -152,12 +152,26 @@ fn find_in_path(name: &str) -> Option<PathBuf> {
     }
 }
 
+#[cfg(unix)]
+fn is_executable_file(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    path.metadata()
+        .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(path: &Path) -> bool {
+    path.is_file()
+}
+
 fn macos_app_binary(name: &str) -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         if name == "docker" {
             let path = PathBuf::from(MACOS_DOCKER_DESKTOP_CLI_PATH);
-            if path.is_file() {
+            if is_executable_file(&path) {
                 return Some(path);
             }
         }
