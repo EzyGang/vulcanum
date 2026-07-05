@@ -408,6 +408,9 @@ pub(crate) async fn mark_lost_and_submit(
         model_used: None,
         finish_status: None,
         result_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
     });
 
     if let Err(e) = with_retry_on_401(client, worker_state, |token| {

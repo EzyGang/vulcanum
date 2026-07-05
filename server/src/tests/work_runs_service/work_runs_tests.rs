@@ -342,6 +342,9 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         result_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -384,6 +387,9 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         result_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
     };
     let job = svc
         .submit_result(wr_id, worker_id, params)
@@ -412,6 +418,9 @@ async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         result_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
     };
     let err = svc
         .submit_result(wr_id, worker_id, params)
@@ -450,6 +459,9 @@ async fn submit_result_fails_if_not_owner(pool: sqlx::PgPool) {
         model_used: None,
         finish_status: None,
         result_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
     };
     let err = svc
         .submit_result(wr_id, worker_b, params)

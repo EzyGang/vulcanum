@@ -20,9 +20,9 @@ impl WorkRunsService {
                     work_run_id: run.id,
                     pr_url,
                     repo_full_name: repo,
-                    review_url: None,
-                    review_body: params.result_summary.as_deref(),
-                    review_already_exists: false,
+                    review_url: params.review_url.as_deref(),
+                    review_body: params.review_body.as_deref(),
+                    review_already_exists: params.review_already_exists,
                 },
             )
             .await
@@ -38,8 +38,13 @@ pub(crate) fn review_comment(run: &WorkRun, params: &SubmitResultRequest) -> Str
         .review_target_pr_url
         .as_deref()
         .unwrap_or("the pull request");
-    match params.result_summary.as_deref() {
-        Some(summary) => format!("Review completed for {pr_url}: {summary}"),
-        None => format!("Review completed for {pr_url}"),
+    let prefix = match params.review_already_exists {
+        true => "Review already existed",
+        false => "Review posted",
+    };
+
+    match params.review_url.as_deref() {
+        Some(review_url) => format!("{prefix} for {pr_url}: {review_url}"),
+        None => format!("{prefix} for {pr_url}"),
     }
 }

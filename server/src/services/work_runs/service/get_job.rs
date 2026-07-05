@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use vulcanum_shared::api_types::JobResponse;
+use vulcanum_shared::api_types::{JobRepo, JobResponse};
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::providers::model::IntegrationTask;
@@ -58,7 +58,7 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),
-            prompt_text: render_prompt_text(&run, &cfg, &task),
+            prompt_text: render_prompt_text(&run, &cfg, &task, &repos),
             repos,
             agents_md: cfg.agents_md.clone(),
             agent_backend: cfg.agent_backend,
@@ -139,19 +139,36 @@ impl WorkRunsService {
 }
 
 #[must_use]
-fn render_prompt_text(run: &WorkRun, cfg: &JobConfigFields, task: &IntegrationTask) -> String {
+fn render_prompt_text(
+    run: &WorkRun,
+    cfg: &JobConfigFields,
+    task: &IntegrationTask,
+    repos: &[JobRepo],
+) -> String {
     match run.work_type {
-        WorkRunType::Implementation => render_implementation_prompt(cfg, task),
+        WorkRunType::Implementation => render_implementation_prompt(cfg, task, repos),
         WorkRunType::PullRequestReview => render_review_prompt(run, cfg, task),
     }
 }
 
 #[must_use]
-fn render_implementation_prompt(cfg: &JobConfigFields, task: &IntegrationTask) -> String {
-    let repo_urls = cfg.repo_urls.join("\n");
-    let repo_names = cfg.repo_full_names.join("\n");
-    let repo_layout = repo_layout(&cfg.repo_full_names);
-    let repo_url = cfg.repo_urls.first().map(String::as_str).unwrap_or("");
+pub(crate) fn render_implementation_prompt(
+    cfg: &JobConfigFields,
+    task: &IntegrationTask,
+    repos: &[JobRepo],
+) -> String {
+    let repo_urls = repos
+        .iter()
+        .map(|repo| repo.url.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n");
+    let repo_full_names = repos
+        .iter()
+        .map(|repo| repo.full_name.clone())
+        .collect::<Vec<String>>();
+    let repo_names = repo_full_names.join("\n");
+    let repo_layout = repo_layout(&repo_full_names);
+    let repo_url = repos.first().map(|repo| repo.url.as_str()).unwrap_or("");
     let mut prompt_text = render_template(
         &cfg.prompt_template,
         &TemplateVars {
@@ -167,7 +184,7 @@ fn render_implementation_prompt(cfg: &JobConfigFields, task: &IntegrationTask) -
 
     prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
 
-    if !cfg.repo_full_names.is_empty() {
+    if !repos.is_empty() {
         prompt_text.push_str(GITHUB_INSTRUCTION);
     }
 

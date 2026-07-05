@@ -100,7 +100,10 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
             "cache_write_tokens": 0,
             "model_used": null,
             "finish_status": "completed",
-            "result_summary": "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None"
+            "result_summary": "Review posted",
+            "review_url": "https://github.com/acme/app/pull/42#pullrequestreview-1",
+            "review_body": "## CRITICAL\n- None\n\n## WARNINGS\n- Missing authorization check\n\n## SUGGESTIONS\n- None",
+            "review_already_exists": false
         }))
         .to_request();
     let result_resp = test::call_service(&app, result_req).await;
@@ -117,7 +120,10 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
     .await
     .expect("review result should be recorded");
 
-    assert!(review.review_url.is_none());
+    assert_eq!(
+        review.review_url.as_deref(),
+        Some("https://github.com/acme/app/pull/42#pullrequestreview-1")
+    );
     assert!(review
         .review_body
         .as_deref()
