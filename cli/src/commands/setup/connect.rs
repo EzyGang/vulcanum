@@ -27,7 +27,8 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
 
     console::info("Probing instance URL...");
     let (resolved_url, _) = probe_url_with_scheme_fallback(&raw_instance).await?;
-    if resolved_url != raw_instance.trim_end_matches('/') {
+    let trimmed_instance = raw_instance.trim().trim_end_matches('/');
+    if resolved_url != trimmed_instance {
         console::info(&format!("Using {} (scheme fallback)", resolved_url));
     }
 
@@ -41,10 +42,11 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
         .and_then(|h| h.to_str().map(|s| s.to_owned()))
         .unwrap_or_else(|| "unnamed-worker".to_owned());
 
-    let config = load_config().unwrap_or_default();
+    let config = load_config()?;
+    let isolation_backend = config.isolation_backend()?;
     let capabilities = WorkerCapabilities {
         agent_backends: vec![config.agent_backend],
-        isolation_backends: vec![config.harness],
+        isolation_backends: vec![isolation_backend.as_str().to_owned()],
     };
     let client = ApiClient::new(&resolved_url);
     let max_concurrent_jobs = host::calculate_worker_capacity();

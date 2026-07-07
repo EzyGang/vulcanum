@@ -80,12 +80,12 @@ pub(crate) fn remove_worker_service_best_effort() {
 
 #[cfg(target_os = "linux")]
 pub(crate) fn enable_and_start_docker_service() -> anyhow::Result<()> {
-    systemd::run_systemctl("enable --now docker")
+    systemd::run_systemctl(&["enable", "--now", "docker"])
 }
 
 #[cfg(target_os = "linux")]
 pub(crate) fn restart_docker_service() -> anyhow::Result<()> {
-    systemd::run_systemctl("restart docker")
+    systemd::run_systemctl(&["restart", "docker"])
 }
 
 #[cfg(target_os = "macos")]

@@ -51,8 +51,14 @@ impl RunningSession for OmpRpcRunningSession {
             let _ = self
                 .send_command(serde_json::json!({"id": "abort-1", "type": "abort"}))
                 .await;
-            let _ = self.child.kill().await;
             self.status = SessionStatus::Cancelled;
+            self.cleanup().await
+        })
+    }
+
+    fn cleanup(&mut self) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>> {
+        Box::pin(async move {
+            let _ = self.child.kill().await;
             Ok(())
         })
     }

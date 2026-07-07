@@ -8,10 +8,6 @@ use vulcanum_shared::worker_state::{self, WorkerState};
 use crate::commands::setup::service;
 use crate::console;
 
-#[cfg(test)]
-#[path = "self_delete_tests.rs"]
-mod self_delete_tests;
-
 pub async fn run() -> anyhow::Result<()> {
     console::info("Preparing worker self-delete...");
 

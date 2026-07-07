@@ -11,7 +11,7 @@ pub enum ModelProviderAuthType {
     None,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize)]
+#[derive(Debug, Clone, FromRow)]
 pub struct ModelProviderConfig {
     pub id: Uuid,
     pub team_id: Uuid,

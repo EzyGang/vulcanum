@@ -1,4 +1,5 @@
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::models::workers::errors::WorkersError;
 
@@ -14,4 +15,6 @@ pub enum DispatchError {
     Internal(String),
     #[error("worker error: {0}")]
     Worker(#[from] WorkersError),
+    #[error("worker has no available capacity: {0}")]
+    WorkerCapacityUnavailable(Uuid),
 }

@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use tracing_test::traced_test;
 
 #[traced_test]
@@ -28,4 +30,26 @@ fn test_error_event_is_captured() {
     assert!(logs_contain("failure event"));
     assert!(logs_contain("exit_code"));
     assert!(logs_contain("1"));
+}
+
+#[test]
+fn try_init_with_config_is_idempotent_after_successful_initialization() {
+    const CHILD_ENV: &str = "VULCANUM_TELEMETRY_IDEMPOTENT_CHILD";
+
+    if std::env::var_os(CHILD_ENV).is_some() {
+        crate::telemetry::try_init_with_config(false, None)
+            .expect("fresh process should initialize telemetry");
+        crate::telemetry::try_init_with_config(true, Some("json"))
+            .expect("second initialization should be a no-op");
+        return;
+    }
+
+    let status = Command::new(std::env::current_exe().expect("test executable should resolve"))
+        .env(CHILD_ENV, "1")
+        .arg("--exact")
+        .arg("telemetry_tests::try_init_with_config_is_idempotent_after_successful_initialization")
+        .status()
+        .expect("child telemetry test should run");
+
+    assert!(status.success(), "child telemetry test should pass");
 }

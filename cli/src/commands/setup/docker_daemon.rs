@@ -10,9 +10,14 @@ pub fn docker_runtime_registered(runtime: &str) -> bool {
         .output()
         .ok()
         .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|output| output.contains(runtime))
+        .and_then(|o| docker_runtime_registered_from_stdout(&o.stdout, runtime))
         .unwrap_or(false)
+}
+
+fn docker_runtime_registered_from_stdout(stdout: &[u8], runtime: &str) -> Option<bool> {
+    let runtimes: Value = serde_json::from_slice(stdout).ok()?;
+    let runtime_map = runtimes.as_object()?;
+    Some(runtime_map.contains_key(runtime))
 }
 
 pub fn read_daemon_json() -> anyhow::Result<Value> {
@@ -36,15 +41,12 @@ pub fn write_daemon_json(config: &Value) -> anyhow::Result<()> {
     std::fs::write(&tmp_path, new_content)
         .map_err(|e| anyhow::anyhow!("failed to write temp daemon.json: {e}"))?;
 
-    let mv_script = format!(
-        "mkdir -p /etc/docker && mv {} /etc/docker/daemon.json && chmod 644 /etc/docker/daemon.json",
-        tmp_path.display()
-    );
-
     let status = Command::new("sudo")
-        .args(["-n", "sh", "-c", &mv_script])
+        .args(["-n", "install", "-D", "-m", "0644"])
+        .arg(&tmp_path)
+        .arg("/etc/docker/daemon.json")
         .status()
-        .map_err(|e| anyhow::anyhow!("failed to move daemon.json into place: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("failed to install daemon.json: {e}"))?;
 
     if !status.success() {
         anyhow::bail!("failed to install /etc/docker/daemon.json");

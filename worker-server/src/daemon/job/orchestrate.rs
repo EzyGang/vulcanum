@@ -1,10 +1,11 @@
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::Arc;
-use std::time::Duration;
+mod duplicates;
+mod heartbeat;
+mod messages;
+mod setup;
 
 use chrono::Utc;
-use tokio::sync::{watch, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
@@ -12,22 +13,20 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
-use vulcanum_shared::runtime::types::ResourceLimits;
 use vulcanum_shared::worker_state::WorkerState;
 
 use super::execution::event_reporter::EventReporter;
-use super::execution::submit::{resubmit_stored_result, submit_failed_result, FailedResult};
-use super::github_credentials::{spawn_refresh_task, stop_refresh_task};
+use super::execution::submit::{submit_failed_result, FailedResult};
+use super::github_credentials::stop_refresh_task;
 use super::prompts::text::initial_prompt;
-use super::runtime_secrets::job_runtime_secrets;
 use super::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::daemon::auth::with_retry_on_401;
-use crate::isolation::factory::create_isolation_provider;
+use crate::daemon::job::orchestrate::duplicates::reconcile_terminal_duplicate;
+use crate::daemon::job::orchestrate::heartbeat::spawn_heartbeat;
+use crate::daemon::job::orchestrate::messages::save_session_messages;
+use crate::daemon::job::orchestrate::setup::{prepare_environment, PrepareEnvironmentCtx};
 use crate::providers::runtime::AgentRuntimeKind;
-use crate::state::journal::{Journal, JournalEntry, JournalStatus};
-use crate::storage::messages::MessageStore;
-
-const HEARTBEAT_INTERVAL_SECS: u64 = 60;
+use crate::state::journal::{Journal, JournalStatus};
 
 pub(crate) async fn handle_job(
     client: Arc<ApiClient>,
@@ -172,124 +171,25 @@ pub(crate) async fn handle_job(
         }
     }
 
-    if let Err(e) = reset_fresh_workdir(&workdir).await {
-        tracing::error!(work_run_id = %job_id, workdir = %workdir.display(), error = %e, "failed to reset stale workdir");
-        submit_failed_result(
-            client,
-            worker_state,
-            journal,
-            job_id,
-            &FailedResult::empty(),
-        )
-        .await;
-        return Ok(());
-    }
-
-    if let Err(e) = tokio::fs::create_dir_all(&workdir).await {
-        tracing::error!(work_run_id = %job_id, error = %e, "failed to create workdir");
-        submit_failed_result(
-            client,
-            worker_state,
-            journal,
-            job_id,
-            &FailedResult::empty(),
-        )
-        .await;
-        return Ok(());
-    }
-
-    let provider = create_isolation_provider(config);
-    let limits = ResourceLimits::default();
-    let secrets = job_runtime_secrets(&job);
-    let env_vars = HashMap::new();
-
-    let isolated_env = match provider
-        .prepare(
-            &workdir,
-            &secrets,
-            &env_vars,
-            &limits,
-            job.work_type,
-            &job.agents_md,
-            job.agent_backend,
-            &job.agent_config,
-            &job.repos,
-        )
-        .await
+    let prepared = match prepare_environment(PrepareEnvironmentCtx {
+        client: client.clone(),
+        worker_state: worker_state.clone(),
+        journal: journal.clone(),
+        reporter: reporter.clone(),
+        worker_id,
+        job_id,
+        job: &job,
+        config,
+        workdir: &workdir,
+    })
+    .await
     {
-        Ok(env) => env,
-        Err(e) => {
-            tracing::error!(
-                worker_id = %worker_id,
-                work_run_id = %job_id,
-                external_task_ref = %job.external_task_ref,
-                error = %e,
-                "isolation prepare failed",
-            );
-            reporter.emit(
-                "session.failed",
-                serde_json::json!({"reason": "isolation_prepare_failed"}),
-            );
-            submit_failed_result(
-                client,
-                worker_state,
-                journal,
-                job_id,
-                &FailedResult::empty(),
-            )
-            .await;
-            return Ok(());
-        }
+        Ok(prepared) => prepared,
+        Err(()) => return Ok(()),
     };
-
-    let github_refresh_stop = match job.github_token.as_ref() {
-        Some(_) => Some(spawn_refresh_task(
-            client.clone(),
-            worker_state.clone(),
-            job_id,
-            workdir.clone(),
-            job.github_token_expires_at,
-        )),
-        None => None,
-    };
-
-    if let (Some(pr_url), Some(repo_full_name)) = (
-        job.review_target_pr_url.as_deref(),
-        job.review_target_repo_full_name.as_deref(),
-    ) {
-        match crate::isolation::checkout::checkout_pull_request(
-            &isolated_env.workspace_dir,
-            &isolated_env.repos,
-            repo_full_name,
-            pr_url,
-            &crate::isolation::github_credentials::host_command_env(&isolated_env.workdir),
-        )
-        .await
-        {
-            Ok(()) => (),
-            Err(e) => {
-                tracing::error!(
-                    worker_id = %worker_id,
-                    work_run_id = %job_id,
-                    repo = %repo_full_name,
-                    pr_url = %pr_url,
-                    error = %e,
-                    "pull request checkout failed",
-                );
-                stop_refresh_task(github_refresh_stop);
-                provider.cleanup(&isolated_env).await;
-                submit_failed_result(
-                    client,
-                    worker_state,
-                    journal,
-                    job_id,
-                    &FailedResult::empty(),
-                )
-                .await;
-                return Ok(());
-            }
-        }
-    }
+    let provider = prepared.provider;
+    let isolated_env = prepared.isolated_env;
+    let github_refresh_stop = prepared.github_refresh_stop;
 
     let prompt_text = initial_prompt(
         job.work_type,
@@ -307,10 +207,13 @@ pub(crate) async fn handle_job(
                     error = %e,
                     "runtime execute failed",
                 );
-                reporter.emit(
-                    "session.failed",
-                    serde_json::json!({"reason": "runtime_execute_failed"}),
-                );
+                reporter
+                    .emit(
+                        "session.failed",
+                        serde_json::json!({"reason": "runtime_execute_failed"}),
+                    )
+                    .await;
+                reporter.shutdown().await;
                 stop_refresh_task(github_refresh_stop);
                 provider.cleanup(&isolated_env).await;
                 submit_failed_result(
@@ -354,7 +257,9 @@ pub(crate) async fn handle_job(
 
     let artifact_path = workdir.join("home").join("finish_artifact.json");
 
-    reporter.emit("session.started", serde_json::json!({}));
+    reporter
+        .emit("session.started", serde_json::json!({}))
+        .await;
     let heartbeat_stop = spawn_heartbeat(reporter.clone());
     let ctx = TurnLoopCtx {
         client: client.clone(),
@@ -376,115 +281,19 @@ pub(crate) async fn handle_job(
     .await;
     stop_refresh_task(github_refresh_stop);
     let _ = heartbeat_stop.send(true);
+    ctx.reporter.shutdown().await;
 
-    if let Some(sid) = running_session.session_id() {
-        match running_session.export_messages().await {
-            Ok(Some(messages)) => match MessageStore::new() {
-                Ok(store) => {
-                    let _ = store.save(job_id, sid, &messages);
-                }
-                Err(e) => {
-                    tracing::warn!(work_run_id = %job_id, error = %e, "failed to create message store");
-                }
-            },
-            Ok(None) => (),
-            Err(e) => {
-                tracing::warn!(work_run_id = %job_id, error = %e, "failed to export session messages");
-            }
-        }
+    save_session_messages(job_id, &mut running_session).await;
+
+    if let Err(error) = running_session.cleanup().await {
+        tracing::warn!(
+            work_run_id = %job_id,
+            error = %error,
+            "provider runtime cleanup returned an error",
+        );
     }
 
     provider.cleanup(&isolated_env).await;
 
     Ok(())
-}
-
-async fn reconcile_terminal_duplicate(
-    client: &Arc<ApiClient>,
-    worker_state: &Arc<RwLock<WorkerState>>,
-    journal: &Arc<Journal>,
-    job_id: Uuid,
-    entry: &JournalEntry,
-) -> Result<(), String> {
-    tracing::warn!(
-        work_run_id = %job_id,
-        local_status = ?entry.status,
-        workdir = %entry.workdir,
-        "duplicate dispatch matches terminal local journal state, resubmitting stored result"
-    );
-
-    match with_retry_on_401(client, worker_state, |token| {
-        let client = client.clone();
-        async move { client.ack_job(job_id, &token).await }
-    })
-    .await
-    {
-        Ok(()) => (),
-        Err(e) => {
-            if is_fatal_api_error(&e) {
-                return Err(format!("ack failed permanently: {e:#} — run `vulcanum worker setup --instance <instance> --code <code>` to reconnect"));
-            }
-            match e.downcast_ref::<ApiError>() {
-                Some(api_err) if api_err.status == 404 => {
-                    tracing::info!(work_run_id = %job_id, "job was deleted or cancelled, skipping duplicate reconciliation");
-                    return Ok(());
-                }
-                Some(api_err) if api_err.status == 409 => {
-                    tracing::warn!(
-                        work_run_id = %job_id,
-                        error = %e,
-                        "duplicate reconciliation ack was rejected, attempting result resubmit anyway"
-                    );
-                }
-                _ => {
-                    tracing::warn!(work_run_id = %job_id, error = %e, "ack failed during duplicate reconciliation");
-                    return Ok(());
-                }
-            }
-        }
-    }
-
-    resubmit_stored_result(client, worker_state, journal, entry).await;
-    Ok(())
-}
-
-async fn reset_fresh_workdir(workdir: &Path) -> std::io::Result<()> {
-    if !workdir.exists() {
-        return Ok(());
-    }
-    if !is_safe_workdir(workdir) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "refusing to delete unsafe workdir",
-        ));
-    }
-    tokio::fs::remove_dir_all(workdir).await
-}
-
-fn is_safe_workdir(path: &Path) -> bool {
-    let temp = std::env::temp_dir();
-    path.starts_with(&temp)
-        && path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .is_some_and(|name| name.starts_with("vulcanum-work-"))
-}
-
-fn spawn_heartbeat(reporter: Arc<EventReporter>) -> watch::Sender<bool> {
-    let (tx, mut rx) = watch::channel(false);
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = tokio::time::sleep(Duration::from_secs(HEARTBEAT_INTERVAL_SECS)) => {
-                    reporter.emit("worker.heartbeat", serde_json::json!({}));
-                }
-                changed = rx.changed() => {
-                    if changed.is_err() || *rx.borrow() {
-                        break;
-                    }
-                }
-            }
-        }
-    });
-    tx
 }

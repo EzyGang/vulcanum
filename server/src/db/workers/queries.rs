@@ -80,6 +80,29 @@ impl WorkersRepository {
         .ok_or(WorkersError::InvalidRefreshToken)
     }
 
+    pub async fn rotate_refresh_token<'c, Q: Queryer<'c>>(
+        &self,
+        db: Q,
+        old_hash: &str,
+        new_hash: &str,
+        new_expires_at: DateTime<Utc>,
+    ) -> Result<Worker, WorkersError> {
+        sqlx::query_as!(
+            Worker,
+            r#"UPDATE workers SET refresh_token_hash = $1, refresh_expires_at = $2
+             WHERE refresh_token_hash = $3 AND refresh_expires_at >= NOW()
+              RETURNING id, team_id, name, refresh_token_hash, refresh_expires_at, last_seen,
+             status as "status: WorkerStatus", capabilities, created_at as "created_at!: DateTime<Utc>",
+             active_jobs, max_concurrent_jobs, consecutive_errors"#,
+            new_hash,
+            new_expires_at,
+            old_hash,
+        )
+        .fetch_optional(db)
+        .await?
+        .ok_or(WorkersError::InvalidRefreshToken)
+    }
+
     pub async fn update_refresh_token<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
@@ -233,10 +256,16 @@ impl WorkersRepository {
         db: Q,
         id: Uuid,
     ) -> Result<(), WorkersError> {
-        sqlx::query!("UPDATE workers SET active_jobs = 0 WHERE id = $1", id,)
+        let rows = sqlx::query!("UPDATE workers SET active_jobs = 0 WHERE id = $1", id,)
             .execute(db)
             .await
-            .map_err(map_sqlx_error)?;
+            .map_err(map_sqlx_error)?
+            .rows_affected();
+
+        if rows == 0 {
+            return Err(WorkersError::WorkerNotFound);
+        }
+
         Ok(())
     }
 
@@ -260,13 +289,38 @@ impl WorkersRepository {
         db: Q,
         id: Uuid,
     ) -> Result<(), WorkersError> {
-        sqlx::query!(
-            "UPDATE workers SET active_jobs = active_jobs - 1, status = CASE WHEN active_jobs - 1 = 0 THEN 'idle'::worker_status ELSE status END WHERE id = $1 AND active_jobs > 0",
+        let row = sqlx::query!(
+            r#"WITH worker AS (
+                SELECT active_jobs FROM workers WHERE id = $1
+            ),
+            updated AS (
+                UPDATE workers
+                SET active_jobs = active_jobs - 1,
+                    status = CASE WHEN active_jobs - 1 = 0 THEN 'idle'::worker_status ELSE status END
+                WHERE id = $1 AND active_jobs > 0
+                RETURNING active_jobs
+            )
+            SELECT EXISTS(SELECT 1 FROM worker) AS "worker_exists!",
+             (SELECT active_jobs FROM worker) AS "previous_active_jobs?",
+             (SELECT active_jobs FROM updated) AS "new_active_jobs?""#,
             id,
         )
-        .execute(db)
+        .fetch_one(db)
         .await
         .map_err(map_sqlx_error)?;
+
+        if !row.worker_exists {
+            return Err(WorkersError::WorkerNotFound);
+        }
+
+        let previous_active_jobs = row.previous_active_jobs.unwrap_or_default();
+        if previous_active_jobs <= 0 || row.new_active_jobs.is_none() {
+            return Err(WorkersError::ActiveJobsInvariant {
+                worker_id: id,
+                active_jobs: previous_active_jobs,
+            });
+        }
+
         Ok(())
     }
 
@@ -275,13 +329,19 @@ impl WorkersRepository {
         db: Q,
         id: Uuid,
     ) -> Result<(), WorkersError> {
-        sqlx::query!(
+        let rows = sqlx::query!(
             "UPDATE workers SET active_jobs = 0, status = 'idle'::worker_status WHERE id = $1",
             id,
         )
         .execute(db)
         .await
-        .map_err(map_sqlx_error)?;
+        .map_err(map_sqlx_error)?
+        .rows_affected();
+
+        if rows == 0 {
+            return Err(WorkersError::WorkerNotFound);
+        }
+
         Ok(())
     }
 

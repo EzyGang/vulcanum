@@ -19,8 +19,13 @@ pub async fn checkout_pull_request(
             )));
         }
     };
-    let pr_number = match parse_github_pr_number(pr_url) {
-        Some(number) => number,
+    let pull_request = match parse_github_pr_url(pr_url) {
+        Some(pull_request) if pull_request.matches_repo(repo_full_name) => pull_request,
+        Some(_) => {
+            return Err(HarnessError::Install(format!(
+                "pull request URL {pr_url} does not belong to repo {repo_full_name}"
+            )));
+        }
         None => {
             return Err(HarnessError::Install(format!(
                 "invalid GitHub pull request URL: {pr_url}"
@@ -38,7 +43,7 @@ pub async fn checkout_pull_request(
                 error = %e,
                 "gh pr checkout failed, falling back to git pull ref checkout"
             );
-            checkout_pull_ref(&repo_dir, pr_number, command_env).await
+            checkout_pull_ref(&repo_dir, pull_request.number, command_env).await
         }
     }
 }
@@ -48,16 +53,62 @@ pub(crate) fn checkout_branch_name(pr_number: i64) -> String {
     format!("vulcanum-pr-{pr_number}")
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct GithubPullRequest {
+    owner: String,
+    repo: String,
+    number: i64,
+}
+
+impl GithubPullRequest {
+    fn matches_repo(&self, full_name: &str) -> bool {
+        let Some((owner, repo)) = full_name.split_once('/') else {
+            return false;
+        };
+
+        self.owner.eq_ignore_ascii_case(owner) && self.repo.eq_ignore_ascii_case(repo)
+    }
+}
+
+#[cfg(test)]
 #[must_use]
 pub(crate) fn parse_github_pr_number(pr_url: &str) -> Option<i64> {
-    let trimmed = pr_url.split(['?', '#']).next()?.trim_end_matches('/');
-    let (_, number) = trimmed.rsplit_once("/pull/")?;
+    parse_github_pr_url(pr_url).map(|pull_request| pull_request.number)
+}
 
-    if number.contains('/') {
+#[must_use]
+pub(crate) fn parse_github_pr_url(pr_url: &str) -> Option<GithubPullRequest> {
+    let trimmed = pr_url.split(['?', '#']).next()?.trim_end_matches('/');
+    let stripped = trimmed
+        .strip_prefix("https://")
+        .or_else(|| trimmed.strip_prefix("http://"))?;
+    let (host, path) = stripped.split_once('/')?;
+
+    if !host.eq_ignore_ascii_case("github.com") {
         return None;
     }
 
-    number.parse::<i64>().ok()
+    let mut segments = path.split('/');
+    let owner = segments.next()?.to_owned();
+    let repo = segments.next()?.to_owned();
+    let pull_segment = segments.next()?;
+    let number = segments.next()?;
+
+    if owner.is_empty()
+        || repo.is_empty()
+        || pull_segment != "pull"
+        || number.is_empty()
+        || segments.next().is_some()
+    {
+        return None;
+    }
+
+    let number = number.parse::<i64>().ok()?;
+    (number > 0).then_some(GithubPullRequest {
+        owner,
+        repo,
+        number,
+    })
 }
 
 async fn checkout_pull_ref(

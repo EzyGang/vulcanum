@@ -14,120 +14,7 @@ use super::events;
 use super::runner::OpenCodeRunningSession;
 
 const STALL_TIMEOUT_SECS: u64 = 300;
-
-impl OpenCodeRunningSession {
-    async fn reconcile_interrupted_stream(&mut self, reason: &str) -> Option<AgentEvent> {
-        let status_map = match api::get_session_status(&self.client).await {
-            Ok(status_map) => status_map,
-            Err(e) => {
-                tracing::warn!(
-                    session_id = %self.session_id,
-                    reason,
-                    error = %e,
-                    "failed to check opencode session status after event stream interruption"
-                );
-                return Some(self.failure_event(serde_json::json!({
-                    "reason": reason,
-                    "status_check_error": e.to_string(),
-                })));
-            }
-        };
-
-        match status_map.get(&self.session_id) {
-            Some(api::OpenCodeSessionStatus::Idle) => {
-                tracing::info!(
-                    session_id = %self.session_id,
-                    reason,
-                    "opencode session is idle after event stream interruption"
-                );
-                self.status = SessionStatus::Completed;
-                Some(AgentEvent {
-                    event_type: "session.completed".to_owned(),
-                    payload: serde_json::json!({"reason": reason, "status": "idle"}),
-                    timestamp: Utc::now(),
-                })
-            }
-            Some(api::OpenCodeSessionStatus::Busy) if reason == "stall_detected" => {
-                tracing::info!(
-                    session_id = %self.session_id,
-                    reason,
-                    "opencode session is still busy after event stall"
-                );
-                self.status = SessionStatus::Running;
-                Some(AgentEvent {
-                    event_type: "session.still_busy".to_owned(),
-                    payload: serde_json::json!({"reason": reason, "status": "busy"}),
-                    timestamp: Utc::now(),
-                })
-            }
-            Some(api::OpenCodeSessionStatus::Busy) => self.reconnect_stream(reason, None).await,
-            Some(api::OpenCodeSessionStatus::Retry {
-                attempt,
-                message,
-                next,
-            }) => {
-                self.reconnect_stream(
-                    reason,
-                    Some(serde_json::json!({
-                        "attempt": attempt,
-                        "message": message,
-                        "next": next,
-                    })),
-                )
-                .await
-            }
-            None => Some(self.failure_event(serde_json::json!({
-                "reason": reason,
-                "status_check_error": "session_missing",
-            }))),
-        }
-    }
-
-    async fn reconnect_stream(
-        &mut self,
-        reason: &str,
-        retry: Option<serde_json::Value>,
-    ) -> Option<AgentEvent> {
-        match events::connect_events(&self.client).await {
-            Ok(stream) => {
-                tracing::info!(
-                    session_id = %self.session_id,
-                    reason,
-                    "reconnected opencode event stream"
-                );
-                self.event_stream = Some(stream);
-                self.status = SessionStatus::Running;
-                Some(AgentEvent {
-                    event_type: "session.stream_reconnected".to_owned(),
-                    payload: serde_json::json!({"reason": reason, "retry": retry}),
-                    timestamp: Utc::now(),
-                })
-            }
-            Err(e) => {
-                tracing::warn!(
-                    session_id = %self.session_id,
-                    reason,
-                    error = %e,
-                    "failed to reconnect opencode event stream"
-                );
-                Some(self.failure_event(serde_json::json!({
-                    "reason": reason,
-                    "stream_reconnect_error": e.to_string(),
-                })))
-            }
-        }
-    }
-
-    fn failure_event(&mut self, payload: serde_json::Value) -> AgentEvent {
-        self.status = SessionStatus::Failed;
-        self.failure_payload = Some(payload.clone());
-        AgentEvent {
-            event_type: "session.failed".to_owned(),
-            payload,
-            timestamp: Utc::now(),
-        }
-    }
-}
+const CANCEL_ABORT_TIMEOUT_SECS: u64 = 10;
 
 impl RunningSession for OpenCodeRunningSession {
     fn status(&self) -> SessionStatus {
@@ -233,9 +120,25 @@ impl RunningSession for OpenCodeRunningSession {
         let session_id = self.session_id.clone();
         let client = self.client.clone();
         Box::pin(async move {
-            api::abort_session(&client, &session_id).await?;
+            let abort_result = timeout(
+                Duration::from_secs(CANCEL_ABORT_TIMEOUT_SECS),
+                api::abort_session(&client, &session_id),
+            )
+            .await;
             self.status = SessionStatus::Cancelled;
-            self.kill_server().await;
+            self.cleanup_server().await;
+            match abort_result {
+                Ok(result) => result,
+                Err(_) => Err(HarnessError::CancelFailed(
+                    "opencode abort request timed out".to_owned(),
+                )),
+            }
+        })
+    }
+
+    fn cleanup(&mut self) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>> {
+        Box::pin(async move {
+            self.cleanup_server().await;
             Ok(())
         })
     }
@@ -250,16 +153,46 @@ impl RunningSession for OpenCodeRunningSession {
         let failure_payload = self.failure_payload.clone();
 
         Box::pin(async move {
-            let info = api::get_session_info(&client, &session_id).await?;
+            let elapsed_ms = (Utc::now() - started_at).num_milliseconds() as u64;
+            let exit_code = match current_status {
+                SessionStatus::Failed => 1,
+                SessionStatus::Cancelled => 2,
+                _ => 0,
+            };
+            let mut export = SessionExport {
+                exit_code,
+                tokens_used: 0,
+                input_tokens: 0,
+                output_tokens: 0,
+                cache_read_tokens: 0,
+                cache_write_tokens: 0,
+                duration_ms: elapsed_ms,
+                model_used: None,
+                failure_payload,
+            };
+
+            let info = match api::get_session_info(&client, &session_id).await {
+                Ok(info) => info,
+                Err(error) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %error,
+                        "failed to export opencode telemetry"
+                    );
+                    return Ok(export);
+                }
+            };
 
             let tokens = &info.tokens;
-            let input_tokens = tokens.input.unwrap_or(0);
-            let output_tokens = tokens.output.unwrap_or(0);
-            let cache_read_tokens = tokens.cache.as_ref().and_then(|c| c.read).unwrap_or(0);
-            let cache_write_tokens = tokens.cache.as_ref().and_then(|c| c.write).unwrap_or(0);
-            let tokens_used = input_tokens + output_tokens + cache_read_tokens + cache_write_tokens;
-
-            let model_used = info
+            export.input_tokens = tokens.input.unwrap_or(0);
+            export.output_tokens = tokens.output.unwrap_or(0);
+            export.cache_read_tokens = tokens.cache.as_ref().and_then(|c| c.read).unwrap_or(0);
+            export.cache_write_tokens = tokens.cache.as_ref().and_then(|c| c.write).unwrap_or(0);
+            export.tokens_used = export.input_tokens
+                + export.output_tokens
+                + export.cache_read_tokens
+                + export.cache_write_tokens;
+            export.model_used = info
                 .model
                 .as_ref()
                 .and_then(|m| match (&m.provider_id, &m.id) {
@@ -268,24 +201,7 @@ impl RunningSession for OpenCodeRunningSession {
                     _ => None,
                 });
 
-            let elapsed_ms = (Utc::now() - started_at).num_milliseconds() as u64;
-            let exit_code = match current_status {
-                SessionStatus::Failed => 1,
-                SessionStatus::Cancelled => 2,
-                _ => 0,
-            };
-
-            Ok(SessionExport {
-                exit_code,
-                tokens_used,
-                input_tokens,
-                output_tokens,
-                cache_read_tokens,
-                cache_write_tokens,
-                duration_ms: elapsed_ms,
-                model_used,
-                failure_payload,
-            })
+            Ok(export)
         })
     }
 
@@ -310,11 +226,11 @@ impl RunningSession for OpenCodeRunningSession {
         let prompt = prompt.to_owned();
 
         Box::pin(async move {
-            api::send_message_async(&client, &session_id, &prompt).await?;
-
             self.event_stream = None;
             let stream = events::connect_events(&client).await?;
             self.event_stream = Some(stream);
+
+            api::send_message_async(&client, &session_id, &prompt).await?;
             self.status = SessionStatus::Running;
 
             Ok(())

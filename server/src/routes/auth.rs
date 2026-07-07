@@ -5,7 +5,7 @@ use crate::errors::AppError;
 use crate::models::auth::model::{
     AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, GithubStartQuery,
     InstanceLoginRequest, InstanceLoginResponse, LoginRequest, LoginResponse, LogoutRequest,
-    MeResponse, RefreshRequest, TeamInfo, TeamPrincipal, UserInfo, VerifyQuery, VerifyResponse,
+    RefreshRequest, TeamPrincipal, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
@@ -23,11 +23,12 @@ pub async fn verify(
     state: web::Data<AppState>,
     query: web::Query<VerifyQuery>,
 ) -> Result<HttpResponse, AppError> {
-    let user = state.auth.verify(query.into_inner()).await?;
+    let (user, token_pair) = state.auth.verify(query.into_inner()).await?;
 
     Ok(HttpResponse::Ok().json(VerifyResponse {
         message: "Logged in successfully".to_owned(),
         user: user.into(),
+        token_pair,
     }))
 }
 
@@ -107,27 +108,9 @@ pub async fn me(state: web::Data<AppState>, auth: TeamPrincipal) -> Result<HttpR
         TeamPrincipal::User { user_id, .. } => user_id,
         TeamPrincipal::Instance { .. } => return Err(AppError::Forbidden),
     };
-    let user = state.auth.users.find_user_by_id(&user_id).await?;
-    let teams = state
-        .teams
-        .list_for_user(&user_id)
-        .await?
-        .into_iter()
-        .map(TeamInfo::from)
-        .collect();
-    let identities = state
-        .teams
-        .list_identities_for_user(&user_id)
-        .await?
-        .into_iter()
-        .map(Into::into)
-        .collect();
+    let response = state.auth.me(&user_id).await?;
 
-    Ok(HttpResponse::Ok().json(MeResponse {
-        user: UserInfo::from(user),
-        teams,
-        identities,
-    }))
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub async fn logout(

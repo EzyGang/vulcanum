@@ -18,6 +18,8 @@ pub enum WorkRunsError {
     NotOwned,
     #[error("cannot delete a running work run")]
     DeleteRunning,
+    #[error("invalid pagination: {0}")]
+    InvalidPagination(String),
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]

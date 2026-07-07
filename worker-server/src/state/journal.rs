@@ -1,178 +1,22 @@
-use std::path::Path;
+mod model;
+mod row;
+mod schema;
+
 use std::sync::Mutex;
 
-use anyhow::Context;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use rusqlite::Connection;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum JournalStatus {
-    Running,
-    Completed,
-    Failed,
-    Lost,
-    Submitted,
-}
-
-impl JournalStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Running => "running",
-            Self::Completed => "completed",
-            Self::Failed => "failed",
-            Self::Lost => "lost",
-            Self::Submitted => "submitted",
-        }
-    }
-
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "running" => Some(Self::Running),
-            "completed" => Some(Self::Completed),
-            "failed" => Some(Self::Failed),
-            "lost" => Some(Self::Lost),
-            "submitted" => Some(Self::Submitted),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-#[expect(dead_code)]
-pub struct JournalEntry {
-    pub job_id: Uuid,
-    pub workdir: String,
-    pub container_name: Option<String>,
-    pub harness_type: String,
-    pub status: JournalStatus,
-    pub started_at: DateTime<Utc>,
-    pub finished_at: Option<DateTime<Utc>>,
-    pub exit_code: Option<i32>,
-    pub tokens_used: Option<i64>,
-    pub input_tokens: Option<i64>,
-    pub output_tokens: Option<i64>,
-    pub cache_read_tokens: Option<i64>,
-    pub cache_write_tokens: Option<i64>,
-    pub pr_url: Option<String>,
-    pub duration_ms: Option<i64>,
-    pub review_url: Option<String>,
-    pub review_body: Option<String>,
-    pub review_already_exists: bool,
-    pub error_message: Option<String>,
-    pub turn_count: Option<i32>,
-    pub session_id: Option<String>,
-    pub max_turns: Option<i32>,
-    pub host_pid: Option<i64>,
-    pub host_port: Option<i64>,
-    pub agent_backend: Option<String>,
-    pub agent_session_path: Option<String>,
-    pub agent_config_dir: Option<String>,
-    pub agent_state_dir: Option<String>,
-    pub agent_transport: Option<String>,
-    pub agent_pid: Option<i64>,
-}
-
-pub struct JournalResultUpdate<'a> {
-    pub job_id: Uuid,
-    pub exit_code: i32,
-    pub tokens_used: i64,
-    pub input_tokens: i64,
-    pub output_tokens: i64,
-    pub cache_read_tokens: i64,
-    pub cache_write_tokens: i64,
-    pub pr_url: Option<&'a str>,
-    pub duration_ms: i64,
-    pub review_url: Option<&'a str>,
-    pub review_body: Option<&'a str>,
-    pub review_already_exists: bool,
-    pub status: JournalStatus,
-}
-
-pub struct JournalInsert<'a> {
-    pub job_id: Uuid,
-    pub workdir: &'a str,
-    pub container_name: Option<&'a str>,
-    pub harness_type: &'a str,
-    pub started_at: DateTime<Utc>,
-    pub max_turns: i32,
-    pub agent_backend: &'a str,
-}
+pub use crate::state::journal::model::{
+    JournalEntry, JournalInsert, JournalResultUpdate, JournalStatus,
+};
 
 pub struct Journal {
     conn: Mutex<Connection>,
 }
 
 impl Journal {
-    pub fn open(db_path: &Path) -> anyhow::Result<Self> {
-        let conn = Connection::open(db_path)
-            .with_context(|| format!("failed to open journal at {}", db_path.display()))?;
-        conn.execute_batch("PRAGMA journal_mode = WAL")?;
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS job_journal (
-                job_id TEXT PRIMARY KEY,
-                workdir TEXT NOT NULL,
-                container_name TEXT,
-                harness_type TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'running',
-                started_at TEXT NOT NULL,
-                finished_at TEXT,
-                exit_code INTEGER,
-                tokens_used INTEGER,
-                input_tokens INTEGER,
-                output_tokens INTEGER,
-                cache_read_tokens INTEGER,
-                cache_write_tokens INTEGER,
-                pr_url TEXT,
-                duration_ms INTEGER,
-                review_url TEXT,
-                review_body TEXT,
-                review_already_exists INTEGER NOT NULL DEFAULT 0,
-                error_message TEXT,
-                turn_count INTEGER NOT NULL DEFAULT 0,
-                session_id TEXT,
-                max_turns INTEGER NOT NULL DEFAULT 1,
-                agent_backend TEXT NOT NULL DEFAULT 'opencode',
-                agent_session_path TEXT,
-                agent_config_dir TEXT,
-                agent_state_dir TEXT,
-                agent_transport TEXT,
-                agent_pid INTEGER
-            )",
-        )?;
-
-        let _ = conn.execute_batch(
-            "ALTER TABLE job_journal ADD COLUMN turn_count INTEGER NOT NULL DEFAULT 0",
-        );
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN session_id TEXT");
-        let _ = conn.execute_batch(
-            "ALTER TABLE job_journal ADD COLUMN max_turns INTEGER NOT NULL DEFAULT 1",
-        );
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN host_pid INTEGER");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN host_port INTEGER");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN input_tokens INTEGER");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN output_tokens INTEGER");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN cache_read_tokens INTEGER");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN cache_write_tokens INTEGER");
-        let _ = conn.execute_batch(
-            "ALTER TABLE job_journal ADD COLUMN agent_backend TEXT NOT NULL DEFAULT 'opencode'",
-        );
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_session_path TEXT");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_config_dir TEXT");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_state_dir TEXT");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_transport TEXT");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN agent_pid INTEGER");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN review_url TEXT");
-        let _ = conn.execute_batch("ALTER TABLE job_journal ADD COLUMN review_body TEXT");
-        let _ = conn.execute_batch(
-            "ALTER TABLE job_journal ADD COLUMN review_already_exists INTEGER NOT NULL DEFAULT 0",
-        );
-
-        Ok(Self {
-            conn: Mutex::new(conn),
-        })
-    }
-
     pub fn insert_job(&self, job: JournalInsert<'_>) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
@@ -204,7 +48,7 @@ impl Journal {
              FROM job_journal WHERE job_id = ?1",
         )?;
 
-        let mut rows = stmt.query_map([job_id.to_string()], Self::journal_entry_from_row)?;
+        let mut rows = stmt.query_map([job_id.to_string()], row::journal_entry_from_row)?;
         match rows.next() {
             Some(entry) => entry.map(Some).map_err(Into::into),
             None => Ok(None),
@@ -229,7 +73,7 @@ impl Journal {
                 result.output_tokens,
                 result.cache_read_tokens,
                 result.cache_write_tokens,
-                result.pr_url.unwrap_or(""),
+                result.pr_url,
                 result.duration_ms,
                 result.review_url,
                 result.review_body,
@@ -331,51 +175,9 @@ impl Journal {
         )?;
 
         let rows = stmt
-            .query_map([], Self::journal_entry_from_row)?
-            .filter_map(|r| r.ok())
-            .collect();
+            .query_map([], row::journal_entry_from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
 
         Ok(rows)
-    }
-
-    fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<JournalEntry> {
-        let started_at: String = row.get(5)?;
-        let finished_at: Option<String> = row.get(6)?;
-        Ok(JournalEntry {
-            job_id: Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_default(),
-            workdir: row.get(1)?,
-            container_name: row.get(2)?,
-            harness_type: row.get(3)?,
-            status: JournalStatus::from_str(&row.get::<_, String>(4)?)
-                .unwrap_or(JournalStatus::Lost),
-            started_at: DateTime::parse_from_rfc3339(&started_at)
-                .map(|d| d.to_utc())
-                .unwrap_or_default(),
-            finished_at: finished_at
-                .and_then(|s| DateTime::parse_from_rfc3339(&s).map(|d| d.to_utc()).ok()),
-            exit_code: row.get(7)?,
-            tokens_used: row.get(8)?,
-            input_tokens: row.get(9)?,
-            output_tokens: row.get(10)?,
-            cache_read_tokens: row.get(11)?,
-            cache_write_tokens: row.get(12)?,
-            pr_url: row.get(13)?,
-            duration_ms: row.get(14)?,
-            review_url: row.get(15)?,
-            review_body: row.get(16)?,
-            review_already_exists: row.get(17)?,
-            error_message: row.get(18)?,
-            turn_count: row.get(19)?,
-            session_id: row.get(20)?,
-            max_turns: row.get(21)?,
-            host_pid: row.get(22)?,
-            host_port: row.get(23)?,
-            agent_backend: row.get(24)?,
-            agent_session_path: row.get(25)?,
-            agent_config_dir: row.get(26)?,
-            agent_state_dir: row.get(27)?,
-            agent_transport: row.get(28)?,
-            agent_pid: row.get(29)?,
-        })
     }
 }

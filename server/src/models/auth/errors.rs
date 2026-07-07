@@ -13,6 +13,8 @@ pub enum AuthError {
     InvalidPassword,
     #[error("instance login is disabled")]
     InstanceLoginDisabled,
+    #[error("github oauth failed: {0}")]
+    GithubOAuth(String),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]

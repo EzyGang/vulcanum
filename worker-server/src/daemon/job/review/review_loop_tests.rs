@@ -5,7 +5,7 @@ use crate::daemon::job::review::review_loop::ReviewLoopState;
 
 #[test]
 fn review_loop_continues_for_actionable_review_then_stops_at_cap() {
-    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 1);
+    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 3);
 
     let prompt = state
         .prompt_after_artifact(&review_artifact(
@@ -30,7 +30,7 @@ fn review_loop_continues_for_actionable_review_then_stops_at_cap() {
 
 #[test]
 fn review_loop_submits_clean_review_immediately() {
-    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 1);
+    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 3);
 
     let prompt = state.prompt_after_artifact(&review_artifact(
         "## CRITICAL\n- None\n\n## WARNINGS\n- None\n\n## SUGGESTIONS\n- Rename helper",
@@ -44,6 +44,27 @@ fn implementation_loop_uses_plain_max_turns() {
     let state = ReviewLoopState::new(WorkRunType::Implementation, 4);
 
     assert_eq!(state.effective_max_turns(), 4);
+}
+
+#[test]
+fn review_loop_treats_max_turns_as_total_turn_cap() {
+    let state = ReviewLoopState::new(WorkRunType::PullRequestReview, 3);
+
+    assert_eq!(state.effective_max_turns(), 3);
+    assert_eq!(state.progress().max_fix_passes, 1);
+}
+
+#[test]
+fn review_loop_with_two_total_turns_does_not_start_fix_pass() {
+    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 2);
+
+    let prompt = state.prompt_after_artifact(&review_artifact(
+        "## CRITICAL\n- Blocking defect\n\n## WARNINGS\n- None\n\n## SUGGESTIONS\n- None",
+    ));
+
+    assert!(prompt.is_none());
+    assert_eq!(state.progress().fix_pass, 0);
+    assert_eq!(state.progress().max_fix_passes, 0);
 }
 
 #[must_use]

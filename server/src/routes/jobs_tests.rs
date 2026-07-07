@@ -266,6 +266,10 @@ async fn submit_result_returns_200_on_completed(pool: sqlx::PgPool) {
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
         .expect("Should dispatch");
+    dispatch_repo
+        .increment_worker_jobs(&pool, worker_id)
+        .await
+        .expect("Should reserve worker capacity");
 
     let app = test::init_service(
         App::new()

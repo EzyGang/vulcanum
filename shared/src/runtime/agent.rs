@@ -27,6 +27,10 @@ pub trait RunningSession: Send {
 
     fn cancel(&mut self) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>>;
 
+    fn cleanup(&mut self) -> Pin<Box<dyn Future<Output = Result<(), HarnessError>> + Send + '_>> {
+        Box::pin(async { Ok(()) })
+    }
+
     fn export(
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<SessionExport, HarnessError>> + Send + '_>>;

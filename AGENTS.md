@@ -161,8 +161,8 @@ server/src/
   services/                  # Business logic and infrastructure owned by services
     work_runs/
       mod.rs
-      service.rs             # WorkRunsService type and constructor
-      service/               # One file per larger service operation
+      service/               # Service root plus one file per larger operation
+        mod.rs               # WorkRunsService type and constructor
         poll.rs
         submit_result.rs
   db/                        # Repository structs and SQLx query implementations
@@ -186,7 +186,7 @@ server/src/
 ```
 
 - Put HTTP concerns in `src/routes/`. Route tests can live beside the route file as `*_tests.rs` when they only exercise that route module.
-- Put business logic in `src/services/<domain>/`. Split large service methods into `src/services/<domain>/service/<operation>.rs` and keep workflow stores beside the service that owns them.
+- Put business logic in `src/services/<domain>/`. When service logic is split, keep the service root in `src/services/<domain>/service/mod.rs` and operation modules in `src/services/<domain>/service/<operation>.rs`; do not keep both `service.rs` and a sibling `service/` directory.
 - Put repository structs in `src/db/<domain>.rs` and SQLx query modules under `src/db/<domain>/`.
 - Put database row structs, request/response DTOs, enums, shared principals, and domain errors in `src/models/<domain>/`.
 - Put reusable server test helpers, e2e tests, and cross-module service tests under `src/tests/` instead of using `#[path]` from production modules.

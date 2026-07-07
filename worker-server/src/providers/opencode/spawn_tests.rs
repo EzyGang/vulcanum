@@ -3,7 +3,10 @@ use std::path::PathBuf;
 
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 
-use crate::providers::opencode::spawn::{container_docker_args, HOST_ENV_ALLOWLIST};
+use crate::providers::{
+    logging::redact_provider_output,
+    opencode::spawn::{container_docker_args, HOST_ENV_ALLOWLIST},
+};
 
 #[test]
 fn host_env_allowlist_contains_expected_keys() {
@@ -33,7 +36,7 @@ fn host_env_allowlist_does_not_contain_sensitive_keys() {
 }
 
 #[test]
-fn container_docker_args_passes_home_as_environment() {
+fn container_docker_args_preserves_secret_env_argv_but_redacts_logged_shape() {
     let mut env_vars: HashMap<String, String> = HashMap::new();
     env_vars.insert("HOME".to_owned(), "/workdir/home".to_owned());
     env_vars.insert(
@@ -72,6 +75,10 @@ fn container_docker_args_passes_home_as_environment() {
         "FINISH_ARTIFACT_PATH=/workdir/home/finish_artifact.json",
     );
     assert_env_arg(&args, "OPENAI_API_KEY=test-key");
+    assert_eq!(
+        redact_provider_output(&args.join(" ")),
+        "[redacted provider output]"
+    );
     assert_eq!(
         args.iter()
             .filter(|arg| arg.as_str() == "HOME=/workdir/home")

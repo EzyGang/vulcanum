@@ -103,7 +103,12 @@ pub async fn list_events(
     let after_occurred_at = query
         .after_occurred_at
         .unwrap_or_else(|| chrono::DateTime::<chrono::Utc>::from(std::time::UNIX_EPOCH));
-    let after_sequence = query.after_sequence.unwrap_or(0) as i64;
+    let after_sequence = query
+        .after_sequence
+        .map(i64::try_from)
+        .transpose()
+        .map_err(|_| AppError::BadRequest("after_sequence is too large".to_owned()))?
+        .unwrap_or(0);
     let limit = query.limit.unwrap_or(100);
 
     let result = match auth {

@@ -2,7 +2,9 @@ use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::teams::TeamsRepository;
 use crate::models::project_configs::errors::ProjectConfigsError;
-use crate::models::project_configs::model::UpdateProjectConfigRequest;
+use crate::models::project_configs::model::{
+    CreateProjectConfigRequest, UpdateProjectConfigRequest,
+};
 use crate::models::teams::model::{DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE};
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::teams::service::TeamsService;
@@ -88,6 +90,73 @@ async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
         .expect("settings should resolve");
 
     assert_eq!(settings.max_in_progress_tasks, 3);
+}
+
+#[sqlx::test]
+async fn effective_settings_rejects_invalid_stored_agent_backend(pool: sqlx::PgPool) {
+    let svc = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
+    let config_id = test_helpers::insert_project_config(&pool, "invalid-agent-backend").await;
+    sqlx::query!(
+        "UPDATE teams SET agent_backend = 'not_a_backend' WHERE id = $1",
+        test_helpers::DEFAULT_TEAM_ID,
+    )
+    .execute(&pool)
+    .await
+    .expect("team backend should update");
+    let config = svc
+        .find_by_id(config_id)
+        .await
+        .expect("project config should exist");
+
+    let err = svc
+        .effective_settings(&config)
+        .await
+        .expect_err("invalid stored backend should not default");
+
+    assert!(matches!(err, ProjectConfigsError::InvalidAgentBackend(_)));
+}
+
+#[sqlx::test]
+async fn create_rejects_enabled_automation_without_repos(pool: sqlx::PgPool) {
+    let svc = ProjectConfigsService::new(
+        ProjectConfigsRepository::new(),
+        pool.clone(),
+        IntegrationProvidersRepository::new(),
+        TeamsService::new(TeamsRepository::new(), pool.clone()),
+    );
+
+    let err = svc
+        .create(
+            test_helpers::DEFAULT_TEAM_ID,
+            CreateProjectConfigRequest {
+                external_project_id: "missing-repos".to_owned(),
+                name: String::new(),
+                external_workspace_id: String::new(),
+                enabled: true,
+                pickup_column: "todo".to_owned(),
+                progress_column: "doing".to_owned(),
+                target_column: "done".to_owned(),
+                max_turns: 3,
+                prompt_template: None,
+                repo_full_names: Vec::new(),
+                agents_md: None,
+                review_enabled: None,
+                review_max_turns: None,
+                review_prompt_template: None,
+                max_in_progress_tasks: None,
+                integration_type: Default::default(),
+                provider_id: uuid::Uuid::new_v4(),
+            },
+        )
+        .await
+        .expect_err("enabled automation without repositories must be rejected");
+
+    assert!(matches!(err, ProjectConfigsError::RepositoriesRequired));
 }
 
 #[sqlx::test]

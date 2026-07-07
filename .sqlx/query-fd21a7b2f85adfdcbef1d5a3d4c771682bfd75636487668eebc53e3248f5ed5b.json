@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE teams SET agent_backend = 'not_a_backend' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fd21a7b2f85adfdcbef1d5a3d4c771682bfd75636487668eebc53e3248f5ed5b"
+}

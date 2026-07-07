@@ -1,5 +1,3 @@
-use std::process::Stdio;
-
 use tokio::process::Child;
 use vulcanum_shared::runtime::types::SessionStatus;
 
@@ -48,17 +46,27 @@ impl OpenCodeRunningSession {
         }
     }
 
-    pub async fn kill_server(&mut self) {
-        if let Some(ref mut child) = self.server_process {
-            if let Some(pid) = child.id() {
-                let _ = std::process::Command::new("kill")
-                    .args(["-9", &format!("-{pid}")])
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .status();
-            }
-            let _ = child.wait().await;
+    pub async fn cleanup_server(&mut self) {
+        if let Some(child) = self.server_process.take() {
+            super::cleanup::stop_host_process(child).await;
         }
-        super::cleanup::remove_container(self.container_name.as_deref());
+
+        let container_name = self.container_name.take();
+        super::cleanup::remove_container(container_name.as_deref());
+    }
+
+    fn cleanup_server_sync(&mut self) {
+        if let Some(child) = self.server_process.take() {
+            super::cleanup::stop_host_process_sync(child);
+        }
+
+        let container_name = self.container_name.take();
+        super::cleanup::remove_container(container_name.as_deref());
+    }
+}
+
+impl Drop for OpenCodeRunningSession {
+    fn drop(&mut self) {
+        self.cleanup_server_sync();
     }
 }

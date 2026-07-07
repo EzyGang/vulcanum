@@ -26,9 +26,26 @@ pub(crate) fn kill_host_process_group(entry: &JournalEntry) {
         Some(pid) => pid,
         None => return,
     };
+    kill_process_tree(pid);
+}
+
+#[cfg(unix)]
+fn kill_process_tree(pid: i64) {
     let _ = std::process::Command::new("kill")
         .args(["-9", &format!("-{pid}")])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
 }
+
+#[cfg(windows)]
+fn kill_process_tree(pid: i64) {
+    let _ = std::process::Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
+#[cfg(not(any(unix, windows)))]
+fn kill_process_tree(_pid: i64) {}

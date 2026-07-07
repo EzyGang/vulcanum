@@ -21,9 +21,7 @@ impl WorkersService {
         let refresh_token = generate_random_token();
         let refresh_hash = hash_token(&refresh_token);
         let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
-        let max_concurrent_jobs = req
-            .max_concurrent_jobs
-            .unwrap_or(model::DEFAULT_MAX_CONCURRENT_JOBS);
+        let max_concurrent_jobs = validate_max_concurrent_jobs(req.max_concurrent_jobs)?;
         let capabilities = serde_json::to_value(&req.capabilities).map_err(|e| {
             WorkersError::RegistrationFailed(format!("invalid worker capabilities: {e}"))
         })?;
@@ -62,4 +60,21 @@ impl WorkersService {
             max_concurrent_jobs: worker.max_concurrent_jobs,
         })
     }
+}
+
+fn validate_max_concurrent_jobs(value: Option<i32>) -> Result<i32, WorkersError> {
+    let value = value.unwrap_or(model::DEFAULT_MAX_CONCURRENT_JOBS);
+    if value < 1 {
+        return Err(WorkersError::RegistrationFailed(
+            "max_concurrent_jobs must be at least 1".to_owned(),
+        ));
+    }
+    if value > vulcanum_shared::constants::MAX_WORKER_CAPACITY {
+        return Err(WorkersError::RegistrationFailed(format!(
+            "max_concurrent_jobs must be at most {}",
+            vulcanum_shared::constants::MAX_WORKER_CAPACITY
+        )));
+    }
+
+    Ok(value)
 }

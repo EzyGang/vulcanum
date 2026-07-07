@@ -22,3 +22,5 @@ mod review_feedback_tests;
 mod telemetry_tests;
 #[cfg(test)]
 mod validate_tests;
+#[cfg(test)]
+mod worker_state_tests;

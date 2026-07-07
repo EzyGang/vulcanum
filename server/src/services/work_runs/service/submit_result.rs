@@ -16,28 +16,27 @@ impl WorkRunsService {
         worker_id: Uuid,
         params: SubmitResultRequest,
     ) -> Result<WorkRun, WorkRunsError> {
-        let status = match params.finish_status {
-            Some(FinishStatus::Completed) => WorkRunStatus::Completed,
-            Some(FinishStatus::Failed) | Some(FinishStatus::Blocked) => WorkRunStatus::Failed,
-            None => {
-                if params.exit_code == 0 {
-                    WorkRunStatus::Completed
-                } else {
-                    WorkRunStatus::Failed
-                }
-            }
-        };
+        let status = result_status(&params);
         let pr_urls = normalized_pr_urls(&params);
 
         let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
 
         if !matches!(run.status, WorkRunStatus::Running) {
+            if is_idempotent_retry(&run, worker_id, &params, status, &pr_urls) {
+                let existing_pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
+                if existing_pr_urls == pr_urls {
+                    return Ok(run);
+                }
+            }
+
             return Err(WorkRunsError::InvalidStatusTransition);
         }
 
         if run.worker_id != Some(worker_id) {
             return Err(WorkRunsError::NotOwned);
         }
+
+        let finish_blocked_reason = blocked_finish_reason(&params);
 
         let mut tx = self.db.begin().await.map_err(WorkRunsError::Database)?;
 
@@ -59,7 +58,7 @@ impl WorkRunsService {
                     model_used: params.model_used.as_deref(),
                     finish_status: params.finish_status.as_ref().map(|s| s.as_str()),
                     result_summary: params.result_summary.as_deref(),
-                    finish_blocked_reason: None,
+                    finish_blocked_reason,
                     finish_next_column: None,
                 },
             )
@@ -85,17 +84,8 @@ impl WorkRunsService {
             )
             .await?;
 
-        if let Err(e) = self
-            .workers_repo
-            .decrement_active_jobs(&mut *tx, worker_id)
-            .await
-        {
-            tracing::warn!(
-                error = %e,
-                worker_id = %worker_id,
-                "failed to decrement active_jobs"
-            );
-        }
+        self.release_worker_active_slot(&mut tx, worker_id, id)
+            .await?;
 
         match status {
             WorkRunStatus::Completed => {
@@ -126,29 +116,13 @@ impl WorkRunsService {
                                 "worker reached unhealthy threshold, marking unhealthy"
                             );
 
-                            if let Err(e) = self
-                                .work_runs_repo
+                            self.work_runs_repo
                                 .reset_worker_active_jobs(&mut *tx, worker_id)
-                                .await
-                            {
-                                tracing::warn!(
-                                    error = %e,
-                                    worker_id = %worker_id,
-                                    "failed to reset worker active jobs on unhealthy transition"
-                                );
-                            }
+                                .await?;
 
-                            if let Err(e) = self
-                                .workers_repo
+                            self.workers_repo
                                 .reset_active_jobs_only(&mut *tx, worker_id)
-                                .await
-                            {
-                                tracing::warn!(
-                                    error = %e,
-                                    worker_id = %worker_id,
-                                    "failed to reset worker active_jobs on unhealthy transition"
-                                );
-                            }
+                                .await?;
                         }
                     }
                     Err(e) => {
@@ -207,6 +181,58 @@ impl WorkRunsService {
 
         Ok(updated)
     }
+}
+
+#[must_use]
+fn result_status(params: &SubmitResultRequest) -> WorkRunStatus {
+    match params.finish_status {
+        Some(FinishStatus::Completed) => WorkRunStatus::Completed,
+        Some(FinishStatus::Failed | FinishStatus::Blocked) => WorkRunStatus::Failed,
+        None => match params.exit_code {
+            0 => WorkRunStatus::Completed,
+            _ => WorkRunStatus::Failed,
+        },
+    }
+}
+
+#[must_use]
+fn blocked_finish_reason(params: &SubmitResultRequest) -> Option<&str> {
+    match params.finish_status {
+        Some(FinishStatus::Blocked) => params.result_summary.as_deref().or(Some("blocked")),
+        _ => None,
+    }
+}
+
+#[must_use]
+fn is_idempotent_retry(
+    run: &WorkRun,
+    worker_id: Uuid,
+    params: &SubmitResultRequest,
+    status: WorkRunStatus,
+    pr_urls: &[String],
+) -> bool {
+    if run.worker_id != Some(worker_id) {
+        return false;
+    }
+
+    if !matches!(run.status, WorkRunStatus::Completed | WorkRunStatus::Failed) {
+        return false;
+    }
+
+    run.status == status
+        && run.result_pr_url.as_deref() == Some(pr_urls.first().map(String::as_str).unwrap_or(""))
+        && run.result_exit_code == Some(params.exit_code)
+        && run.tokens_used == Some(params.tokens_used)
+        && run.duration_ms == Some(params.duration_ms)
+        && run.input_tokens == Some(params.input_tokens)
+        && run.output_tokens == Some(params.output_tokens)
+        && run.cache_read_tokens == Some(params.cache_read_tokens)
+        && run.cache_write_tokens == Some(params.cache_write_tokens)
+        && run.model_used.as_deref() == params.model_used.as_deref()
+        && run.finish_status.as_deref() == params.finish_status.as_ref().map(|s| s.as_str())
+        && run.result_summary.as_deref() == params.result_summary.as_deref()
+        && run.finish_next_column.is_none()
+        && run.finish_blocked_reason.as_deref() == blocked_finish_reason(params)
 }
 
 #[must_use]

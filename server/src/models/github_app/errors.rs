@@ -10,6 +10,8 @@ pub enum GithubAppError {
     InstallationAlreadyLinked,
     #[error("invalid repo_url: {0}")]
     InvalidRepoUrl(String),
+    #[error("invalid github repository identifier: {0}")]
+    InvalidRepoIdentifier(String),
     #[error("github api error: {0}")]
     Api(String),
     #[error("invalid base64 private key: {0}")]

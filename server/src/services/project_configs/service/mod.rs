@@ -69,6 +69,10 @@ impl ProjectConfigsService {
         team_id: Uuid,
         mut params: CreateProjectConfigRequest,
     ) -> Result<ProjectConfig, ProjectConfigsError> {
+        if params.enabled && !has_repo_full_names(&params.repo_full_names) {
+            return Err(ProjectConfigsError::RepositoriesRequired);
+        }
+
         let client = self.resolve_client(&params.provider_id, team_id).await?;
         let all_columns = client
             .fetch_columns(&params.external_project_id)

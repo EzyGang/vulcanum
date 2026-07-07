@@ -89,7 +89,14 @@ impl PollerService {
             {
                 Ok(true) => {
                     inserted += 1;
-                    self.move_task_to_progress(&fetcher, config, &task.id).await;
+                    if let Err(e) = self.move_task_to_progress(&fetcher, config, &task.id).await {
+                        tracing::warn!(
+                            project_config_id = %config.id,
+                            task_id = %task.id,
+                            error = %e,
+                            "work run inserted but provider task move failed",
+                        );
+                    }
                 }
                 Ok(false) => {
                     skipped += 1;
@@ -139,20 +146,27 @@ impl PollerService {
             }
         };
 
+        let pickup_tasks = fetcher
+            .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
+            .await?;
         for run in &blocked_runs {
-            let tasks = fetcher
-                .fetch_tasks_in_column(&config.external_project_id, &config.pickup_column)
-                .await?;
-
-            if tasks.iter().any(|t| t.id == run.external_task_ref) {
+            if pickup_tasks.iter().any(|t| t.id == run.external_task_ref) {
                 match self
                     .work_runs_repo
                     .reset_blocked_to_pending(&self.db, run.id)
                     .await
                 {
                     Ok(()) => {
-                        self.move_task_to_progress(&fetcher, config, &run.external_task_ref)
-                            .await;
+                        if let Err(e) = self
+                            .move_task_to_progress(&fetcher, config, &run.external_task_ref)
+                            .await
+                        {
+                            tracing::warn!(
+                                work_run_id = %run.id,
+                                error = %e,
+                                "work run unblocked but provider task move failed",
+                            );
+                        }
                     }
                     Err(e) => {
                         tracing::warn!(
@@ -194,22 +208,11 @@ impl PollerService {
         fetcher: &Arc<dyn TaskFetcher>,
         config: &ProjectConfig,
         task_id: &str,
-    ) {
-        match fetcher
+    ) -> Result<(), PollError> {
+        fetcher
             .update_task_status(task_id, &config.progress_column)
-            .await
-        {
-            Ok(()) => (),
-            Err(e) => {
-                tracing::warn!(
-                    project_config_id = %config.id,
-                    task_id,
-                    progress_column = %config.progress_column,
-                    error = %e,
-                    "failed to move picked up task to progress column",
-                );
-            }
-        }
+            .await?;
+        Ok(())
     }
 
     async fn resolve_fetcher(

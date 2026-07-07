@@ -102,6 +102,10 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
         .dispatch_to_worker(&pool, wr_id, worker_uuid)
         .await
         .expect("Should dispatch");
+    dispatch_repo
+        .increment_worker_jobs(&pool, worker_uuid)
+        .await
+        .expect("Should reserve worker capacity");
 
     state
         .jobs

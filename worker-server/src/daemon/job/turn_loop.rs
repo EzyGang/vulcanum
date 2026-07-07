@@ -1,13 +1,13 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
 use vulcanum_shared::api_types::WorkRunType;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
-use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
+use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::worker_state::WorkerState;
 
 use super::execution::artifact::read_finish_artifact;
@@ -36,34 +36,14 @@ pub(crate) async fn run_turn_loop(
 ) -> bool {
     let mut turn = initial_turn;
     let mut review_loop = ReviewLoopState::new(work_type, max_turns);
+    let mut cancel_rx = ctx.reporter.cancel_receiver();
 
     loop {
-        let session_export = match running_session.wait().await {
-            Ok(export) => export,
-            Err(e) => {
-                tracing::error!(
-                    worker_id = %ctx.worker_id,
-                    work_run_id = %ctx.job_id,
-                    turn = turn,
-                    error = %e,
-                    "session wait failed",
-                );
-                let _ = running_session.cancel().await;
-                ctx.reporter.emit(
-                    "session.failed",
-                    serde_json::json!({"reason": "wait_error", "turn": turn}),
-                );
-                submit_failed_result(
-                    ctx.client.clone(),
-                    ctx.worker_state.clone(),
-                    ctx.journal.clone(),
-                    ctx.job_id,
-                    &FailedResult::empty(),
-                )
-                .await;
-                return false;
-            }
-        };
+        let session_export =
+            match wait_for_session(running_session, &mut cancel_rx, turn, ctx).await {
+                Some(export) => export,
+                None => return false,
+            };
 
         tracing::info!(
             worker_id = %ctx.worker_id,
@@ -74,29 +54,38 @@ pub(crate) async fn run_turn_loop(
             "turn completed",
         );
 
-        ctx.reporter.emit(
-            "turn.completed",
-            serde_json::json!({
-                "turn": turn,
-                "exit_code": session_export.exit_code,
-                "tokens_used": session_export.tokens_used,
-            }),
-        );
+        ctx.reporter
+            .emit(
+                "turn.completed",
+                serde_json::json!({
+                    "turn": turn,
+                    "exit_code": session_export.exit_code,
+                    "tokens_used": session_export.tokens_used,
+                }),
+            )
+            .await;
+
+        if session_export.exit_code != 0 {
+            submit_provider_failure(ctx, turn, &session_export).await;
+            return true;
+        }
 
         let finish_artifact = read_finish_artifact(artifact_path);
 
-        if let Some(ref artifact) = finish_artifact {
+        if let Some(artifact) = &finish_artifact {
             if let Some(prompt) = review_loop.prompt_after_artifact(artifact) {
                 let progress = review_loop.progress();
                 remove_finish_artifact(artifact_path);
-                ctx.reporter.emit(
-                    "review.fix.continuing",
-                    serde_json::json!({
-                        "turn": turn,
-                        "fix_pass": progress.fix_pass,
-                        "max_fix_passes": progress.max_fix_passes,
-                    }),
-                );
+                ctx.reporter
+                    .emit(
+                        "review.fix.continuing",
+                        serde_json::json!({
+                            "turn": turn,
+                            "fix_pass": progress.fix_pass,
+                            "max_fix_passes": progress.max_fix_passes,
+                        }),
+                    )
+                    .await;
                 if !continue_session(running_session, &prompt, turn, ctx).await {
                     return false;
                 }
@@ -113,10 +102,12 @@ pub(crate) async fn run_turn_loop(
                 status = %artifact.status,
                 "agent declared finish via artifact",
             );
-            ctx.reporter.emit(
-                "finish.artifact.found",
-                serde_json::json!({"status": artifact.status.to_string()}),
-            );
+            ctx.reporter
+                .emit(
+                    "finish.artifact.found",
+                    serde_json::json!({"status": artifact.status.to_string()}),
+                )
+                .await;
             submit_turn_result(
                 &ctx.client,
                 &ctx.worker_state,
@@ -130,74 +121,23 @@ pub(crate) async fn run_turn_loop(
         }
 
         if let Some(prompt) = review_loop.prompt_after_fix_turn() {
-            if session_export.exit_code != 0 {
-                tracing::warn!(
-                    worker_id = %ctx.worker_id,
-                    work_run_id = %ctx.job_id,
-                    turn = turn,
-                    exit_code = session_export.exit_code,
-                    provider_error = ?session_export.failure_payload,
-                    "review fix turn failed, not continuing review loop",
-                );
-                submit_turn_result(
-                    &ctx.client,
-                    &ctx.worker_state,
-                    &ctx.journal,
-                    ctx.job_id,
-                    &session_export,
-                    None,
+            let progress = review_loop.progress();
+            ctx.reporter
+                .emit(
+                    "review.fix.completed",
+                    serde_json::json!({
+                        "turn": turn,
+                        "fix_pass": progress.fix_pass,
+                        "max_fix_passes": progress.max_fix_passes,
+                    }),
                 )
                 .await;
-                return true;
-            }
-
-            let progress = review_loop.progress();
-            ctx.reporter.emit(
-                "review.fix.completed",
-                serde_json::json!({
-                    "turn": turn,
-                    "fix_pass": progress.fix_pass,
-                    "max_fix_passes": progress.max_fix_passes,
-                }),
-            );
             if !continue_session(running_session, &prompt, turn, ctx).await {
                 return false;
             }
             turn += 1;
             let _ = ctx.journal.update_turn(ctx.job_id, turn);
             continue;
-        }
-
-        if session_export.exit_code != 0 {
-            tracing::warn!(
-                worker_id = %ctx.worker_id,
-                work_run_id = %ctx.job_id,
-                turn = turn,
-                exit_code = session_export.exit_code,
-                provider_error = ?session_export.failure_payload,
-                "session failed, not continuing turn loop",
-            );
-            ctx.reporter.emit(
-                "session.failed",
-                serde_json::json!({
-                    "reason": "nonzero_exit",
-                    "turn": turn,
-                    "exit_code": session_export.exit_code,
-                    "tokens_used": session_export.tokens_used,
-                    "model_used": session_export.model_used.clone(),
-                    "provider_error": session_export.failure_payload.clone(),
-                }),
-            );
-            submit_turn_result(
-                &ctx.client,
-                &ctx.worker_state,
-                &ctx.journal,
-                ctx.job_id,
-                &session_export,
-                None,
-            )
-            .await;
-            return true;
         }
 
         if turn >= review_loop.effective_max_turns() {
@@ -210,10 +150,7 @@ pub(crate) async fn run_turn_loop(
                 max_turns = max_turns,
                 "max turns reached, submitting result",
             );
-            ctx.reporter.emit(
-                "turn.max_reached",
-                serde_json::json!({"turn": turn, "max_turns": review_loop.effective_max_turns()}),
-            );
+            ctx.reporter.emit("turn.max_reached", serde_json::json!({"turn": turn, "max_turns": review_loop.effective_max_turns()})).await;
             submit_turn_result(
                 &ctx.client,
                 &ctx.worker_state,
@@ -227,10 +164,12 @@ pub(crate) async fn run_turn_loop(
         }
 
         let prompt = continuation_prompt(turn, review_loop.effective_max_turns());
-        ctx.reporter.emit(
-            "turn.continuing",
-            serde_json::json!({"turn": turn, "next_turn": turn + 1}),
-        );
+        ctx.reporter
+            .emit(
+                "turn.continuing",
+                serde_json::json!({"turn": turn, "next_turn": turn + 1}),
+            )
+            .await;
         if !continue_session(running_session, &prompt, turn, ctx).await {
             return false;
         }
@@ -238,6 +177,151 @@ pub(crate) async fn run_turn_loop(
         turn += 1;
         let _ = ctx.journal.update_turn(ctx.job_id, turn);
     }
+}
+
+async fn wait_for_session(
+    running_session: &mut Box<dyn RunningSession>,
+    cancel_rx: &mut watch::Receiver<bool>,
+    turn: i32,
+    ctx: &TurnLoopCtx,
+) -> Option<SessionExport> {
+    if *cancel_rx.borrow() {
+        return cancel_running_session(running_session, turn, ctx).await;
+    }
+
+    loop {
+        tokio::select! {
+            result = running_session.wait() => {
+                return match result {
+                    Ok(export) => Some(export),
+                    Err(error) => {
+                        tracing::error!(
+                            worker_id = %ctx.worker_id,
+                            work_run_id = %ctx.job_id,
+                            turn = turn,
+                            error = %error,
+                            "session wait failed",
+                        );
+                        let _ = running_session.cancel().await;
+                        ctx.reporter
+                            .emit(
+                                "session.failed",
+                                serde_json::json!({"reason": "wait_error", "turn": turn}),
+                            )
+                            .await;
+                        submit_failed_result(
+                            ctx.client.clone(),
+                            ctx.worker_state.clone(),
+                            ctx.journal.clone(),
+                            ctx.job_id,
+                            &FailedResult::empty(),
+                        )
+                        .await;
+                        None
+                    }
+                };
+            }
+            changed = cancel_rx.changed() => match changed {
+                Ok(()) if *cancel_rx.borrow() => {
+                    return cancel_running_session(running_session, turn, ctx).await;
+                }
+                Ok(()) => (),
+                Err(_) => (),
+            },
+        }
+    }
+}
+
+async fn cancel_running_session(
+    running_session: &mut Box<dyn RunningSession>,
+    turn: i32,
+    ctx: &TurnLoopCtx,
+) -> Option<SessionExport> {
+    tracing::warn!(
+        worker_id = %ctx.worker_id,
+        work_run_id = %ctx.job_id,
+        turn = turn,
+        "server-requested cancellation received, cancelling running session",
+    );
+    if let Err(error) = running_session.cancel().await {
+        tracing::warn!(
+            worker_id = %ctx.worker_id,
+            work_run_id = %ctx.job_id,
+            turn = turn,
+            error = %error,
+            "provider cancellation returned an error after cleanup",
+        );
+    }
+    ctx.reporter
+        .emit(
+            "session.cancelled",
+            serde_json::json!({"reason": "server_requested", "turn": turn}),
+        )
+        .await;
+    match running_session.export().await {
+        Ok(export) => {
+            submit_turn_result(
+                &ctx.client,
+                &ctx.worker_state,
+                &ctx.journal,
+                ctx.job_id,
+                &export,
+                None,
+            )
+            .await;
+        }
+        Err(error) => {
+            tracing::warn!(
+                worker_id = %ctx.worker_id,
+                work_run_id = %ctx.job_id,
+                turn = turn,
+                error = %error,
+                "failed to export cancelled session",
+            );
+            submit_failed_result(
+                ctx.client.clone(),
+                ctx.worker_state.clone(),
+                ctx.journal.clone(),
+                ctx.job_id,
+                &FailedResult::empty(),
+            )
+            .await;
+        }
+    }
+    None
+}
+
+async fn submit_provider_failure(ctx: &TurnLoopCtx, turn: i32, session_export: &SessionExport) {
+    tracing::warn!(
+        worker_id = %ctx.worker_id,
+        work_run_id = %ctx.job_id,
+        turn = turn,
+        exit_code = session_export.exit_code,
+        provider_error = ?session_export.failure_payload,
+        "session failed, not continuing turn loop",
+    );
+    ctx.reporter
+        .emit(
+            "session.failed",
+            serde_json::json!({
+                "reason": "nonzero_exit",
+                "turn": turn,
+                "exit_code": session_export.exit_code,
+                "tokens_used": session_export.tokens_used,
+                "model_used": session_export.model_used.clone(),
+                "provider_error": session_export.failure_payload.clone(),
+            }),
+        )
+        .await;
+    submit_turn_result(
+        &ctx.client,
+        &ctx.worker_state,
+        &ctx.journal,
+        ctx.job_id,
+        session_export,
+        None,
+    )
+    .await;
 }
 
 async fn continue_session(
@@ -254,10 +338,12 @@ async fn continue_session(
             error = %e,
             "continuation prompt failed",
         );
-        ctx.reporter.emit(
-            "session.failed",
-            serde_json::json!({"reason": "continuation_failed", "turn": turn}),
-        );
+        ctx.reporter
+            .emit(
+                "session.failed",
+                serde_json::json!({"reason": "continuation_failed", "turn": turn}),
+            )
+            .await;
         submit_failed_result(
             ctx.client.clone(),
             ctx.worker_state.clone(),

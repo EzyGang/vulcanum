@@ -64,6 +64,10 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
         .dispatch_to_worker(&pool, review_run.id, worker_uuid)
         .await
         .expect("Should dispatch");
+    DispatchRepository
+        .increment_worker_jobs(&pool, worker_uuid)
+        .await
+        .expect("Should reserve worker capacity");
 
     state
         .jobs

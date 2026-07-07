@@ -13,7 +13,7 @@ pub struct SecretCipher {
     cipher: Aes256Gcm,
 }
 
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct EncryptedSecret {
     pub nonce: String,
     pub ciphertext: String,

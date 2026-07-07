@@ -2,6 +2,8 @@ use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
+use crate::providers::logging::redact_provider_output;
+
 use super::api;
 use super::events;
 use super::runner::OpenCodeRunningSession;
@@ -60,7 +62,8 @@ impl OpenCodeServeRuntime {
         let logs = [stdout.trim(), stderr.trim()]
             .into_iter()
             .filter(|s| !s.is_empty())
-            .collect::<Vec<&str>>()
+            .map(redact_provider_output)
+            .collect::<Vec<String>>()
             .join("\n---\n");
         match logs.is_empty() {
             true => None,
@@ -88,7 +91,7 @@ impl OpenCodeServeRuntime {
             std::time::Instant::now() + std::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
 
         loop {
-            if let Some(ref mut c) = child {
+            if let Some(c) = child.as_mut() {
                 match c.try_wait() {
                     Ok(Some(status)) => {
                         return Err(HarnessError::ServerLaunch(format!(
@@ -147,6 +150,16 @@ impl OpenCodeServeRuntime {
             tokio::time::sleep(std::time::Duration::from_millis(HEALTH_CHECK_INTERVAL_MS)).await;
         }
     }
+
+    async fn cleanup_failed_start(
+        child_process: &mut Option<tokio::process::Child>,
+        container_name: Option<&str>,
+    ) {
+        if let Some(child) = child_process.take() {
+            super::cleanup::stop_host_process(child).await;
+        }
+        super::cleanup::remove_container(container_name);
+    }
 }
 
 impl AgentRuntime for OpenCodeServeRuntime {
@@ -176,20 +189,39 @@ impl AgentRuntime for OpenCodeServeRuntime {
         let base_url = format!("http://127.0.0.1:{host_port}");
         let oc_client = super::OpenCodeClient::new(&base_url);
 
-        Self::wait_for_health(
+        if let Err(error) = Self::wait_for_health(
             &oc_client,
             &mut child_process,
             env.container_name.as_deref(),
         )
-        .await?;
+        .await
+        {
+            Self::cleanup_failed_start(&mut child_process, env.container_name.as_deref()).await;
+            return Err(error);
+        }
         tracing::debug!(host_port, "opencode server healthy");
 
-        let event_stream = events::connect_events(&oc_client).await?;
+        let event_stream = match events::connect_events(&oc_client).await {
+            Ok(stream) => stream,
+            Err(error) => {
+                Self::cleanup_failed_start(&mut child_process, env.container_name.as_deref()).await;
+                return Err(error);
+            }
+        };
         tracing::debug!("event stream connected");
 
-        let sess = api::create_session(&oc_client, "vulcanum-run").await?;
+        let sess = match api::create_session(&oc_client, "vulcanum-run").await {
+            Ok(session) => session,
+            Err(error) => {
+                Self::cleanup_failed_start(&mut child_process, env.container_name.as_deref()).await;
+                return Err(error);
+            }
+        };
         tracing::debug!(session_id = %sess.id, "session created");
-        api::send_message_async(&oc_client, &sess.id, prompt).await?;
+        if let Err(error) = api::send_message_async(&oc_client, &sess.id, prompt).await {
+            Self::cleanup_failed_start(&mut child_process, env.container_name.as_deref()).await;
+            return Err(error);
+        }
         tracing::debug!(session_id = %sess.id, prompt_len = prompt.len(), "prompt submitted");
 
         let max_duration = env.limits.max_duration_secs;

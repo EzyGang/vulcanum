@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, watch, Mutex, RwLock};
+use tokio::task::JoinHandle;
 
 use vulcanum_shared::api_types::WireEvent;
 use vulcanum_shared::client::ApiClient;
@@ -10,10 +12,11 @@ use vulcanum_shared::worker_state::WorkerState;
 use crate::daemon::auth::with_retry_on_401;
 
 pub(crate) struct EventReporter {
-    client: Arc<ApiClient>,
-    worker_state: Arc<RwLock<WorkerState>>,
     job_id: uuid::Uuid,
     sequence: AtomicU64,
+    sender: Mutex<Option<mpsc::UnboundedSender<WireEvent>>>,
+    pump: Mutex<Option<JoinHandle<()>>>,
+    cancel_rx: watch::Receiver<bool>,
 }
 
 impl EventReporter {
@@ -22,15 +25,23 @@ impl EventReporter {
         worker_state: Arc<RwLock<WorkerState>>,
         job_id: uuid::Uuid,
     ) -> Self {
+        let (sender, receiver) = mpsc::unbounded_channel();
+        let (cancel_tx, cancel_rx) = watch::channel(false);
+        let pump_cancel_tx = cancel_tx.clone();
+        let pump = tokio::spawn(async move {
+            run_event_pump(client, worker_state, job_id, receiver, pump_cancel_tx).await;
+        });
+
         Self {
-            client,
-            worker_state,
             job_id,
             sequence: AtomicU64::new(0),
+            sender: Mutex::new(Some(sender)),
+            pump: Mutex::new(Some(pump)),
+            cancel_rx,
         }
     }
 
-    pub(crate) fn emit(&self, event_type: &str, payload: serde_json::Value) {
+    pub(crate) async fn emit(&self, event_type: &str, payload: serde_json::Value) {
         let seq = self.sequence.fetch_add(1, Ordering::Relaxed) + 1;
         let wire = WireEvent {
             sequence: seq,
@@ -38,34 +49,126 @@ impl EventReporter {
             payload,
             occurred_at: chrono::Utc::now(),
         };
-        let client = Arc::clone(&self.client);
-        let worker_state = Arc::clone(&self.worker_state);
-        let job_id = self.job_id;
-        let events = vec![wire];
-        tokio::spawn(async move {
-            match with_retry_on_401(&client, &worker_state, |token| {
-                let client = client.clone();
-                let events = events.clone();
-                async move { client.append_events(job_id, &events, &token).await }
-            })
-            .await
-            {
-                Ok(resp) => {
-                    if resp.should_cancel {
-                        tracing::warn!(
-                            work_run_id = %job_id,
-                            "server requested cancel via event response"
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        work_run_id = %job_id,
-                        error = %e,
-                        "failed to send event to server"
-                    );
-                }
+        let sender = self.sender.lock().await;
+        let Some(sender) = sender.as_ref() else {
+            tracing::warn!(
+                work_run_id = %self.job_id,
+                sequence = seq,
+                "event reporter pump already shut down"
+            );
+            return;
+        };
+        if sender.send(wire).is_err() {
+            tracing::warn!(
+                work_run_id = %self.job_id,
+                sequence = seq,
+                "event reporter pump is closed"
+            );
+        }
+    }
+
+    pub(crate) fn cancel_receiver(&self) -> watch::Receiver<bool> {
+        self.cancel_rx.clone()
+    }
+
+    pub(crate) async fn shutdown(&self) {
+        self.sender.lock().await.take();
+
+        let pump = self.pump.lock().await.take();
+        if let Some(pump) = pump {
+            if let Err(error) = pump.await {
+                tracing::warn!(
+                    work_run_id = %self.job_id,
+                    error = %error,
+                    "event reporter pump task failed"
+                );
             }
-        });
+        }
+    }
+}
+
+async fn run_event_pump(
+    client: Arc<ApiClient>,
+    worker_state: Arc<RwLock<WorkerState>>,
+    job_id: uuid::Uuid,
+    mut receiver: mpsc::UnboundedReceiver<WireEvent>,
+    cancel_tx: watch::Sender<bool>,
+) {
+    let mut next_sequence = 1;
+    let mut pending = BTreeMap::new();
+
+    while let Some(event) = receiver.recv().await {
+        pending.insert(event.sequence, event);
+        send_ready_events(
+            &client,
+            &worker_state,
+            job_id,
+            &cancel_tx,
+            &mut pending,
+            &mut next_sequence,
+        )
+        .await;
+    }
+
+    for (_, event) in pending {
+        send_event(&client, &worker_state, job_id, &cancel_tx, event).await;
+    }
+}
+
+async fn send_ready_events(
+    client: &Arc<ApiClient>,
+    worker_state: &Arc<RwLock<WorkerState>>,
+    job_id: uuid::Uuid,
+    cancel_tx: &watch::Sender<bool>,
+    pending: &mut BTreeMap<u64, WireEvent>,
+    next_sequence: &mut u64,
+) {
+    while let Some(event) = pending.remove(next_sequence) {
+        send_event(client, worker_state, job_id, cancel_tx, event).await;
+        *next_sequence += 1;
+    }
+}
+
+async fn send_event(
+    client: &Arc<ApiClient>,
+    worker_state: &Arc<RwLock<WorkerState>>,
+    job_id: uuid::Uuid,
+    cancel_tx: &watch::Sender<bool>,
+    event: WireEvent,
+) {
+    let sequence = event.sequence;
+    let events = vec![event];
+    match with_retry_on_401(client, worker_state, |token| {
+        let client = Arc::clone(client);
+        let events = events.clone();
+        async move { client.append_events(job_id, &events, &token).await }
+    })
+    .await
+    {
+        Ok(resp) => {
+            if resp.accepted == 0 {
+                tracing::debug!(
+                    work_run_id = %job_id,
+                    sequence,
+                    "server accepted no new events"
+                );
+            }
+            if resp.should_cancel {
+                let _ = cancel_tx.send(true);
+                tracing::warn!(
+                    work_run_id = %job_id,
+                    sequence,
+                    "server requested cancel via event response"
+                );
+            }
+        }
+        Err(error) => {
+            tracing::warn!(
+                work_run_id = %job_id,
+                sequence,
+                error = %error,
+                "failed to send event to server"
+            );
+        }
     }
 }

@@ -1,3 +1,6 @@
+mod repos;
+mod state_nonce;
+
 use base64::Engine;
 use octocrab::models::{Installation, InstallationId};
 use octocrab::Octocrab;
@@ -8,7 +11,6 @@ use crate::config::AppConfig;
 use crate::db::github_app::GithubAppRepository;
 use crate::models::github_app::errors::GithubAppError;
 use crate::models::github_app::model::GithubInstallation;
-use crate::util::github::parse_github_repo;
 
 pub struct GithubAppManager {
     pub(crate) repo: GithubAppRepository,
@@ -70,7 +72,7 @@ impl GithubAppManager {
         })
     }
 
-    fn app_octocrab(&self) -> Result<Octocrab, GithubAppError> {
+    pub(super) fn app_octocrab(&self) -> Result<Octocrab, GithubAppError> {
         let app_id = self.app_id.ok_or(GithubAppError::NotConfigured)?;
         let key_b64 = self
             .app_private_key
@@ -94,64 +96,6 @@ impl GithubAppManager {
             .ok_or(GithubAppError::NotConfigured)?;
         let url = format!("https://github.com/apps/{slug}/installations/new?state={state}");
         Ok(url)
-    }
-
-    pub async fn save_state_nonce(
-        &self,
-        state: &str,
-        install_state: &GithubInstallState,
-    ) -> Result<(), GithubAppError> {
-        let mut conn = self
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| GithubAppError::Redis(e.to_string()))?;
-        let key = format!("vulcanum:github_state:{state}");
-        let value = serde_json::to_string(install_state)
-            .map_err(|e| GithubAppError::Api(format!("serialize install state: {e}")))?;
-        redis::cmd("SETEX")
-            .arg(&key)
-            .arg(600u64)
-            .arg(value)
-            .query_async::<()>(&mut conn)
-            .await
-            .map_err(|e| GithubAppError::Redis(e.to_string()))?;
-        Ok(())
-    }
-
-    pub async fn verify_and_consume_state_nonce(
-        &self,
-        state: &str,
-    ) -> Result<Option<GithubInstallState>, GithubAppError> {
-        let mut conn = self
-            .redis_client
-            .get_multiplexed_async_connection()
-            .await
-            .map_err(|e| GithubAppError::Redis(e.to_string()))?;
-        let key = format!("vulcanum:github_state:{state}");
-
-        let script = redis::Script::new(
-            r#"
-            local v = redis.call("GET", KEYS[1])
-            if v then
-                redis.call("DEL", KEYS[1])
-                return v
-            end
-            return nil
-        "#,
-        );
-        let value: Option<String> = script
-            .key(&key)
-            .invoke_async(&mut conn)
-            .await
-            .map_err(|e| GithubAppError::Redis(e.to_string()))?;
-
-        match value {
-            Some(value) => serde_json::from_str(&value)
-                .map(Some)
-                .map_err(|e| GithubAppError::Api(format!("parse install state: {e}"))),
-            None => Ok(None),
-        }
     }
 
     pub async fn create_installation(
@@ -260,90 +204,5 @@ impl GithubAppManager {
                 &account_login,
             )
             .await
-    }
-
-    pub async fn list_repos(&self, team_id: Uuid) -> Result<Vec<RepoInfo>, GithubAppError> {
-        let installation = self
-            .repo
-            .get_installation(&self.db, team_id)
-            .await?
-            .ok_or(GithubAppError::NoInstallation)?;
-
-        let octo = self.app_octocrab()?;
-        let installation_client = octo
-            .installation(InstallationId(installation.github_installation_id as u64))
-            .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
-
-        let repos = installation_client
-            .get::<octocrab::Page<octocrab::models::Repository>, _, ()>(
-                "/installation/repositories",
-                None::<&()>,
-            )
-            .await
-            .map_err(|e| GithubAppError::Api(format!("list_repos: {e}")))?;
-
-        let all_repos = installation_client
-            .all_pages(repos)
-            .await
-            .map_err(|e| GithubAppError::Api(format!("list_repos pagination: {e}")))?;
-
-        let infos = all_repos
-            .into_iter()
-            .map(|r| RepoInfo {
-                owner: r.owner.map(|o| o.login).unwrap_or_default(),
-                name: r.name,
-                full_name: r.full_name.unwrap_or_default(),
-            })
-            .collect();
-
-        Ok(infos)
-    }
-
-    pub async fn generate_installation_token_for_repos(
-        &self,
-        team_id: Uuid,
-        repo_full_names: &[String],
-    ) -> Result<InstallationToken, GithubAppError> {
-        let installation = self
-            .repo
-            .get_installation(&self.db, team_id)
-            .await?
-            .ok_or(GithubAppError::NoInstallation)?;
-
-        let repo_names = repo_full_names
-            .iter()
-            .filter_map(|full_name| parse_github_repo(full_name).map(|repo| repo.name().to_owned()))
-            .collect::<Vec<String>>();
-
-        let octo = self.app_octocrab()?;
-        let route = format!(
-            "/app/installations/{}/access_tokens",
-            installation.github_installation_id
-        );
-
-        let body = serde_json::json!({
-            "repositories": repo_names,
-            "permissions": {
-                "contents": "write",
-                "pull_requests": "write"
-            }
-        });
-
-        let response: octocrab::models::InstallationToken = octo
-            .post(&route, Some(&body))
-            .await
-            .map_err(|e| GithubAppError::Api(format!("token mint failed: {e}")))?;
-
-        let expires_at = response
-            .expires_at
-            .as_ref()
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt: chrono::DateTime<chrono::FixedOffset>| dt.with_timezone(&chrono::Utc))
-            .unwrap_or_else(chrono::Utc::now);
-
-        Ok(InstallationToken {
-            token: response.token,
-            expires_at,
-        })
     }
 }

@@ -2,7 +2,7 @@ use actix_web::{dev::Payload, Error, FromRequest, HttpRequest};
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::routes::decode_jwt;
+use crate::routes::auth_utils::decode_jwt;
 
 pub struct WorkerAuth {
     pub worker_id: Uuid,

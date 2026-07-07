@@ -5,7 +5,7 @@ use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, OpenCodeProvi
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::model_providers::model::ModelProviderConfig;
 use crate::services::model_providers::auth::credentials::{
-    parse_auth, ParsedAuth, OPENAI_PROVIDER_KEY,
+    normalize_credential_env_key, parse_auth, ParsedAuth, OPENAI_PROVIDER_KEY,
 };
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::opencode_auth::openai_auth_content;
@@ -79,7 +79,7 @@ pub fn render_opencode_config(
                     if secret.is_empty() {
                         continue;
                     }
-                    let env_key = credential_env_key(&key);
+                    let env_key = normalize_credential_env_key(&key)?;
                     env.insert(env_key.clone(), secret);
                     options.insert("apiKey".to_owned(), format!("{{env:{env_key}}}"));
                 }
@@ -126,7 +126,7 @@ fn render_omp_config(
                     if secret.is_empty() {
                         continue;
                     }
-                    env.insert(credential_env_key(&key), secret);
+                    env.insert(normalize_credential_env_key(&key)?, secret);
                 }
             }
             ParsedAuth::DeviceOAuth(credential) if provider.provider_key == OPENAI_PROVIDER_KEY => {
@@ -205,42 +205,5 @@ fn omp_provider_key<'a>(provider_key: &'a str, oauth_provider_keys: &HashSet<Str
             OMP_OPENAI_CODEX_PROVIDER_KEY
         }
         _ => provider_key,
-    }
-}
-
-fn credential_env_key(key: &str) -> String {
-    decode_legacy_snake_case_env_key(key).unwrap_or_else(|| key.to_owned())
-}
-
-fn decode_legacy_snake_case_env_key(key: &str) -> Option<String> {
-    if !key.starts_with('_') || !key.contains("__") {
-        return None;
-    }
-
-    let trimmed = key.trim_matches('_');
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let mut parts: Vec<String> = Vec::new();
-    for segment in trimmed.split("__") {
-        if segment.is_empty()
-            || !segment
-                .chars()
-                .all(|ch| ch == '_' || ch.is_ascii_lowercase())
-        {
-            return None;
-        }
-
-        let part = segment.replace('_', "").to_ascii_uppercase();
-        if part.is_empty() {
-            return None;
-        }
-        parts.push(part);
-    }
-
-    match parts.is_empty() {
-        true => None,
-        false => Some(parts.join("_")),
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -11,6 +11,7 @@ use crate::services::model_providers::auth::credentials::OPENAI_PROVIDER_KEY;
 
 const MODELS_DEV_URL: &str = "https://models.dev/api.json";
 const CATALOG_TTL: Duration = Duration::from_secs(60 * 60);
+const CATALOG_HTTP_TIMEOUT: Duration = Duration::from_secs(15);
 const CODEX_ALLOWED_OPENAI_MODELS: &[&str] =
     &["gpt-5.5", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-mini"];
 const CODEX_DISALLOWED_OPENAI_MODELS: &[&str] = &["gpt-5.5-pro"];
@@ -103,11 +104,15 @@ struct RawCost {
 }
 
 impl ModelCatalogClient {
-    pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
+    pub fn new() -> Result<Self, ModelProvidersError> {
+        let client = reqwest::Client::builder()
+            .timeout(CATALOG_HTTP_TIMEOUT)
+            .build()
+            .map_err(|e| ModelProvidersError::Catalog(format!("building catalog client: {e}")))?;
+        Ok(Self {
+            client,
             cache: Arc::new(RwLock::new(None)),
-        }
+        })
     }
 
     pub async fn catalog(&self) -> Result<CatalogResponse, ModelProvidersError> {
@@ -149,7 +154,10 @@ impl ModelCatalogClient {
     #[cfg(test)]
     pub(crate) async fn from_catalog(catalog: CatalogResponse) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(CATALOG_HTTP_TIMEOUT)
+                .build()
+                .expect("build catalog test client"),
             cache: Arc::new(RwLock::new(Some(CachedCatalog {
                 fetched_at: Instant::now(),
                 catalog,
@@ -159,12 +167,7 @@ impl ModelCatalogClient {
 
     pub async fn validate_provider(&self, provider_key: &str) -> Result<(), ModelProvidersError> {
         let catalog = self.catalog().await?;
-        match catalog.providers.iter().any(|p| p.id == provider_key) {
-            true => Ok(()),
-            false => Err(ModelProvidersError::UnknownProvider(
-                provider_key.to_owned(),
-            )),
-        }
+        self.catalog_provider(&catalog, provider_key).map(|_| ())
     }
 
     pub async fn validate_model(
@@ -186,11 +189,35 @@ impl ModelCatalogClient {
             }),
         }
     }
-}
 
-impl Default for ModelCatalogClient {
-    fn default() -> Self {
-        Self::new()
+    pub async fn validate_credential_fields(
+        &self,
+        provider_key: &str,
+        fields: &[String],
+    ) -> Result<(), ModelProvidersError> {
+        let catalog = self.catalog().await?;
+        let provider = self.catalog_provider(&catalog, provider_key)?;
+        let allowed = provider.env.iter().collect::<HashSet<&String>>();
+        for field in fields {
+            if !allowed.contains(field) {
+                return Err(ModelProvidersError::InvalidAuthConfig(format!(
+                    "credential field {field} is not allowed for provider {provider_key}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    fn catalog_provider<'a>(
+        &self,
+        catalog: &'a CatalogResponse,
+        provider_key: &str,
+    ) -> Result<&'a CatalogProvider, ModelProvidersError> {
+        catalog
+            .providers
+            .iter()
+            .find(|p| p.id == provider_key)
+            .ok_or_else(|| ModelProvidersError::UnknownProvider(provider_key.to_owned()))
     }
 }
 

@@ -14,6 +14,7 @@ pub mod refresh_github_token;
 pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;
+pub(crate) mod worker_accounting;
 
 use std::sync::Arc;
 

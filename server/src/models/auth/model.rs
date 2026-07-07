@@ -34,6 +34,8 @@ pub struct LoginResponse {
 pub struct VerifyResponse {
     pub message: String,
     pub user: UserInfo,
+    #[serde(flatten)]
+    pub token_pair: AuthTokenResponse,
 }
 
 #[derive(Serialize)]

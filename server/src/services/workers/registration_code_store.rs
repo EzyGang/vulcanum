@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use sha2::Digest;
 use uuid::Uuid;
 
 use crate::models::workers::errors::WorkersError;
@@ -34,7 +35,7 @@ pub struct RegistrationCode {
 
 /// Redis-backed implementation.
 ///
-/// Keys: `vulcanum:registration_code:{code}`
+/// Keys: `vulcanum:registration_code:{sha256(code)}`
 /// Values: Unix timestamp (seconds)
 #[derive(Clone)]
 pub struct RedisCodeStore {
@@ -95,7 +96,13 @@ impl CodeStore for RedisCodeStore {
 }
 
 fn code_redis_key(code: &str) -> String {
-    format!("vulcanum:registration_code:{code}")
+    format!("vulcanum:registration_code:{}", hash_code(code))
+}
+
+fn hash_code(code: &str) -> String {
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(code.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 /// In-memory implementation for tests.

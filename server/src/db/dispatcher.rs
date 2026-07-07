@@ -91,14 +91,20 @@ impl DispatchRepository {
         db: Q,
         worker_id: Uuid,
     ) -> Result<(), DispatchError> {
-        sqlx::query!(
+        let rows = sqlx::query!(
             "UPDATE workers SET active_jobs = active_jobs + 1, status = 'busy'::worker_status
              WHERE id = $1 AND active_jobs < max_concurrent_jobs",
             worker_id,
         )
         .execute(db)
         .await
-        .map_err(map_sqlx_error)?;
+        .map_err(map_sqlx_error)?
+        .rows_affected();
+
+        if rows == 0 {
+            return Err(DispatchError::WorkerCapacityUnavailable(worker_id));
+        }
+
         Ok(())
     }
 }
