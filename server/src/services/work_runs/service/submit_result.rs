@@ -2,6 +2,7 @@ use uuid::Uuid;
 use vulcanum_shared::api_types::SubmitResultRequest;
 use vulcanum_shared::runtime::types::FinishStatus;
 
+use crate::db::task_augmentations::IncrementTaskUsageParams;
 use crate::db::work_runs::queries::SetResultParams;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
@@ -66,6 +67,22 @@ impl WorkRunsService {
 
         self.work_runs_repo
             .replace_pr_urls(&mut *tx, id, &pr_urls)
+            .await?;
+
+        self.task_augmentations_repo
+            .increment_usage(
+                &mut *tx,
+                IncrementTaskUsageParams {
+                    team_id: run.team_id,
+                    project_config_id: run.project_config_id,
+                    external_task_ref: &run.external_task_ref,
+                    tokens_used: params.tokens_used,
+                    input_tokens: params.input_tokens,
+                    output_tokens: params.output_tokens,
+                    cache_read_tokens: params.cache_read_tokens,
+                    cache_write_tokens: params.cache_write_tokens,
+                },
+            )
             .await?;
 
         if let Err(e) = self

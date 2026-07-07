@@ -1,7 +1,6 @@
 mod blocked;
 mod limits;
 pub(crate) mod prs;
-mod related_tasks;
 mod reset;
 mod result;
 

@@ -1,11 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use uuid::Uuid;
 
 use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::queryer::Queryer;
-use crate::db::work_runs::WorkRunsRepository;
+use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::models::project_configs::model::ProjectConfig;
 use crate::models::provider_configs::model::IntegrationProvider;
 use crate::models::providers::model::{
@@ -13,22 +13,20 @@ use crate::models::providers::model::{
 };
 use crate::models::task_board::errors::TaskBoardError;
 use crate::models::task_board::model::{
-    CreateTaskRequest, CreateTaskResponse, MoveTaskResponse, TaskBoardRelatedWorkRun,
-    TaskBoardResponse, TaskBoardTaskRelatedRuns, TaskLabelDeleteResponse, TaskLabelResponse,
-    TaskProviderProject, UpdateTaskRequest, UpdateTaskResponse,
+    CreateTaskRequest, CreateTaskResponse, MoveTaskResponse, TaskBoardResponse,
+    TaskBoardTaskAugmentation, TaskLabelDeleteResponse, TaskLabelResponse, TaskProviderProject,
+    UpdateTaskRequest, UpdateTaskResponse,
 };
-use crate::models::work_runs::model::TaskBoardRelatedWorkRunRow;
 use crate::services::providers::client::IntegrationClient;
 
 const DEFAULT_PRIORITY: &str = "low";
 const FALLBACK_STATUS: &str = "planned";
-const RELATED_RUN_LIMIT: i64 = 3;
 
 #[derive(Clone)]
 pub struct TaskBoardService {
     providers_repo: IntegrationProvidersRepository,
     project_configs_repo: ProjectConfigsRepository,
-    work_runs_repo: WorkRunsRepository,
+    task_augmentations_repo: TaskAugmentationsRepository,
 }
 
 impl TaskBoardService {
@@ -36,12 +34,12 @@ impl TaskBoardService {
     pub fn new(
         providers_repo: IntegrationProvidersRepository,
         project_configs_repo: ProjectConfigsRepository,
-        work_runs_repo: WorkRunsRepository,
+        task_augmentations_repo: TaskAugmentationsRepository,
     ) -> Self {
         Self {
             providers_repo,
             project_configs_repo,
-            work_runs_repo,
+            task_augmentations_repo,
         }
     }
 
@@ -77,15 +75,15 @@ impl TaskBoardService {
         if let Some(workspace_id) = project.workspace_id.as_deref() {
             board.labels = client.fetch_labels(workspace_id).await?;
         }
-        let related_task_runs = self
-            .related_task_runs(db, team_id, provider_id, external_project_id, &board)
+        let task_augmentations = self
+            .task_augmentations(db, team_id, provider_id, external_project_id, &board)
             .await?;
 
         Ok(TaskBoardResponse {
             provider_id: provider.id,
             provider_type: provider.provider_type,
             board,
-            related_task_runs,
+            task_augmentations,
         })
     }
 
@@ -243,14 +241,14 @@ impl TaskBoardService {
         Ok(TaskLabelDeleteResponse { label_id })
     }
 
-    async fn related_task_runs<'c, Q>(
+    async fn task_augmentations<'c, Q>(
         &self,
         db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         external_project_id: &str,
         board: &IntegrationBoard,
-    ) -> Result<Vec<TaskBoardTaskRelatedRuns>, TaskBoardError>
+    ) -> Result<Vec<TaskBoardTaskAugmentation>, TaskBoardError>
     where
         Q: Queryer<'c> + Copy,
     {
@@ -267,18 +265,10 @@ impl TaskBoardService {
             Some(config) => config,
             None => return Ok(Vec::new()),
         };
-        let rows = self
-            .work_runs_repo
-            .list_latest_related_for_task_refs(
-                db,
-                team_id,
-                project_config.id,
-                &task_refs,
-                RELATED_RUN_LIMIT,
-            )
-            .await?;
-
-        Ok(group_related_runs(task_refs, rows))
+        self.task_augmentations_repo
+            .list_for_task_refs(db, team_id, project_config.id, &task_refs)
+            .await
+            .map_err(TaskBoardError::from)
     }
 
     async fn load_provider<'c, Q>(
@@ -346,43 +336,6 @@ pub(crate) fn collect_board_task_refs(board: &IntegrationBoard) -> Vec<String> {
     task_refs
 }
 
-#[must_use]
-pub(crate) fn group_related_runs(
-    task_refs: Vec<String>,
-    rows: Vec<TaskBoardRelatedWorkRunRow>,
-) -> Vec<TaskBoardTaskRelatedRuns> {
-    let mut runs_by_ref: HashMap<String, Vec<TaskBoardRelatedWorkRun>> = HashMap::new();
-
-    for row in rows {
-        runs_by_ref
-            .entry(row.external_task_ref.clone())
-            .or_default()
-            .push(TaskBoardRelatedWorkRun {
-                id: row.id,
-                status: row.status,
-                work_type: row.work_type,
-                tokens_used: row.tokens_used,
-                input_tokens: row.input_tokens,
-                output_tokens: row.output_tokens,
-                cache_read_tokens: row.cache_read_tokens,
-                cache_write_tokens: row.cache_write_tokens,
-                model_used: row.model_used,
-                created_at: row.created_at,
-            });
-    }
-
-    task_refs
-        .into_iter()
-        .filter_map(|external_task_ref| {
-            runs_by_ref
-                .remove(&external_task_ref)
-                .map(|runs| TaskBoardTaskRelatedRuns {
-                    external_task_ref,
-                    runs,
-                })
-        })
-        .collect()
-}
 #[must_use]
 pub(crate) fn default_column_status(columns: &[IntegrationColumn]) -> String {
     columns

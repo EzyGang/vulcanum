@@ -2,7 +2,7 @@ import { IconDots } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import type { TaskBoardMoveAction, TaskBoardTaskCardData } from '../types';
-import { RelatedWorkRuns } from './RelatedWorkRuns.view';
+import { TaskUsageSummary } from './TaskUsageSummary.view';
 
 interface TaskMoveButtonProps {
   action: TaskBoardMoveAction;
@@ -64,7 +64,7 @@ export const TaskCard = ({ data }: TaskCardProps): JSX.Element => (
         </span>
       ))}
     </div>
-    <RelatedWorkRuns runs={data.relatedRuns} variant='card' />
+    <TaskUsageSummary augmentation={data.augmentation} variant='card' />
     <div class='flex items-center justify-between gap-3 text-[11px] text-text-muted'>
       <span>{data.createdAtLabel}</span>
       {data.moving && <span>Moving…</span>}

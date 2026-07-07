@@ -20,6 +20,7 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::db::work_runs::WorkRunsRepository;
 use crate::db::workers::WorkersRepository;
 use crate::services::dispatcher::cancel_store::CancelStore;
@@ -31,6 +32,7 @@ use crate::services::providers::client::TaskFetcher;
 
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
+    pub task_augmentations_repo: TaskAugmentationsRepository,
     pub workers_repo: WorkersRepository,
     pub project_configs: ProjectConfigsService,
     pub github: GithubAppManager,
@@ -47,6 +49,7 @@ impl Clone for WorkRunsService {
     fn clone(&self) -> Self {
         Self {
             work_runs_repo: self.work_runs_repo.clone(),
+            task_augmentations_repo: self.task_augmentations_repo.clone(),
             workers_repo: self.workers_repo.clone(),
             project_configs: self.project_configs.clone(),
             github: self.github.clone(),
@@ -65,6 +68,7 @@ impl WorkRunsService {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         work_runs_repo: WorkRunsRepository,
+        task_augmentations_repo: TaskAugmentationsRepository,
         workers_repo: WorkersRepository,
         project_configs: ProjectConfigsService,
         github: GithubAppManager,
@@ -77,6 +81,7 @@ impl WorkRunsService {
     ) -> Self {
         Self {
             work_runs_repo,
+            task_augmentations_repo,
             workers_repo,
             project_configs,
             github,

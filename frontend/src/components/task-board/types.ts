@@ -3,8 +3,8 @@ import type { SelectOption } from '../../types/shared';
 import type {
   TaskBoard,
   TaskBoardLabel,
-  TaskBoardRelatedWorkRun,
-  TaskBoardTask
+  TaskBoardTask,
+  TaskBoardTaskAugmentation
 } from '../../types/task-board';
 
 export type TaskBoardColumnRole = 'pickup' | 'progress' | 'done';
@@ -48,7 +48,7 @@ export type TaskBoardMenuStyle = Pick<JSX.CSSProperties, 'left' | 'top'> | undef
 
 export interface TaskBoardTaskCardData {
   task: TaskBoardTask;
-  relatedRuns: TaskBoardRelatedWorkRun[];
+  augmentation: TaskBoardTaskAugmentation | null;
   displayId: string;
   createdAtLabel: string;
   moving: boolean;
@@ -170,7 +170,7 @@ export interface TaskBoardViewData {
   repoItems: SelectOption[];
   selectedRepoNames: string[];
   selectedTask: TaskBoardTask | null;
-  selectedTaskRelatedRuns: TaskBoardRelatedWorkRun[];
+  selectedTaskAugmentation: TaskBoardTaskAugmentation | null;
   availableLabels: TaskBoardLabel[];
   createDialogOpen: boolean;
   settingsDialogOpen: boolean;

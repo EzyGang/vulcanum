@@ -5,6 +5,7 @@ pub mod model_providers;
 pub mod project_configs;
 pub mod provider_configs;
 pub mod queryer;
+pub mod task_augmentations;
 pub mod teams;
 pub mod users;
 pub mod work_run_events;

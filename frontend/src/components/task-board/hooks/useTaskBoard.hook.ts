@@ -45,12 +45,12 @@ export const useTaskBoard = () => {
   const columnRoles = columnRolesForProject(projectConfig, columns);
   const statusOptions = columns.map((column) => ({ value: column.slug, label: column.name }));
   const repoItems = repos.map((repo) => ({ value: repo.fullName, label: repo.fullName }));
-  const relatedRunsByTaskRef = useMemo(
+  const augmentationsByTaskRef = useMemo(
     () =>
       new Map(
-        (boardQuery.data?.relatedTaskRuns ?? []).map((item) => [item.externalTaskRef, item.runs])
+        (boardQuery.data?.taskAugmentations ?? []).map((item) => [item.externalTaskRef, item])
       ),
-    [boardQuery.data?.relatedTaskRuns]
+    [boardQuery.data?.taskAugmentations]
   );
 
   const create = useTaskBoardCreate(selection, columns);
@@ -63,7 +63,7 @@ export const useTaskBoard = () => {
     repoItems,
     selectedRepoNames,
     selectedTask: movement.data.selectedTask,
-    relatedRunsByTaskRef,
+    augmentationsByTaskRef,
     visibleTaskCounts: movement.data.visibleTaskCounts,
     columnRoles,
     moving: movement.status.moving,
