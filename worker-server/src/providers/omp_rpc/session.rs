@@ -1,3 +1,5 @@
+mod helpers;
+
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -11,9 +13,17 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::{AgentEvent, IsolatedEnvironment, SessionStatus};
 
 use crate::providers::omp_rpc::process::ProcessOutputBuffer;
-use crate::providers::omp_rpc::{VULCANUM_OMP_MODEL_ENV, VULCANUM_OMP_PROVIDER_ENV};
 
+#[cfg(test)]
+pub(crate) use crate::providers::omp_rpc::session::helpers::host_session_path;
+#[cfg(not(test))]
+use crate::providers::omp_rpc::session::helpers::host_session_path;
+use crate::providers::omp_rpc::session::helpers::{
+    configured_model, event, format_startup_failure, is_response_for, model_used_name,
+    response_result, state_string, token_count,
+};
 const STARTUP_TIMEOUT_SECS: u64 = 180;
+const COMMAND_RESPONSE_TIMEOUT_SECS: u64 = 60;
 
 pub(crate) struct OmpRpcRunningSession {
     pub(super) child: Child,
@@ -130,19 +140,43 @@ impl OmpRpcRunningSession {
         id: &str,
         command: &str,
     ) -> Result<Value, HarnessError> {
+        self.wait_for_response_with_timeout(
+            id,
+            command,
+            Duration::from_secs(COMMAND_RESPONSE_TIMEOUT_SECS),
+        )
+        .await
+    }
+
+    pub(crate) async fn wait_for_response_with_timeout(
+        &mut self,
+        id: &str,
+        command: &str,
+        timeout_after: Duration,
+    ) -> Result<Value, HarnessError> {
         if let Some(frame) = self.pop_pending_response(id, command) {
             return response_result(frame);
         }
 
-        loop {
-            let frame =
-                self.frames.recv().await.ok_or_else(|| {
+        let result = timeout(timeout_after, async {
+            loop {
+                let frame = self.frames.recv().await.ok_or_else(|| {
                     HarnessError::ServerLaunch("omp rpc stream closed".to_owned())
                 })?;
-            if is_response_for(&frame, id, command) {
-                return response_result(frame);
+                if is_response_for(&frame, id, command) {
+                    return response_result(frame);
+                }
+                self.pending.push_back(frame);
             }
-            self.pending.push_back(frame);
+        })
+        .await;
+
+        match result {
+            Ok(response) => response,
+            Err(_) => Err(HarnessError::ServerLaunch(format!(
+                "omp rpc command {command} response {id} timed out after {}s",
+                timeout_after.as_secs()
+            ))),
         }
     }
 
@@ -241,96 +275,4 @@ impl OmpRpcRunningSession {
                 + self.tokens.cache_write,
         );
     }
-}
-
-fn event(event_type: &str, payload: Value) -> AgentEvent {
-    AgentEvent {
-        event_type: event_type.to_owned(),
-        payload,
-        timestamp: Utc::now(),
-    }
-}
-
-fn state_string<'a>(data: &'a Value, field: &str) -> Option<&'a str> {
-    match data.get(field).and_then(Value::as_str) {
-        Some(value) if !value.is_empty() => Some(value),
-        _ => None,
-    }
-}
-
-fn configured_model(env: &IsolatedEnvironment) -> Option<&str> {
-    env.env_vars
-        .get(VULCANUM_OMP_MODEL_ENV)
-        .map(String::as_str)
-        .filter(|model| !model.is_empty())
-}
-
-fn configured_provider(env: &IsolatedEnvironment) -> Option<&str> {
-    env.env_vars
-        .get(VULCANUM_OMP_PROVIDER_ENV)
-        .map(String::as_str)
-        .filter(|provider| !provider.is_empty())
-}
-
-fn model_used_name(env: &IsolatedEnvironment, model: &str) -> String {
-    if model.contains('/') {
-        return model.to_owned();
-    }
-
-    match configured_provider(env) {
-        Some(provider) => format!("{provider}/{model}"),
-        None => model.to_owned(),
-    }
-}
-
-pub(super) fn host_session_path(env: &IsolatedEnvironment, session_path: &str) -> String {
-    if env.container_name.is_none() {
-        return session_path.to_owned();
-    }
-
-    let Some(relative_path) = session_path.strip_prefix("/workdir") else {
-        return session_path.to_owned();
-    };
-    let mut host_path = env.workdir.clone();
-    for component in relative_path.trim_start_matches('/').split('/') {
-        if !component.is_empty() {
-            host_path.push(component);
-        }
-    }
-    host_path.to_string_lossy().to_string()
-}
-
-fn is_response_for(frame: &Value, id: &str, command: &str) -> bool {
-    frame.get("type").and_then(Value::as_str) == Some("response")
-        && frame.get("id").and_then(Value::as_str) == Some(id)
-        && frame.get("command").and_then(Value::as_str) == Some(command)
-}
-
-fn response_result(frame: Value) -> Result<Value, HarnessError> {
-    if frame.get("success").and_then(Value::as_bool) == Some(true) {
-        return Ok(frame);
-    }
-    let error = frame
-        .get("error")
-        .and_then(Value::as_str)
-        .unwrap_or("omp rpc command failed");
-    Err(HarnessError::ServerLaunch(error.to_owned()))
-}
-
-fn format_startup_failure(reason: &str, status: Option<&str>, stderr: &str) -> String {
-    let mut message = reason.to_owned();
-    if let Some(status) = status {
-        message.push_str("; process ");
-        message.push_str(status);
-    }
-    let stderr = stderr.trim();
-    if !stderr.is_empty() {
-        message.push_str("; stderr: ");
-        message.push_str(stderr);
-    }
-    message
-}
-
-fn token_count(tokens: &Value, field: &str) -> Option<u64> {
-    tokens.get(field).and_then(Value::as_u64)
 }

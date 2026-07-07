@@ -13,7 +13,8 @@ impl WorkRunsRepository {
     ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
         sqlx::query_as!(
             WorkRunListItem,
-            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
+            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, NULL::TEXT as "task_title?: String",
+             wr.external_task_ref as "task_slug!", wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
              wr.review_target_pr_url, wr.review_target_repo_full_name,

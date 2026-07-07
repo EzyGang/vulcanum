@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::model_providers::model::{
@@ -11,6 +11,25 @@ use crate::services::model_providers::auth::encryption::{EncryptedSecret, Secret
 
 pub const OPENAI_PROVIDER_KEY: &str = "openai";
 pub const OPENAI_CHATGPT_PROVIDER_ID: &str = "openai_chatgpt";
+const DANGEROUS_ENV_KEYS: &[&str] = &[
+    "BASH_ENV",
+    "ENV",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_SSH",
+    "GIT_SSH_COMMAND",
+    "HOME",
+    "IFS",
+    "LD_LIBRARY_PATH",
+    "LD_PRELOAD",
+    "NODE_OPTIONS",
+    "PATH",
+    "PYTHONPATH",
+    "RUSTC_WRAPPER",
+    "RUSTFLAGS",
+    "SHELL",
+];
+const DANGEROUS_ENV_PREFIXES: &[&str] = &["DYLD_", "LD_"];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OAuthCredential {
@@ -36,7 +55,7 @@ pub enum ParsedAuth {
     None,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 struct StoredAuth {
     schema_version: i32,
     auth_type: ModelProviderAuthType,
@@ -46,13 +65,13 @@ struct StoredAuth {
     device_oauth: Option<StoredOAuthAuth>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 struct StoredApiKeyAuth {
     fields: Vec<String>,
     secrets: HashMap<String, EncryptedSecret>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 struct StoredOAuthAuth {
     provider: String,
     account_id: Option<String>,
@@ -60,6 +79,16 @@ struct StoredOAuthAuth {
     expires: i64,
     refresh: EncryptedSecret,
     access: EncryptedSecret,
+}
+
+#[must_use = "credential fields must be validated against the provider catalog"]
+pub fn api_key_credential_fields(
+    credentials: &serde_json::Value,
+) -> Result<Vec<String>, ModelProvidersError> {
+    let api_keys = parse_api_key_credentials(credentials)?;
+    let mut fields = api_keys.keys().cloned().collect::<Vec<String>>();
+    fields.sort();
+    Ok(fields)
 }
 
 #[must_use = "encrypted credentials must be persisted"]
@@ -76,13 +105,15 @@ pub fn encrypted_api_key_credentials(
     }
     fields.sort();
 
-    serde_json::to_value(StoredAuth {
-        schema_version: 1,
-        auth_type: ModelProviderAuthType::ApiKey,
-        api_key: Some(StoredApiKeyAuth { fields, secrets }),
-        device_oauth: None,
-    })
-    .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
+    Ok(serde_json::json!({
+        "schema_version": 1,
+        "auth_type": ModelProviderAuthType::ApiKey,
+        "api_key": {
+            "fields": fields,
+            "secrets": encrypted_secrets_value(secrets),
+        },
+        "device_oauth": null,
+    }))
 }
 
 #[must_use = "encrypted credentials must be persisted"]
@@ -90,20 +121,21 @@ pub fn encrypted_oauth_credentials(
     credential: &OAuthCredential,
     cipher: &SecretCipher,
 ) -> Result<serde_json::Value, ModelProvidersError> {
-    serde_json::to_value(StoredAuth {
-        schema_version: 1,
-        auth_type: ModelProviderAuthType::DeviceOauth,
-        api_key: None,
-        device_oauth: Some(StoredOAuthAuth {
-            provider: credential.provider.clone(),
-            account_id: credential.account_id.clone(),
-            email: credential.email.clone(),
-            expires: credential.expires,
-            refresh: cipher.encrypt(&credential.refresh)?,
-            access: cipher.encrypt(&credential.access)?,
-        }),
-    })
-    .map_err(|e| ModelProvidersError::InvalidAuthConfig(e.to_string()))
+    let refresh = cipher.encrypt(&credential.refresh)?;
+    let access = cipher.encrypt(&credential.access)?;
+    Ok(serde_json::json!({
+        "schema_version": 1,
+        "auth_type": ModelProviderAuthType::DeviceOauth,
+        "api_key": null,
+        "device_oauth": {
+            "provider": credential.provider,
+            "account_id": credential.account_id,
+            "email": credential.email,
+            "expires": credential.expires,
+            "refresh": encrypted_secret_value(&refresh),
+            "access": encrypted_secret_value(&access),
+        },
+    }))
 }
 
 #[must_use = "parsed auth must be handled"]
@@ -174,9 +206,36 @@ fn parse_stored_auth(
                 ModelProvidersError::InvalidAuthConfig("missing api key auth".to_owned())
             })?;
             let mut credentials: HashMap<String, String> = HashMap::new();
-            for field in api_key.fields {
-                if let Some(secret) = api_key.secrets.get(&field) {
-                    credentials.insert(field, cipher.decrypt(secret)?);
+            for field in &api_key.fields {
+                let normalized_field = normalize_credential_env_key(field)?;
+                let secret = api_key
+                    .secrets
+                    .get(field)
+                    .or_else(|| api_key.secrets.get(normalized_field.as_str()))
+                    .ok_or_else(|| {
+                        ModelProvidersError::InvalidAuthConfig(format!(
+                            "missing encrypted credential for {normalized_field}"
+                        ))
+                    })?;
+                if credentials
+                    .insert(normalized_field.clone(), cipher.decrypt(secret)?)
+                    .is_some()
+                {
+                    return Err(ModelProvidersError::InvalidAuthConfig(format!(
+                        "duplicate encrypted credential for {normalized_field}"
+                    )));
+                }
+            }
+            for secret_field in api_key.secrets.keys() {
+                let normalized = normalize_credential_env_key(secret_field)?;
+                if !api_key.fields.iter().any(|field| {
+                    normalize_credential_env_key(field)
+                        .map(|candidate| candidate == normalized)
+                        .unwrap_or(false)
+                }) {
+                    return Err(ModelProvidersError::InvalidAuthConfig(format!(
+                        "undeclared encrypted credential for {normalized}"
+                    )));
                 }
             }
             Ok(ParsedAuth::ApiKey(credentials))
@@ -217,9 +276,17 @@ fn parse_api_key_credentials(
     })?;
     let mut api_keys: HashMap<String, String> = HashMap::new();
     for (key, value) in object {
+        let normalized_key = normalize_credential_env_key(key)?;
         match value.as_str() {
             Some(secret) if !secret.is_empty() => {
-                api_keys.insert(key.to_owned(), secret.to_owned());
+                if api_keys
+                    .insert(normalized_key.clone(), secret.to_owned())
+                    .is_some()
+                {
+                    return Err(ModelProvidersError::InvalidAuthConfig(format!(
+                        "duplicate credential field {normalized_key}"
+                    )));
+                }
             }
             Some(_) => (),
             None => {
@@ -230,4 +297,83 @@ fn parse_api_key_credentials(
         }
     }
     Ok(api_keys)
+}
+
+pub fn normalize_credential_env_key(key: &str) -> Result<String, ModelProvidersError> {
+    let normalized = decode_legacy_snake_case_env_key(key).unwrap_or_else(|| key.to_owned());
+    validate_credential_env_key(&normalized)?;
+    Ok(normalized)
+}
+
+fn validate_credential_env_key(key: &str) -> Result<(), ModelProvidersError> {
+    if key.is_empty()
+        || !key
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+        || key.starts_with('_')
+        || key.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+    {
+        return Err(ModelProvidersError::InvalidAuthConfig(format!(
+            "invalid credential env field {key}"
+        )));
+    }
+    if DANGEROUS_ENV_KEYS.contains(&key)
+        || DANGEROUS_ENV_PREFIXES
+            .iter()
+            .any(|prefix| key.starts_with(prefix))
+    {
+        return Err(ModelProvidersError::InvalidAuthConfig(format!(
+            "credential env field {key} is not allowed"
+        )));
+    }
+    Ok(())
+}
+
+fn encrypted_secrets_value(
+    secrets: HashMap<String, EncryptedSecret>,
+) -> serde_json::Map<String, serde_json::Value> {
+    secrets
+        .into_iter()
+        .map(|(key, secret)| (key, encrypted_secret_value(&secret)))
+        .collect()
+}
+
+fn encrypted_secret_value(secret: &EncryptedSecret) -> serde_json::Value {
+    serde_json::json!({
+        "nonce": secret.nonce.as_str(),
+        "ciphertext": secret.ciphertext.as_str(),
+    })
+}
+
+fn decode_legacy_snake_case_env_key(key: &str) -> Option<String> {
+    if !key.starts_with('_') || !key.contains("__") {
+        return None;
+    }
+
+    let trimmed = key.trim_matches('_');
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let mut parts: Vec<String> = Vec::new();
+    for segment in trimmed.split("__") {
+        if segment.is_empty()
+            || !segment
+                .chars()
+                .all(|ch| ch == '_' || ch.is_ascii_lowercase())
+        {
+            return None;
+        }
+
+        let part = segment.replace('_', "").to_ascii_uppercase();
+        if part.is_empty() {
+            return None;
+        }
+        parts.push(part);
+    }
+
+    match parts.is_empty() {
+        true => None,
+        false => Some(parts.join("_")),
+    }
 }

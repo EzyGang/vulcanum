@@ -3,6 +3,7 @@ use std::process::Command;
 
 use anyhow::Context;
 use vulcanum_shared::constants::MAX_WORKER_CAPACITY;
+use vulcanum_shared::validate;
 
 const MIN_WORKER_CAPACITY: i32 = 1;
 const KB_PER_GB: u64 = 1024 * 1024;
@@ -80,22 +81,7 @@ pub(crate) fn capacity_from_resources(cpu_count: u32, total_ram_kb: u64) -> i32 
 
 /// Checks whether KVM is available and accessible on this machine.
 pub fn is_kvm_available() -> bool {
-    let kvm_path = std::path::PathBuf::from("/dev/kvm");
-    if !kvm_path.exists() {
-        return false;
-    }
-
-    match std::fs::metadata(&kvm_path) {
-        #[cfg(unix)]
-        Ok(meta) => {
-            use std::os::unix::fs::MetadataExt;
-            let mode = meta.mode() & 0o777;
-            mode & 0o666 != 0
-        }
-        #[cfg(not(unix))]
-        Ok(_) => false,
-        Err(_) => false,
-    }
+    validate::is_kvm_available()
 }
 
 #[derive(Debug, Clone, Copy)]

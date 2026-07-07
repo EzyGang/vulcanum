@@ -21,7 +21,7 @@ impl AuthService {
             return Err(AuthError::InstanceLoginDisabled);
         }
 
-        if password != self.instance_password {
+        if !constant_time_eq(password.as_bytes(), self.instance_password.as_bytes()) {
             return Err(AuthError::InvalidPassword);
         }
 
@@ -36,4 +36,15 @@ impl AuthService {
         let encoding_key = EncodingKey::from_secret(self.jwt_secret.as_bytes());
         encode(&Header::default(), &claims, &encoding_key).map_err(|_| AuthError::InvalidToken)
     }
+}
+
+fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+    let max_len = left.len().max(right.len());
+    let mut diff = left.len() ^ right.len();
+    for index in 0..max_len {
+        let left_byte = left.get(index).copied().unwrap_or(0);
+        let right_byte = right.get(index).copied().unwrap_or(0);
+        diff |= usize::from(left_byte ^ right_byte);
+    }
+    diff == 0
 }

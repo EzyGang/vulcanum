@@ -69,11 +69,11 @@ pub struct CallbackQuery {
 pub async fn callback(
     state: web::Data<AppState>,
     query: web::Query<CallbackQuery>,
-) -> HttpResponse {
+) -> Result<HttpResponse, AppError> {
     if !matches!(query.setup_action.as_str(), "install" | "update") {
-        return HttpResponse::Found()
+        return Ok(HttpResponse::Found()
             .append_header(("Location", "/"))
-            .finish();
+            .finish());
     }
 
     let install_state = match state
@@ -84,9 +84,9 @@ pub async fn callback(
         Ok(v) => v,
         Err(e) => {
             tracing::warn!(error = %e, state = %query.state, "github state verification failed");
-            return HttpResponse::Found()
+            return Ok(HttpResponse::Found()
                 .append_header(("Location", "/"))
-                .finish();
+                .finish());
         }
     };
 
@@ -94,31 +94,24 @@ pub async fn callback(
         Some(install_state) => install_state,
         None => {
             tracing::warn!(state = %query.state, "github state nonce not found or expired");
-            return HttpResponse::Found()
+            return Ok(HttpResponse::Found()
                 .append_header(("Location", "/"))
-                .finish();
+                .finish());
         }
     };
 
-    if let Err(e) = state
+    state
         .github
         .create_installation(
             install_state.team_id,
             install_state.user_id.as_deref(),
             query.installation_id,
         )
-        .await
-    {
-        tracing::error!(
-            error = %e,
-            installation_id = query.installation_id,
-            "create_installation failed"
-        );
-    }
+        .await?;
 
-    HttpResponse::Found()
+    Ok(HttpResponse::Found()
         .append_header(("Location", "/"))
-        .finish()
+        .finish())
 }
 
 pub async fn list_repos(

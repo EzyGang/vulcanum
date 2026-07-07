@@ -1,4 +1,6 @@
+use std::fmt;
 use std::io::Write;
+use std::str::FromStr;
 
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
@@ -7,7 +9,7 @@ use crate::api_types::AgentBackend;
 use crate::paths;
 
 fn default_harness() -> String {
-    "host".to_owned()
+    IsolationBackend::Host.as_str().to_owned()
 }
 
 fn default_image() -> String {
@@ -16,6 +18,67 @@ fn default_image() -> String {
 
 const fn default_poll_interval() -> u64 {
     30
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IsolationBackend {
+    Host,
+    Docker,
+    Kata,
+}
+
+impl IsolationBackend {
+    pub const VALUES: &'static [&'static str] = &["host", "docker", "kata"];
+
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::Docker => "docker",
+            Self::Kata => "kata",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnknownIsolationBackend {
+    value: String,
+}
+
+impl UnknownIsolationBackend {
+    #[must_use]
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+}
+
+impl fmt::Display for UnknownIsolationBackend {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "unknown isolation backend {:?}; expected one of: {}",
+            self.value,
+            IsolationBackend::VALUES.join(", ")
+        )
+    }
+}
+
+impl std::error::Error for UnknownIsolationBackend {}
+
+impl FromStr for IsolationBackend {
+    type Err = UnknownIsolationBackend;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "host" => Ok(Self::Host),
+            "docker" => Ok(Self::Docker),
+            "kata" => Ok(Self::Kata),
+            _ => Err(UnknownIsolationBackend {
+                value: value.to_owned(),
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,18 +110,35 @@ impl Default for WorkerConfig {
     }
 }
 
+impl WorkerConfig {
+    pub fn isolation_backend(&self) -> Result<IsolationBackend, UnknownIsolationBackend> {
+        self.harness.parse()
+    }
+}
+
 pub fn load_config() -> anyhow::Result<WorkerConfig> {
+    match load_config_if_exists()? {
+        Some(config) => Ok(config),
+        None => {
+            let _ = paths::ensure_vulcanum_dir()?;
+            let config = WorkerConfig::default();
+            save_config(&config)?;
+            Ok(config)
+        }
+    }
+}
+
+pub fn load_config_if_exists() -> anyhow::Result<Option<WorkerConfig>> {
     let path = paths::config_path()?;
     if !path.exists() {
-        let _ = paths::ensure_vulcanum_dir()?;
-        let config = WorkerConfig::default();
-        save_config(&config)?;
-        return Ok(config);
+        return Ok(None);
     }
+
     let data = std::fs::read_to_string(&path)
         .with_context(|| format!("failed to read config from {}", path.display()))?;
-    serde_json::from_str(&data)
-        .with_context(|| format!("failed to parse config from {}", path.display()))
+    let config = serde_json::from_str(&data)
+        .with_context(|| format!("failed to parse config from {}", path.display()))?;
+    Ok(Some(config))
 }
 
 pub fn save_config(config: &WorkerConfig) -> anyhow::Result<()> {

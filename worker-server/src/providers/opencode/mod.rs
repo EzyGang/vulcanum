@@ -7,6 +7,7 @@ pub mod runner;
 pub mod runner_session;
 pub mod runtime;
 pub mod spawn;
+pub mod stream;
 
 #[cfg(test)]
 mod event_mapper_tests;

@@ -1,4 +1,5 @@
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum WorkersError {
@@ -14,6 +15,10 @@ pub enum WorkersError {
     WorkerNotFound,
     #[error("registration failed: {0}")]
     RegistrationFailed(String),
+    #[error(
+        "worker active_jobs invariant violated for {worker_id}: active_jobs was {active_jobs}"
+    )]
+    ActiveJobsInvariant { worker_id: Uuid, active_jobs: i32 },
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("jwt error: {0}")]

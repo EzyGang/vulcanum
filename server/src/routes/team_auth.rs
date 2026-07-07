@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
-use crate::routes::{decode_jwt, parse_team_header};
+use crate::routes::auth_utils::{decode_jwt, parse_team_header};
 
 #[derive(Deserialize)]
 struct Claims {

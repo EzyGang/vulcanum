@@ -50,15 +50,20 @@ pub fn save_state(state: &WorkerState) -> anyhow::Result<()> {
 #[cfg(unix)]
 fn create_restricted_file(path: &std::path::Path) -> anyhow::Result<std::fs::File> {
     use std::fs::OpenOptions;
-    use std::os::unix::fs::OpenOptionsExt;
+    use std::os::unix::fs::PermissionsExt;
 
-    OpenOptions::new()
+    let file = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .mode(0o600)
         .open(path)
-        .with_context(|| format!("failed to open {} for writing", path.display()))
+        .with_context(|| format!("failed to open {} for writing", path.display()))?;
+
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))
+        .with_context(|| format!("failed to restrict permissions on {}", path.display()))?;
+
+    Ok(file)
 }
 
 #[cfg(not(unix))]

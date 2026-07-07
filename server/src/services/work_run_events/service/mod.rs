@@ -48,12 +48,13 @@ pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
         | WorkRunsError::InvalidStatusTransition
         | WorkRunsError::NotOwned
         | WorkRunsError::DeleteRunning
+        | WorkRunsError::InvalidPagination(_)
+        | WorkRunsError::Dispatch(_)
         | WorkRunsError::GithubApp(_)
         | WorkRunsError::ModelProvider(_)
         | WorkRunsError::Provider(_)
         | WorkRunsError::ProjectConfig(_)
         | WorkRunsError::Team(_)
-        | WorkRunsError::Worker(_)
-        | WorkRunsError::Dispatch(_) => WorkRunEventsError::Internal(e.to_string()),
+        | WorkRunsError::Worker(_) => WorkRunEventsError::Internal(e.to_string()),
     }
 }

@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use crate::api_types::AgentBackend;
-use crate::config::WorkerConfig;
+use crate::config::{IsolationBackend, WorkerConfig};
 #[cfg(target_os = "macos")]
 use crate::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
 
@@ -26,8 +27,8 @@ pub fn validate_environment(
 ) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
-    match isolation_backend {
-        "kata" => {
+    match isolation_backend.parse::<IsolationBackend>() {
+        Ok(IsolationBackend::Kata) => {
             if cfg!(target_os = "macos") {
                 issues.push(ValidationIssue {
                     severity: Severity::Critical,
@@ -37,15 +38,21 @@ pub fn validate_environment(
                 });
                 return issues;
             }
-            check_binary("docker", &mut issues, Severity::Critical);
+            check_docker(&mut issues);
             check_kvm(&mut issues);
             check_binary("kata-runtime", &mut issues, Severity::Critical);
         }
-        "docker" => {
-            check_binary("docker", &mut issues, Severity::Critical);
+        Ok(IsolationBackend::Docker) => {
+            check_docker(&mut issues);
         }
-        _ => {
+        Ok(IsolationBackend::Host) => {
             check_binary(agent_backend.binary_name(), &mut issues, Severity::Critical);
+        }
+        Err(err) => {
+            issues.push(ValidationIssue {
+                severity: Severity::Critical,
+                message: err.to_string(),
+            });
         }
     }
 
@@ -77,7 +84,7 @@ pub fn is_environment_ready_for_backend(backend: &str) -> bool {
 }
 
 fn check_kvm(issues: &mut Vec<ValidationIssue>) {
-    let kvm_path = PathBuf::from("/dev/kvm");
+    let kvm_path = Path::new("/dev/kvm");
     if !kvm_path.exists() {
         issues.push(ValidationIssue {
             severity: Severity::Critical,
@@ -86,30 +93,68 @@ fn check_kvm(issues: &mut Vec<ValidationIssue>) {
         return;
     }
 
-    match std::fs::metadata(&kvm_path) {
-        #[allow(unused_variables)]
-        Ok(meta) => {
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::MetadataExt;
-                let mode = meta.mode() & 0o777;
-                if mode & 0o666 == 0 {
-                    issues.push(ValidationIssue {
-                        severity: Severity::Warning,
-                        message: format!(
-                            "/dev/kvm exists but permissions ({mode:03o}) may prevent access"
-                        ),
-                    });
-                }
-            }
-        }
-        Err(e) => {
-            issues.push(ValidationIssue {
-                severity: Severity::Warning,
-                message: format!("cannot read /dev/kvm metadata: {e}"),
-            });
-        }
+    if !can_access_kvm_device(kvm_path) {
+        issues.push(ValidationIssue {
+            severity: Severity::Critical,
+            message: "/dev/kvm exists but is not accessible by the current user".to_owned(),
+        });
     }
+}
+
+#[must_use]
+pub fn is_kvm_available() -> bool {
+    can_access_kvm_device(Path::new("/dev/kvm"))
+}
+
+#[must_use]
+pub fn can_access_kvm_device(path: &Path) -> bool {
+    std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .is_ok()
+}
+
+fn check_docker(issues: &mut Vec<ValidationIssue>) {
+    let Some(docker_path) = find_in_path("docker") else {
+        issues.push(ValidationIssue {
+            severity: Severity::Critical,
+            message: "docker not found in PATH".to_owned(),
+        });
+        return;
+    };
+
+    if docker_info_succeeds(&docker_path) || sudo_docker_info_succeeds(&docker_path) {
+        return;
+    }
+
+    issues.push(ValidationIssue {
+        severity: Severity::Critical,
+        message: "docker daemon is not reachable by the current user or passwordless sudo"
+            .to_owned(),
+    });
+}
+
+fn docker_info_succeeds(docker_path: &Path) -> bool {
+    Command::new(docker_path)
+        .arg("info")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+fn sudo_docker_info_succeeds(docker_path: &Path) -> bool {
+    Command::new("sudo")
+        .arg("-n")
+        .arg(docker_path)
+        .arg("info")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }
 
 fn check_binary(name: &str, issues: &mut Vec<ValidationIssue>, severity: Severity) {

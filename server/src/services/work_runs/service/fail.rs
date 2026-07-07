@@ -26,17 +26,9 @@ impl WorkRunsService {
             .ok_or(WorkRunsError::NotFound)?;
 
         if let Some(worker_id) = updated.worker_id {
-            if let Err(e) = self
-                .workers_repo
+            self.workers_repo
                 .decrement_active_jobs(&mut *tx, worker_id)
-                .await
-            {
-                tracing::warn!(
-                    error = %e,
-                    worker_id = %worker_id,
-                    "failed to decrement active_jobs on force fail"
-                );
-            }
+                .await?;
         }
 
         tx.commit().await.map_err(WorkRunsError::Database)?;

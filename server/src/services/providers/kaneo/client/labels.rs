@@ -74,10 +74,15 @@ impl KaneoClient {
     }
 
     pub async fn delete_label(&self, label_id: &str) -> Result<(), KaneoError> {
+        let client = self.build_client()?;
         let path = format!("/label/{label_id}");
 
         let start = std::time::Instant::now();
-        let result = self.delete_resource(&path).await;
+        let result = client
+            .delete(&path)
+            .await
+            .map(|_: serde_json::Value| ())
+            .map_err(api_err);
         let duration_ms = start.elapsed().as_millis() as i64;
 
         log_kaneo_result("DELETE", &path, duration_ms, &result);
@@ -125,42 +130,4 @@ impl KaneoClient {
         log_kaneo_result("DELETE", &path, duration_ms, &result);
         result
     }
-    async fn delete_resource(&self, path: &str) -> Result<(), KaneoError> {
-        let url = format!(
-            "https://{}/api{}",
-            self.instance.trim_end_matches('/'),
-            path,
-        );
-        let response = reqwest::Client::new()
-            .delete(url)
-            .bearer_auth(&self.api_key)
-            .send()
-            .await
-            .map_err(api_err)?;
-        let status = response.status();
-
-        if status.is_success() {
-            return Ok(());
-        }
-
-        let body = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "<unreadable body>".to_owned());
-        let message = provider_error_message(&body);
-
-        Err(KaneoError::Api(format!("{status}: {message}")))
-    }
-}
-
-fn provider_error_message(body: &str) -> String {
-    serde_json::from_str::<serde_json::Value>(body)
-        .ok()
-        .and_then(|value| {
-            value
-                .get("message")
-                .and_then(serde_json::Value::as_str)
-                .map(str::to_owned)
-        })
-        .unwrap_or_else(|| body.to_owned())
 }

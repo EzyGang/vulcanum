@@ -1,6 +1,12 @@
-use uuid::Uuid;
+use std::collections::HashMap;
 
-use crate::isolation::providers::docker::{cleanup_docker_workdir, DockerIsolation};
+use uuid::Uuid;
+use vulcanum_shared::api_types::AgentBackend;
+
+use crate::isolation::github_credentials::GitHubCredentialBridge;
+use crate::isolation::providers::docker::{
+    build_container_environment, cleanup_docker_workdir, DockerIsolation,
+};
 use crate::isolation::providers::kata::KataIsolation;
 
 #[test]
@@ -14,6 +20,51 @@ fn docker_plain_no_runtime() {
     let isolation = DockerIsolation::new(None, "test-image:v1".to_owned());
     assert!(isolation.runtime.is_none());
     assert!(!isolation.image.is_empty());
+}
+
+#[test]
+fn docker_environment_preserves_caller_env_vars() {
+    let env_vars = HashMap::from([
+        ("CALLER_FLAG".to_owned(), "enabled".to_owned()),
+        ("CUSTOM_PATH".to_owned(), "/caller/bin".to_owned()),
+    ]);
+    let secrets = HashMap::from([
+        ("API_KEY".to_owned(), "secret-value".to_owned()),
+        ("GITHUB_TOKEN".to_owned(), "direct-token".to_owned()),
+    ]);
+    let github_credentials = GitHubCredentialBridge {
+        host_env: HashMap::new(),
+        runtime_env: HashMap::from([(
+            "GIT_CONFIG_GLOBAL".to_owned(),
+            "/workdir/home/.vulcanum/github/gitconfig".to_owned(),
+        )]),
+    };
+
+    let (sanitized_secrets, combined_env) = build_container_environment(
+        &env_vars,
+        &secrets,
+        &github_credentials,
+        AgentBackend::OpenCode,
+    );
+
+    assert_eq!(
+        combined_env.get("CALLER_FLAG").map(String::as_str),
+        Some("enabled")
+    );
+    assert_eq!(
+        combined_env.get("CUSTOM_PATH").map(String::as_str),
+        Some("/caller/bin")
+    );
+    assert_eq!(
+        combined_env.get("API_KEY").map(String::as_str),
+        Some("secret-value")
+    );
+    assert!(!combined_env.contains_key("GITHUB_TOKEN"));
+    assert_eq!(
+        sanitized_secrets.get("API_KEY").map(String::as_str),
+        Some("secret-value")
+    );
+    assert!(!sanitized_secrets.contains_key("GITHUB_TOKEN"));
 }
 
 #[test]

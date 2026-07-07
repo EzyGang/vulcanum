@@ -133,7 +133,8 @@ impl AuthService {
             .as_ref()
             .ok_or(AuthError::InvalidToken)?;
 
-        let response = reqwest::Client::new()
+        let response = self
+            .github_oauth_http
             .post("https://github.com/login/oauth/access_token")
             .header("Accept", "application/json")
             .form(&[
@@ -144,25 +145,41 @@ impl AuthService {
             ])
             .send()
             .await
-            .map_err(|_| AuthError::InvalidToken)?;
+            .map_err(|e| AuthError::GithubOAuth(format!("token exchange request: {e}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(AuthError::GithubOAuth(format!(
+                "token exchange returned HTTP {status}"
+            )));
+        }
 
-        let token: GithubTokenResponse =
-            response.json().await.map_err(|_| AuthError::InvalidToken)?;
+        let token: GithubTokenResponse = response
+            .json()
+            .await
+            .map_err(|e| AuthError::GithubOAuth(format!("token exchange response: {e}")))?;
         Ok(token.access_token)
     }
 
     async fn fetch_github_user(&self, token: &str) -> Result<GithubUserResponse, AuthError> {
-        reqwest::Client::new()
+        let response = self
+            .github_oauth_http
             .get("https://api.github.com/user")
             .bearer_auth(token)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "vulcanum")
             .send()
             .await
-            .map_err(|_| AuthError::InvalidToken)?
+            .map_err(|e| AuthError::GithubOAuth(format!("user request: {e}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            return Err(AuthError::GithubOAuth(format!(
+                "user request returned HTTP {status}"
+            )));
+        }
+        response
             .json()
             .await
-            .map_err(|_| AuthError::InvalidToken)
+            .map_err(|e| AuthError::GithubOAuth(format!("user response: {e}")))
     }
 }
 

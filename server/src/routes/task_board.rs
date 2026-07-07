@@ -14,10 +14,7 @@ pub async fn list_projects(
         .teams
         .resolve_team(&auth, state.is_single_user)
         .await?;
-    let projects = state
-        .task_board
-        .list_projects(&state.project_configs.db, team_id)
-        .await?;
+    let projects = state.task_board.list_projects(team_id).await?;
 
     Ok(HttpResponse::Ok().json(projects))
 }
@@ -34,12 +31,7 @@ pub async fn get_board(
         .await?;
     let board = state
         .task_board
-        .get_board(
-            &state.project_configs.db,
-            team_id,
-            provider_id,
-            &external_project_id,
-        )
+        .get_board(team_id, provider_id, &external_project_id)
         .await?;
 
     Ok(HttpResponse::Ok().json(board))
@@ -59,7 +51,6 @@ pub async fn create_task(
     let task = state
         .task_board
         .create_task(
-            &state.project_configs.db,
             team_id,
             provider_id,
             &external_project_id,
@@ -83,13 +74,7 @@ pub async fn update_task(
         .await?;
     let task = state
         .task_board
-        .update_task(
-            &state.project_configs.db,
-            team_id,
-            provider_id,
-            &task_id,
-            body.into_inner(),
-        )
+        .update_task(team_id, provider_id, &task_id, body.into_inner())
         .await?;
 
     Ok(HttpResponse::Ok().json(task))
@@ -108,13 +93,7 @@ pub async fn move_task(
         .await?;
     let result = state
         .task_board
-        .move_task(
-            &state.project_configs.db,
-            team_id,
-            provider_id,
-            &task_id,
-            &body.status,
-        )
+        .move_task(team_id, provider_id, &task_id, &body.status)
         .await?;
 
     Ok(HttpResponse::Ok().json(result))
@@ -132,13 +111,7 @@ pub async fn add_task_label(
         .await?;
     let result = state
         .task_board
-        .add_task_label(
-            &state.project_configs.db,
-            team_id,
-            provider_id,
-            &task_id,
-            &label_id,
-        )
+        .add_task_label(team_id, provider_id, &task_id, &label_id)
         .await?;
 
     Ok(HttpResponse::Ok().json(result))
@@ -156,13 +129,7 @@ pub async fn remove_task_label(
         .await?;
     let result = state
         .task_board
-        .remove_task_label(
-            &state.project_configs.db,
-            team_id,
-            provider_id,
-            &task_id,
-            &label_id,
-        )
+        .remove_task_label(team_id, provider_id, &task_id, &label_id)
         .await?;
 
     Ok(HttpResponse::Ok().json(result))
@@ -180,7 +147,7 @@ pub async fn delete_label(
         .await?;
     let result = state
         .task_board
-        .delete_label(&state.project_configs.db, team_id, provider_id, &label_id)
+        .delete_label(team_id, provider_id, &label_id)
         .await?;
 
     Ok(HttpResponse::Ok().json(result))

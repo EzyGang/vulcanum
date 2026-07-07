@@ -9,41 +9,20 @@ impl UsersRepository {
         pool: &sqlx::PgPool,
         email: &str,
     ) -> Result<User, UsersError> {
-        let mut tx = pool.begin().await?;
-
-        let existing = sqlx::query_as!(
+        let id = uuid::Uuid::new_v4().to_string();
+        let user = sqlx::query_as!(
             User,
-            r#"SELECT id, email,
-               created_at as "created_at!: chrono::DateTime<chrono::Utc>",
-               last_login_at as "last_login_at?: chrono::DateTime<chrono::Utc>"
-               FROM users WHERE email = $1"#,
+            r#"INSERT INTO users (id, email)
+               VALUES ($1, $2)
+               ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+               RETURNING id, email,
+                created_at as "created_at!: chrono::DateTime<chrono::Utc>",
+                last_login_at as "last_login_at?: chrono::DateTime<chrono::Utc>""#,
+            &id,
             email,
         )
-        .fetch_optional(&mut *tx)
+        .fetch_one(pool)
         .await?;
-
-        let user = match existing {
-            Some(user) => user,
-            None => {
-                let id = uuid::Uuid::new_v4().to_string();
-                sqlx::query!("INSERT INTO users (id, email) VALUES ($1, $2)", &id, email)
-                    .execute(&mut *tx)
-                    .await?;
-
-                sqlx::query_as!(
-                    User,
-                    r#"SELECT id, email,
-                       created_at as "created_at!: chrono::DateTime<chrono::Utc>",
-                       last_login_at as "last_login_at?: chrono::DateTime<chrono::Utc>"
-                       FROM users WHERE id = $1"#,
-                    &id,
-                )
-                .fetch_one(&mut *tx)
-                .await?
-            }
-        };
-
-        tx.commit().await?;
         Ok(user)
     }
 

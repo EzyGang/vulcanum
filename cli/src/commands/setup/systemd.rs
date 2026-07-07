@@ -5,16 +5,16 @@ use crate::commands::setup::host::worker_server_path;
 const UNIT_NAME: &str = "vulcanum-worker";
 const UNIT_PATH: &str = "/etc/systemd/system/vulcanum-worker.service";
 
-pub(crate) fn run_systemctl(args: &str) -> anyhow::Result<()> {
+pub(crate) fn run_systemctl(args: &[&str]) -> anyhow::Result<()> {
     let status = Command::new("sudo")
         .arg("-n")
         .arg("systemctl")
-        .args(args.split_whitespace())
+        .args(args)
         .status()
         .map_err(|e| anyhow::anyhow!("failed to run systemctl: {e}"))?;
 
     if !status.success() {
-        anyhow::bail!("systemctl {} failed", args);
+        anyhow::bail!("systemctl {} failed", args.join(" "));
     }
     Ok(())
 }
@@ -54,7 +54,7 @@ pub(crate) fn configure_worker_service() -> anyhow::Result<()> {
         anyhow::bail!("failed to install systemd unit");
     }
 
-    run_systemctl("daemon-reload")?;
+    run_systemctl(&["daemon-reload"])?;
 
     Ok(())
 }
@@ -71,18 +71,18 @@ pub(crate) fn is_worker_service_installed() -> bool {
 }
 
 pub(crate) fn enable_and_restart_worker_service() -> anyhow::Result<()> {
-    run_systemctl(&format!("enable {UNIT_NAME}"))?;
-    run_systemctl(&format!("restart {UNIT_NAME}"))?;
+    run_systemctl(&["enable", UNIT_NAME])?;
+    run_systemctl(&["restart", UNIT_NAME])?;
     Ok(())
 }
 
 pub(crate) fn remove_worker_service_best_effort() {
     if is_worker_service_installed() {
-        if let Err(err) = run_systemctl(&format!("stop {UNIT_NAME}")) {
+        if let Err(err) = run_systemctl(&["stop", UNIT_NAME]) {
             tracing::warn!(error = %err, "failed to stop worker service before uninstall");
         }
 
-        if let Err(err) = run_systemctl(&format!("disable {UNIT_NAME}")) {
+        if let Err(err) = run_systemctl(&["disable", UNIT_NAME]) {
             tracing::warn!(error = %err, "failed to disable worker service before uninstall");
         }
     }
@@ -101,7 +101,7 @@ pub(crate) fn remove_worker_service_best_effort() {
         }
     }
 
-    if let Err(err) = run_systemctl("daemon-reload") {
+    if let Err(err) = run_systemctl(&["daemon-reload"]) {
         tracing::warn!(error = %err, "failed to reload systemd after uninstall");
     }
 }

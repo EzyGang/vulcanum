@@ -20,6 +20,8 @@ pub enum ProjectConfigsError {
     NoProvider,
     #[error("at least one repository is required")]
     RepositoriesRequired,
+    #[error("invalid stored agent backend: {0}")]
+    InvalidAgentBackend(String),
     #[error("model provider error: {0}")]
     ModelProvider(#[from] ModelProvidersError),
     #[error("team error: {0}")]

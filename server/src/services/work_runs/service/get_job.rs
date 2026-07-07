@@ -207,7 +207,7 @@ fn render_review_prompt(run: &WorkRun, cfg: &JobConfigFields, task: &Integration
     };
     let repo_layout = repo_layout(&repo_full_names);
 
-    render_template(
+    let mut prompt_text = render_template(
         &cfg.review_prompt_template,
         &TemplateVars {
             task_title: &task.title,
@@ -218,7 +218,13 @@ fn render_review_prompt(run: &WorkRun, cfg: &JobConfigFields, task: &Integration
             repo_layout: &repo_layout,
             review_target_pr_url: run.review_target_pr_url.as_deref().unwrap_or(""),
         },
-    )
+    );
+    prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
+    if !repo_full_names.is_empty() {
+        prompt_text.push_str(GITHUB_INSTRUCTION);
+    }
+
+    prompt_text
 }
 
 #[must_use]

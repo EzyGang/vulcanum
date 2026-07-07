@@ -254,6 +254,14 @@ pub async fn insert_running_work_run_for_team(
     .await
     .expect("Should set worker_id");
 
+    sqlx::query!(
+        "UPDATE workers SET active_jobs = active_jobs + 1, status = 'busy'::worker_status WHERE id = $1",
+        worker_id,
+    )
+    .execute(pool)
+    .await
+    .expect("Should reserve worker capacity");
+
     id
 }
 
@@ -262,7 +270,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let providers_repo = IntegrationProvidersRepository::new();
     let providers = IntegrationProvidersService::new(providers_repo.clone(), pool.clone());
-    let model_catalog = ModelCatalogClient::new();
+    let model_catalog = ModelCatalogClient::new().expect("build model catalog client");
     let model_providers_repo = ModelProvidersRepository::new();
     let model_providers = ModelProvidersService::new(
         model_providers_repo.clone(),
@@ -270,7 +278,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         model_catalog.clone(),
         SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
         Arc::new(InMemoryDeviceFlowStore::new()),
-        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new().expect("build device auth client")),
     );
 
     let cfg = crate::config::AppConfig {
@@ -298,6 +306,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let work_runs_repo_for_workers = WorkRunsRepository::new();
     let project_configs_repo = ProjectConfigsRepository::new();
     let task_board = TaskBoardService::new(
+        pool.clone(),
         providers_repo.clone(),
         project_configs_repo.clone(),
         TaskAugmentationsRepository::new(),
@@ -329,7 +338,8 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         "test-password".to_owned(),
         "test-secret".to_owned(),
         &cfg,
-    );
+    )
+    .expect("build auth service");
 
     let jobs = WorkRunsService::new(
         work_runs_repo.clone(),

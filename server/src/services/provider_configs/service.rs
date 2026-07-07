@@ -5,13 +5,13 @@ use crate::db::provider_configs::queries::UpdateProviderParams;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::models::provider_configs::errors::IntegrationProvidersError;
 use crate::models::provider_configs::model::{
-    CreateProviderRequest, IntegrationProvider, UpdateProviderRequest,
+    CreateProviderRequest, IntegrationProviderResponse, UpdateProviderRequest,
 };
 
 #[derive(Clone)]
 pub struct IntegrationProvidersService {
-    pub repo: IntegrationProvidersRepository,
-    pub db: PgPool,
+    repo: IntegrationProvidersRepository,
+    db: PgPool,
 }
 
 impl IntegrationProvidersService {
@@ -19,27 +19,39 @@ impl IntegrationProvidersService {
         Self { repo, db }
     }
 
+    #[must_use]
+    pub fn repository(&self) -> IntegrationProvidersRepository {
+        self.repo.clone()
+    }
+
     pub async fn list_all(
         &self,
         team_id: Uuid,
-    ) -> Result<Vec<IntegrationProvider>, IntegrationProvidersError> {
-        self.repo.list_all(&self.db, team_id).await
+    ) -> Result<Vec<IntegrationProviderResponse>, IntegrationProvidersError> {
+        let providers = self.repo.list_all(&self.db, team_id).await?;
+        Ok(providers.into_iter().map(Into::into).collect())
     }
 
     pub async fn get_by_id(
         &self,
         id: Uuid,
         team_id: Uuid,
-    ) -> Result<IntegrationProvider, IntegrationProvidersError> {
-        self.repo.find_by_id(&self.db, id, team_id).await
+    ) -> Result<IntegrationProviderResponse, IntegrationProvidersError> {
+        self.repo
+            .find_by_id(&self.db, id, team_id)
+            .await
+            .map(Into::into)
     }
 
     pub async fn create(
         &self,
         team_id: Uuid,
         params: CreateProviderRequest,
-    ) -> Result<IntegrationProvider, IntegrationProvidersError> {
-        self.repo.create(&self.db, team_id, &params).await
+    ) -> Result<IntegrationProviderResponse, IntegrationProvidersError> {
+        self.repo
+            .create(&self.db, team_id, &params)
+            .await
+            .map(Into::into)
     }
 
     pub async fn update(
@@ -47,7 +59,7 @@ impl IntegrationProvidersService {
         id: Uuid,
         team_id: Uuid,
         params: UpdateProviderRequest,
-    ) -> Result<IntegrationProvider, IntegrationProvidersError> {
+    ) -> Result<IntegrationProviderResponse, IntegrationProvidersError> {
         self.repo
             .update(
                 &self.db,
@@ -61,6 +73,7 @@ impl IntegrationProvidersService {
                 },
             )
             .await
+            .map(Into::into)
     }
 
     pub async fn delete(&self, id: Uuid, team_id: Uuid) -> Result<(), IntegrationProvidersError> {

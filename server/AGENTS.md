@@ -73,8 +73,8 @@ src/
   services/                  # Business logic, orchestration, caches, external clients
     work_runs/
       mod.rs                 # Domain service module declarations
-      service.rs             # WorkRunsService type, constructor, shared deps
-      service/               # Larger service methods split by operation
+      service/               # Service root and larger service methods
+        mod.rs               # WorkRunsService type, constructor, shared deps
         poll.rs
         submit_result.rs
         record_review.rs
@@ -148,12 +148,12 @@ src/db/
 
 ### Service Conventions
 
-Business operations are split into individual files under `service/<operation>.rs`:
+Business operations are split into individual files under `service/<operation>.rs`. Keep the service root in `service/mod.rs` when a domain has operation modules:
 
 ```
 src/services/<domain>/
-  service.rs
   service/
+    mod.rs           # Service type, constructor, shared deps
     <operation>.rs   # One file per service method (e.g. poll.rs, acknowledge.rs)
 ```
 

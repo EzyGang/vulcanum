@@ -3,11 +3,11 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::routes::{decode_jwt, parse_team_header};
+use crate::routes::auth_utils::{decode_jwt, parse_team_header};
 
-/// Authenticated principal that may be either a worker or an instance admin.
-/// Used for endpoints that both workers (their own jobs) and admins (any job)
-/// need to read from.
+/// Authenticated principal that may be a worker, an instance admin, or a user.
+/// Used for endpoints that workers (their own jobs), users (team jobs), and
+/// admins (any job) need to read from.
 #[derive(Clone)]
 pub enum WorkerOrInstanceAuth {
     Worker {

@@ -1,6 +1,8 @@
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
+use crate::providers::logging::redact_provider_output;
+
 const OPENCODE_DEFAULT_PORT: u16 = 4096;
 
 pub(crate) const HOST_ENV_ALLOWLIST: &[&str] = &[
@@ -54,6 +56,7 @@ pub(super) async fn launch_host_server(
     {
         cmd.process_group(0);
     }
+    cmd.kill_on_drop(true);
 
     let mut child = cmd
         .spawn()
@@ -64,6 +67,7 @@ pub(super) async fn launch_host_server(
             use tokio::io::{AsyncBufReadExt, BufReader};
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
+                let line = redact_provider_output(&line);
                 tracing::debug!(target: "opencode::stderr", "{}", line);
             }
         });
@@ -91,15 +95,20 @@ pub(super) async fn launch_container_server(
         .map_err(|e| HarnessError::ServerLaunch(format!("docker run failed: {e}")))?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr = redact_provider_output(&String::from_utf8_lossy(&output.stderr));
         return Err(HarnessError::ServerLaunch(format!(
             "docker run failed: {stderr}"
         )));
     }
 
     let container_id = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-    let host_port = read_container_port(container_name).await?;
-
+    let host_port = match read_container_port(container_name).await {
+        Ok(port) => port,
+        Err(error) => {
+            super::cleanup::remove_container(Some(container_name));
+            return Err(error);
+        }
+    };
     let log_container_name = container_name.to_owned();
     tokio::spawn(async move {
         let mut cmd = tokio::process::Command::new("docker");
@@ -197,6 +206,7 @@ where
     use tokio::io::{AsyncBufReadExt, BufReader};
     let mut lines = BufReader::new(pipe).lines();
     while let Ok(Some(line)) = lines.next_line().await {
+        let line = redact_provider_output(&line);
         tracing::debug!(target: "opencode::container", "{}", line);
     }
 }

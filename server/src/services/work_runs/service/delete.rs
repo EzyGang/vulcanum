@@ -19,18 +19,9 @@ impl WorkRunsService {
 
         if let Some(worker_id) = run.worker_id {
             if matches!(run.status, WorkRunStatus::Dispatched) {
-                if let Err(e) = self
-                    .workers_repo
+                self.workers_repo
                     .decrement_active_jobs(&mut *tx, worker_id)
-                    .await
-                {
-                    tracing::warn!(
-                        error = %e,
-                        worker_id = %worker_id,
-                        work_run_id = %id,
-                        "failed to decrement active_jobs on run deletion"
-                    );
-                }
+                    .await?;
             }
         }
 
@@ -66,18 +57,9 @@ impl WorkRunsService {
 
                     if let Some(worker_id) = run.worker_id {
                         if matches!(run.status, WorkRunStatus::Dispatched) {
-                            if let Err(e) = self
-                                .workers_repo
+                            self.workers_repo
                                 .decrement_active_jobs(&mut *tx, worker_id)
-                                .await
-                            {
-                                tracing::warn!(
-                                    error = %e,
-                                    worker_id = %worker_id,
-                                    work_run_id = %id,
-                                    "failed to decrement active_jobs on bulk delete"
-                                );
-                            }
+                                .await?;
                         }
                     }
 

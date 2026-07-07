@@ -18,17 +18,25 @@ pub(crate) struct ReviewLoopProgress {
 pub(crate) struct ReviewLoopState {
     enabled: bool,
     phase: ReviewLoopPhase,
+    max_turns: i32,
     max_fix_passes: i32,
     completed_fix_passes: i32,
 }
 
 impl ReviewLoopState {
     #[must_use]
-    pub(crate) fn new(work_type: WorkRunType, max_fix_passes: i32) -> Self {
+    pub(crate) fn new(work_type: WorkRunType, max_turns: i32) -> Self {
+        let enabled = matches!(work_type, WorkRunType::PullRequestReview);
+        let max_turns = max_turns.max(1);
+        let max_fix_passes = match enabled {
+            true => ((max_turns - 1) / 2).max(0),
+            false => max_turns,
+        };
         Self {
-            enabled: matches!(work_type, WorkRunType::PullRequestReview),
+            enabled,
             phase: ReviewLoopPhase::Review,
-            max_fix_passes: max_fix_passes.max(0),
+            max_turns,
+            max_fix_passes,
             completed_fix_passes: 0,
         }
     }
@@ -60,10 +68,7 @@ impl ReviewLoopState {
 
     #[must_use]
     pub(crate) fn effective_max_turns(&self) -> i32 {
-        match self.enabled {
-            true => (self.max_fix_passes * 2 + 1).max(1),
-            false => self.max_fix_passes.max(1),
-        }
+        self.max_turns
     }
 
     #[must_use]

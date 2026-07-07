@@ -56,7 +56,7 @@ impl IsolationProvider for DockerIsolation {
         &self,
         workdir: &Path,
         secrets: &HashMap<String, String>,
-        _env_vars: &HashMap<String, String>,
+        env_vars: &HashMap<String, String>,
         limits: &ResourceLimits,
         work_type: WorkRunType,
         agents_md: &str,
@@ -85,33 +85,8 @@ impl IsolationProvider for DockerIsolation {
 
         let container_name = workspace::container_name(workdir);
 
-        let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
-        let mut combined_env: HashMap<String, String> = sanitized_secrets.clone();
-        combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
-        combined_env.insert(
-            "FINISH_ARTIFACT_PATH".to_owned(),
-            "/workdir/home/finish_artifact.json".to_owned(),
-        );
-        match agent_backend {
-            AgentBackend::OpenCode => {
-                combined_env.insert(
-                    "OPENCODE_CONFIG".to_owned(),
-                    "/workdir/home/.config/opencode/opencode.json".to_owned(),
-                );
-                combined_env.insert(
-                    "OPENCODE_CONFIG_DIR".to_owned(),
-                    "/workdir/home/.config/opencode".to_owned(),
-                );
-            }
-            AgentBackend::OmpRpc => {
-                combined_env.extend(workspace::omp_environment_vars(
-                    "/workdir/home",
-                    "/workdir/tmp",
-                ));
-            }
-        }
-        combined_env.extend(github_credentials.runtime_env);
-
+        let (sanitized_secrets, combined_env) =
+            build_container_environment(env_vars, secrets, &github_credentials, agent_backend);
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),
             workspace_dir: workdir.join("workspace"),
@@ -141,6 +116,43 @@ impl IsolationProvider for DockerIsolation {
 
         cleanup_docker_workdir(&env.workdir, &self.image, self.runtime).await;
     }
+}
+
+pub(crate) fn build_container_environment(
+    env_vars: &HashMap<String, String>,
+    secrets: &HashMap<String, String>,
+    github_credentials: &github_credentials::GitHubCredentialBridge,
+    agent_backend: AgentBackend,
+) -> (HashMap<String, String>, HashMap<String, String>) {
+    let sanitized_secrets = github_credentials::without_direct_token_env(secrets);
+    let mut combined_env = env_vars.clone();
+    combined_env.extend(sanitized_secrets.clone());
+    combined_env.insert("HOME".to_owned(), "/workdir/home".to_owned());
+    combined_env.insert(
+        "FINISH_ARTIFACT_PATH".to_owned(),
+        "/workdir/home/finish_artifact.json".to_owned(),
+    );
+    match agent_backend {
+        AgentBackend::OpenCode => {
+            combined_env.insert(
+                "OPENCODE_CONFIG".to_owned(),
+                "/workdir/home/.config/opencode/opencode.json".to_owned(),
+            );
+            combined_env.insert(
+                "OPENCODE_CONFIG_DIR".to_owned(),
+                "/workdir/home/.config/opencode".to_owned(),
+            );
+        }
+        AgentBackend::OmpRpc => {
+            combined_env.extend(workspace::omp_environment_vars(
+                "/workdir/home",
+                "/workdir/tmp",
+            ));
+        }
+    }
+    combined_env.extend(github_credentials.runtime_env.clone());
+
+    (sanitized_secrets, combined_env)
 }
 
 pub(crate) async fn cleanup_docker_workdir(

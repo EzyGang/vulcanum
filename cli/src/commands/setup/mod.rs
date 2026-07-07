@@ -29,35 +29,36 @@ pub async fn run(
     isolation: Option<crate::IsolationBackend>,
     agent_backend: Option<AgentBackendArg>,
 ) -> anyhow::Result<()> {
+    let backend = resolve_backend(interaction_mode(&code, &instance), isolation)?;
+
     console::info("Checking prerequisites...");
     host::has_sudo_access()?;
 
     console::info("Provisioning worker environment...");
 
-    console::step("Docker", backends::docker::install_docker)?;
-
-    let backend = resolve_backend(interaction_mode(&code, &instance), isolation)?;
-
-    let mut config = vulcanum_shared::config::load_config()
-        .unwrap_or_else(|_| vulcanum_shared::config::WorkerConfig::default());
+    let mut config = vulcanum_shared::config::load_config_if_exists()?.unwrap_or_default();
     config.harness = backend.harness_name().to_owned();
     config.agent_backend = selected_agent_backend(agent_backend);
-    vulcanum_shared::config::save_config(&config)?;
 
     match backend {
         Backend::Kata => {
+            console::step("Docker", backends::docker::install_docker)?;
             console::step("Kata Containers", backends::kata::install_kata)?;
             console::step(
                 "Docker Kata runtime",
                 backends::kata::configure_docker_for_kata,
             )?;
+            console::step("Agent image", backends::agent_image::pull_agent_image)?;
         }
-        Backend::Docker | Backend::None => {
+        Backend::Docker => {
+            console::step("Docker", backends::docker::install_docker)?;
             console::info("Skipping sandbox runtime installation.");
+            console::step("Agent image", backends::agent_image::pull_agent_image)?;
+        }
+        Backend::None => {
+            console::info("Skipping Docker, sandbox runtime, and agent image installation.");
         }
     }
-
-    console::step("Agent image", backends::agent_image::pull_agent_image)?;
     console::step(
         service::worker_service_label(),
         service::configure_worker_service,
@@ -91,6 +92,8 @@ pub async fn run(
             critical
         );
     }
+
+    vulcanum_shared::config::save_config(&config)?;
 
     eprintln!();
     if warnings > 0 {

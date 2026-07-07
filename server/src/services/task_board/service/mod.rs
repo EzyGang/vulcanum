@@ -1,15 +1,16 @@
-use std::collections::HashSet;
+mod helpers;
 
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
-use crate::db::queryer::Queryer;
 use crate::db::task_augmentations::TaskAugmentationsRepository;
+use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::ProjectConfig;
 use crate::models::provider_configs::model::IntegrationProvider;
 use crate::models::providers::model::{
-    CreateIntegrationTaskInput, IntegrationBoard, IntegrationColumn, UpdateIntegrationTaskInput,
+    CreateIntegrationTaskInput, IntegrationBoard, IntegrationTask, UpdateIntegrationTaskInput,
 };
 use crate::models::task_board::errors::TaskBoardError;
 use crate::models::task_board::model::{
@@ -18,12 +19,18 @@ use crate::models::task_board::model::{
     UpdateTaskRequest, UpdateTaskResponse,
 };
 use crate::services::providers::client::IntegrationClient;
+#[cfg(test)]
+pub(crate) use crate::services::task_board::service::helpers::default_column_status;
+pub(crate) use crate::services::task_board::service::helpers::{
+    collect_board_task_refs, project_config_to_provider_project,
+};
+use crate::services::task_board::service::helpers::{default_task_status, normalized_required};
 
 const DEFAULT_PRIORITY: &str = "low";
-const FALLBACK_STATUS: &str = "planned";
 
 #[derive(Clone)]
 pub struct TaskBoardService {
+    db: PgPool,
     providers_repo: IntegrationProvidersRepository,
     project_configs_repo: ProjectConfigsRepository,
     task_augmentations_repo: TaskAugmentationsRepository,
@@ -32,43 +39,42 @@ pub struct TaskBoardService {
 impl TaskBoardService {
     #[must_use]
     pub fn new(
+        db: PgPool,
         providers_repo: IntegrationProvidersRepository,
         project_configs_repo: ProjectConfigsRepository,
         task_augmentations_repo: TaskAugmentationsRepository,
     ) -> Self {
         Self {
+            db,
             providers_repo,
             project_configs_repo,
             task_augmentations_repo,
         }
     }
 
-    pub async fn list_projects<'c, Q>(
+    pub async fn list_projects(
         &self,
-        db: Q,
         team_id: Uuid,
-    ) -> Result<Vec<TaskProviderProject>, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
-        let configs = self.project_configs_repo.list_all(db, team_id).await?;
+    ) -> Result<Vec<TaskProviderProject>, TaskBoardError> {
+        let configs = self
+            .project_configs_repo
+            .list_all(&self.db, team_id)
+            .await?;
         Ok(configs
             .into_iter()
             .filter_map(project_config_to_provider_project)
             .collect())
     }
 
-    pub async fn get_board<'c, Q>(
+    pub async fn get_board(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         external_project_id: &str,
-    ) -> Result<TaskBoardResponse, TaskBoardError>
-    where
-        Q: Queryer<'c> + Copy,
-    {
-        let provider = self.load_provider(db, team_id, provider_id).await?;
+    ) -> Result<TaskBoardResponse, TaskBoardError> {
+        let (project_config, provider) = self
+            .load_project_provider(team_id, provider_id, external_project_id)
+            .await?;
         let client = IntegrationClient::from_provider(&provider);
         let mut board = client.fetch_board(external_project_id).await?;
         let project = client.lookup_project(external_project_id).await?;
@@ -76,7 +82,7 @@ impl TaskBoardService {
             board.labels = client.fetch_labels(workspace_id).await?;
         }
         let task_augmentations = self
-            .task_augmentations(db, team_id, provider_id, external_project_id, &board)
+            .task_augmentations(team_id, project_config.id, &board)
             .await?;
 
         Ok(TaskBoardResponse {
@@ -87,26 +93,21 @@ impl TaskBoardService {
         })
     }
 
-    pub async fn create_task<'c, Q>(
+    pub async fn create_task(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         external_project_id: &str,
         request: CreateTaskRequest,
-    ) -> Result<CreateTaskResponse, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<CreateTaskResponse, TaskBoardError> {
         let title = normalized_required(&request.title, TaskBoardError::EmptyTitle)?;
-        let provider = self.load_provider(db, team_id, provider_id).await?;
+        let (_, provider) = self
+            .load_project_provider(team_id, provider_id, external_project_id)
+            .await?;
         let client = IntegrationClient::from_provider(&provider);
         let status = match request.status.as_deref().map(str::trim) {
             Some(value) if !value.is_empty() => value.to_owned(),
-            _ => {
-                self.default_task_status(&client, external_project_id)
-                    .await?
-            }
+            _ => default_task_status(&client, external_project_id).await?,
         };
         let priority = request
             .priority
@@ -129,20 +130,17 @@ impl TaskBoardService {
         Ok(CreateTaskResponse { task })
     }
 
-    pub async fn update_task<'c, Q>(
+    pub async fn update_task(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         task_id: &str,
         request: UpdateTaskRequest,
-    ) -> Result<UpdateTaskResponse, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<UpdateTaskResponse, TaskBoardError> {
         let title = normalized_required(&request.title, TaskBoardError::EmptyTitle)?;
-        let provider = self.load_provider(db, team_id, provider_id).await?;
-        let client = IntegrationClient::from_provider(&provider);
+        let (client, _) = self
+            .load_task_provider(team_id, provider_id, task_id)
+            .await?;
         let task = client
             .update_task(UpdateIntegrationTaskInput {
                 task_id: task_id.to_owned(),
@@ -154,20 +152,17 @@ impl TaskBoardService {
         Ok(UpdateTaskResponse { task })
     }
 
-    pub async fn move_task<'c, Q>(
+    pub async fn move_task(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         task_id: &str,
         status: &str,
-    ) -> Result<MoveTaskResponse, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<MoveTaskResponse, TaskBoardError> {
         let next_status = normalized_required(status, TaskBoardError::EmptyStatus)?;
-        let provider = self.load_provider(db, team_id, provider_id).await?;
-        let client = IntegrationClient::from_provider(&provider);
+        let (client, _) = self
+            .load_task_provider(team_id, provider_id, task_id)
+            .await?;
 
         client.update_task_status(task_id, &next_status).await?;
 
@@ -177,20 +172,17 @@ impl TaskBoardService {
         })
     }
 
-    pub async fn add_task_label<'c, Q>(
+    pub async fn add_task_label(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         task_id: &str,
         label_id: &str,
-    ) -> Result<TaskLabelResponse, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<TaskLabelResponse, TaskBoardError> {
         let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
-        let provider = self.load_provider(db, team_id, provider_id).await?;
-        let client = IntegrationClient::from_provider(&provider);
+        let (client, _) = self
+            .load_task_provider(team_id, provider_id, task_id)
+            .await?;
 
         client.add_task_label(task_id, &label_id).await?;
 
@@ -200,20 +192,17 @@ impl TaskBoardService {
         })
     }
 
-    pub async fn remove_task_label<'c, Q>(
+    pub async fn remove_task_label(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         task_id: &str,
         label_id: &str,
-    ) -> Result<TaskLabelResponse, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<TaskLabelResponse, TaskBoardError> {
         let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
-        let provider = self.load_provider(db, team_id, provider_id).await?;
-        let client = IntegrationClient::from_provider(&provider);
+        let (client, _) = self
+            .load_task_provider(team_id, provider_id, task_id)
+            .await?;
 
         client.remove_task_label(task_id, &label_id).await?;
 
@@ -223,134 +212,78 @@ impl TaskBoardService {
         })
     }
 
-    pub async fn delete_label<'c, Q>(
+    pub async fn delete_label(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
         label_id: &str,
-    ) -> Result<TaskLabelDeleteResponse, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+    ) -> Result<TaskLabelDeleteResponse, TaskBoardError> {
         let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
-        let provider = self.load_provider(db, team_id, provider_id).await?;
+        let provider = self.load_provider(team_id, provider_id).await?;
         let client = IntegrationClient::from_provider(&provider);
         client.delete_label(&label_id).await?;
 
         Ok(TaskLabelDeleteResponse { label_id })
     }
 
-    async fn task_augmentations<'c, Q>(
+    async fn task_augmentations(
         &self,
-        db: Q,
         team_id: Uuid,
-        provider_id: Uuid,
-        external_project_id: &str,
+        project_config_id: Uuid,
         board: &IntegrationBoard,
-    ) -> Result<Vec<TaskBoardTaskAugmentation>, TaskBoardError>
-    where
-        Q: Queryer<'c> + Copy,
-    {
+    ) -> Result<Vec<TaskBoardTaskAugmentation>, TaskBoardError> {
         let task_refs = collect_board_task_refs(board);
         if task_refs.is_empty() {
             return Ok(Vec::new());
         }
 
-        let project_config = self
-            .project_configs_repo
-            .find_by_provider_project(db, team_id, provider_id, external_project_id)
-            .await?;
-        let project_config = match project_config {
-            Some(config) => config,
-            None => return Ok(Vec::new()),
-        };
         self.task_augmentations_repo
-            .list_for_task_refs(db, team_id, project_config.id, &task_refs)
+            .list_for_task_refs(&self.db, team_id, project_config_id, &task_refs)
             .await
             .map_err(TaskBoardError::from)
     }
 
-    async fn load_provider<'c, Q>(
+    async fn load_project_provider(
         &self,
-        db: Q,
         team_id: Uuid,
         provider_id: Uuid,
-    ) -> Result<IntegrationProvider, TaskBoardError>
-    where
-        Q: Queryer<'c>,
-    {
+        external_project_id: &str,
+    ) -> Result<(ProjectConfig, IntegrationProvider), TaskBoardError> {
+        let project_config = self
+            .project_configs_repo
+            .find_by_provider_project(&self.db, team_id, provider_id, external_project_id)
+            .await?
+            .ok_or(ProjectConfigsError::NotFound)?;
+        let provider = self.load_provider(team_id, provider_id).await?;
+
+        Ok((project_config, provider))
+    }
+
+    async fn load_task_provider(
+        &self,
+        team_id: Uuid,
+        provider_id: Uuid,
+        task_id: &str,
+    ) -> Result<(IntegrationClient, IntegrationTask), TaskBoardError> {
+        let provider = self.load_provider(team_id, provider_id).await?;
+        let client = IntegrationClient::from_provider(&provider);
+        let task = client.fetch_task(task_id).await?;
+        self.project_configs_repo
+            .find_by_provider_project(&self.db, team_id, provider_id, &task.project_id)
+            .await?
+            .ok_or(ProjectConfigsError::NotFound)?;
+
+        Ok((client, task))
+    }
+
+    async fn load_provider(
+        &self,
+        team_id: Uuid,
+        provider_id: Uuid,
+    ) -> Result<IntegrationProvider, TaskBoardError> {
         self.providers_repo
-            .find_by_id(db, provider_id, team_id)
+            .find_by_id(&self.db, provider_id, team_id)
             .await
             .map_err(TaskBoardError::from)
     }
-
-    async fn default_task_status(
-        &self,
-        client: &IntegrationClient,
-        external_project_id: &str,
-    ) -> Result<String, TaskBoardError> {
-        // Only fallback API callers omit status. Keep this uncached so provider column changes
-        // do not require invalidation in Vulcanum.
-        let columns = client.fetch_columns(external_project_id).await?;
-        Ok(default_column_status(&columns))
-    }
-}
-
-#[must_use]
-pub(crate) fn project_config_to_provider_project(
-    config: ProjectConfig,
-) -> Option<TaskProviderProject> {
-    let provider_id = config.provider_id?;
-    let fallback_name = config.external_project_id.clone();
-
-    Some(TaskProviderProject {
-        provider_id,
-        provider_type: config.integration_type,
-        workspace_id: config.external_workspace_id,
-        external_project_id: config.external_project_id,
-        name: if config.name.is_empty() {
-            fallback_name.clone()
-        } else {
-            config.name
-        },
-        slug: fallback_name,
-    })
-}
-
-#[must_use]
-pub(crate) fn collect_board_task_refs(board: &IntegrationBoard) -> Vec<String> {
-    let mut seen = HashSet::new();
-    let mut task_refs = Vec::new();
-
-    for column in &board.columns {
-        for task in &column.tasks {
-            let task_ref = task.id.clone();
-            if seen.insert(task_ref.clone()) {
-                task_refs.push(task_ref);
-            }
-        }
-    }
-
-    task_refs
-}
-
-#[must_use]
-pub(crate) fn default_column_status(columns: &[IntegrationColumn]) -> String {
-    columns
-        .iter()
-        .find(|column| column.is_final != Some(true))
-        .or_else(|| columns.first())
-        .map(|column| column.slug.to_owned())
-        .unwrap_or_else(|| FALLBACK_STATUS.to_owned())
-}
-
-fn normalized_required(input: &str, err: TaskBoardError) -> Result<String, TaskBoardError> {
-    let value = input.trim();
-    if value.is_empty() {
-        return Err(err);
-    }
-
-    Ok(value.to_owned())
 }

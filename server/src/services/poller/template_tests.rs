@@ -26,6 +26,25 @@ fn interpolates_all_vars() {
 }
 
 #[test]
+fn does_not_render_placeholders_from_values() {
+    let template = "Title: {{task_title}}\nRepo: {{repo_url}}";
+    let vars = TemplateVars {
+        task_title: "Do not replace {{repo_url}} here",
+        task_body: "",
+        repo_url: "https://github.com/org/repo",
+        repo_urls: "",
+        repo_names: "",
+        repo_layout: "",
+        review_target_pr_url: "",
+    };
+
+    let result = render_template(template, &vars);
+
+    assert!(result.contains("Do not replace {{repo_url}} here"));
+    assert!(result.contains("Repo: https://github.com/org/repo"));
+}
+
+#[test]
 fn preserves_unknown_vars() {
     let template = "Unknown {{foo}} and {{bar}}";
     let vars = TemplateVars {

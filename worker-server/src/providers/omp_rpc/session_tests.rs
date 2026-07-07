@@ -71,6 +71,44 @@ async fn wait_for_response_keeps_pending_events_and_reads_new_frames() -> Result
 }
 
 #[tokio::test]
+async fn wait_for_response_times_out_when_command_never_answers() -> Result<(), Box<dyn Error>> {
+    let stderr = ProcessOutputBuffer::default();
+    let (mut session, _tx) = test_session(stderr).await?;
+
+    let result = session
+        .wait_for_response_with_timeout("missing", "get_state", Duration::from_millis(1))
+        .await;
+
+    assert!(result.is_err());
+    Ok(())
+}
+
+#[tokio::test]
+async fn wait_for_response_timeout_keeps_unmatched_frames_pending() -> Result<(), Box<dyn Error>> {
+    let stderr = ProcessOutputBuffer::default();
+    let (mut session, tx) = test_session(stderr).await?;
+    tx.send(serde_json::json!({"type": "message_update", "id": "event-1"}))
+        .await?;
+
+    let result = session
+        .wait_for_response_with_timeout("missing", "get_state", Duration::from_millis(1))
+        .await;
+    let error = result.err().ok_or("expected command timeout")?.to_string();
+
+    assert!(error.contains("omp rpc command get_state response missing timed out"));
+    assert_eq!(session.pending.len(), 1);
+    assert_eq!(
+        session
+            .pending
+            .front()
+            .and_then(|frame| frame.get("type"))
+            .and_then(Value::as_str),
+        Some("message_update")
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn agent_end_reads_documented_session_stats_tokens() -> Result<(), Box<dyn Error>> {
     let stderr = ProcessOutputBuffer::default();
     let (mut session, _tx) = test_session(stderr).await?;
@@ -218,7 +256,7 @@ async fn export_messages_ignores_missing_session_file() -> Result<(), Box<dyn Er
 #[tokio::test]
 async fn wait_ready_reports_stderr_when_rpc_exits_before_ready() -> Result<(), Box<dyn Error>> {
     let stderr = ProcessOutputBuffer::default();
-    stderr.push_line("auth token missing".to_owned());
+    stderr.push_line("startup config missing".to_owned());
     let (mut session, tx) = test_session(stderr).await?;
     drop(tx);
 
@@ -230,7 +268,26 @@ async fn wait_ready_reports_stderr_when_rpc_exits_before_ready() -> Result<(), B
     let message = error.to_string();
 
     assert!(message.contains("omp rpc exited before ready"));
-    assert!(message.contains("stderr: auth token missing"));
+    assert!(message.contains("stderr: startup config missing"));
+    Ok(())
+}
+
+#[tokio::test]
+async fn wait_ready_redacts_sensitive_stderr_when_rpc_exits() -> Result<(), Box<dyn Error>> {
+    let stderr = ProcessOutputBuffer::default();
+    stderr.push_line("auth token missing".to_owned());
+    let (mut session, tx) = test_session(stderr).await?;
+    drop(tx);
+
+    let error = session
+        .wait_ready()
+        .await
+        .err()
+        .ok_or("expected startup error")?;
+    let message = error.to_string();
+
+    assert!(message.contains("stderr: [redacted provider output]"));
+    assert!(!message.contains("auth token missing"));
     Ok(())
 }
 

@@ -25,7 +25,9 @@ impl ProjectConfigsService {
             max_in_progress_tasks: config
                 .max_in_progress_tasks
                 .unwrap_or(team.max_in_progress_tasks),
-            agent_backend: team.agent_backend.parse().unwrap_or_default(),
+            agent_backend: team.agent_backend.parse().map_err(|()| {
+                ProjectConfigsError::InvalidAgentBackend(team.agent_backend.clone())
+            })?,
         })
     }
 }

@@ -6,6 +6,7 @@ use crate::db::dispatcher::DispatchRepository;
 use crate::db::work_runs::WorkRunsRepository;
 use crate::db::workers::WorkersRepository;
 use crate::models::dispatcher::errors::DispatchError;
+use crate::models::work_runs::errors::WorkRunsError;
 use crate::services::dispatcher::dispatch_store::DispatchStore;
 
 const ORPHAN_THRESHOLD_SECS: i64 = 120;
@@ -52,19 +53,19 @@ impl DispatcherService {
             .work_runs_repo
             .reset_orphaned_dispatched(&self.db, ORPHAN_THRESHOLD_SECS)
             .await
-            .unwrap_or(0);
+            .map_err(dispatch_work_runs_error)?;
 
         let orphaned_no_worker = self
             .work_runs_repo
             .reset_orphaned_worker_runs(&self.db)
             .await
-            .unwrap_or(0);
+            .map_err(dispatch_work_runs_error)?;
 
         let stalled_running = self
             .work_runs_repo
             .reset_stalled_running(&self.db, self.stalled_running_threshold_secs)
             .await
-            .unwrap_or(0);
+            .map_err(dispatch_work_runs_error)?;
 
         let workers = self.dispatch_repo.find_available_workers(&self.db).await?;
         let pending = self.dispatch_repo.find_pending_unassigned(&self.db).await?;
@@ -147,11 +148,14 @@ impl DispatcherService {
                         .increment_worker_jobs(&mut *tx, worker.id)
                         .await
                     {
+                        let _ = tx.rollback().await;
                         tracing::warn!(
                             error = %e,
                             worker_id = %worker.id,
-                            "failed to increment worker jobs"
+                            work_run_id = %work_run.id,
+                            "failed to reserve worker capacity"
                         );
+                        continue;
                     }
 
                     if let Err(e) = tx.commit().await {
@@ -173,7 +177,7 @@ impl DispatcherService {
                             error = %e,
                             worker_id = %worker.id,
                             work_run_id = %work_run.id,
-                            "failed to set dispatch flag in redis"
+                            "failed to set dispatch flag; workers will use DB dispatch fallback"
                         );
                     }
 
@@ -215,6 +219,14 @@ impl DispatcherService {
             disconnected,
             orphaned: orphaned_global + orphaned_no_worker + stalled_running,
         })
+    }
+}
+
+fn dispatch_work_runs_error(err: WorkRunsError) -> DispatchError {
+    match err {
+        WorkRunsError::Database(err) => DispatchError::Database(err),
+        WorkRunsError::Worker(err) => DispatchError::Worker(err),
+        _ => DispatchError::Internal(err.to_string()),
     }
 }
 

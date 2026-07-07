@@ -20,15 +20,13 @@ pub async fn list(
     query: web::Query<ListRunsQuery>,
     auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let limit = query.limit.unwrap_or(50).min(100);
-    let offset = query.offset.unwrap_or(0);
     let team_id = state
         .teams
         .resolve_team(&auth, state.is_single_user)
         .await?;
     let runs = state
         .jobs
-        .list_all(team_id, query.status, limit, offset)
+        .list_all(team_id, query.status, query.limit, query.offset)
         .await?;
 
     Ok(HttpResponse::Ok().json(runs))

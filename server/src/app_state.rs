@@ -59,11 +59,11 @@ impl AppState {
 
         let providers_repo = IntegrationProvidersRepository::new();
         let providers = IntegrationProvidersService::new(providers_repo.clone(), db_pool.clone());
-        let model_catalog = ModelCatalogClient::new();
+        let model_catalog = ModelCatalogClient::new()?;
         let model_providers_repo = ModelProvidersRepository::new();
         let model_provider_cipher = SecretCipher::new(&cfg.model_provider_secret_key)?;
         let device_flow_store = Arc::new(RedisDeviceFlowStore::new(&cfg.redis_url)?);
-        let device_auth_provider = Arc::new(OpenAiChatGptDeviceAuthProvider::new());
+        let device_auth_provider = Arc::new(OpenAiChatGptDeviceAuthProvider::new()?);
         let model_providers = ModelProvidersService::new(
             model_providers_repo.clone(),
             db_pool.clone(),
@@ -88,9 +88,10 @@ impl AppState {
             cfg.instance_password.clone(),
             cfg.jwt_secret.clone(),
             cfg,
-        );
+        )?;
         let project_configs_repo = ProjectConfigsRepository::new();
         let task_board = TaskBoardService::new(
+            db_pool.clone(),
             providers_repo.clone(),
             project_configs_repo.clone(),
             TaskAugmentationsRepository::new(),
@@ -171,7 +172,7 @@ impl AppState {
         crate::services::poller::service::PollerService::new(
             self.project_configs.clone(),
             self.jobs.work_runs_repo.clone(),
-            self.providers.repo.clone(),
+            self.providers.repository(),
             self.jobs.db.clone(),
             poll_period_secs,
         )

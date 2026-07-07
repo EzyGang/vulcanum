@@ -220,6 +220,7 @@ pub async fn probe_url(url: &str) -> anyhow::Result<StatusResponse> {
 pub async fn probe_url_with_scheme_fallback(
     user_url: &str,
 ) -> anyhow::Result<(String, StatusResponse)> {
+    let user_url = user_url.trim();
     let normalized = if user_url.starts_with("http://") || user_url.starts_with("https://") {
         user_url.trim_end_matches('/').to_owned()
     } else {

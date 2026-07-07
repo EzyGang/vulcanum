@@ -54,7 +54,7 @@ impl WorkRunEventsService {
             .cancel_store
             .is_cancel_requested(work_run_id)
             .await
-            .unwrap_or(false);
+            .map_err(|e| WorkRunEventsError::CancelStore(e.to_string()))?;
 
         Ok(AppendResult {
             accepted: result.accepted,

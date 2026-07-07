@@ -49,12 +49,19 @@ impl WorkRunsRepository {
         threshold_secs: i64,
     ) -> Result<u64, WorkRunsError> {
         let rows = sqlx::query!(
-            r#"WITH reset_runs AS (
-                UPDATE work_runs SET status = 'pending'::work_run_status, worker_id = NULL
+            r#"WITH candidates AS (
+                SELECT id, worker_id
+                FROM work_runs
                 WHERE status = 'running'::work_run_status
                 AND updated_at < NOW() - INTERVAL '1 second' * $1
                 AND finish_blocked_reason IS NULL
-                RETURNING worker_id
+            ),
+            reset_runs AS (
+                UPDATE work_runs wr
+                SET status = 'pending'::work_run_status, worker_id = NULL
+                FROM candidates c
+                WHERE wr.id = c.id
+                RETURNING c.worker_id
             )
             SELECT COUNT(DISTINCT worker_id) AS affected_workers
             FROM reset_runs WHERE worker_id IS NOT NULL"#,
@@ -77,7 +84,7 @@ impl WorkRunsRepository {
             .map_err(WorkRunsError::Database)
     }
 
-    pub async fn reset_worker_active_jobs_raw<'c, Q: Queryer<'c>>(
+    async fn reset_worker_active_jobs_raw<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
         worker_id: Uuid,

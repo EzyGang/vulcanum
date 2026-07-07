@@ -86,14 +86,13 @@ impl WorkRunsService {
             }
         }
 
-        let comment = if is_review {
-            review_comment(run, params)
-        } else {
-            params
-                .result_summary
-                .as_ref()
-                .map(|summary| format!("**Summary:** {summary}"))
-                .unwrap_or_else(|| format!("PR: {}", pr_urls.join(", ")))
+        let comment = match is_review {
+            true => Some(review_comment(run, params)),
+            false => implementation_result_comment(params, pr_urls),
+        };
+
+        let Some(comment) = comment else {
+            return;
         };
 
         if let Err(e) = client.add_comment(&run.external_task_ref, &comment).await {
@@ -103,6 +102,17 @@ impl WorkRunsService {
                 "failed to add task comment",
             );
         }
+    }
+}
+
+fn implementation_result_comment(
+    params: &SubmitResultRequest,
+    pr_urls: &[String],
+) -> Option<String> {
+    match params.result_summary.as_ref() {
+        Some(summary) if !summary.trim().is_empty() => Some(format!("**Summary:** {summary}")),
+        _ if !pr_urls.is_empty() => Some(format!("PR: {}", pr_urls.join(", "))),
+        _ => None,
     }
 }
 

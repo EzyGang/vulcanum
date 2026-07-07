@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+
 use chrono::Utc;
 use serde::Deserialize;
 
@@ -16,6 +19,7 @@ const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const ISSUER: &str = "https://auth.openai.com";
 const VERIFICATION_URI: &str = "https://auth.openai.com/codex/device";
 const REDIRECT_URI: &str = "https://auth.openai.com/deviceauth/callback";
+const OPENAI_HTTP_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Clone)]
 pub struct OpenAiChatGptDeviceAuthProvider {
@@ -44,11 +48,16 @@ struct TokenResponse {
 }
 
 impl OpenAiChatGptDeviceAuthProvider {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+    pub fn new() -> Result<Self, ModelProvidersError> {
+        let client = reqwest::Client::builder()
+            .timeout(OPENAI_HTTP_TIMEOUT)
+            .build()
+            .map_err(|e| {
+                ModelProvidersError::DeviceFlowFailed(format!(
+                    "building OpenAI device auth client: {e}"
+                ))
+            })?;
+        Ok(Self { client })
     }
 
     async fn exchange_code(
@@ -82,12 +91,6 @@ impl OpenAiChatGptDeviceAuthProvider {
             .await
             .map_err(|e| ModelProvidersError::DeviceFlowFailed(e.to_string()))?;
         Ok(token.into_credential())
-    }
-}
-
-impl Default for OpenAiChatGptDeviceAuthProvider {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

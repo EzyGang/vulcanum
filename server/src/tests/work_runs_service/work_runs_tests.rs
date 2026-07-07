@@ -62,7 +62,7 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
 }
 
 fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
-    let model_catalog = ModelCatalogClient::new();
+    let model_catalog = ModelCatalogClient::new().expect("build model catalog client");
     let model_providers_repo = ModelProvidersRepository::new();
     let model_providers = ModelProvidersService::new(
         model_providers_repo.clone(),
@@ -70,7 +70,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
         model_catalog,
         SecretCipher::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").expect("test cipher"),
         Arc::new(InMemoryDeviceFlowStore::new()),
-        Arc::new(OpenAiChatGptDeviceAuthProvider::new()),
+        Arc::new(OpenAiChatGptDeviceAuthProvider::new().expect("build device auth client")),
     );
     let project_configs = ProjectConfigsService::new(
         ProjectConfigsRepository::new(),
@@ -239,11 +239,27 @@ async fn list_all_rejects_cross_team_runs(pool: sqlx::PgPool) {
     test_helpers::insert_pending_work_run(&pool, project_id, "task-cross-team-list").await;
 
     let runs = svc
-        .list_all(team_b, None, 20, 0)
+        .list_all(team_b, None, Some(20), Some(0))
         .await
         .expect("Should list team B runs");
 
     assert!(runs.is_empty());
+}
+
+#[sqlx::test]
+async fn list_all_returns_external_task_ref_as_task_slug(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-list-slug").await;
+    test_helpers::insert_pending_work_run(&pool, project_id, "task-list-slug").await;
+
+    let runs = svc
+        .list_all(test_helpers::DEFAULT_TEAM_ID, None, Some(20), Some(0))
+        .await
+        .expect("Should list team runs");
+
+    assert_eq!(runs[0].external_task_ref, "task-list-slug");
+    assert_eq!(runs[0].task_slug, "task-list-slug");
+    assert_eq!(runs[0].task_title, None);
 }
 
 #[sqlx::test]
@@ -330,6 +346,10 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
         .expect("Should dispatch");
+    dispatch_repo
+        .increment_worker_jobs(&pool, worker_id)
+        .await
+        .expect("Should reserve worker capacity");
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {
@@ -375,6 +395,10 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         .dispatch_to_worker(&pool, wr_id, worker_id)
         .await
         .expect("Should dispatch");
+    dispatch_repo
+        .increment_worker_jobs(&pool, worker_id)
+        .await
+        .expect("Should reserve worker capacity");
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {

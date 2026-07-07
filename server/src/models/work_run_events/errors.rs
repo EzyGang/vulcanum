@@ -6,6 +6,8 @@ pub enum WorkRunEventsError {
     NotFound,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("cancel store error: {0}")]
+    CancelStore(String),
     #[error("internal error: {0}")]
     Internal(String),
 }

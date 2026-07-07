@@ -11,12 +11,14 @@ use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
 use crate::isolation::workspace;
+use crate::providers::logging::redact_provider_output;
 use crate::providers::omp_rpc::{
     VULCANUM_OMP_MODEL_ENV, VULCANUM_OMP_PROVIDER_ENV, VULCANUM_OMP_SMOL_ENV,
 };
 
 const STDERR_LINE_LIMIT: usize = 40;
 const OMP_APPROVAL_FLAG: &str = "--yolo";
+const HOST_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG"];
 const DIRECT_GITHUB_TOKEN_ENVS: &[&str] = &["GITHUB_TOKEN", "GH_TOKEN"];
 
 #[derive(Clone, Default)]
@@ -33,7 +35,7 @@ impl ProcessOutputBuffer {
         if lines.len() == STDERR_LINE_LIMIT {
             lines.pop_front();
         }
-        lines.push_back(line);
+        lines.push_back(redact_provider_output(&line));
     }
 
     pub(crate) fn tail(&self) -> String {
@@ -67,6 +69,12 @@ pub(crate) async fn launch_omp(
 
 pub(super) fn host_omp_command(env: &IsolatedEnvironment, resume_path: Option<&Path>) -> Command {
     let mut command = Command::new("omp");
+    command.env_clear();
+    for (key, value) in std::env::vars() {
+        if HOST_ENV_ALLOWLIST.contains(&key.as_str()) {
+            command.env(key, value);
+        }
+    }
     command.arg("--mode").arg("rpc");
     command.arg(OMP_APPROVAL_FLAG);
     if let Some(session_dir) = env.env_vars.get("PI_SESSION_DIR") {
@@ -182,6 +190,7 @@ pub(crate) async fn read_stdout_frames(
                 }
             }
             Err(error) => {
+                let line = redact_provider_output(&line);
                 tracing::warn!(line = line, error = %error, "failed to parse OMP RPC frame");
             }
         }

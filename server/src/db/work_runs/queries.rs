@@ -38,24 +38,41 @@ impl WorkRunsRepository {
         params: InsertWorkRunParams,
     ) -> Result<WorkRun, WorkRunsError>
     where
-        Q: Queryer<'c> + Copy,
+        Q: Queryer<'c>,
     {
         let id = Uuid::new_v4();
+        let (repo_urls, positions) = repo_insert_arrays(&params.repo_full_names);
 
-        let run = sqlx::query_as!(
+        sqlx::query_as!(
             WorkRun,
-            r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
-             review_target_pr_url, review_target_repo_full_name)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-              RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
-                         work_type as "work_type: WorkRunType", parent_work_run_id,
-                         review_target_pr_url, review_target_repo_full_name,
-                         result_pr_url, result_exit_code, tokens_used, duration_ms,
-                        input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
-                        cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
-                        model_used,
-                        finish_status, result_summary, finish_blocked_reason, finish_next_column,
-                        created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
+            r#"WITH inserted AS (
+                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
+                 review_target_pr_url, review_target_repo_full_name)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status,
+                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
+                 result_pr_url, result_exit_code, tokens_used, duration_ms, input_tokens, output_tokens,
+                 cache_read_tokens, cache_write_tokens, model_used, finish_status, result_summary,
+                 finish_blocked_reason, finish_next_column, created_at, updated_at
+            ),
+            inserted_repos AS (
+                INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
+                SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position
+                FROM inserted
+                JOIN UNNEST($10::text[], $11::text[], $12::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
+                RETURNING 1
+            )
+            SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             work_type as "work_type: WorkRunType", parent_work_run_id,
+             review_target_pr_url, review_target_repo_full_name,
+             result_pr_url, result_exit_code, tokens_used, duration_ms,
+             input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
+             cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
+             model_used,
+             finish_status, result_summary, finish_blocked_reason, finish_next_column,
+             created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
+             FROM inserted
+             WHERE (SELECT COUNT(*) FROM inserted_repos) >= 0"#,
             id,
             params.team_id,
             &params.external_task_ref,
@@ -65,13 +82,13 @@ impl WorkRunsRepository {
             params.parent_work_run_id,
             params.review_target_pr_url.as_deref(),
             params.review_target_repo_full_name.as_deref(),
+            &params.repo_full_names,
+            &repo_urls,
+            &positions,
         )
         .fetch_one(db)
         .await
-        .map_err(WorkRunsError::from)?;
-        self.insert_repos(db, run.id, &params.repo_full_names)
-            .await?;
-        Ok(run)
+        .map_err(WorkRunsError::from)
     }
 
     pub async fn insert_work_run_if_not_active<'c, Q>(
@@ -80,15 +97,28 @@ impl WorkRunsRepository {
         params: InsertWorkRunParams,
     ) -> Result<bool, WorkRunsError>
     where
-        Q: Queryer<'c> + Copy,
+        Q: Queryer<'c>,
     {
         let id = Uuid::new_v4();
+        let (repo_urls, positions) = repo_insert_arrays(&params.repo_full_names);
 
         let result = sqlx::query!(
-            r#"INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
-             review_target_pr_url, review_target_repo_full_name)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-               ON CONFLICT DO NOTHING"#,
+            r#"WITH inserted AS (
+                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
+                 review_target_pr_url, review_target_repo_full_name)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT DO NOTHING
+                RETURNING id
+            ),
+            inserted_repos AS (
+                INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
+                SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position
+                FROM inserted
+                JOIN UNNEST($10::text[], $11::text[], $12::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
+                RETURNING 1
+            )
+            SELECT EXISTS(SELECT 1 FROM inserted) AS "inserted!"
+            WHERE (SELECT COUNT(*) FROM inserted_repos) >= 0"#,
             id,
             params.team_id,
             &params.external_task_ref,
@@ -98,52 +128,37 @@ impl WorkRunsRepository {
             params.parent_work_run_id,
             params.review_target_pr_url.as_deref(),
             params.review_target_repo_full_name.as_deref(),
+            &params.repo_full_names,
+            &repo_urls,
+            &positions,
         )
-        .execute(db)
+        .fetch_one(db)
         .await
         .map_err(WorkRunsError::from)?;
 
-        if result.rows_affected() == 0 {
-            return Ok(false);
-        }
-
-        self.insert_repos(db, id, &params.repo_full_names).await?;
-        Ok(true)
+        Ok(result.inserted)
     }
 
-    async fn insert_repos<'c, Q>(
+    pub async fn find_dispatched_for_worker<'c, Q>(
         &self,
         db: Q,
-        work_run_id: Uuid,
-        repo_full_names: &[String],
-    ) -> Result<(), WorkRunsError>
+        worker_id: Uuid,
+    ) -> Result<Option<Uuid>, WorkRunsError>
     where
-        Q: Queryer<'c> + Copy,
+        Q: Queryer<'c>,
     {
-        if repo_full_names.is_empty() {
-            return Ok(());
-        }
-
-        let repo_urls = repo_full_names
-            .iter()
-            .map(|name| github_repo_url(name))
-            .collect::<Vec<String>>();
-        let positions = (0..repo_full_names.len() as i32).collect::<Vec<i32>>();
-
-        sqlx::query(
-            r#"INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
-             SELECT $1, repo_full_name, repo_url, position
-             FROM UNNEST($2::text[], $3::text[], $4::int4[]) AS repos(repo_full_name, repo_url, position)"#,
+        let row = sqlx::query!(
+            r#"SELECT id FROM work_runs
+             WHERE worker_id = $1 AND status = 'dispatched'::work_run_status
+             ORDER BY updated_at ASC
+             LIMIT 1"#,
+            worker_id,
         )
-        .bind(work_run_id)
-        .bind(repo_full_names)
-        .bind(&repo_urls)
-        .bind(&positions)
-        .execute(db)
+        .fetch_optional(db)
         .await
         .map_err(WorkRunsError::from)?;
 
-        Ok(())
+        Ok(row.map(|row| row.id))
     }
 
     pub async fn list_repos<'c, Q>(
@@ -234,7 +249,8 @@ impl WorkRunsRepository {
     ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
         sqlx::query_as!(
             WorkRunListItem,
-            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.project_config_id, wr.worker_id,
+            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, NULL::TEXT as "task_title?: String",
+             wr.external_task_ref as "task_slug!", wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
              wr.review_target_pr_url, wr.review_target_repo_full_name,
@@ -270,6 +286,16 @@ impl WorkRunsRepository {
 
         Ok(())
     }
+}
+
+fn repo_insert_arrays(repo_full_names: &[String]) -> (Vec<String>, Vec<i32>) {
+    let repo_urls = repo_full_names
+        .iter()
+        .map(|name| github_repo_url(name))
+        .collect::<Vec<String>>();
+    let positions = (0..repo_full_names.len() as i32).collect::<Vec<i32>>();
+
+    (repo_urls, positions)
 }
 
 pub struct SetResultParams<'a> {
