@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET status = 'disconnected'::worker_status, active_jobs = 0\n             WHERE last_seen < $1 AND status != 'disconnected'::worker_status",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0ca2cb1a4f005bb4a4e915f5f9974fbf388c955857237508e43c0b5f89f3ef8b"
+}

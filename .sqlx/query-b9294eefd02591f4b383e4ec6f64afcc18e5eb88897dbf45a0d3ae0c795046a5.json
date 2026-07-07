@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET last_seen = $1,\n             status = CASE\n                 WHEN status = 'disconnected'::worker_status THEN 'idle'::worker_status\n                 ELSE status\n             END\n             WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b9294eefd02591f4b383e4ec6f64afcc18e5eb88897dbf45a0d3ae0c795046a5"
+}

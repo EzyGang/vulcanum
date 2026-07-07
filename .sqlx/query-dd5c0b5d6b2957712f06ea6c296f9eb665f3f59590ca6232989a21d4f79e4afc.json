@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET last_seen = NOW() - INTERVAL '10 minutes' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dd5c0b5d6b2957712f06ea6c296f9eb665f3f59590ca6232989a21d4f79e4afc"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)\n         VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "426d1e9b98f4c0f12d8c08ea35f1b5b5f395cc259355cf428c864f5879ce6bda"
+}

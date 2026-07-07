@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT review_url, review_body, review_already_exists\n           FROM work_run_reviews WHERE work_run_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "review_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "review_body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "review_already_exists",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "9ce206be65f386d3a39885b9055c259b30fa73aac92fd57be6a26abb91784747"
+}

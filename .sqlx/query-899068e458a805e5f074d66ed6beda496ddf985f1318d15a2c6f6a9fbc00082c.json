@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET active_jobs = active_jobs - 1, status = CASE WHEN active_jobs - 1 = 0 THEN 'idle'::worker_status ELSE status END WHERE id = $1 AND active_jobs > 0",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "899068e458a805e5f074d66ed6beda496ddf985f1318d15a2c6f6a9fbc00082c"
+}

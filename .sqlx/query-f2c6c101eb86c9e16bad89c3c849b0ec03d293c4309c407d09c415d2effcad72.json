@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_configs (id, team_id, external_project_id, integration_type, provider_id) VALUES ($1, $2, $3, 'kaneo', $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2c6c101eb86c9e16bad89c3c849b0ec03d293c4309c407d09c415d2effcad72"
+}
