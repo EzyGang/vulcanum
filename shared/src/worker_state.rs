@@ -50,7 +50,7 @@ pub fn save_state(state: &WorkerState) -> anyhow::Result<()> {
 #[cfg(unix)]
 fn create_restricted_file(path: &std::path::Path) -> anyhow::Result<std::fs::File> {
     use std::fs::OpenOptions;
-    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
     let file = OpenOptions::new()
         .write(true)
