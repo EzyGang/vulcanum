@@ -6,6 +6,7 @@ use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::db::teams::TeamsRepository;
 use crate::db::users::UsersRepository;
 use crate::db::work_run_events::WorkRunEventsRepository;
@@ -92,7 +93,7 @@ impl AppState {
         let task_board = TaskBoardService::new(
             providers_repo.clone(),
             project_configs_repo.clone(),
-            WorkRunsRepository::new(),
+            TaskAugmentationsRepository::new(),
         );
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),
@@ -123,6 +124,7 @@ impl AppState {
         let cancel_store: Arc<dyn CancelStore> = Arc::new(RedisCancelStore::new(&cfg.redis_url)?);
         let jobs = WorkRunsService::new(
             work_runs.clone(),
+            TaskAugmentationsRepository::new(),
             workers_repo,
             project_configs.clone(),
             github.clone(),

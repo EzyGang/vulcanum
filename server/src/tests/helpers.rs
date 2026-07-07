@@ -8,6 +8,7 @@ use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::db::teams::TeamsRepository;
 use crate::db::users::UsersRepository;
 use crate::db::work_run_events::WorkRunEventsRepository;
@@ -299,7 +300,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let task_board = TaskBoardService::new(
         providers_repo.clone(),
         project_configs_repo.clone(),
-        WorkRunsRepository::new(),
+        TaskAugmentationsRepository::new(),
     );
     let dispatch_store = Arc::new(InMemoryDispatchStore::default());
     let cancel_store = Arc::new(InMemoryCancelStore::new());
@@ -332,6 +333,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let jobs = WorkRunsService::new(
         work_runs_repo.clone(),
+        TaskAugmentationsRepository::new(),
         workers_repo,
         project_configs.clone(),
         github.clone(),

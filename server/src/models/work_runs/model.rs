@@ -52,21 +52,6 @@ pub struct WorkRun {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, FromRow)]
-pub struct TaskBoardRelatedWorkRunRow {
-    pub external_task_ref: String,
-    pub id: Uuid,
-    pub status: WorkRunStatus,
-    pub work_type: WorkRunType,
-    pub tokens_used: Option<i64>,
-    pub input_tokens: Option<i64>,
-    pub output_tokens: Option<i64>,
-    pub cache_read_tokens: Option<i64>,
-    pub cache_write_tokens: Option<i64>,
-    pub model_used: Option<String>,
-    pub created_at: DateTime<Utc>,
-}
-
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct WorkRunListItem {
     pub id: Uuid,

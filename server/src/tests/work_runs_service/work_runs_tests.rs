@@ -8,6 +8,7 @@ use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::db::project_configs::ProjectConfigsRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
+use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::db::teams::TeamsRepository;
 use crate::db::work_runs::WorkRunsRepository;
 use crate::db::workers::WorkersRepository;
@@ -79,6 +80,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     );
     WorkRunsService::new(
         WorkRunsRepository::new(),
+        TaskAugmentationsRepository::new(),
         WorkersRepository::new(),
         project_configs,
         build_github_manager(pool.clone()),
@@ -397,6 +399,70 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         .expect("Should succeed");
 
     assert!(matches!(job.status, WorkRunStatus::Failed));
+}
+
+#[sqlx::test]
+async fn submit_result_accumulates_task_augmentation_usage_by_task_ref(pool: sqlx::PgPool) {
+    fn result_request(
+        exit_code: i32,
+        tokens_used: i64,
+        input_tokens: i64,
+        output_tokens: i64,
+        cache_read_tokens: i64,
+        cache_write_tokens: i64,
+    ) -> SubmitResultRequest {
+        SubmitResultRequest {
+            pr_urls: Vec::new(),
+            exit_code,
+            tokens_used,
+            duration_ms: 1000,
+            input_tokens,
+            output_tokens,
+            cache_read_tokens,
+            cache_write_tokens,
+            model_used: None,
+            finish_status: None,
+            result_summary: None,
+            review_url: None,
+            review_body: None,
+            review_already_exists: false,
+        }
+    }
+
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "usage-worker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-usage-1").await;
+    let first_wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "task-usage", worker_id).await;
+
+    let first_job = svc
+        .submit_result(first_wr_id, worker_id, result_request(0, 100, 40, 60, 7, 3))
+        .await
+        .expect("Should submit first result");
+    assert!(matches!(first_job.status, WorkRunStatus::Completed));
+
+    let second_wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "task-usage", worker_id).await;
+    let second_job = svc
+        .submit_result(second_wr_id, worker_id, result_request(1, 25, 10, 15, 2, 1))
+        .await
+        .expect("Should submit second result");
+    assert!(matches!(second_job.status, WorkRunStatus::Failed));
+
+    let task_refs = vec!["task-usage".to_owned()];
+    let rows = TaskAugmentationsRepository::new()
+        .list_for_task_refs(&pool, test_helpers::DEFAULT_TEAM_ID, project_id, &task_refs)
+        .await
+        .expect("Should load task usage augmentation");
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].external_task_ref, "task-usage");
+    assert_eq!(rows[0].tokens_used, 125);
+    assert_eq!(rows[0].input_tokens, 50);
+    assert_eq!(rows[0].output_tokens, 75);
+    assert_eq!(rows[0].cache_read_tokens, 9);
+    assert_eq!(rows[0].cache_write_tokens, 4);
+    assert_eq!(rows[0].finished_runs_count, 2);
 }
 
 #[sqlx::test]

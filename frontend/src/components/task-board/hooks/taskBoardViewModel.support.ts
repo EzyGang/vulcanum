@@ -1,5 +1,9 @@
 import type { SelectOption } from '../../../types/shared';
-import type { TaskBoard, TaskBoardRelatedWorkRun, TaskBoardTask } from '../../../types/task-board';
+import type {
+  TaskBoard,
+  TaskBoardTask,
+  TaskBoardTaskAugmentation
+} from '../../../types/task-board';
 import type {
   TaskBoardColumnData,
   TaskBoardColumnRole,
@@ -22,7 +26,7 @@ export interface UseTaskBoardViewModelInput {
   repoItems: SelectOption[];
   selectedRepoNames: string[];
   selectedTask: TaskBoardTask | null;
-  relatedRunsByTaskRef: ReadonlyMap<string, TaskBoardRelatedWorkRun[]>;
+  augmentationsByTaskRef: ReadonlyMap<string, TaskBoardTaskAugmentation>;
   visibleTaskCounts: Record<string, number>;
   columnRoles: TaskBoardColumnRoles;
   moving: boolean;
@@ -70,7 +74,7 @@ export interface UseTaskBoardViewModelResult {
     reviewSettings: { hasOverrides: boolean };
     selectedTaskCreatedAtLabel: string | null;
     selectedTaskMoveActions: TaskBoardMoveAction[];
-    selectedTaskRelatedRuns: TaskBoardRelatedWorkRun[];
+    selectedTaskAugmentation: TaskBoardTaskAugmentation | null;
   };
   actions: {
     onFilterRepos: (event: Event) => void;
@@ -89,7 +93,7 @@ interface BuildTaskBoardColumnsInput {
   boardColumns: TaskBoard['columns'];
   statusOptions: SelectOption[];
   visibleTaskCounts: Record<string, number>;
-  relatedRunsByTaskRef: ReadonlyMap<string, TaskBoardRelatedWorkRun[]>;
+  augmentationsByTaskRef: ReadonlyMap<string, TaskBoardTaskAugmentation>;
   columnRoles: TaskBoardColumnRoles;
   moving: boolean;
   movingTaskId: string | null;
@@ -184,7 +188,7 @@ export const buildTaskBoardColumns = ({
   boardColumns,
   statusOptions,
   visibleTaskCounts,
-  relatedRunsByTaskRef,
+  augmentationsByTaskRef,
   columnRoles,
   moving,
   movingTaskId,
@@ -219,7 +223,7 @@ export const buildTaskBoardColumns = ({
     return {
       column,
       visibleTasks: visibleTasks.map((task) => ({
-        relatedRuns: relatedRunsByTaskRef.get(task.id) ?? [],
+        augmentation: augmentationsByTaskRef.get(task.id) ?? null,
         task,
         displayId: formatTaskDisplayId(task),
         createdAtLabel: formatCreatedAt(task.createdAt),

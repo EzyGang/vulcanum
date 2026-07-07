@@ -97,7 +97,7 @@ vi.mock('../components/shared/ui/Tooltip.view', () => {
 import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
-import type { TaskBoardRelatedWorkRun } from '../types/task-board';
+import type { TaskBoardTaskAugmentation } from '../types/task-board';
 
 const makeTask = (id: string, title = `Task ${id}`) => ({
   id,
@@ -114,24 +114,22 @@ const makeTask = (id: string, title = `Task ${id}`) => ({
   labels: [{ id: 'label-1', name: 'Bug', color: '#ef4444' }]
 });
 
-const makeRelatedRun = (
-  overrides: Partial<TaskBoardRelatedWorkRun> = {}
-): TaskBoardRelatedWorkRun => ({
-  id: 'run-1',
-  status: 'running',
-  workType: 'implementation',
+const makeAugmentation = (
+  overrides: Partial<TaskBoardTaskAugmentation> = {}
+): TaskBoardTaskAugmentation => ({
+  externalTaskRef: 'task-1',
   tokensUsed: 1545,
   inputTokens: 1200,
   outputTokens: 345,
   cacheReadTokens: 80,
   cacheWriteTokens: 12,
-  modelUsed: 'gpt-5.1',
-  createdAt: '2026-01-02T00:00:00Z',
+  finishedRunsCount: 2,
+  updatedAt: '2026-01-02T00:00:00Z',
   ...overrides
 });
 
 const makeProps = (
-  relatedRunsByTaskRef: Readonly<Record<string, TaskBoardRelatedWorkRun[]>> = {}
+  augmentationsByTaskRef: Readonly<Record<string, TaskBoardTaskAugmentation>> = {}
 ): TaskBoardViewProps => {
   const statusOptions = [
     { value: 'to-do', label: 'To Do' },
@@ -225,7 +223,7 @@ const makeProps = (
         return {
           column,
           visibleTasks: visibleTasks.map((task) => ({
-            relatedRuns: relatedRunsByTaskRef[task.id] ?? [],
+            augmentation: augmentationsByTaskRef[task.id] ?? null,
             task,
             displayId: formatTaskDisplayId(task),
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
@@ -291,8 +289,8 @@ const makeProps = (
     repoItems: [{ value: 'owner/repo', label: 'owner/repo' }],
     selectedRepoNames: [],
     selectedTask: null,
-    get selectedTaskRelatedRuns() {
-      return data.selectedTask ? (relatedRunsByTaskRef[data.selectedTask.id] ?? []) : [];
+    get selectedTaskAugmentation() {
+      return data.selectedTask ? (augmentationsByTaskRef[data.selectedTask.id] ?? null) : null;
     },
     availableLabels: board.labels,
     createDialogOpen: false,
@@ -580,69 +578,61 @@ describe('TaskBoard.view', () => {
     expect(getByDisplayValue('Hidden task body')).toBeTruthy();
   });
 
-  it('renders related run type, status, and usage on task cards', () => {
+  it('renders cumulative usage on task cards', () => {
     const props = makeProps({
-      'task-1': [makeRelatedRun({ id: 'implementation-run' })]
+      'task-1': makeAugmentation()
     });
     const { getByLabelText } = render(<TaskBoardView {...props} />);
 
-    const relatedRuns = getByLabelText('Related work runs');
+    const usage = getByLabelText('Cumulative usage');
 
-    expect(relatedRuns.textContent).toContain('Implement');
-    expect(relatedRuns.textContent).toContain('running');
-    expect(relatedRuns.textContent).toContain('1.2K');
-    expect(relatedRuns.textContent).toContain('345');
-    expect(relatedRuns.textContent).toContain('gpt-5.1');
+    expect(usage.textContent).toContain('Usage');
+    expect(usage.textContent).toContain('2 finished runs');
+    expect(usage.textContent).toContain('1.2K');
+    expect(usage.textContent).toContain('345');
   });
 
-  it('keeps task cards without related runs quiet', () => {
+  it('keeps task cards without cumulative usage quiet', () => {
     const props = makeProps();
     const { queryByLabelText, queryByText } = render(<TaskBoardView {...props} />);
 
-    expect(queryByLabelText('Related work runs')).toBeNull();
-    expect(queryByText('No related work runs yet.')).toBeNull();
+    expect(queryByLabelText('Cumulative usage')).toBeNull();
+    expect(queryByText('No usage recorded yet.')).toBeNull();
   });
 
-  it('renders related run type, status, and usage in the task details modal', () => {
+  it('renders cumulative usage in the task details modal', () => {
     const props = makeProps({
-      'task-1': [
-        makeRelatedRun({
-          id: 'review-run',
-          status: 'completed',
-          workType: 'pull_request_review',
-          tokensUsed: null,
-          inputTokens: 900,
-          outputTokens: 125,
-          modelUsed: 'claude-opus-4.5'
-        })
-      ]
+      'task-1': makeAugmentation({
+        tokensUsed: 1025,
+        inputTokens: 900,
+        outputTokens: 125,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        finishedRunsCount: 1
+      })
     });
     const board = requireBoard(props);
     props.data.selectedTask = board.columns[0].tasks[0];
 
     const { getByText } = render(<TaskBoardView {...props} />);
 
-    const relatedRunsSection = getByText('Related runs').closest('section');
+    const usageSection = getByText('Cumulative usage').closest('section');
 
-    expect(relatedRunsSection).toBeTruthy();
-    expect(relatedRunsSection?.textContent).toContain('Latest 3');
-    expect(relatedRunsSection?.textContent).toContain('Review');
-    expect(relatedRunsSection?.textContent).toContain('completed');
-    expect(relatedRunsSection?.textContent).toContain('900');
-    expect(relatedRunsSection?.textContent).toContain('125');
-    expect(relatedRunsSection?.textContent).toContain('claude-opus-4.5');
+    expect(usageSection).toBeTruthy();
+    expect(usageSection?.textContent).toContain('1 finished run');
+    expect(usageSection?.textContent).toContain('900');
+    expect(usageSection?.textContent).toContain('125');
   });
 
-  it('shows the related run empty state in the task details modal', () => {
+  it('shows the cumulative usage empty state in the task details modal', () => {
     const props = makeProps();
     const board = requireBoard(props);
     props.data.selectedTask = board.columns[0].tasks[0];
 
-    const { getByText, queryByText } = render(<TaskBoardView {...props} />);
+    const { getByText } = render(<TaskBoardView {...props} />);
 
-    expect(getByText('Related runs')).toBeTruthy();
-    expect(getByText('No related work runs yet.')).toBeTruthy();
-    expect(queryByText('Latest 3')).toBeNull();
+    expect(getByText('Cumulative usage')).toBeTruthy();
+    expect(getByText('No usage recorded yet.')).toBeTruthy();
   });
 
   it('opens board settings from the icon button', () => {

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::models::project_configs::model::ProjectConfig;
@@ -6,10 +6,8 @@ use crate::models::providers::model::{
     IntegrationBoard, IntegrationBoardColumn, IntegrationColumn, IntegrationProject,
     IntegrationTask, IntegrationType,
 };
-use crate::models::work_runs::model::{TaskBoardRelatedWorkRunRow, WorkRunStatus, WorkRunType};
 use crate::services::task_board::service::{
-    collect_board_task_refs, default_column_status, group_related_runs,
-    project_config_to_provider_project,
+    collect_board_task_refs, default_column_status, project_config_to_provider_project,
 };
 
 fn column(slug: &str, is_final: Option<bool>) -> IntegrationColumn {
@@ -59,33 +57,6 @@ fn integration_task(id: &str) -> IntegrationTask {
         updated_at: None,
         labels: Vec::new(),
     }
-}
-
-fn related_row(
-    task_ref: &str,
-    id: Uuid,
-    model_used: &str,
-    created_at: DateTime<Utc>,
-) -> TaskBoardRelatedWorkRunRow {
-    TaskBoardRelatedWorkRunRow {
-        external_task_ref: task_ref.to_owned(),
-        id,
-        status: WorkRunStatus::Completed,
-        work_type: WorkRunType::Implementation,
-        tokens_used: None,
-        input_tokens: None,
-        output_tokens: None,
-        cache_read_tokens: None,
-        cache_write_tokens: None,
-        model_used: Some(model_used.to_owned()),
-        created_at,
-    }
-}
-
-fn timestamp(value: &str) -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339(value)
-        .expect("timestamp should parse")
-        .with_timezone(&Utc)
 }
 
 fn project_config(name: &str, provider_id: Option<Uuid>) -> ProjectConfig {
@@ -172,68 +143,5 @@ fn collect_board_task_refs_deduplicates_in_board_order() {
             "task-b".to_owned(),
             "task-c".to_owned(),
         ]
-    );
-}
-
-#[test]
-fn group_related_runs_preserves_board_task_order_and_run_order() {
-    let task_b_run_id = Uuid::from_u128(11);
-    let task_a_newer_run_id = Uuid::from_u128(21);
-    let task_a_older_run_id = Uuid::from_u128(22);
-    let unrelated_run_id = Uuid::from_u128(99);
-
-    let grouped = group_related_runs(
-        vec![
-            "task-b".to_owned(),
-            "task-a".to_owned(),
-            "task-c".to_owned(),
-        ],
-        vec![
-            related_row(
-                "task-a",
-                task_a_newer_run_id,
-                "task-a-newer",
-                timestamp("2026-01-01T00:02:00Z"),
-            ),
-            related_row(
-                "task-b",
-                task_b_run_id,
-                "task-b-only",
-                timestamp("2026-01-01T00:03:00Z"),
-            ),
-            related_row(
-                "task-a",
-                task_a_older_run_id,
-                "task-a-older",
-                timestamp("2026-01-01T00:01:00Z"),
-            ),
-            related_row(
-                "task-unrequested",
-                unrelated_run_id,
-                "unrequested",
-                timestamp("2026-01-01T00:04:00Z"),
-            ),
-        ],
-    );
-
-    assert_eq!(grouped.len(), 2);
-    assert_eq!(grouped[0].external_task_ref, "task-b");
-    assert_eq!(grouped[0].runs[0].id, task_b_run_id);
-    assert_eq!(
-        grouped[0].runs[0].model_used.as_deref(),
-        Some("task-b-only")
-    );
-    assert_eq!(grouped[1].external_task_ref, "task-a");
-    assert_eq!(
-        grouped[1].runs.iter().map(|run| run.id).collect::<Vec<_>>(),
-        vec![task_a_newer_run_id, task_a_older_run_id]
-    );
-    assert_eq!(
-        grouped[1]
-            .runs
-            .iter()
-            .map(|run| run.model_used.as_deref())
-            .collect::<Vec<_>>(),
-        vec![Some("task-a-newer"), Some("task-a-older")]
     );
 }

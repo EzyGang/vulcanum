@@ -1,4 +1,4 @@
-import type { WorkRunStatus, WorkRunTokenUsage, WorkRunType } from './runs';
+import type { WorkRunTokenUsage } from './runs';
 
 export interface TaskProviderProject {
   providerId: string;
@@ -15,17 +15,15 @@ export interface TaskBoardLabel {
   color: string;
 }
 
-export interface TaskBoardRelatedWorkRun extends WorkRunTokenUsage {
-  id: string;
-  status: WorkRunStatus;
-  workType: WorkRunType;
-  tokensUsed: number | null;
-  createdAt: string;
-}
-
-export interface TaskBoardTaskRelatedRuns {
+export interface TaskBoardTaskAugmentation extends WorkRunTokenUsage {
   externalTaskRef: string;
-  runs: TaskBoardRelatedWorkRun[];
+  tokensUsed: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  finishedRunsCount: number;
+  updatedAt: string;
 }
 
 export interface TaskBoardTask {
@@ -67,7 +65,7 @@ export interface TaskBoardResponse {
   providerId: string;
   providerType: string;
   board: TaskBoard;
-  relatedTaskRuns: TaskBoardTaskRelatedRuns[];
+  taskAugmentations: TaskBoardTaskAugmentation[];
 }
 
 export interface CreateTaskRequest {
