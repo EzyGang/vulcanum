@@ -86,10 +86,12 @@ pub(super) async fn prepare_environment(
                 error = %e,
                 "isolation provider selection failed",
             );
-            reporter.emit(
-                "session.failed",
-                serde_json::json!({"reason": "isolation_provider_selection_failed"}),
-            );
+            reporter
+                .emit(
+                    "session.failed",
+                    serde_json::json!({"reason": "isolation_provider_selection_failed"}),
+                )
+                .await;
             reporter.shutdown().await;
             submit_failed_result(
                 client,
@@ -129,10 +131,12 @@ pub(super) async fn prepare_environment(
                 error = %e,
                 "isolation prepare failed",
             );
-            reporter.emit(
-                "session.failed",
-                serde_json::json!({"reason": "isolation_prepare_failed"}),
-            );
+            reporter
+                .emit(
+                    "session.failed",
+                    serde_json::json!({"reason": "isolation_prepare_failed"}),
+                )
+                .await;
             reporter.shutdown().await;
             submit_failed_result(
                 client,

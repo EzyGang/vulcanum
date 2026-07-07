@@ -207,10 +207,12 @@ pub(crate) async fn handle_job(
                     error = %e,
                     "runtime execute failed",
                 );
-                reporter.emit(
-                    "session.failed",
-                    serde_json::json!({"reason": "runtime_execute_failed"}),
-                );
+                reporter
+                    .emit(
+                        "session.failed",
+                        serde_json::json!({"reason": "runtime_execute_failed"}),
+                    )
+                    .await;
                 reporter.shutdown().await;
                 stop_refresh_task(github_refresh_stop);
                 provider.cleanup(&isolated_env).await;
@@ -255,7 +257,9 @@ pub(crate) async fn handle_job(
 
     let artifact_path = workdir.join("home").join("finish_artifact.json");
 
-    reporter.emit("session.started", serde_json::json!({}));
+    reporter
+        .emit("session.started", serde_json::json!({}))
+        .await;
     let heartbeat_stop = spawn_heartbeat(reporter.clone());
     let ctx = TurnLoopCtx {
         client: client.clone(),

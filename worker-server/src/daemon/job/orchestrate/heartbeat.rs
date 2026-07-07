@@ -13,7 +13,7 @@ pub(super) fn spawn_heartbeat(reporter: Arc<EventReporter>) -> watch::Sender<boo
         loop {
             tokio::select! {
                 _ = tokio::time::sleep(Duration::from_secs(HEARTBEAT_INTERVAL_SECS)) => {
-                    reporter.emit("worker.heartbeat", serde_json::json!({}));
+                    reporter.emit("worker.heartbeat", serde_json::json!({})).await;
                 }
                 changed = rx.changed() => {
                     if changed.is_err() || *rx.borrow() {

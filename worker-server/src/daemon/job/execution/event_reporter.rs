@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use tokio::sync::{mpsc, watch, RwLock};
+use tokio::sync::{mpsc, watch, Mutex, RwLock};
 use tokio::task::JoinHandle;
 
 use vulcanum_shared::api_types::WireEvent;
@@ -41,7 +41,7 @@ impl EventReporter {
         }
     }
 
-    pub(crate) fn emit(&self, event_type: &str, payload: serde_json::Value) {
+    pub(crate) async fn emit(&self, event_type: &str, payload: serde_json::Value) {
         let seq = self.sequence.fetch_add(1, Ordering::Relaxed) + 1;
         let wire = WireEvent {
             sequence: seq,
@@ -49,10 +49,7 @@ impl EventReporter {
             payload,
             occurred_at: chrono::Utc::now(),
         };
-        let sender = match self.sender.lock() {
-            Ok(sender) => sender,
-            Err(poisoned) => poisoned.into_inner(),
-        };
+        let sender = self.sender.lock().await;
         let Some(sender) = sender.as_ref() else {
             tracing::warn!(
                 work_run_id = %self.job_id,
@@ -75,21 +72,9 @@ impl EventReporter {
     }
 
     pub(crate) async fn shutdown(&self) {
-        {
-            let mut sender = match self.sender.lock() {
-                Ok(sender) => sender,
-                Err(poisoned) => poisoned.into_inner(),
-            };
-            sender.take();
-        }
+        self.sender.lock().await.take();
 
-        let pump = {
-            let mut pump = match self.pump.lock() {
-                Ok(pump) => pump,
-                Err(poisoned) => poisoned.into_inner(),
-            };
-            pump.take()
-        };
+        let pump = self.pump.lock().await.take();
         if let Some(pump) = pump {
             if let Err(error) = pump.await {
                 tracing::warn!(

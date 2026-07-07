@@ -161,10 +161,12 @@ pub(crate) async fn recover_omp_rpc_session_task(
             entry.job_id,
         ),
     );
-    reporter.emit(
-        "session.recovered",
-        serde_json::json!({"initial_turn": initial_turn, "backend": "omp_rpc"}),
-    );
+    reporter
+        .emit(
+            "session.recovered",
+            serde_json::json!({"initial_turn": initial_turn, "backend": "omp_rpc"}),
+        )
+        .await;
     let ctx = TurnLoopCtx {
         client: api_client.clone(),
         worker_state: worker_state.clone(),
