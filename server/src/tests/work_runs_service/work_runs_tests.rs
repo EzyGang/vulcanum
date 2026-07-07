@@ -139,6 +139,35 @@ fn static_task(title: &str, description: &str) -> Arc<StaticTaskFetcher> {
     })
 }
 
+fn completed_result_request() -> SubmitResultRequest {
+    SubmitResultRequest {
+        pr_urls: Vec::new(),
+        exit_code: 0,
+        tokens_used: 0,
+        duration_ms: 1000,
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        model_used: None,
+        finish_status: None,
+        result_summary: None,
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
+    }
+}
+
+async fn zero_worker_active_jobs(pool: &sqlx::PgPool, worker_id: Uuid) {
+    sqlx::query!(
+        "UPDATE workers SET active_jobs = 0 WHERE id = $1",
+        worker_id
+    )
+    .execute(pool)
+    .await
+    .expect("Should zero active jobs");
+}
+
 #[sqlx::test]
 async fn poll_returns_none_when_no_dispatch(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
@@ -423,6 +452,81 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         .expect("Should succeed");
 
     assert!(matches!(job.status, WorkRunStatus::Failed));
+}
+
+#[sqlx::test]
+async fn submit_result_completes_when_worker_active_jobs_already_zero(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "stale-submit-worker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-stale-submit").await;
+    let wr_id =
+        test_helpers::insert_running_work_run(&pool, project_id, "task-stale-submit", worker_id)
+            .await;
+
+    zero_worker_active_jobs(&pool, worker_id).await;
+
+    let job = svc
+        .submit_result(wr_id, worker_id, completed_result_request())
+        .await
+        .expect("Should complete even when active_jobs is already zero");
+
+    assert!(matches!(job.status, WorkRunStatus::Completed));
+}
+
+#[sqlx::test]
+async fn fail_run_finishes_when_worker_active_jobs_already_zero(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "stale-fail-worker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-stale-fail").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-stale-fail").await;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
+    dispatch_repo
+        .increment_worker_jobs(&pool, worker_id)
+        .await
+        .expect("Should reserve worker capacity");
+
+    zero_worker_active_jobs(&pool, worker_id).await;
+
+    let job = svc
+        .fail_run(wr_id, test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("Should fail run even when active_jobs is already zero");
+
+    assert!(matches!(job.status, WorkRunStatus::Failed));
+}
+
+#[sqlx::test]
+async fn delete_run_removes_dispatched_when_worker_active_jobs_already_zero(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::insert_worker(&pool, "stale-delete-worker").await;
+    let project_id = test_helpers::insert_project_config(&pool, "kaneo-stale-delete").await;
+    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-stale-delete").await;
+    let dispatch_repo = crate::db::dispatcher::DispatchRepository;
+    dispatch_repo
+        .dispatch_to_worker(&pool, wr_id, worker_id)
+        .await
+        .expect("Should dispatch");
+    dispatch_repo
+        .increment_worker_jobs(&pool, worker_id)
+        .await
+        .expect("Should reserve worker capacity");
+
+    zero_worker_active_jobs(&pool, worker_id).await;
+
+    svc.delete_run(wr_id, test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("Should delete run even when active_jobs is already zero");
+
+    let err = WorkRunsRepository::new()
+        .find_by_id(&pool, wr_id)
+        .await
+        .expect_err("Deleted work run should not load");
+
+    assert!(matches!(err, WorkRunsError::NotFound));
 }
 
 #[sqlx::test]

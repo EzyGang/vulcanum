@@ -26,8 +26,7 @@ impl WorkRunsService {
             .ok_or(WorkRunsError::NotFound)?;
 
         if let Some(worker_id) = updated.worker_id {
-            self.workers_repo
-                .decrement_active_jobs(&mut *tx, worker_id)
+            self.release_worker_active_slot(&mut tx, worker_id, id)
                 .await?;
         }
 

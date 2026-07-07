@@ -19,8 +19,7 @@ impl WorkRunsService {
 
         if let Some(worker_id) = run.worker_id {
             if matches!(run.status, WorkRunStatus::Dispatched) {
-                self.workers_repo
-                    .decrement_active_jobs(&mut *tx, worker_id)
+                self.release_worker_active_slot(&mut tx, worker_id, id)
                     .await?;
             }
         }
@@ -57,8 +56,7 @@ impl WorkRunsService {
 
                     if let Some(worker_id) = run.worker_id {
                         if matches!(run.status, WorkRunStatus::Dispatched) {
-                            self.workers_repo
-                                .decrement_active_jobs(&mut *tx, worker_id)
+                            self.release_worker_active_slot(&mut tx, worker_id, *id)
                                 .await?;
                         }
                     }

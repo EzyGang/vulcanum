@@ -72,7 +72,7 @@ impl WorkRunsRepository {
              finish_status, result_summary, finish_blocked_reason, finish_next_column,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
              FROM inserted
-             WHERE (SELECT COUNT(*) FROM inserted_repos) >= 0"#,
+             CROSS JOIN (SELECT COUNT(*) FROM inserted_repos) AS inserted_repo_count"#,
             id,
             params.team_id,
             &params.external_task_ref,
@@ -118,7 +118,7 @@ impl WorkRunsRepository {
                 RETURNING 1
             )
             SELECT EXISTS(SELECT 1 FROM inserted) AS "inserted!"
-            WHERE (SELECT COUNT(*) FROM inserted_repos) >= 0"#,
+            FROM (SELECT COUNT(*) FROM inserted_repos) AS inserted_repo_count"#,
             id,
             params.team_id,
             &params.external_task_ref,

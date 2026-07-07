@@ -84,8 +84,7 @@ impl WorkRunsService {
             )
             .await?;
 
-        self.workers_repo
-            .decrement_active_jobs(&mut *tx, worker_id)
+        self.release_worker_active_slot(&mut tx, worker_id, id)
             .await?;
 
         match status {
