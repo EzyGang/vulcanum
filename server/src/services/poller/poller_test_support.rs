@@ -168,6 +168,8 @@ pub(crate) async fn insert_active_run(pool: &PgPool, project_config_id: Uuid, ta
             InsertWorkRunParams {
                 team_id: DEFAULT_TEAM_ID,
                 external_task_ref: task_ref.to_owned(),
+                task_title: None,
+                task_slug: None,
                 project_config_id,
                 repo_full_names: Vec::new(),
                 status: WorkRunStatus::Running,

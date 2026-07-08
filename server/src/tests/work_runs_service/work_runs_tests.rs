@@ -276,7 +276,7 @@ async fn list_all_rejects_cross_team_runs(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn list_all_returns_external_task_ref_as_task_slug(pool: sqlx::PgPool) {
+async fn list_all_returns_null_task_metadata_when_unset(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-list-slug").await;
     test_helpers::insert_pending_work_run(&pool, project_id, "task-list-slug").await;
@@ -287,7 +287,7 @@ async fn list_all_returns_external_task_ref_as_task_slug(pool: sqlx::PgPool) {
         .expect("Should list team runs");
 
     assert_eq!(runs[0].external_task_ref, "task-list-slug");
-    assert_eq!(runs[0].task_slug, "task-list-slug");
+    assert_eq!(runs[0].task_slug, None);
     assert_eq!(runs[0].task_title, None);
 }
 

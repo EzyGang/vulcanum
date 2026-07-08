@@ -167,6 +167,30 @@ async fn append_events_returns_should_cancel_when_flag_set(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn append_empty_events_returns_should_cancel_when_flag_set(pool: sqlx::PgPool) {
+    let (svc, cancel) = build_service(pool.clone());
+    let project_id = test_helpers::insert_project_config(&pool, "evt-svc-empty-cancel").await;
+    let worker_id = test_helpers::insert_worker(&pool, "evt-svc-empty-cancel-worker").await;
+    let wr_id = test_helpers::insert_running_work_run(
+        &pool,
+        project_id,
+        "evt-svc-empty-cancel-task",
+        worker_id,
+    )
+    .await;
+
+    cancel.request_cancel(wr_id).await.expect("set cancel");
+
+    let result = svc
+        .append_events(wr_id, worker_id, Vec::new())
+        .await
+        .expect("append empty event batch");
+
+    assert_eq!(result.accepted, 0);
+    assert!(result.should_cancel);
+}
+
+#[sqlx::test]
 async fn append_events_accepts_duplicate_sequences(pool: sqlx::PgPool) {
     let (svc, _cancel) = build_service(pool.clone());
     let project_id = test_helpers::insert_project_config(&pool, "evt-svc-4").await;

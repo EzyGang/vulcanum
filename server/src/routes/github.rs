@@ -11,28 +11,7 @@ pub async fn auth_redirect(
     state: web::Data<AppState>,
     auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let nonce = Uuid::new_v4().to_string();
-    let team_id = state
-        .teams
-        .resolve_team(&auth, state.is_single_user)
-        .await?;
-    let user_id = match auth {
-        TeamPrincipal::User { user_id, .. } => Some(user_id),
-        TeamPrincipal::Instance { .. } => None,
-    };
-    state
-        .github
-        .save_state_nonce(&nonce, &GithubInstallState { user_id, team_id })
-        .await
-        .map_err(|e| {
-            tracing::warn!(error = %e, "failed to save github oauth state");
-            AppError::Internal
-        })?;
-
-    let url = state.github.install_url(&nonce).await.map_err(|e| {
-        tracing::warn!(error = %e, "failed to build install url");
-        AppError::Internal
-    })?;
+    let url = build_install_url_for_principal(&state, auth).await?;
 
     Ok(HttpResponse::Found()
         .append_header(("Location", url))
@@ -48,15 +27,9 @@ pub async fn auth_url(
     state: web::Data<AppState>,
     auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
-    let response = auth_redirect(state, auth).await?;
-    let location = response
-        .headers()
-        .get("Location")
-        .and_then(|value| value.to_str().ok())
-        .ok_or(AppError::Internal)?
-        .to_owned();
+    let url = build_install_url_for_principal(&state, auth).await?;
 
-    Ok(HttpResponse::Ok().json(AuthUrlResponse { url: location }))
+    Ok(HttpResponse::Ok().json(AuthUrlResponse { url }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -169,4 +142,32 @@ pub async fn delete_installation(
         })?;
 
     Ok(HttpResponse::NoContent().finish())
+}
+
+async fn build_install_url_for_principal(
+    state: &web::Data<AppState>,
+    auth: TeamPrincipal,
+) -> Result<String, AppError> {
+    let nonce = Uuid::new_v4().to_string();
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let user_id = match auth {
+        TeamPrincipal::User { user_id, .. } => Some(user_id),
+        TeamPrincipal::Instance { .. } => None,
+    };
+    state
+        .github
+        .save_state_nonce(&nonce, &GithubInstallState { user_id, team_id })
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "failed to save github oauth state");
+            AppError::Internal
+        })?;
+
+    state.github.install_url(&nonce).await.map_err(|e| {
+        tracing::warn!(error = %e, "failed to build install url");
+        AppError::Internal
+    })
 }

@@ -16,6 +16,8 @@ use vulcanum_shared::api_types::JobRepo;
 pub struct InsertWorkRunParams {
     pub team_id: Uuid,
     pub external_task_ref: String,
+    pub task_title: Option<String>,
+    pub task_slug: Option<String>,
     pub project_config_id: Uuid,
     pub repo_full_names: Vec<String>,
     pub status: WorkRunStatus,
@@ -46,9 +48,9 @@ impl WorkRunsRepository {
         sqlx::query_as!(
             WorkRun,
             r#"WITH inserted AS (
-                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
-                 review_target_pr_url, review_target_repo_full_name)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,
+                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status,
                  work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
                  result_pr_url, result_exit_code, tokens_used, duration_ms, input_tokens, output_tokens,
@@ -59,7 +61,7 @@ impl WorkRunsRepository {
                 INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
                 SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position
                 FROM inserted
-                JOIN UNNEST($10::text[], $11::text[], $12::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
+                JOIN UNNEST($12::text[], $13::text[], $14::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
                 RETURNING 1
             )
             SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
@@ -77,6 +79,8 @@ impl WorkRunsRepository {
             params.team_id,
             &params.external_task_ref,
             params.project_config_id,
+            params.task_title.as_deref(),
+            params.task_slug.as_deref(),
             &params.status as &WorkRunStatus,
             &params.work_type as &WorkRunType,
             params.parent_work_run_id,
@@ -104,9 +108,9 @@ impl WorkRunsRepository {
 
         let result = sqlx::query!(
             r#"WITH inserted AS (
-                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, status, work_type, parent_work_run_id,
-                 review_target_pr_url, review_target_repo_full_name)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,
+                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT DO NOTHING
                 RETURNING id
             ),
@@ -114,7 +118,7 @@ impl WorkRunsRepository {
                 INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
                 SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position
                 FROM inserted
-                JOIN UNNEST($10::text[], $11::text[], $12::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
+                JOIN UNNEST($12::text[], $13::text[], $14::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
                 RETURNING 1
             )
             SELECT EXISTS(SELECT 1 FROM inserted) AS "inserted!"
@@ -123,6 +127,8 @@ impl WorkRunsRepository {
             params.team_id,
             &params.external_task_ref,
             params.project_config_id,
+            params.task_title.as_deref(),
+            params.task_slug.as_deref(),
             &params.status as &WorkRunStatus,
             &params.work_type as &WorkRunType,
             params.parent_work_run_id,
@@ -249,8 +255,8 @@ impl WorkRunsRepository {
     ) -> Result<Vec<WorkRunListItem>, WorkRunsError> {
         sqlx::query_as!(
             WorkRunListItem,
-            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, NULL::TEXT as "task_title?: String",
-             wr.external_task_ref as "task_slug!", wr.project_config_id, wr.worker_id,
+            r#"SELECT wr.id, wr.team_id, wr.external_task_ref, wr.task_title as "task_title?: String",
+             wr.task_slug as "task_slug?: String", wr.project_config_id, wr.worker_id,
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
              wr.review_target_pr_url, wr.review_target_repo_full_name,

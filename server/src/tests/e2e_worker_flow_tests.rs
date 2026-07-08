@@ -48,6 +48,8 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
             InsertWorkRunParams {
                 team_id: test_helpers::DEFAULT_TEAM_ID,
                 external_task_ref: "task-review-warning".to_owned(),
+                task_title: None,
+                task_slug: None,
                 project_config_id: project_id,
                 repo_full_names: Vec::new(),
                 status: WorkRunStatus::Pending,
