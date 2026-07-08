@@ -219,9 +219,7 @@ impl TaskBoardService {
         label_id: &str,
     ) -> Result<TaskLabelDeleteResponse, TaskBoardError> {
         let label_id = normalized_required(label_id, TaskBoardError::EmptyLabel)?;
-        let provider = self
-            .load_configured_provider(team_id, provider_id)
-            .await?;
+        let provider = self.load_configured_provider(team_id, provider_id).await?;
         let client = IntegrationClient::from_provider(&provider);
         client.delete_label(&label_id).await?;
 
@@ -284,7 +282,10 @@ impl TaskBoardService {
         provider_id: Uuid,
     ) -> Result<IntegrationProvider, TaskBoardError> {
         let provider = self.load_provider(team_id, provider_id).await?;
-        let configs = self.project_configs_repo.list_all(&self.db, team_id).await?;
+        let configs = self
+            .project_configs_repo
+            .list_all(&self.db, team_id)
+            .await?;
         if !configs
             .iter()
             .any(|config| config.provider_id == Some(provider_id))
