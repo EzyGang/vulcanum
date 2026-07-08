@@ -1,0 +1,78 @@
+<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Vulcanum banner</title>
+  <desc id="desc">A branded banner for Vulcanum, an agentic work orchestration system.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#140815"/>
+      <stop offset="0.45" stop-color="#27101E"/>
+      <stop offset="1" stop-color="#0B1221"/>
+    </linearGradient>
+    <radialGradient id="ember" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(292 104) rotate(57) scale(374 566)">
+      <stop offset="0" stop-color="#FFB86B" stop-opacity="0.54"/>
+      <stop offset="0.36" stop-color="#F97316" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#111827" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="254" y1="76" x2="1054" y2="334" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="250" y1="88" x2="250" y2="278" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE7A3"/>
+      <stop offset="0.42" stop-color="#FF7A1A"/>
+      <stop offset="1" stop-color="#D72638"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="420" rx="34" fill="url(#bg)"/>
+  <rect width="1280" height="420" rx="34" fill="url(#ember)"/>
+
+  <g opacity="0.46">
+    <path d="M60 322C188 236 267 278 382 203C503 124 613 139 748 202C882 265 1017 205 1218 80" stroke="#FB923C" stroke-opacity="0.26" stroke-width="2"/>
+    <path d="M58 358C198 270 311 309 441 235C571 161 699 175 850 236C1001 297 1094 239 1220 168" stroke="#F43F5E" stroke-opacity="0.18" stroke-width="2"/>
+    <path d="M82 101H1198" stroke="#FFFFFF" stroke-opacity="0.06"/>
+    <path d="M82 319H1198" stroke="#FFFFFF" stroke-opacity="0.06"/>
+    <path d="M190 55V365" stroke="#FFFFFF" stroke-opacity="0.05"/>
+    <path d="M1090 55V365" stroke="#FFFFFF" stroke-opacity="0.05"/>
+  </g>
+
+  <rect x="150" y="58" width="980" height="304" rx="30" fill="url(#panel)" stroke="#FFFFFF" stroke-opacity="0.16"/>
+  <rect x="174" y="82" width="932" height="256" rx="22" fill="#0B1020" fill-opacity="0.34" stroke="#FFFFFF" stroke-opacity="0.08"/>
+
+  <g filter="url(#soft)" opacity="0.56">
+    <circle cx="247" cy="210" r="112" fill="#F97316"/>
+    <circle cx="1026" cy="156" r="82" fill="#7C3AED"/>
+  </g>
+
+  <g transform="translate(204 94)">
+    <path d="M68 215c-42 0-68-30-68-67 0-35 22-61 47-83 14-12 27-28 24-54 37 19 61 55 55 95 13-9 22-24 23-43 26 21 43 48 43 83 0 39-29 69-72 69H68Z" fill="url(#flame)"/>
+    <path d="M96 218c-26 0-43-18-43-41 0-20 13-36 29-50 9-8 17-18 15-34 23 12 38 34 34 59 8-6 14-15 15-27 16 13 26 30 26 52 0 24-18 41-45 41H96Z" fill="#FFE7A3" fill-opacity="0.92"/>
+  </g>
+
+  <g transform="translate(428 125)">
+    <text x="0" y="72" fill="#FFF7ED" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="76" font-weight="800" letter-spacing="-2.6">Vulcanum</text>
+    <text x="4" y="122" fill="#FED7AA" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="25" font-weight="600" letter-spacing="0.8">agentic work orchestration for engineers</text>
+    <g transform="translate(4 158)">
+      <rect width="144" height="38" rx="19" fill="#FB923C" fill-opacity="0.16" stroke="#FDBA74" stroke-opacity="0.42"/>
+      <text x="20" y="25" fill="#FFEDD5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700">orchestrate</text>
+      <rect x="162" width="116" height="38" rx="19" fill="#F43F5E" fill-opacity="0.14" stroke="#FDA4AF" stroke-opacity="0.38"/>
+      <text x="184" y="25" fill="#FFE4E6" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700">isolate</text>
+      <rect x="296" width="118" height="38" rx="19" fill="#38BDF8" fill-opacity="0.12" stroke="#7DD3FC" stroke-opacity="0.34"/>
+      <text x="318" y="25" fill="#E0F2FE" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700">observe</text>
+    </g>
+  </g>
+
+  <g transform="translate(910 118)" opacity="0.9">
+    <rect x="0" y="0" width="152" height="42" rx="12" fill="#111827" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <circle cx="22" cy="21" r="6" fill="#22C55E"/>
+    <text x="42" y="27" fill="#D1FAE5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">worker idle</text>
+    <rect x="-44" y="68" width="196" height="42" rx="12" fill="#111827" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <circle cx="-22" cy="89" r="6" fill="#FB923C"/>
+    <text x="-2" y="95" fill="#FFEDD5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">run dispatched</text>
+    <rect x="-10" y="136" width="162" height="42" rx="12" fill="#111827" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <circle cx="12" cy="157" r="6" fill="#38BDF8"/>
+    <text x="32" y="163" fill="#E0F2FE" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">PR created</text>
+  </g>
+</svg>
