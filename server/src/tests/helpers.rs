@@ -184,6 +184,8 @@ pub async fn insert_pending_work_run_for_team(
     let params = InsertWorkRunParams {
         team_id,
         external_task_ref: task_ref.to_owned(),
+        task_title: None,
+        task_slug: None,
         project_config_id,
         repo_full_names: Vec::new(),
         status: WorkRunStatus::Pending,
@@ -231,6 +233,8 @@ pub async fn insert_running_work_run_for_team(
     let params = InsertWorkRunParams {
         team_id,
         external_task_ref: task_ref.to_owned(),
+        task_title: None,
+        task_slug: None,
         project_config_id,
         repo_full_names: Vec::new(),
         status: WorkRunStatus::Running,

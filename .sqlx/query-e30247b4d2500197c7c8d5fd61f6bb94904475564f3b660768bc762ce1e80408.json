@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT external_task_ref, task_title, task_slug FROM work_runs WHERE project_config_id = $1 ORDER BY external_task_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "task_slug",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "e30247b4d2500197c7c8d5fd61f6bb94904475564f3b660768bc762ce1e80408"
+}

@@ -106,6 +106,8 @@ impl WorkRunsService {
             let params = InsertWorkRunParams {
                 team_id: run.team_id,
                 external_task_ref: run.external_task_ref.clone(),
+                task_title: None,
+                task_slug: None,
                 project_config_id: run.project_config_id,
                 repo_full_names: vec![task_pr.repo_full_name.clone()],
                 status: WorkRunStatus::Pending,

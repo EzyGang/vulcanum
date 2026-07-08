@@ -177,6 +177,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 }
 
 #[cfg(test)]
+mod instance_auth_tests;
+
+#[cfg(test)]
+mod jobs_event_tests;
+
+#[cfg(test)]
 mod auth_tests;
 
 #[cfg(test)]
@@ -190,3 +196,6 @@ mod workers_tests;
 
 #[cfg(test)]
 mod jobs_tests;
+
+#[cfg(test)]
+mod work_runs_tests;

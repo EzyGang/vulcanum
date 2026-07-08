@@ -58,7 +58,7 @@ pub struct WorkRunListItem {
     pub team_id: Uuid,
     pub external_task_ref: String,
     pub task_title: Option<String>,
-    pub task_slug: String,
+    pub task_slug: Option<String>,
     pub project_config_id: Uuid,
     pub worker_id: Option<Uuid>,
     pub worker_name: Option<String>,

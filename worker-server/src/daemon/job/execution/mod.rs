@@ -5,4 +5,6 @@ pub(crate) mod submit;
 #[cfg(test)]
 mod artifact_tests;
 #[cfg(test)]
+mod event_reporter_tests;
+#[cfg(test)]
 mod submit_tests;

@@ -61,6 +61,8 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
             InsertWorkRunParams {
                 team_id: test_helpers::DEFAULT_TEAM_ID,
                 external_task_ref: "task-review-fix".to_owned(),
+                task_title: None,
+                task_slug: None,
                 project_config_id,
                 repo_full_names: vec!["acme/app".to_owned()],
                 status: WorkRunStatus::Completed,

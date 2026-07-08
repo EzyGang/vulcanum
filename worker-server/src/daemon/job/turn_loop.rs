@@ -150,7 +150,15 @@ pub(crate) async fn run_turn_loop(
                 max_turns = max_turns,
                 "max turns reached, submitting result",
             );
-            ctx.reporter.emit("turn.max_reached", serde_json::json!({"turn": turn, "max_turns": review_loop.effective_max_turns()})).await;
+            ctx.reporter
+                .emit(
+                    "turn.max_reached",
+                    serde_json::json!({
+                        "turn": turn,
+                        "max_turns": review_loop.effective_max_turns(),
+                    }),
+                )
+                .await;
             submit_turn_result(
                 &ctx.client,
                 &ctx.worker_state,

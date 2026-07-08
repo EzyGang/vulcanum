@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use tokio::sync::{mpsc, watch, Mutex, RwLock};
 use tokio::task::JoinHandle;
@@ -10,6 +11,8 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
+
+const CANCEL_POLL_INTERVAL_SECS: u64 = 10;
 
 pub(crate) struct EventReporter {
     job_id: uuid::Uuid,
@@ -96,18 +99,30 @@ async fn run_event_pump(
 ) {
     let mut next_sequence = 1;
     let mut pending = BTreeMap::new();
+    let poll_interval = Duration::from_secs(CANCEL_POLL_INTERVAL_SECS);
+    let mut cancel_interval =
+        tokio::time::interval_at(tokio::time::Instant::now() + poll_interval, poll_interval);
+    cancel_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
-    while let Some(event) = receiver.recv().await {
-        pending.insert(event.sequence, event);
-        send_ready_events(
-            &client,
-            &worker_state,
-            job_id,
-            &cancel_tx,
-            &mut pending,
-            &mut next_sequence,
-        )
-        .await;
+    loop {
+        tokio::select! {
+            Some(event) = receiver.recv() => {
+                pending.insert(event.sequence, event);
+                send_ready_events(
+                    &client,
+                    &worker_state,
+                    job_id,
+                    &cancel_tx,
+                    &mut pending,
+                    &mut next_sequence,
+                )
+                .await;
+            }
+            _ = cancel_interval.tick() => {
+                poll_cancel_request(&client, &worker_state, job_id, &cancel_tx).await;
+            }
+            else => break,
+        }
     }
 
     for (_, event) in pending {
@@ -126,6 +141,41 @@ async fn send_ready_events(
     while let Some(event) = pending.remove(next_sequence) {
         send_event(client, worker_state, job_id, cancel_tx, event).await;
         *next_sequence += 1;
+    }
+}
+
+pub(super) async fn poll_cancel_request(
+    client: &Arc<ApiClient>,
+    worker_state: &Arc<RwLock<WorkerState>>,
+    job_id: uuid::Uuid,
+    cancel_tx: &watch::Sender<bool>,
+) {
+    if *cancel_tx.borrow() {
+        return;
+    }
+
+    match with_retry_on_401(client, worker_state, |token| {
+        let client = Arc::clone(client);
+        async move { client.append_events(job_id, &[], &token).await }
+    })
+    .await
+    {
+        Ok(resp) => {
+            if resp.should_cancel {
+                let _ = cancel_tx.send(true);
+                tracing::warn!(
+                    work_run_id = %job_id,
+                    "server requested cancel via polling response"
+                );
+            }
+        }
+        Err(error) => {
+            tracing::debug!(
+                work_run_id = %job_id,
+                error = %error,
+                "failed to poll server cancellation state"
+            );
+        }
     }
 }
 

@@ -19,13 +19,14 @@ async fn poller_inserts_tasks(pool: PgPool) {
         .await
         .expect("Should set custom progress column");
 
+    let mut task = make_task("task-1", "Fix login bug");
+    task.project_slug = Some("VLC".to_owned());
+    task.number = Some(15);
+
     mock.set_tasks(
         "kaneo-proj-1",
         "to-do",
-        vec![
-            make_task("task-1", "Fix login bug"),
-            make_task("task-2", "Add dark mode"),
-        ],
+        vec![task, make_task("task-2", "Add dark mode")],
     )
     .await;
 
@@ -33,7 +34,7 @@ async fn poller_inserts_tasks(pool: PgPool) {
     service.poll_once().await;
 
     let rows = sqlx::query!(
-        "SELECT external_task_ref FROM work_runs \
+        "SELECT external_task_ref, task_title, task_slug FROM work_runs \
          WHERE project_config_id = $1 ORDER BY external_task_ref",
         project_id,
     )
@@ -43,6 +44,8 @@ async fn poller_inserts_tasks(pool: PgPool) {
 
     assert_eq!(rows.len(), 1, "Should respect default project capacity");
     assert_eq!(rows[0].external_task_ref, "task-1");
+    assert_eq!(rows[0].task_title.as_deref(), Some("Fix login bug"));
+    assert_eq!(rows[0].task_slug.as_deref(), Some("VLC-15"));
     assert_eq!(
         mock.status_updates().await,
         vec![("task-1".to_owned(), "doing".to_owned())],
