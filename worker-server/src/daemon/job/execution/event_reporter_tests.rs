@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 use chrono::Utc;
 use tokio::sync::{watch, RwLock};
@@ -10,7 +11,7 @@ use uuid::Uuid;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::worker_state::WorkerState;
 
-use crate::daemon::job::execution::event_reporter::poll_cancel_request;
+use crate::daemon::job::execution::event_reporter::{poll_cancel_request, EventReporter};
 
 #[tokio::test]
 async fn cancel_poll_sets_receiver_when_server_reports_cancel() {
@@ -51,4 +52,22 @@ async fn cancel_poll_sets_receiver_when_server_reports_cancel() {
 
     assert!(*cancel_rx.borrow());
     server.join().expect("server thread should finish");
+}
+
+#[tokio::test]
+async fn shutdown_completes_when_no_events_remain() {
+    let client = Arc::new(ApiClient::new("http://127.0.0.1:9".to_owned()));
+    let worker_state = Arc::new(RwLock::new(WorkerState {
+        worker_id: Uuid::new_v4(),
+        instance_url: String::new(),
+        access_token: "token".to_owned(),
+        refresh_token: "refresh".to_owned(),
+        expires_at: Utc::now() + chrono::Duration::minutes(30),
+        max_concurrent_jobs: 1,
+    }));
+    let reporter = EventReporter::new(client, worker_state, Uuid::new_v4());
+
+    tokio::time::timeout(Duration::from_secs(1), reporter.shutdown())
+        .await
+        .expect("shutdown should complete after the sender closes");
 }

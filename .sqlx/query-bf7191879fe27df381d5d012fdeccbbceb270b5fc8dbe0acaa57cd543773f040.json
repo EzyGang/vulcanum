@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as \"status: WorkRunStatus\",\n             work_type as \"work_type: WorkRunType\", parent_work_run_id,\n             review_target_pr_url, review_target_repo_full_name,\n             result_pr_url, result_exit_code, tokens_used, duration_ms,\n             input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n             cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n             model_used,\n             finish_status, result_summary, finish_blocked_reason, finish_next_column,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"\n             FROM work_runs WHERE status = 'pending'::work_run_status AND worker_id IS NULL AND finish_blocked_reason IS NULL\n             ORDER BY created_at ASC",
+  "query": "UPDATE work_runs SET status = 'running'::work_run_status\n             WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status\n             RETURNING id, team_id, external_task_ref, task_title as \"task_title?: String\", task_slug as \"task_slug?: String\", project_config_id, worker_id, status as \"status: WorkRunStatus\",\n              work_type as \"work_type: WorkRunType\", parent_work_run_id,\n              review_target_pr_url, review_target_repo_full_name,\n             result_pr_url, result_exit_code, tokens_used, duration_ms,\n             input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n             cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n             model_used,\n             finish_status, result_summary, finish_blocked_reason, finish_next_column,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -20,16 +20,26 @@
       },
       {
         "ordinal": 3,
+        "name": "task_title?: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "task_slug?: String",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "project_config_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 4,
+        "ordinal": 6,
         "name": "worker_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "status: WorkRunStatus",
         "type_info": {
           "Custom": {
@@ -48,7 +58,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "work_type: WorkRunType",
         "type_info": {
           "Custom": {
@@ -63,103 +73,108 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "parent_work_run_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "review_target_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "review_target_repo_full_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "result_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "result_exit_code",
         "type_info": "Int4"
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "tokens_used",
         "type_info": "Int8"
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "duration_ms",
         "type_info": "Int8"
       },
       {
-        "ordinal": 14,
+        "ordinal": 16,
         "name": "input_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 15,
+        "ordinal": 17,
         "name": "output_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 16,
+        "ordinal": 18,
         "name": "cache_read_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 17,
+        "ordinal": 19,
         "name": "cache_write_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 18,
+        "ordinal": 20,
         "name": "model_used",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "finish_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "result_summary",
         "type_info": "Text"
       },
       {
-        "ordinal": 21,
+        "ordinal": 23,
         "name": "finish_blocked_reason",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 24,
         "name": "finish_next_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 23,
+        "ordinal": 25,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "updated_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
       false,
       false,
+      true,
+      true,
       false,
       true,
       false,
@@ -184,5 +199,5 @@
       true
     ]
   },
-  "hash": "76545e20a2ecfccb360e2bf5794b6fabe0046fe3148b8cbdd2d1968a180e4f88"
+  "hash": "bf7191879fe27df381d5d012fdeccbbceb270b5fc8dbe0acaa57cd543773f040"
 }

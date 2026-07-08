@@ -106,22 +106,24 @@ async fn run_event_pump(
 
     loop {
         tokio::select! {
-            Some(event) = receiver.recv() => {
-                pending.insert(event.sequence, event);
-                send_ready_events(
-                    &client,
-                    &worker_state,
-                    job_id,
-                    &cancel_tx,
-                    &mut pending,
-                    &mut next_sequence,
-                )
-                .await;
-            }
+            event = receiver.recv() => match event {
+                Some(event) => {
+                    pending.insert(event.sequence, event);
+                    send_ready_events(
+                        &client,
+                        &worker_state,
+                        job_id,
+                        &cancel_tx,
+                        &mut pending,
+                        &mut next_sequence,
+                    )
+                    .await;
+                }
+                None => break,
+            },
             _ = cancel_interval.tick() => {
                 poll_cancel_request(&client, &worker_state, job_id, &cancel_tx).await;
             }
-            else => break,
         }
     }
 

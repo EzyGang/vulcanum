@@ -10,6 +10,7 @@ use prompts::resolve_backend;
 
 mod backends;
 mod connect;
+#[cfg(target_os = "linux")]
 pub(crate) mod docker_daemon;
 pub(crate) mod host;
 #[cfg(target_os = "macos")]

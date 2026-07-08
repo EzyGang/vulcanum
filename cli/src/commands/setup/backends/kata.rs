@@ -1,22 +1,28 @@
+#[cfg(target_os = "linux")]
 use std::process::{Command, Stdio};
 
+#[cfg(target_os = "linux")]
 use serde_json::{Map, Value};
 
+#[cfg(target_os = "linux")]
 use crate::commands::setup::docker_daemon::{
     docker_runtime_registered, read_daemon_json, write_daemon_json,
 };
+#[cfg(target_os = "linux")]
 use crate::commands::setup::host::which;
+#[cfg(target_os = "linux")]
 use crate::commands::setup::service;
 
+#[cfg(any(target_os = "linux", test))]
 pub(super) const KATA_MANAGER_URL: &str =
     "https://raw.githubusercontent.com/kata-containers/kata-containers/main/utils/kata-manager.sh";
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "linux"))]
 pub fn install_kata() -> anyhow::Result<()> {
-    anyhow::bail!("Kata Containers are not supported on macOS because Kata requires Linux KVM");
+    anyhow::bail!("Kata Containers are only supported on Linux because Kata requires KVM");
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 pub fn install_kata() -> anyhow::Result<()> {
     if which("kata-runtime") {
         tracing::debug!("kata-runtime already installed");
@@ -41,12 +47,12 @@ pub fn install_kata() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "linux"))]
 pub fn configure_docker_for_kata() -> anyhow::Result<()> {
-    anyhow::bail!("Kata Containers are not supported on macOS because Kata requires Linux KVM");
+    anyhow::bail!("Kata Containers are only supported on Linux because Kata requires KVM");
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 pub fn configure_docker_for_kata() -> anyhow::Result<()> {
     let kata_path =
         kata_runtime_path().ok_or_else(|| anyhow::anyhow!("kata-runtime not found in PATH"))?;
@@ -84,7 +90,7 @@ pub fn configure_docker_for_kata() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 fn kata_runtime_path() -> Option<String> {
     Command::new("which")
         .arg("kata-runtime")

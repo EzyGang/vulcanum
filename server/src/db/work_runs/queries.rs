@@ -51,7 +51,7 @@ impl WorkRunsRepository {
                 INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,
                  work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status,
+                RETURNING id, team_id, external_task_ref, task_title, task_slug, project_config_id, worker_id, status,
                  work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
                  result_pr_url, result_exit_code, tokens_used, duration_ms, input_tokens, output_tokens,
                  cache_read_tokens, cache_write_tokens, model_used, finish_status, result_summary,
@@ -64,7 +64,7 @@ impl WorkRunsRepository {
                 JOIN UNNEST($12::text[], $13::text[], $14::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
                 RETURNING 1
             )
-            SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+            SELECT id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
@@ -227,7 +227,7 @@ impl WorkRunsRepository {
     ) -> Result<WorkRun, WorkRunsError> {
         sqlx::query_as!(
             WorkRun,
-            r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+            r#"SELECT id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,

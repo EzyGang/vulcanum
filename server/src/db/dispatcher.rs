@@ -41,7 +41,7 @@ impl DispatchRepository {
     ) -> Result<Vec<WorkRun>, DispatchError> {
         sqlx::query_as!(
             WorkRun,
-            r#"SELECT id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+            r#"SELECT id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
              review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
@@ -69,7 +69,7 @@ impl DispatchRepository {
             r#"UPDATE work_runs SET worker_id = $2, status = 'dispatched'::work_run_status
              WHERE id = $1 AND status = 'pending'::work_run_status
              AND team_id = (SELECT team_id FROM workers WHERE id = $2)
-             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
               review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,

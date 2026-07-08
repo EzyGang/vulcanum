@@ -87,13 +87,3 @@ pub(crate) fn enable_and_start_docker_service() -> anyhow::Result<()> {
 pub(crate) fn restart_docker_service() -> anyhow::Result<()> {
     systemd::run_systemctl(&["restart", "docker"])
 }
-
-#[cfg(target_os = "macos")]
-pub(crate) fn restart_docker_service() -> anyhow::Result<()> {
-    anyhow::bail!("Kata Containers are not supported on macOS");
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub(crate) fn restart_docker_service() -> anyhow::Result<()> {
-    anyhow::bail!("Docker service management is only supported on Linux and macOS");
-}

@@ -1,21 +1,21 @@
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use std::{
     ffi::OsString,
     path::PathBuf,
     sync::{Mutex, MutexGuard},
 };
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use crate::commands::setup::docker_daemon::docker_runtime_registered;
 use crate::commands::setup::host::capacity_from_resources;
 use crate::commands::setup::prompts::resolve_backend;
 use crate::commands::setup::{Backend, InteractionMode};
 use crate::{console, IsolationBackend};
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 static ENV_LOCK: Mutex<()> = Mutex::new(());
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 struct FakeDockerPath {
     previous_path: Option<OsString>,
     previous_runtimes: Option<OsString>,
@@ -23,7 +23,7 @@ struct FakeDockerPath {
     _lock: MutexGuard<'static, ()>,
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 impl FakeDockerPath {
     fn new(name: &str) -> Self {
         use std::os::unix::fs::PermissionsExt;
@@ -60,7 +60,7 @@ impl FakeDockerPath {
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 impl Drop for FakeDockerPath {
     fn drop(&mut self) {
         match self.previous_path.as_ref() {
@@ -115,7 +115,7 @@ fn test_severity_discrimination() {
     assert_eq!(warning_count, 1);
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn docker_runtime_registered_matches_exact_runtime_keys() {
     let _docker = FakeDockerPath::new("runtime-json");

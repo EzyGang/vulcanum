@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT task_title, task_slug, work_type as \"work_type: WorkRunType\",\n           parent_work_run_id, review_target_pr_url, review_target_repo_full_name\n           FROM work_runs\n           WHERE parent_work_run_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "task_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "work_type: WorkRunType",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_work_run_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "review_target_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "review_target_repo_full_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "e472728a846447b33dbeab9f75e72c3cac27e08eebaac3fe59592aafcbf82da2"
+}

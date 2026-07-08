@@ -8,6 +8,7 @@ use vulcanum_shared::validate;
 const MIN_WORKER_CAPACITY: i32 = 1;
 const KB_PER_GB: u64 = 1024 * 1024;
 
+#[cfg(target_os = "linux")]
 #[must_use]
 pub fn which(binary: &str) -> bool {
     which_path(binary).is_some()

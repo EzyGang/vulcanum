@@ -18,7 +18,7 @@ impl WorkRunsRepository {
             WorkRun,
             r#"UPDATE work_runs SET status = 'running'::work_run_status
              WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status
-             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
               review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
@@ -46,7 +46,7 @@ impl WorkRunsRepository {
             r#"UPDATE work_runs SET status = 'failed'::work_run_status, result_exit_code = 1, tokens_used = 0, duration_ms = 0,
              input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0
              WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)
-             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
               review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
@@ -76,7 +76,7 @@ impl WorkRunsRepository {
              finish_status = $12, result_summary = $13, finish_blocked_reason = $14,
              finish_next_column = $15
              WHERE id = $1 AND status = 'running'::work_run_status
-             RETURNING id, team_id, external_task_ref, project_config_id, worker_id, status as "status: WorkRunStatus",
+             RETURNING id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
               work_type as "work_type: WorkRunType", parent_work_run_id,
               review_target_pr_url, review_target_repo_full_name,
              result_pr_url, result_exit_code, tokens_used, duration_ms,

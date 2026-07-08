@@ -118,6 +118,8 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
         id: Uuid::new_v4(),
         team_id: Uuid::new_v4(),
         external_task_ref: "task-1".to_owned(),
+        task_title: None,
+        task_slug: None,
         project_config_id: Uuid::new_v4(),
         worker_id: None,
         status: WorkRunStatus::Running,
