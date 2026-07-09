@@ -24,11 +24,14 @@ const ROLE_BADGE_CLASSES: Record<TaskBoardColumnRole, string> = {
   done: 'border-success-border bg-success-bg text-success'
 };
 
+const ACTION_BUTTON_CLASS =
+  'h-10 w-10 justify-center border border-border-base bg-bg-panel p-0 text-text-muted transition-[color,background-color,border-color,transform] hover:border-border-focus hover:bg-bg-hover hover:text-text-primary active:scale-[0.96]';
+
 const RoleBadge = ({ role }: RoleBadgeProps): JSX.Element => (
   <span
     title={ROLE_HELP[role]}
     class={clsx(
-      'select-none border px-2 py-0.5 text-[10px] uppercase tracking-wider transition-colors hover:border-border-focus hover:bg-bg-active',
+      'inline-flex h-6 select-none items-center border px-2 text-[10px] font-medium leading-none uppercase tracking-[0.12em] transition-colors hover:border-border-focus hover:bg-bg-active',
       ROLE_BADGE_CLASSES[role]
     )}
   >
@@ -46,7 +49,7 @@ const RoleMenu = ({ data }: RoleMenuProps): JSX.Element => (
       aria-expanded={data.open}
       disabled={data.disabled}
       onClick={data.onToggle}
-      class='h-8 w-8 justify-center border border-border-base p-0 hover:border-border-focus'
+      class={ACTION_BUTTON_CLASS}
     >
       <IconSettings size={15} stroke={1.75} aria-hidden='true' />
     </Button>
@@ -87,28 +90,30 @@ export const TaskBoardColumn = ({ data }: TaskBoardColumnProps): JSX.Element => 
     onDragOver={data.onDragOver}
     onDrop={data.onDrop}
     class={clsx(
-      'flex min-h-80 flex-col gap-4 border bg-bg-card p-4 transition-colors duration-fast',
-      data.dropPreviewActive ? 'border-accent bg-bg-hover/60 shadow-modal' : 'border-border-base'
+      'flex min-h-80 min-w-0 flex-col gap-4 border bg-bg-card p-4 transition-colors duration-fast',
+      data.dropPreviewActive ? 'border-accent bg-bg-hover/60' : 'border-border-base'
     )}
   >
-    <div class='flex flex-col gap-3 border-b border-border-base pb-3'>
-      <div class='flex items-start justify-between gap-3'>
-        <div class='flex flex-col gap-2'>
-          <h3 class='text-sm font-semibold uppercase tracking-wider text-text-primary'>
-            {data.column.name}
-          </h3>
-          <div class='flex flex-wrap gap-1'>
-            {data.activeRoles.length > 0 ? (
-              data.activeRoles.map((role) => <RoleBadge key={role.role} role={role.role} />)
-            ) : (
-              <span class='select-none text-[10px] uppercase tracking-wider text-text-muted'>
-                No role
-              </span>
-            )}
-          </div>
+    <div class='flex min-h-28 flex-col gap-3 border-b border-border-base pb-3'>
+      <div class='flex min-w-0 items-start justify-between gap-3'>
+        <h3 class='min-h-10 min-w-0 flex-1 text-balance text-[0.82rem] font-semibold leading-tight tracking-[0.14em] text-text-primary uppercase'>
+          {data.column.name}
+        </h3>
+        <span class='inline-flex h-7 min-w-7 shrink-0 items-center justify-center border border-border-base bg-bg-panel px-2 text-xs leading-none tabular-nums text-text-secondary'>
+          {data.taskCount}
+        </span>
+      </div>
+      <div class='flex min-h-7 min-w-0 items-start justify-between gap-3'>
+        <div class='flex min-w-0 flex-wrap items-center gap-1'>
+          {data.activeRoles.length > 0 ? (
+            data.activeRoles.map((role) => <RoleBadge key={role.role} role={role.role} />)
+          ) : (
+            <span class='inline-flex h-6 select-none items-center border border-dashed border-border-base px-2 text-[10px] font-medium leading-none tracking-[0.12em] text-text-muted uppercase'>
+              No role
+            </span>
+          )}
         </div>
-        <div class='flex shrink-0 items-center gap-2'>
-          <span class='text-xs tabular-nums text-text-muted'>{data.taskCount}</span>
+        <div class='flex shrink-0 items-center gap-1'>
           <div
             role='group'
             class='flex items-center gap-1'
@@ -121,7 +126,10 @@ export const TaskBoardColumn = ({ data }: TaskBoardColumnProps): JSX.Element => 
               title={`Move ${data.column.name} column left`}
               disabled={!data.viewControls.canMoveLeft}
               onClick={data.viewControls.onMoveLeft}
-              class='h-10 w-10 justify-center border border-border-base p-0 hover:border-border-focus disabled:cursor-not-allowed disabled:opacity-40'
+              class={clsx(
+                ACTION_BUTTON_CLASS,
+                'disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100'
+              )}
             >
               <IconArrowLeft size={15} stroke={1.75} aria-hidden='true' />
             </Button>
@@ -132,7 +140,10 @@ export const TaskBoardColumn = ({ data }: TaskBoardColumnProps): JSX.Element => 
               title={`Move ${data.column.name} column right`}
               disabled={!data.viewControls.canMoveRight}
               onClick={data.viewControls.onMoveRight}
-              class='h-10 w-10 justify-center border border-border-base p-0 hover:border-border-focus disabled:cursor-not-allowed disabled:opacity-40'
+              class={clsx(
+                ACTION_BUTTON_CLASS,
+                'disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100'
+              )}
             >
               <IconArrowRight size={15} stroke={1.75} aria-hidden='true' />
             </Button>
@@ -142,7 +153,7 @@ export const TaskBoardColumn = ({ data }: TaskBoardColumnProps): JSX.Element => 
               aria-label={`Hide ${data.column.name} column`}
               title={`Hide ${data.column.name} column`}
               onClick={data.viewControls.onHide}
-              class='h-10 w-10 justify-center border border-border-base p-0 hover:border-border-focus'
+              class={ACTION_BUTTON_CLASS}
             >
               <IconEyeOff size={15} stroke={1.75} aria-hidden='true' />
             </Button>

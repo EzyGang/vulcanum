@@ -298,7 +298,7 @@ export const TaskBoardView = ({
 
       {columns.length > 0 ? (
         <div
-          class='grid grid-cols-1 gap-4 lg:grid-cols-[repeat(var(--board-column-count),minmax(0,1fr))]'
+          class='grid grid-cols-1 gap-3 overflow-x-auto pb-2 md:grid-cols-[repeat(var(--board-column-count),minmax(18rem,1fr))]'
           style={`--board-column-count: ${boardColumnCount}`}
         >
           {columns.map((column) => (
