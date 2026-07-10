@@ -109,16 +109,16 @@ The exact storage backend can evolve, but the contract is stable: operators shou
 
 ## Download / Releases
 
-Published builds are available from the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
+Published release artifacts are available from the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
 
-| Platform | Download |
+| Platform | Release status |
 | --- | --- |
-| Windows x64 | [Latest release assets](https://github.com/EzyGang/vulcanum/releases/latest) |
-| macOS Apple Silicon | [Latest release assets](https://github.com/EzyGang/vulcanum/releases/latest) |
-| macOS Intel | [Latest release assets](https://github.com/EzyGang/vulcanum/releases/latest) |
-| Linux x64 | [Latest release assets](https://github.com/EzyGang/vulcanum/releases/latest) |
+| Windows x64 | Not published yet; use the [development setup](#development) to build from source. |
+| macOS Apple Silicon | Not published yet; use the [development setup](#development) to build from source. |
+| macOS Intel | Not published yet; use the [development setup](#development) to build from source. |
+| Linux x64 | [Latest release assets](https://github.com/EzyGang/vulcanum/releases/latest) currently include the un-packaged `vulcanum` CLI and `vulcanum-server` worker daemon binaries. |
 
-Current release automation builds the Rust CLI and worker/server binaries. Platform-specific packaging may lag behind the matrix above while the project is pre-1.0; if there is no build for your platform, use the [development setup](#development) below.
+Current release automation runs on a self-hosted Linux runner and uploads only the Rust CLI and worker daemon artifacts. Platform-specific installers and archives are planned but are not published yet while the project is pre-1.0.
 
 > [!WARNING]
 > Builds may not be code-signed. macOS, Windows, and some Linux desktop environments may warn that a downloaded binary is from an unknown publisher.
