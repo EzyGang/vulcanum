@@ -1,0 +1,50 @@
+<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Vulcanum</title>
+  <desc id="desc">A branded Vulcanum banner with a geometric fire mark and the tagline agentic work orchestration.</desc>
+  <defs>
+    <radialGradient id="ember" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(294 208) rotate(38) scale(210 180)">
+      <stop offset="0" stop-color="#FFDE8A"/>
+      <stop offset="0.42" stop-color="#FF6B35"/>
+      <stop offset="1" stop-color="#7C2D12"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1020"/>
+      <stop offset="0.56" stop-color="#111827"/>
+      <stop offset="1" stop-color="#24120A"/>
+    </linearGradient>
+    <linearGradient id="line" x1="180" y1="350" x2="1120" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6B35" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FFB86B" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FF6B35" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="105" y="50" width="290" height="290" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="22" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1 0 1 0 0 0.35 0 0 1 0 0.12 0 0 0 0.95 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="420" rx="36" fill="url(#panel)"/>
+  <path d="M0 320C168 260 247 364 410 294C540 238 586 94 746 118C900 141 932 277 1110 206C1181 177 1232 138 1280 106V420H0V320Z" fill="#FF6B35" fill-opacity="0.08"/>
+  <path d="M132 332C290 241 394 363 536 228C665 105 794 91 921 174C1031 246 1135 223 1192 178" stroke="url(#line)" stroke-width="2"/>
+  <circle cx="1040" cy="96" r="180" fill="#FF6B35" fill-opacity="0.05"/>
+  <circle cx="160" cy="330" r="140" fill="#2563EB" fill-opacity="0.07"/>
+
+  <g filter="url(#glow)">
+    <path d="M254 297C194 275 163 220 177 165C189 118 224 91 246 62C246 109 292 122 292 171C316 150 327 124 327 93C369 130 391 177 382 224C369 288 310 318 254 297Z" fill="url(#ember)"/>
+    <path d="M263 275C233 262 216 235 222 204C228 174 253 158 266 129C273 160 305 174 298 207C315 195 325 179 328 160C350 188 358 219 347 244C333 278 294 289 263 275Z" fill="#FFE0A3" fill-opacity="0.88"/>
+    <path d="M251 254C238 244 234 226 242 210C250 195 263 185 270 168C277 189 294 200 292 220C288 248 270 263 251 254Z" fill="#FFFFFF" fill-opacity="0.72"/>
+  </g>
+
+  <g>
+    <text x="450" y="184" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="92" font-weight="800" letter-spacing="-3">Vulcanum</text>
+    <text x="456" y="242" fill="#FDBA74" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="650" letter-spacing="3">AGENTIC WORK ORCHESTRATION</text>
+    <text x="456" y="292" fill="#CBD5E1" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="450">Dispatch agents. Isolate execution. Preserve evidence.</text>
+  </g>
+
+  <g opacity="0.82">
+    <rect x="945" y="278" width="204" height="46" rx="23" fill="#111827" stroke="#334155"/>
+    <circle cx="976" cy="301" r="8" fill="#22C55E"/>
+    <text x="994" y="309" fill="#E2E8F0" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="600">worker ready</text>
+  </g>
+</svg>
