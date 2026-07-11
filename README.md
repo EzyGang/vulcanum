@@ -1,8 +1,5 @@
 # Vulcanum
 
-<p align="center">
-  <img src="assets/banner.svg" alt="Vulcanum agentic work orchestration banner">
-</p>
 
 <p align="center">
   <img src="https://img.shields.io/github/actions/workflow/status/EzyGang/vulcanum/ci.yml?style=for-the-badge" alt="CI">
