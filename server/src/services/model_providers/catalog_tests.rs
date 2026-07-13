@@ -53,6 +53,9 @@ fn codex_compatible_model_predicate_matches_policy() {
     assert!(is_codex_compatible_openai_model("gpt-5.5"));
     assert!(is_codex_compatible_openai_model("gpt-5.4"));
     assert!(is_codex_compatible_openai_model("gpt-5.6"));
+    assert!(is_codex_compatible_openai_model("gpt-5.6-sol"));
+    assert!(is_codex_compatible_openai_model("gpt-5.6-terra"));
+    assert!(is_codex_compatible_openai_model("gpt-5.6-luna"));
     assert!(is_codex_compatible_openai_model("gpt-6.0"));
     assert!(!is_codex_compatible_openai_model("gpt-5.5-pro"));
     assert!(!is_codex_compatible_openai_model("gpt-5.3"));

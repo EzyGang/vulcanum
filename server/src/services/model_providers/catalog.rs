@@ -12,8 +12,15 @@ use crate::services::model_providers::auth::credentials::OPENAI_PROVIDER_KEY;
 const MODELS_DEV_URL: &str = "https://models.dev/api.json";
 const CATALOG_TTL: Duration = Duration::from_secs(60 * 60);
 const CATALOG_HTTP_TIMEOUT: Duration = Duration::from_secs(15);
-const CODEX_ALLOWED_OPENAI_MODELS: &[&str] =
-    &["gpt-5.5", "gpt-5.3-codex-spark", "gpt-5.4", "gpt-5.4-mini"];
+const CODEX_ALLOWED_OPENAI_MODELS: &[&str] = &[
+    "gpt-5.5",
+    "gpt-5.3-codex-spark",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+];
 const CODEX_DISALLOWED_OPENAI_MODELS: &[&str] = &["gpt-5.5-pro"];
 
 #[derive(Clone)]
