@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO task_prs (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "71216c84a45dd9c59d448ef2d25366fa4627309024645ed924a5ba1dd6c8cc29"
+}

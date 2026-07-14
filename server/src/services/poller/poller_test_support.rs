@@ -145,9 +145,9 @@ pub(crate) async fn insert_project_config(
 
     sqlx::query!(
         "INSERT INTO project_configs \
-         (id, team_id, external_project_id, enabled, pickup_column, target_column, progress_column, \
+         (id, team_id, external_project_id, enabled, pickup_column, review_column, done_column, progress_column, \
            prompt_template, repo_url, provider_id) \
-         VALUES ($1, $2, $3, true, 'to-do', 'in-review', 'in-progress', \
+         VALUES ($1, $2, $3, true, 'to-do', 'in-review', 'done', 'in-progress', \
           'Review {{task_title}}', '', $4)",
         id,
         DEFAULT_TEAM_ID,

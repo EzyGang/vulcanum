@@ -1,5 +1,9 @@
+pub(crate) mod pull_requests;
 mod repos;
 mod state_nonce;
+pub(crate) mod webhooks;
+#[cfg(test)]
+mod webhooks_tests;
 
 use base64::Engine;
 use octocrab::models::{Installation, InstallationId};

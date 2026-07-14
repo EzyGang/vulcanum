@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_configs (id, team_id, external_project_id, enabled, pickup_column, review_column, done_column, progress_column, prompt_template, repo_url, provider_id) VALUES ($1, $2, $3, true, 'to-do', 'in-review', 'done', 'in-progress', 'Review {{task_title}}', '', $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5cce3ba1c548114d508e81729bd50e76beee1f4c9a0da57fcbac651d005e1f5f"
+}

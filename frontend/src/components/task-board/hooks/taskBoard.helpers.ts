@@ -30,7 +30,7 @@ export const HELP_CARDS: { id: TaskBoardHelpCard; title: string; body: string }[
   {
     id: 'roles',
     title: 'Column roles',
-    body: 'Pickup, in-progress, done, and review roles tell workers where to pull work from and where completed work should land.'
+    body: 'Pickup and in-progress route active work. Review receives completed implementation and automated review; a distinct Done column receives tickets only after every linked pull request is merged or closed.'
   },
   {
     id: 'automation',
@@ -181,10 +181,15 @@ export const hasCustomTaskBoardColumnView = (
 };
 
 export const firstColumnSlug = (columns: TaskBoardColumn[]): string => columns[0]?.slug ?? '';
-const targetColumnSlug = (columns: TaskBoardColumn[]): string =>
+const doneColumnSlug = (columns: TaskBoardColumn[]): string =>
   columns.find((column) => column.isFinal)?.slug ??
   columns[columns.length - 1]?.slug ??
   firstColumnSlug(columns);
+
+const reviewColumnSlug = (columns: TaskBoardColumn[]): string => {
+  const doneIndex = columns.findIndex((column) => column.slug === doneColumnSlug(columns));
+  return columns[doneIndex - 1]?.slug ?? doneColumnSlug(columns);
+};
 
 const progressColumnSlug = (columns: TaskBoardColumn[]): string =>
   columns.find((column) => !column.isFinal && column.slug !== firstColumnSlug(columns))?.slug ??
@@ -205,7 +210,8 @@ export const columnRolesForProject = (
 ): TaskBoardColumnRoles => ({
   pickupColumn: config?.pickupColumn || firstColumnSlug(columns),
   progressColumn: config?.progressColumn || progressColumnSlug(columns),
-  targetColumn: config?.targetColumn || targetColumnSlug(columns)
+  reviewColumn: config?.reviewColumn || reviewColumnSlug(columns),
+  doneColumn: config?.doneColumn || doneColumnSlug(columns)
 });
 
 export const nullableText = (value: string): string | null => {

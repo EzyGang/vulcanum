@@ -62,12 +62,12 @@ impl WorkRunsService {
 
         let result_column = match is_review {
             true => {
-                review_result_column(params.finish_status, status, &project_config.target_column)
+                review_result_column(params.finish_status, status, &project_config.review_column)
             }
             false => implementation_result_column(
                 params.finish_status,
                 status,
-                &project_config.target_column,
+                &project_config.review_column,
                 has_review_work,
             ),
         };
@@ -120,17 +120,17 @@ fn implementation_result_comment(
 pub(crate) fn implementation_result_column(
     finish_status: Option<FinishStatus>,
     run_status: WorkRunStatus,
-    target_column: &str,
+    review_column: &str,
     has_review_work: bool,
 ) -> Option<&str> {
     match finish_status {
         Some(FinishStatus::Completed) => match has_review_work {
             true => None,
-            false => Some(target_column),
+            false => Some(review_column),
         },
         Some(FinishStatus::Failed | FinishStatus::Blocked) => None,
         None => match (run_status, has_review_work) {
-            (WorkRunStatus::Completed, false) => Some(target_column),
+            (WorkRunStatus::Completed, false) => Some(review_column),
             _ => None,
         },
     }
@@ -140,13 +140,13 @@ pub(crate) fn implementation_result_column(
 pub(crate) fn review_result_column(
     finish_status: Option<FinishStatus>,
     run_status: WorkRunStatus,
-    target_column: &str,
+    review_column: &str,
 ) -> Option<&str> {
     match finish_status {
-        Some(FinishStatus::Completed) => Some(target_column),
+        Some(FinishStatus::Completed) => Some(review_column),
         Some(FinishStatus::Failed | FinishStatus::Blocked) => None,
         None => match run_status {
-            WorkRunStatus::Completed => Some(target_column),
+            WorkRunStatus::Completed => Some(review_column),
             _ => None,
         },
     }

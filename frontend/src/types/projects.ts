@@ -5,7 +5,8 @@ export interface ProjectConfig {
   externalWorkspaceId: string;
   enabled: boolean;
   pickupColumn: string;
-  targetColumn: string;
+  reviewColumn: string;
+  doneColumn: string;
   progressColumn: string;
   promptTemplate?: string | null;
   repoFullNames?: string[];
@@ -27,7 +28,8 @@ export interface CreateProjectRequest {
   enabled?: boolean;
   pickupColumn?: string;
   progressColumn?: string;
-  targetColumn?: string;
+  reviewColumn?: string;
+  doneColumn?: string;
   promptTemplate?: string | null;
   repoFullNames?: string[];
   agentsMd?: string | null;
@@ -43,7 +45,8 @@ export interface UpdateProjectRequest {
   name?: string;
   pickupColumn?: string;
   progressColumn?: string;
-  targetColumn?: string;
+  reviewColumn?: string;
+  doneColumn?: string;
   promptTemplate?: string | null;
   repoFullNames?: string[];
   agentsMd?: string | null;

@@ -7,14 +7,15 @@ import type {
   TaskBoardTaskAugmentation
 } from '../../types/task-board';
 
-export type TaskBoardColumnRole = 'pickup' | 'progress' | 'done';
+export type TaskBoardColumnRole = 'pickup' | 'progress' | 'review' | 'done';
 
 export type TaskBoardHelpCard = 'proxy' | 'roles' | 'automation' | 'lifecycle-labels';
 
 export interface TaskBoardColumnRoles {
   pickupColumn: string;
   progressColumn: string;
-  targetColumn: string;
+  reviewColumn: string;
+  doneColumn: string;
 }
 
 export interface TaskBoardSettingsFormState {
@@ -262,6 +263,7 @@ export interface TaskBoardActions {
   onColumnScroll: (event: Event, columnSlug: string) => void;
   onPickupColumnChange: (value: string) => void;
   onProgressColumnChange: (value: string) => void;
+  onReviewColumnChange: (value: string) => void;
   onDoneColumnChange: (value: string) => void;
   onShowColumn: (columnSlug: string) => void;
   onHideColumn: (columnSlug: string) => void;

@@ -19,8 +19,9 @@ interface RoleMenuProps {
 }
 
 const ROLE_BADGE_CLASSES: Record<TaskBoardColumnRole, string> = {
-  pickup: 'border-warning-border bg-warning-bg text-warning',
+  pickup: 'border-border-base bg-bg-panel text-text-secondary',
   progress: 'border-accent/60 bg-accent/10 text-accent-light',
+  review: 'border-warning-border bg-warning-bg text-warning',
   done: 'border-success-border bg-success-bg text-success'
 };
 

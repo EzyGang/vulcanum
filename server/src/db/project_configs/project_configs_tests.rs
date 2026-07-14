@@ -54,7 +54,8 @@ fn test_params(external_project_id: &str, provider_id: Uuid) -> CreateProjectCon
         enabled: true,
         pickup_column: "to-do".to_owned(),
         progress_column: "in-progress".to_owned(),
-        target_column: "in-review".to_owned(),
+        review_column: "in-review".to_owned(),
+        done_column: "done".to_owned(),
         prompt_template: Some("Review {{task_title}}".to_owned()),
         repo_full_names: Vec::new(),
         agents_md: Some(String::new()),
@@ -73,7 +74,8 @@ fn test_update_params() -> UpdateProjectConfigParams<'static> {
     UpdateProjectConfigParams {
         name: None,
         pickup_column: None,
-        target_column: None,
+        review_column: None,
+        done_column: None,
         progress_column: None,
         max_turns: None,
         prompt_template: None,
@@ -103,6 +105,8 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
 
     assert_eq!(created.external_project_id, params.external_project_id);
     assert_eq!(created.pickup_column, "to-do");
+    assert_eq!(created.review_column, "in-review");
+    assert_eq!(created.done_column, "done");
     assert!(created.enabled);
 
     let found = repo
@@ -110,6 +114,8 @@ async fn create_finds_and_deletes_config(pool: PgPool) {
         .await
         .expect("Should find by id");
     assert_eq!(found.id, created.id);
+    assert_eq!(found.review_column, "in-review");
+    assert_eq!(found.done_column, "done");
 
     repo.delete(&pool, created.id)
         .await

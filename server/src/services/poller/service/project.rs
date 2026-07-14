@@ -20,7 +20,7 @@ impl PollerService {
             provider_id = ?config.provider_id,
             pickup_column = %config.pickup_column,
             progress_column = %config.progress_column,
-            target_column = %config.target_column,
+            review_column = %config.review_column,
             "polling project config",
         );
 

@@ -20,6 +20,8 @@ pub enum WorkRunsError {
     DeleteRunning,
     #[error("invalid pagination: {0}")]
     InvalidPagination(String),
+    #[error("failed to update task lifecycle label")]
+    LifecycleLabelUpdate,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]

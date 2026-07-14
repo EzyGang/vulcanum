@@ -88,6 +88,7 @@ async fn auth_service(pool: sqlx::PgPool) -> AuthService {
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
+        github_webhook_secret: None,
         github_oauth_client_id: None,
         github_oauth_client_secret: None,
         github_oauth_redirect_url: None,

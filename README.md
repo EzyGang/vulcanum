@@ -59,7 +59,9 @@ Worker polls /api/v1/poll     →  Claims via /api/v1/jobs/{id}/ack (running)
                                        ↓
                                   Worker runs harness in isolated environment
                                        ↓
-Task Tracker (in-review)      ←  Server syncs status + PR comment  ←  Worker POSTs /result
+Task Tracker (Review)        ←  Server syncs status + PR comment  ←  Worker POSTs /result
+          ↓
+GitHub pull-request `closed` webhook → verify all linked PRs are terminal → move ticket to Done
 ```
 
 ## Security & Isolation
@@ -191,7 +193,10 @@ Vulcanum connects to repositories through a **GitHub App** instead of personal a
    - **GitHub App name**: e.g. `Vulcanum App`
    - **Homepage URL**: your instance URL (e.g. `http://localhost:8080`)
    - **Callback URL**: `{your_instance}/api/v1/github/callback`
-   - **Webhook**: disable (Vulcanum does not use webhooks)
+   - **Webhook URL**: `{your_instance}/api/v1/github/webhook`
+   - **Webhook secret**: generate a strong random value and retain it for the server configuration
+   - **Webhook active**: enabled
+   - **Subscribe to events**: select **Pull request**
 3. Under **Permissions → Repository permissions**, enable:
    - **Contents**: `Read and write` (required for cloning and pushing branches)
    - **Pull requests**: `Read and write` (required for creating PRs)
@@ -210,6 +215,7 @@ Add these environment variables to your `.env`:
 GITHUB_APP_ID=123456
 GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...SA+PRIVATE+KEY...LS0tLS1FTkQ=
 GITHUB_APP_SLUG=vulcanum-app
+GITHUB_WEBHOOK_SECRET=replace-with-the-same-random-webhook-secret
 ```
 
 > **Note:** The private key must be supplied as a single-line **base64-encoded** string. Generate it from your `.pem` file:

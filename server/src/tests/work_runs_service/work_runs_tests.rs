@@ -48,6 +48,7 @@ fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
+        github_webhook_secret: None,
         github_oauth_client_id: None,
         github_oauth_client_secret: None,
         github_oauth_redirect_url: None,
@@ -369,6 +370,16 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     let worker_id = test_helpers::insert_worker(&pool, "result-worker").await;
     let project_id = test_helpers::insert_project_config(&pool, "kaneo-result-1").await;
     let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-result").await;
+    sqlx::query!(
+        "INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position) VALUES ($1, $2, $3, $4)",
+        wr_id,
+        "example/repo",
+        "https://github.com/example/repo",
+        0_i32,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should insert work run repo");
 
     let dispatch_repo = crate::db::dispatcher::DispatchRepository;
     dispatch_repo
@@ -382,7 +393,7 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     svc.ack_job(wr_id, worker_id).await.expect("Should ack");
 
     let params = SubmitResultRequest {
-        pr_urls: vec!["https://github.com/example/pr/1".to_owned()],
+        pr_urls: vec!["https://github.com/example/repo/pull/1".to_owned()],
         exit_code: 0,
         tokens_used: 500,
         duration_ms: 30000,
@@ -405,11 +416,20 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     assert!(matches!(job.status, WorkRunStatus::Completed));
     assert_eq!(
         job.result_pr_url.as_deref(),
-        Some("https://github.com/example/pr/1")
+        Some("https://github.com/example/repo/pull/1")
     );
     assert_eq!(job.result_exit_code, Some(0));
     assert_eq!(job.tokens_used, Some(500));
     assert_eq!(job.duration_ms, Some(30000));
+    let task_pr_count = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM task_prs WHERE source_work_run_id = $1",
+        wr_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Should count persisted task PRs")
+    .unwrap_or_default();
+    assert_eq!(task_pr_count, 1);
 }
 
 #[sqlx::test]

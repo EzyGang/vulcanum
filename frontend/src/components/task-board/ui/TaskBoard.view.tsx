@@ -42,7 +42,13 @@ const LIFECYCLE_LABELS = [
   {
     color: '#16A34A',
     name: 'Ready for human',
-    description: 'Implementation and review are complete, and the ticket is in its final column.'
+    description:
+      'Implementation and automated review are complete, and the ticket is ready for pull request disposition.'
+  },
+  {
+    color: '#15803D',
+    name: 'Done',
+    description: 'Every pull request linked to the ticket is merged or closed.'
   }
 ];
 export const TaskBoardView = ({

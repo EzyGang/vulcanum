@@ -20,6 +20,7 @@ use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
+use crate::services::github_app::service::webhooks::GithubWebhookService;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
@@ -300,6 +301,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
+        github_webhook_secret: None,
         github_oauth_client_id: None,
         github_oauth_client_secret: None,
         github_oauth_redirect_url: None,
@@ -358,6 +360,8 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         cancel_store.clone(),
         cfg.unhealthy_threshold,
     );
+    let github_webhooks =
+        GithubWebhookService::new(cfg.github_webhook_secret.as_deref(), jobs.clone());
     let events = WorkRunEventsService::new(
         WorkRunEventsRepository::new(),
         work_runs_repo.clone(),
@@ -381,6 +385,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         jobs,
         events,
         github,
+        github_webhooks,
         teams,
         jwt_secret: cfg.jwt_secret.clone(),
         is_single_user: cfg.is_single_user,

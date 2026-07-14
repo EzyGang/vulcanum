@@ -4149,6 +4149,7 @@ dependencies = [
  "dotenvy",
  "eyre",
  "hex",
+ "hmac",
  "jsonwebtoken",
  "kaneo-cli",
  "log",
