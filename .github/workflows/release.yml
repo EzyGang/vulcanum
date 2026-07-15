@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
   metadata:
@@ -134,14 +133,10 @@ jobs:
         runner:
           - ubuntu-24.04
     runs-on: ${{ matrix.runner }}
+    environment: release
     steps:
-      - name: Wait for release approval
-        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: Galtozzy
-          minimum-approvals: 1
-          issue-title: Approve release ${{ needs.metadata.outputs.tag }}
+      - name: Confirm approval
+        run: echo "Release ${{ needs.metadata.outputs.tag }} approved"
 
   release:
     name: Publish release
@@ -153,7 +148,6 @@ jobs:
         runner:
           - ubuntu-24.04
     runs-on: ${{ matrix.runner }}
-    environment: release
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4

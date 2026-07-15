@@ -6,198 +6,263 @@
   <img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-green?style=for-the-badge" alt="AGPL-3.0-or-later">
 </p>
 
----
+Vulcanum connects the parts around an implementation agent.
 
-**Vulcanum is a self-hosted orchestration layer for agentic software work.**
+It watches work in a task tracker, turns that work into jobs, sends those jobs to available workers, and keeps the original task up to date while the agent works. If the agent opens a pull request, Vulcanum can run a separate review agent and wait for the pull request to be closed or merged before marking the task done.
 
-Its goal is to sit between task-tracker backends, implementation-agent backends, and higher-level harnesses such as OpenClaw, Hermes, or custom automation. Vulcanum owns the work lifecycle—pickup, dispatch, execution, review, and status synchronization—without requiring the rest of a stack to be built around one tracker, model provider, or coding agent.
-
-The architecture is designed to be AI-, agent-, tracker-, and harness-agnostic. The current implementation is narrower than that goal: it ships a Kaneo task-tracker adapter, GitHub App repository access, and OpenCode and OMP RPC agent backends. Other adapters remain future work.
+The point is not to build another task tracker or another coding agent. Vulcanum is the layer between them.
 
 > [!WARNING]
-> Vulcanum is active pre-1.0 infrastructure software. Interfaces and migrations can change. Operate it on infrastructure you control, start with repositories and credentials you can safely expose to the deployment, and treat the host execution mode as trusted-development-only.
+> Vulcanum is still pre-1.0. It is under active development, migrations and interfaces can change, and it should be run on infrastructure you control.
 
-## Table of Contents
+## Contents
 
-- [Why Vulcanum?](#why-vulcanum)
-- [Current Capabilities](#current-capabilities)
-- [Architecture](#architecture)
-- [How It Works](#how-it-works)
-- [Getting Started](#getting-started)
-- [Security and Isolation](#security-and-isolation)
-- [Integrations](#integrations)
-- [Releases](#releases)
-- [Roadmap](#roadmap)
-- [Repository Layout](#repository-layout)
-- [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## Why Vulcanum?
-
-Agentic work often starts as a script that reads a ticket and invokes a coding agent. That works until the system needs durable state, multiple workers, constrained repository access, recovery after crashes, review automation, or a second tracker or agent backend.
-
-Vulcanum centralizes those concerns behind one control plane:
-
-- Humans continue working in the task tracker they already use.
-- Higher-level harnesses can treat Vulcanum as the execution and lifecycle boundary rather than managing workers directly.
-- Workers advertise their agent and isolation capabilities, poll for compatible work, and execute several jobs up to their configured capacity.
-- Agent backends are selected through a shared runtime contract instead of being embedded in task-tracker logic.
-- Run state, events, usage, pull requests, and review results return to the control plane and the source task.
-
-Vulcanum is not a model, coding agent, editor, task tracker, or general-purpose CI system. It coordinates those systems.
-
-## Current Capabilities
-
-| Area | What exists today |
-| --- | --- |
-| Task-driven execution | Poll enabled Kaneo projects, create implementation runs from a configured pickup column, move tasks through progress/review/done columns, and synchronize comments and lifecycle labels. |
-| Work-run lifecycle | Persist pending, dispatched, running, completed, failed, and stalled runs in PostgreSQL. Support cancellation, explicit failure, result submission, and stale-run recovery. |
-| Dispatch | Match pending work to workers with compatible agent-backend capabilities and available concurrency, using PostgreSQL for durable state and Redis for dispatch/cancellation signals. |
-| Workers | Register workers with short-lived access and refresh tokens, execute concurrent jobs, journal local state in SQLite, and recover or retire interrupted sessions after restart. |
-| Agent execution | Run OpenCode or OMP through a common runtime interface with multi-turn continuation and an explicit `finish_run` result contract. |
-| Isolation | Prepare per-run workspaces on the host, in Docker, or in Docker with the Kata runtime. Host mode is not a security boundary. |
-| Repository access | Use a GitHub App to obtain repository-scoped installation tokens, clone one or more configured repositories, and associate returned GitHub pull requests with the source task. |
-| Review automation | Optionally create a separate pull-request review run for each implementation PR, record the review comment, and leave the task in review until all linked PRs are closed or merged. |
-| Observability | Store ordered run events plus exit status, duration, model, token counts, result summary, worker, and PR URLs. The UI exposes dashboards, task boards, workers, runs, teams, and settings. |
-| Model configuration | Load the model catalog from [models.dev](https://models.dev/), store model-provider credentials encrypted at rest, and render backend-specific model configuration for jobs. |
-| Auth | Support single-user instance-password mode and multiuser GitHub OAuth with teams and expiring invite links. |
-
-### Current Boundaries
-
-These limitations are intentional to state plainly:
-
-- Kaneo is the only task-tracker adapter currently implemented.
-- GitHub is the only repository/VCS integration currently implemented.
-- OpenCode and OMP RPC are the only agent backends currently implemented.
-- There is no dedicated OpenClaw or Hermes adapter yet. The stable automation contract and higher-level harness adapters are roadmap work; today, external automation can drive the existing tracker-facing workflow.
-- Vulcanum does not currently publish the conceptual per-run artifact directory previously described here. Durable server-side data consists of run records, PR associations, usage fields, and events. Workers also save exported session messages locally under `~/.vulcanum/sessions/` when the backend provides them.
-- CPU and memory policy are not yet a complete configurable enforcement layer. Do not treat the current runtime defaults as a hardened multi-tenant sandbox policy.
-- Model-provider credentials are encrypted in PostgreSQL, but they are decrypted by the server and delivered to the selected worker for execution. A worker-side credential broker/vault is planned.
+- [What Vulcanum Is For](#what-vulcanum-is-for)
+- [Where It Fits](#where-it-fits)
+- [A Typical Run](#a-typical-run)
+- [What Works Today](#what-works-today)
+- [What Is Still Planned](#what-is-still-planned)
+- [Technical Reference](#technical-reference)
+  - [Architecture](#architecture)
+  - [Processes and Storage](#processes-and-storage)
+  - [Security and Execution](#security-and-execution)
+  - [Running Locally](#running-locally)
+  - [Registering a Worker](#registering-a-worker)
+  - [Repository Layout](#repository-layout)
+  - [Development](#development)
+  - [Releases](#releases)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ---
 
-## Architecture
+## What Vulcanum Is For
+
+A small agent setup is easy enough: read a task, run a coding agent, and hope it leaves the repository in a useful state.
+
+The awkward parts show up later:
+
+- Which worker should get the task?
+- Is that worker already busy?
+- Which repository or repositories belong to the task?
+- Which agent backend and model should be used?
+- What happens when a worker restarts halfway through a run?
+- Where do live events, token usage, results, and pull requests go?
+- Who updates the task tracker?
+- Should a second agent review the pull request?
+- When is the task actually done?
+
+Vulcanum handles that middle layer. The tracker remains useful to the people planning the work. The coding agent remains focused on implementation. Higher-level systems can ask Vulcanum to manage execution instead of learning how every worker and backend works.
+
+It is meant to be independent of the AI model, coding agent, task tracker, and higher-level harness around it. The current set of integrations is smaller than that goal, but the boundaries are already separate in the code.
+
+## Where It Fits
+
+There are two ways we expect people to use Vulcanum.
+
+### From a task tracker
+
+This is the working path today.
+
+You configure a project, choose the column Vulcanum should watch, connect one or more GitHub repositories, and choose the worker/agent settings. Moving a task into the pickup column is enough to start the workflow. Vulcanum moves the task through progress, review, and done as the run changes state.
+
+### From a higher-level harness
+
+Systems such as OpenClaw, Hermes, or a personal agent should not need a dedicated Vulcanum adapter.
+
+The planned connection is a shareable `SKILL.md` plus an installed Vulcanum CLI. The skill explains how to use Vulcanum, and the CLI provides the actual commands. This keeps the connection agent-agnostic: anything that can install the skill and call the CLI can use the same interface.
+
+The current CLI is mainly for setting up and managing workers. It still needs the higher-level control commands before this path is complete.
+
+## A Typical Run
+
+1. A task enters the configured pickup column.
+2. Vulcanum creates a pending implementation run.
+3. The dispatcher picks a compatible worker with free capacity.
+4. The worker acknowledges the job and the task moves to progress.
+5. The worker clones the configured repositories using a short-lived GitHub App token.
+6. OpenCode or OMP works on the task in the worker's configured execution environment.
+7. Events, usage, and status are sent back while the run is active.
+8. The agent finishes with a summary, result status, and any pull request URLs.
+9. Vulcanum adds the result to the original task and moves it to review.
+10. If agent review is enabled, Vulcanum creates a separate review run for each pull request before moving the task to review.
+11. Once every linked pull request is closed or merged, Vulcanum moves the task to done.
+
+A failed or blocked run stays failed in Vulcanum and does not quietly advance the task. Runs can also be cancelled from the control plane.
+
+## What Works Today
+
+The current implementation supports:
+
+- **Kaneo projects and task boards.** Vulcanum can read projects, watch configured columns, create and update tasks, move tasks, post comments, and manage labels.
+- **OpenCode and OMP.** Workers select one of these agent backends during setup and advertise that capability to the server.
+- **GitHub repositories and pull requests.** A GitHub App provides repository access, short-lived clone credentials, pull request tracking, and close/merge webhooks.
+- **Host, Docker, and Kata execution.** Each worker is configured with one execution mode.
+- **Concurrent workers.** The dispatcher respects worker capabilities and available job slots.
+- **Crash recovery.** Workers keep an SQLite journal for in-flight jobs and reconcile it when they restart.
+- **Multi-repository jobs.** A project can provide more than one repository to an implementation run.
+- **Multi-turn runs.** The agent can continue for the configured number of turns and ends through an explicit `finish_run` contract.
+- **Optional agent review.** Implementation pull requests can be handed to separate review runs.
+- **Live run data.** The server stores ordered events, status, worker, model, duration, token counts, summaries, and pull request URLs.
+- **Team and project settings.** Models, prompts, turn limits, review settings, concurrency limits, repositories, and workflow columns can be configured at the appropriate level.
+- **Model-provider credentials.** Credentials are encrypted in PostgreSQL and turned into backend-specific job configuration when a run starts.
+- **Single-user and team modes.** A deployment can use an instance password or GitHub OAuth with teams and invite links.
+- **A web UI.** The frontend includes the task board, dashboard, runs, workers, teams, and settings for tracker providers, model providers, models, GitHub, and defaults.
+
+A few boundaries are worth being clear about:
+
+- Kaneo is the only task-tracker backend right now.
+- GitHub is the only repository and pull request backend right now.
+- OpenCode and OMP are the only implementation-agent backends right now.
+- Higher-level harness control through `SKILL.md` and the CLI is planned, not finished.
+- Run records and events are stored centrally. Exported backend message history is currently saved on the worker under `~/.vulcanum/sessions/`; there is no server-side artifact bundle yet.
+- Model credentials are encrypted at rest, but the server must decrypt the credentials needed by a job and send them to the worker. The credential-vault work described below is not implemented yet.
+
+## What Is Still Planned
+
+The main pieces still ahead are:
+
+- A shareable Vulcanum `SKILL.md` for higher-level harnesses.
+- More CLI commands so an agent or harness can inspect work, start or manage runs, and use Vulcanum without going through the web UI.
+- A credential vault/broker so jobs can use credentials without handing reusable plaintext secrets directly to the agent process.
+- More task-tracker backends.
+- More implementation-agent backends.
+- Repository and pull request backends beyond GitHub.
+- Central storage for exported session history and run artifacts.
+
+These are planned directions, not features hidden behind configuration.
+
+---
+
+## Technical Reference
+
+Everything below is implementation and setup detail. If you only wanted to understand what Vulcanum does, the sections above are the useful part.
+
+### Architecture
 
 ```mermaid
 flowchart LR
   tracker[Task-tracker backend] <--> tracker_adapter[Task-tracker adapter]
-  tracker_adapter <--> control[Vulcanum control plane\nHTTP API + poller + lifecycle services]
+  tracker_adapter <--> server[Vulcanum control plane]
 
-  ui[Preact control UI] --> control
-  higher[Higher-level harnesses\nOpenClaw / Hermes / custom] -. planned stable automation API .-> control
+  user[User] --> ui[Web UI]
+  ui --> server
 
-  control <--> postgres[(PostgreSQL\ndurable state)]
-  control <--> redis[(Redis\ndispatch, cancellation, webhook queues)]
-  dispatcher[Dispatcher process] <--> postgres
+  harness[OpenClaw / Hermes / another agent] -. planned .-> skill[Shared SKILL.md + Vulcanum CLI]
+  skill -. planned CLI control commands .-> server
+
+  server <--> postgres[(PostgreSQL)]
+  server <--> redis[(Redis)]
+  dispatcher[Dispatcher] <--> postgres
   dispatcher <--> redis
 
-  workers[Worker pool] -->|poll, ack, events, result| control
-  workers <--> journal[(Per-worker SQLite journal)]
-  workers --> isolation[Isolation provider\nHost / Docker / Kata]
-  isolation --> runtime[Agent runtime adapter]
+  worker[Worker daemon] -->|poll / ack / events / result| server
+  worker <--> journal[(SQLite journal)]
+  worker --> isolation[Host / Docker / Kata]
+  isolation --> runtime[Agent runtime]
   runtime --> opencode[OpenCode]
   runtime --> omp[OMP RPC]
 
-  control <--> github[GitHub App\nrepos, tokens, PR webhooks]
-  github --> repos[Git repositories]
+  server <--> github[GitHub App]
+  github --> repos[Git repositories and pull requests]
   isolation --> repos
 ```
 
-The dashed higher-level-harness edge describes the intended public boundary, not a claim that dedicated OpenClaw or Hermes integrations already ship.
+There are three extension boundaries that matter:
 
-### Control Plane
+1. **Task-tracker backends** live on the server side and translate tracker projects, columns, tasks, labels, and comments into Vulcanum's internal types.
+2. **Agent backends** live on the worker side and implement the shared runtime/session contract.
+3. **Execution environments** prepare the workspace independently of the selected agent backend.
 
-The `vulcanum-web` binary provides the Actix Web API, runs PostgreSQL migrations at startup, polls enabled task-tracker projects, processes GitHub webhooks, and serves the services used by the frontend and workers. Business logic follows the HTTP → service → repository layering in `server/`.
+The planned higher-level harness path is deliberately different. It uses shared instructions and CLI commands rather than an adapter for each harness.
 
-The separate `vulcanum-dispatcher` binary finds pending runs and assigns them to compatible workers with available capacity. PostgreSQL remains the source of durable state; Redis carries dispatch, cancellation, registration-code, OAuth-device-flow, and webhook-work signals.
+### Processes and Storage
 
-### Worker Plane
+#### `vulcanum-web`
 
-The worker daemon polls the control plane, acknowledges assigned jobs, prepares repository workspaces, launches the selected agent backend, forwards events, and submits the final result. Its SQLite journal records in-flight execution state so startup recovery can reconnect to supported live sessions or mark lost work consistently.
+The Actix Web control-plane process:
 
-Workers advertise both agent-backend and isolation capabilities. A worker configured for OMP RPC will not be selected for a run requiring OpenCode, and worker capacity is enforced independently of the worker's idle/busy display state.
+- exposes the `/api/v1` HTTP API;
+- runs PostgreSQL migrations at startup;
+- polls enabled task-tracker projects;
+- handles authentication, teams, providers, workers, projects, jobs, and runs;
+- processes GitHub callbacks and pull request webhooks;
+- serves the services used by the frontend and workers.
 
-### Integration Boundaries
+It listens on port `8000`.
 
-Task trackers implement the server-side task-provider interfaces. Agent backends implement the worker-side runtime/session interfaces. Isolation providers prepare the environment independently of the agent runtime. This separation is what allows the project to add adapters without coupling tracker semantics to an agent process.
+#### `vulcanum-dispatcher`
 
-GitHub is currently more tightly integrated because repository installation tokens, pull-request association, review runs, and close/merge webhooks all depend on the GitHub App flow. Generalizing that boundary to other VCS providers remains planned work.
+The dispatcher is a separate process. It finds pending work, looks for compatible workers with free capacity, reserves a worker slot, and signals the selected worker through Redis.
 
----
+#### `vulcanum-server`
 
-## How It Works
+Despite the binary name, this is the worker daemon. It polls the control plane, prepares a workspace, starts OpenCode or OMP, reports events, submits the result, and cleans up the run environment.
 
-```text
-Configured pickup column
-        |
-        v
-Server poller creates a pending implementation run
-        |
-        v
-Dispatcher reserves capacity on a compatible worker
-        |
-        v
-Worker polls -> fetches job -> acknowledges -> task moves to progress
-        |
-        v
-Worker clones configured repositories with a GitHub App token
-        |
-        v
-Selected backend (OpenCode or OMP RPC) runs in host/Docker/Kata environment
-        |
-        +--> ordered events and usage are reported during execution
-        |
-        v
-Agent calls finish_run -> worker submits summary, usage, status, and PR URLs
-        |
-        +--> no review agent: task moves to review
-        |
-        +--> review enabled: one review run is queued per linked PR
-        |                       |
-        |                       v
-        |              review comment is recorded; task moves to review
-        v
-GitHub PR close/merge webhook verifies every linked PR is terminal
-        |
-        v
-Task moves from review to done
-```
+#### `vulcanum`
 
-Failed or blocked runs remain failed in Vulcanum and do not automatically advance the task. Cancellation is signaled through the control plane and consumed by the worker session. Lifecycle labels and tracker comments expose the execution state alongside the task.
+This is the CLI. Today it provisions, registers, starts, and removes workers. The higher-level harness commands are planned additions to this binary.
 
----
+#### Frontend
 
-## Getting Started
+The Preact frontend is the control UI. It talks to `vulcanum-web`; it does not communicate directly with PostgreSQL, Redis, workers, Kaneo, or GitHub.
 
-### Prerequisites
+#### Storage
 
-Required for the control plane:
+- **PostgreSQL** stores users, teams, provider configuration, project configuration, workers, work runs, events, usage, linked pull requests, and encrypted model credentials.
+- **Redis** carries dispatch and cancellation signals and backs short-lived registration, OAuth, invite, and webhook work.
+- **Worker SQLite** stores the local execution journal used for restart recovery.
+- **Worker filesystem** stores exported backend message history under `~/.vulcanum/sessions/`.
 
-- Node.js 22 or newer and pnpm 11
+### Security and Execution
+
+#### Execution modes
+
+| Mode | What it means |
+| --- | --- |
+| Host | Runs the agent as the worker's operating-system user. It uses a separate workspace, but it is not a security boundary. Use it only for trusted work. |
+| Docker | Runs the agent in the configured container image. The worker removes the container and temporary work directory after the run on a best-effort basis. |
+| Kata | Uses the Docker execution path with `kata-runtime`, giving the job a lightweight virtual-machine boundary when Kata and KVM are set up correctly. |
+
+Every backend has a maximum run duration enforced by the runtime/session loop.
+
+#### Credentials
+
+Model-provider credentials are encrypted with AES-256-GCM using `MODEL_PROVIDER_SECRET_KEY`. The key must decode to exactly 32 bytes and must remain stable for the life of the stored credentials.
+
+For a job, the server decrypts the required provider configuration and sends it to the authenticated worker. Use HTTPS between the server and remote workers. Plain HTTP is only appropriate for an isolated local setup.
+
+GitHub repository access uses short-lived installation tokens. The worker places the token behind Git and `gh` credential helpers instead of leaving the direct token in the ordinary agent environment.
+
+#### Authentication
+
+Single-user mode uses `INSTANCE_PASSWORD`. Multiuser mode uses GitHub OAuth, teams, memberships, and expiring invite links.
+
+These application controls do not turn a shared deployment into a safe environment for mutually hostile tenants. Host mode in particular gives jobs the worker user's access.
+
+### Running Locally
+
+#### Prerequisites
+
+For the control plane:
+
+- Node.js 22 or newer
+- pnpm 11
 - Rust stable with Cargo, rustfmt, and Clippy
 - PostgreSQL 15 or newer
 - Redis
 
-Required according to worker mode:
+For workers, you also need the selected agent backend. Docker execution needs Docker. Kata execution needs Linux, KVM, Docker, and Kata Containers.
 
-- OpenCode or OMP installed for host execution
-- Docker for Docker isolation
-- Linux, KVM, Docker, and Kata Containers for Kata isolation
+The setup CLI configures systemd on Linux and launchd on macOS. Kata setup is Linux-only. Windows setup and release automation are not currently provided.
 
-The provisioning CLI supports Linux services through systemd and macOS services through launchd. Kata setup is Linux-only. Windows release/setup automation is not currently provided.
-
-### 1. Configure and Start the Control Plane
-
-Install workspace dependencies:
+#### Install and configure
 
 ```bash
 pnpm install
 ```
 
-Create a root `.env` file. These values are the minimum required by `vulcanum-web`:
+Create a root `.env` file:
 
 ```bash
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/vulcanum
@@ -208,9 +273,9 @@ IS_SINGLE_USER=true
 MODEL_PROVIDER_SECRET_KEY=replace-with-a-base64-encoded-32-byte-key
 ```
 
-`MODEL_PROVIDER_SECRET_KEY` must decode to exactly 32 bytes and must remain stable; changing it prevents existing model-provider credentials from being decrypted.
+Changing `MODEL_PROVIDER_SECRET_KEY` later prevents existing model-provider credentials from being decrypted.
 
-Apply migrations and start the API and dispatcher in separate terminals:
+Apply migrations and start the two server processes in separate terminals:
 
 ```bash
 pnpm migrate-server-up
@@ -221,28 +286,27 @@ cargo run -p vulcanum-server --bin vulcanum-web
 cargo run -p vulcanum-server --bin vulcanum-dispatcher
 ```
 
-The API listens on `http://localhost:8000`. Start the frontend development server separately:
+Start the frontend:
 
 ```bash
 pnpm run dev --filter=@repo/frontend
 ```
 
-The frontend development server listens on `http://localhost:5173` and uses `http://localhost:8000` as its default API URL.
+The API listens on `http://localhost:8000`. The frontend development server listens on `http://localhost:5173` and uses port `8000` as its default API URL.
 
-Kaneo credentials are not global environment variables. After logging in, configure a task-tracker provider in **Settings**, then connect a tracker project to repositories and workflow columns from the task-board/project configuration UI.
+Kaneo credentials are configured in the task-tracker provider settings, not through global `KANEO_INSTANCE` or `KANEO_API_KEY` environment variables.
 
-### 2. Configure GitHub
+#### GitHub App
 
-Repository cloning and PR lifecycle automation use a GitHub App. Create an app with:
+Repository cloning and pull request tracking use a GitHub App. For local development, configure:
 
 - Callback URL: `http://localhost:8000/api/v1/github/callback`
 - Webhook URL: `http://localhost:8000/api/v1/github/webhook`
 - Webhook event: **Pull request**
-- Repository permissions:
-  - **Contents:** read and write
-  - **Pull requests:** read and write
+- **Contents** permission: read and write
+- **Pull requests** permission: read and write
 
-Add the app configuration to `.env`:
+Add the app values to `.env`:
 
 ```bash
 GITHUB_APP_ID=123456
@@ -251,9 +315,9 @@ GITHUB_APP_SLUG=vulcanum-app
 GITHUB_WEBHOOK_SECRET=replace-with-the-app-webhook-secret
 ```
 
-`GITHUB_APP_PRIVATE_KEY` is the base64 encoding of the complete PEM file. Restart `vulcanum-web`, then install or connect the app from the GitHub section in **Settings**.
+`GITHUB_APP_PRIVATE_KEY` is the base64 encoding of the complete PEM file. Restart `vulcanum-web`, then connect the app from the GitHub section in Settings.
 
-GitHub OAuth is separate from the GitHub App. It is only needed for multiuser login and team invites:
+GitHub OAuth is separate from the GitHub App. It is only needed for multiuser login:
 
 ```bash
 IS_SINGLE_USER=false
@@ -262,178 +326,83 @@ GITHUB_OAUTH_CLIENT_SECRET=your-client-secret
 GITHUB_OAUTH_REDIRECT_URL=http://localhost:8000/api/v1/auth/github/callback
 ```
 
-### 3. Configure Models and Team Defaults
+Model providers, model selection, team defaults, tracker providers, repositories, workflow columns, prompts, and review settings are configured in the UI.
 
-Use **Settings → Model providers** to add model-provider credentials. Use **Settings → Model selection** and **Team defaults** to choose the primary/small models, agent backend, prompt templates, maximum turns, review behavior, and per-team in-progress limit.
+### Registering a Worker
 
-The server encrypts stored model credentials with `MODEL_PROVIDER_SECRET_KEY`. The selected worker still receives the decrypted execution configuration for the duration of a job; see [Security and Isolation](#security-and-isolation).
+Generate a registration code from the Workers page, then run setup on the worker host.
 
-### 4. Register a Worker
-
-Generate a worker registration code from the **Workers** page, then run setup on the worker host:
+OpenCode with Docker:
 
 ```bash
-# Docker isolation with the default OpenCode backend.
 vulcanum worker setup \
   --instance http://<control-plane-host>:8000 \
   --code <registration-code> \
   --isolation docker \
   --agent-backend opencode
+```
 
-# Docker isolation with OMP RPC.
+OMP with Docker:
+
+```bash
 vulcanum worker setup \
   --instance http://<control-plane-host>:8000 \
   --code <registration-code> \
   --isolation docker \
   --agent-backend omp-rpc
+```
 
-# Linux only: Kata runtime.
+Kata on Linux:
+
+```bash
 vulcanum worker setup \
   --instance http://<control-plane-host>:8000 \
   --code <registration-code> \
   --isolation kata
 ```
 
-`vulcanum wrk` is an alias for `vulcanum worker`. Passing `--isolation none` selects host execution. If `--instance` and `--code` are supplied without `--isolation`, non-interactive setup defaults to Docker.
+Use `--isolation none` for host execution. Non-interactive setup defaults to Docker when `--instance` and `--code` are provided without an isolation option.
 
-The CLI configures and starts the platform service. To run an already-installed daemon directly:
+`vulcanum wrk` is an alias for `vulcanum worker`. To start an already installed daemon directly:
 
 ```bash
 vulcanum worker daemon
 ```
 
----
+### Repository Layout
 
-## Security and Isolation
-
-### Execution Modes
-
-| Mode | Boundary | Current behavior | Use |
-| --- | --- | --- | --- |
-| Host | None | Runs the backend as the worker's operating-system user in a per-run workspace. | Trusted development only. |
-| Docker | Container | Runs the backend in the configured agent image and removes the container and temporary work directory after the run on a best-effort basis. | Baseline isolation on owned workers. |
-| Kata | Lightweight VM through the Docker Kata runtime | Uses the Docker path with `kata-runtime`; requires Linux KVM and a working Kata installation. | Stronger workload isolation where supported. |
-
-All backends enforce a maximum run duration through the runtime/session loop. The code carries default CPU and memory values, but current Docker launch paths do not constitute a complete configurable CPU/memory policy layer. Validate and harden the host, Docker daemon, network policy, mounts, image, and Kata runtime for your threat model.
-
-### Credentials
-
-- GitHub App installation tokens are repository-scoped and short-lived. The worker uses a credential bridge for Git/`gh` operations rather than leaving the token in the ordinary agent environment.
-- Model-provider credentials are encrypted at rest with AES-256-GCM using `MODEL_PROVIDER_SECRET_KEY`.
-- The server decrypts the credentials needed for a job and sends them to the authenticated worker. Use HTTPS between server and workers; plaintext HTTP is suitable only for isolated local development.
-- Docker and Kata jobs receive required provider values inside their execution environment. Host jobs share the worker user's security context.
-- A worker-side credential broker/vault that avoids handing reusable plaintext credentials to agent processes is planned, not implemented.
-
-### Authentication and Tenancy
-
-Single-user mode uses an instance password. Multiuser mode uses GitHub OAuth, teams, memberships, and invite links. These application-level controls do not by themselves make a deployment a hardened hostile multi-tenant environment. Use separate infrastructure or additional policy enforcement when tenants do not trust one another.
-
----
-
-## Integrations
-
-### Task-Tracker Backends
-
-| Backend | Status |
+| Path | What is in it |
 | --- | --- |
-| Kaneo | Active |
-| Linear | Planned |
-| Jira | Planned |
-| GitHub Issues | Planned |
+| `cli/` | Rust CLI for worker provisioning, registration, service setup, and management. |
+| `worker-server/` | Rust worker daemon, execution environments, agent runtimes, recovery, SQLite journal, and local session storage. |
+| `server/` | Actix Web control plane, dispatcher, PostgreSQL repositories, business services, provider integrations, and GitHub webhooks. |
+| `shared/` | Shared API types, client, worker configuration, runtime traits, validation, paths, and telemetry. |
+| `frontend/` | Preact control UI. |
+| `docker/agent/` | Worker image containing OpenCode, OMP, GitHub CLI, Kaneo CLI, and common development tools. |
 
-The current provider interface covers project/workspace discovery, task polling, board reads, task creation and updates, status movement, comments, and labels. A new tracker still requires a server adapter and configuration/UI support; it is not enabled by configuration alone.
+The JavaScript packages use pnpm workspaces and Turborepo. The Rust crates are members of the root Cargo workspace.
 
-### Agent Backends
+### Development
 
-| Backend | Status |
-| --- | --- |
-| OpenCode | Active |
-| OMP RPC (`omp`) | Active |
-| Additional coding-agent runtimes | Planned through the shared runtime/session interfaces |
-
-Agent backend and model provider are separate choices. OpenCode and OMP are execution runtimes; Anthropic, OpenAI, and other entries supplied by the models.dev catalog are model-provider configurations used by those runtimes when compatible.
-
-### Repository/VCS Backends
-
-| Backend | Status |
-| --- | --- |
-| GitHub App | Active |
-| GitLab | Planned |
-| Bitbucket | Planned |
-
-### Higher-Level Harnesses
-
-OpenClaw, Hermes, and custom orchestrators are part of the target architecture, but Vulcanum does not yet ship dedicated adapters or an SDK for them. The current supported entry point is the tracker-driven workflow. A stable automation API and first-party harness adapters are roadmap items.
-
----
-
-## Releases
-
-Published artifacts are listed on the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
-
-The current release workflow runs on a self-hosted runner and uploads two un-packaged binaries:
-
-- `vulcanum` — worker setup/management CLI
-- `vulcanum-server` — worker daemon
-
-The control-plane server, dispatcher, and frontend are not included in those release assets. Windows/macOS binaries, installers, archives, containerized control-plane releases, and code signing are not currently produced by the release workflow. Build from source when the published worker artifacts do not match the target platform.
-
----
-
-## Roadmap
-
-Planned work is directional and not part of the current contract:
-
-- Worker-side credential broker/vault and narrower secret exposure.
-- Stable automation API plus adapters or SDKs for higher-level harnesses.
-- Additional task-tracker adapters, including Linear, Jira, and GitHub Issues.
-- A generalized VCS boundary beyond GitHub App repositories and webhooks.
-- Additional agent runtime adapters through the shared runtime/session interfaces.
-- Configurable and enforceable worker resource/network policies.
-- Durable exported artifacts and session history beyond the current run/event records and worker-local message exports.
-- Stronger tenant isolation, authorization, and policy controls.
-- Repository readiness checks for branch protection, required CI, and review policy.
-
----
-
-## Repository Layout
-
-| Package | Path | Technology | Responsibility |
-| --- | --- | --- | --- |
-| CLI | `cli/` | Rust | Provision, register, run, and remove workers. |
-| Worker daemon | `worker-server/` | Rust, SQLite | Poll, recover, isolate, execute, stream events, and submit results. |
-| Control plane | `server/` | Rust, Actix Web, PostgreSQL, Redis | API, auth, providers, polling, dispatch coordination, run lifecycle, and GitHub webhooks. |
-| Shared | `shared/` | Rust | API contracts, worker config/state, runtime traits, validation, and telemetry. |
-| Frontend | `frontend/` | TypeScript, Preact, Signals, Tailwind CSS | Task board and control-plane UI. |
-| Agent image | `docker/agent/` | Docker | Container image containing OpenCode, OMP, GitHub CLI, Kaneo CLI, and common development tools. |
-
-JavaScript packages use pnpm workspaces and Turborepo. Rust crates are members of the root Cargo workspace.
-
----
-
-## Development
-
-### Common Commands
-
-Run commands from the repository root:
+Run these from the repository root:
 
 | Command | Purpose |
 | --- | --- |
 | `pnpm install` | Install workspace dependencies. |
-| `pnpm run build` | Build the Rust and frontend workspace through Turborepo. |
+| `pnpm run build` | Build the Rust and frontend workspace. |
 | `pnpm run format` | Format workspace source files. |
-| `pnpm run validate` | Run Rust Clippy plus frontend linting and type-checking. |
+| `pnpm run validate` | Run Rust formatting/Clippy and frontend lint/type-checking. |
 | `pnpm run test` | Run workspace tests. Backend tests require a migrated PostgreSQL database. |
-| `pnpm run dev` | Start development tasks, including the frontend dev server. |
-| `pnpm migrate-server-up` | Apply server PostgreSQL migrations. |
-| `pnpm migrate-server-down` | Revert the latest server migration. |
-| `pnpm prep-queries` | Regenerate SQLx offline query metadata after query changes. |
-| `cargo run -p vulcanum-server --bin vulcanum-web` | Start the control-plane API and poller. |
+| `pnpm run dev` | Start development tasks. |
+| `pnpm migrate-server-up` | Apply PostgreSQL migrations. |
+| `pnpm migrate-server-down` | Revert the latest migration. |
+| `pnpm prep-queries` | Regenerate SQLx offline metadata after query changes. |
+| `cargo run -p vulcanum-server --bin vulcanum-web` | Start the API and poller. |
 | `cargo run -p vulcanum-server --bin vulcanum-dispatcher` | Start the dispatcher. |
 | `cargo run -p vulcanum-worker-server --bin vulcanum-server` | Start the worker daemon from source. |
-| `cargo run -p vulcanum-cli --bin vulcanum -- worker setup` | Run interactive worker setup from source. |
+| `cargo run -p vulcanum-cli --bin vulcanum -- worker setup` | Run worker setup from source. |
 
-The main CI workflow runs `pnpm run validate` and `pnpm run test` on self-hosted runners with `SQLX_OFFLINE=true` for compilation. Before review, run:
+Before opening a pull request:
 
 ```bash
 pnpm run format
@@ -441,23 +410,25 @@ pnpm run validate
 pnpm run test
 ```
 
-Run `pnpm prep-queries` after changing backend SQL queries.
+Run `pnpm prep-queries` after changing server SQL queries.
 
----
+### Releases
 
-## Contributing
+Published files are listed on the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
 
-Contributions should preserve the separation between task trackers, control-plane lifecycle logic, isolation providers, and agent runtimes. Before a larger change, describe:
+The current release workflow uploads two un-packaged binaries from a self-hosted runner:
 
-- **Problem:** the operational or user-facing gap.
-- **Boundary:** whether the change belongs to a tracker adapter, control-plane service, VCS integration, worker, isolation provider, agent runtime, or UI.
-- **Tradeoffs:** security, compatibility, persistence, migration, or operational costs.
-- **Validation:** the focused tests and end-to-end scenario that prove the behavior.
+- `vulcanum`, the CLI;
+- `vulcanum-server`, the worker daemon.
 
-Read [AGENTS.md](AGENTS.md) and the module-specific `AGENTS.md` before changing code. Keep the server's HTTP → service → repository layering intact, add business-logic tests for state transitions and errors, and include any validation command that could not run plus its exact blocker in the pull request.
+It does not currently publish the control-plane server, dispatcher, frontend, installers, signed packages, or a platform matrix. Build from source when the published worker binaries do not match the target system.
 
----
+### Contributing
 
-## License
+Read the root [AGENTS.md](AGENTS.md) and the module-specific `AGENTS.md` before changing code.
+
+Keep tracker behavior, control-plane business logic, worker execution, isolation, and agent runtimes in their existing layers. Add tests for application behavior and state transitions rather than framework plumbing. Include the commands you ran in the pull request, along with the exact blocker for anything that could not run.
+
+### License
 
 Vulcanum is licensed under `AGPL-3.0-or-later`. See [LICENSE](LICENSE).
