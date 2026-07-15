@@ -80,6 +80,7 @@ export interface UseTaskBoardViewModelResult {
     onFilterRepos: (event: Event) => void;
     onPickupColumnChange: (value: string) => void;
     onProgressColumnChange: (value: string) => void;
+    onReviewColumnChange: (value: string) => void;
     onDoneColumnChange: (value: string) => void;
     onShowColumn: (columnSlug: string) => void;
     onHideColumn: (columnSlug: string) => void;
@@ -121,15 +122,18 @@ interface BuildTaskBoardColumnsInput {
 export const ROLE_LABELS: Record<TaskBoardColumnRole, string> = {
   pickup: 'Pickup',
   progress: 'In progress',
+  review: 'Review',
   done: 'Done'
 };
 
-export const ROLE_ORDER: TaskBoardColumnRole[] = ['pickup', 'progress', 'done'];
+export const ROLE_ORDER: TaskBoardColumnRole[] = ['pickup', 'progress', 'review', 'done'];
 
 export const ROLE_HELP: Record<TaskBoardColumnRole, string> = {
   pickup: 'Ready work. Agents and humans can pick tickets up from this column.',
   progress: 'Active work. Moving tickets here marks them as being worked on.',
-  done: 'Completed implementation work moves here. PR review automation also starts from completed implementation runs, so this column can represent in-review or done.'
+  review:
+    'Implementation and automated review are complete. Linked pull requests can now be merged or closed.',
+  done: 'All pull requests linked to the ticket are merged or closed.'
 };
 
 export const columnRoleActive = (
@@ -139,7 +143,8 @@ export const columnRoleActive = (
 ): boolean => {
   if (role === 'pickup') return columnRoles.pickupColumn === columnSlug;
   if (role === 'progress') return columnRoles.progressColumn === columnSlug;
-  return columnRoles.targetColumn === columnSlug;
+  if (role === 'review') return columnRoles.reviewColumn === columnSlug;
+  return columnRoles.doneColumn === columnSlug;
 };
 
 export const optionToNullableColumn = (columnSlug: string): string | null =>

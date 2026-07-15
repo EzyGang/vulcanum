@@ -97,3 +97,9 @@ pub struct TaskPr {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Eq, FromRow, PartialEq)]
+pub struct TaskPrTarget {
+    pub project_config_id: Uuid,
+    pub external_task_ref: String,
+}

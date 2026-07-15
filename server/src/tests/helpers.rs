@@ -1,3 +1,5 @@
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
 use std::sync::Arc;
 
 use uuid::Uuid;
@@ -20,7 +22,9 @@ use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::auth::service::AuthService;
 use crate::services::dispatcher::cancel_store::InMemoryCancelStore;
 use crate::services::dispatcher::dispatch_store::InMemoryDispatchStore;
+use crate::services::github_app::service::webhooks::GithubWebhookService;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::github_app::webhook_store::GithubWebhookStore;
 use crate::services::model_providers::auth::device_flow::InMemoryDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
@@ -37,6 +41,24 @@ use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::service::WorkersService;
 
 pub const DEFAULT_TEAM_ID: Uuid = Uuid::from_u128(1);
+pub const GITHUB_WEBHOOK_SECRET: &str = "webhook-test-secret";
+
+pub fn github_webhook_payload(action: &str) -> Vec<u8> {
+    serde_json::to_vec(&serde_json::json!({
+        "action": action,
+        "number": 42,
+        "installation": {"id": 123},
+        "repository": {"full_name": "acme/widgets"},
+    }))
+    .expect("serialize GitHub webhook fixture")
+}
+
+pub fn sign_github_webhook(body: &[u8]) -> String {
+    let mut mac =
+        Hmac::<Sha256>::new_from_slice(GITHUB_WEBHOOK_SECRET.as_bytes()).expect("valid HMAC key");
+    mac.update(body);
+    format!("sha256={}", hex::encode(mac.finalize().into_bytes()))
+}
 
 pub async fn ensure_default_team(pool: &sqlx::PgPool) {
     sqlx::query!(
@@ -300,6 +322,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         github_app_id: None,
         github_app_private_key: None,
         github_app_slug: None,
+        github_webhook_secret: None,
         github_oauth_client_id: None,
         github_oauth_client_secret: None,
         github_oauth_redirect_url: None,
@@ -358,6 +381,11 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         cancel_store.clone(),
         cfg.unhealthy_threshold,
     );
+    let github_webhooks = GithubWebhookService::new(
+        cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
+        GithubWebhookStore::in_memory(),
+        jobs.clone(),
+    );
     let events = WorkRunEventsService::new(
         WorkRunEventsRepository::new(),
         work_runs_repo.clone(),
@@ -381,6 +409,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
         jobs,
         events,
         github,
+        github_webhooks,
         teams,
         jwt_secret: cfg.jwt_secret.clone(),
         is_single_user: cfg.is_single_user,

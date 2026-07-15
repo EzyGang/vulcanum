@@ -1,5 +1,8 @@
+use sqlx::PgConnection;
+
 use crate::db::work_runs::queries::prs::UpsertTaskPrParams;
 use crate::db::work_runs::queries::InsertWorkRunParams;
+use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{TaskPr, WorkRun, WorkRunStatus, WorkRunType};
 use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::service::WorkRunsService;
@@ -16,13 +19,66 @@ pub(crate) enum ReviewSpawnOutcome {
 }
 
 impl WorkRunsService {
+    pub(crate) async fn persist_task_prs(
+        &self,
+        db: &mut PgConnection,
+        run: &WorkRun,
+        pr_urls: &[String],
+    ) -> Result<Vec<TaskPr>, WorkRunsError> {
+        if pr_urls.is_empty() || !matches!(run.work_type, WorkRunType::Implementation) {
+            return Ok(Vec::new());
+        }
+
+        let repos = self.work_runs_repo.list_repos(&mut *db, run.id).await?;
+        let mut task_prs = Vec::with_capacity(pr_urls.len());
+
+        for pr_url in pr_urls {
+            let pr = match parse_github_pr_url(pr_url) {
+                Some(pr) => pr,
+                None => {
+                    tracing::warn!(work_run_id = %run.id, pr_url, "skipping invalid GitHub PR URL");
+                    continue;
+                }
+            };
+            let repo_full_name = pr.repo().full_name();
+            if !repos
+                .iter()
+                .any(|repo| repo.full_name.as_str() == repo_full_name)
+            {
+                tracing::warn!(work_run_id = %run.id, pr_url, "skipping PR outside work run repositories");
+                continue;
+            }
+
+            let task_pr = self
+                .work_runs_repo
+                .upsert_task_pr(
+                    &mut *db,
+                    UpsertTaskPrParams {
+                        project_config_id: run.project_config_id,
+                        external_task_ref: &run.external_task_ref,
+                        pr_url: pr.url(),
+                        repo_full_name: &repo_full_name,
+                        pr_number: pr.number(),
+                        source_work_run_id: run.id,
+                    },
+                )
+                .await?;
+            task_prs.push(task_pr);
+        }
+
+        Ok(task_prs)
+    }
+
     pub(crate) async fn attach_prs_and_spawn_reviews(
         &self,
         run: &WorkRun,
-        pr_urls: &[String],
+        task_prs: &[TaskPr],
     ) -> ReviewSpawnOutcome {
-        if pr_urls.is_empty() || !matches!(run.work_type, WorkRunType::Implementation) {
+        if !matches!(run.work_type, WorkRunType::Implementation) {
             return ReviewSpawnOutcome::NoPullRequests;
+        }
+        if task_prs.is_empty() {
+            return ReviewSpawnOutcome::ReviewNeeded;
         }
 
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
@@ -44,46 +100,6 @@ impl WorkRunsService {
             }
         };
 
-        let mut task_prs = Vec::new();
-        for pr_url in pr_urls {
-            match parse_github_pr_url(pr_url) {
-                Some(pr) => {
-                    let repo_full_name = pr.repo().full_name();
-                    if !project_config.repo_full_names.contains(&repo_full_name) {
-                        tracing::warn!(work_run_id = %run.id, pr_url = %pr_url, "skipping review for PR outside configured repos");
-                        continue;
-                    }
-                    match self
-                        .work_runs_repo
-                        .upsert_task_pr(
-                            &self.db,
-                            UpsertTaskPrParams {
-                                project_config_id: run.project_config_id,
-                                external_task_ref: &run.external_task_ref,
-                                pr_url: pr.url(),
-                                repo_full_name: &repo_full_name,
-                                pr_number: pr.number(),
-                                source_work_run_id: run.id,
-                            },
-                        )
-                        .await
-                    {
-                        Ok(task_pr) => task_prs.push(task_pr),
-                        Err(e) => {
-                            tracing::warn!(work_run_id = %run.id, pr_url = %pr_url, error = %e, "failed to upsert task PR")
-                        }
-                    }
-                }
-                None => {
-                    tracing::warn!(work_run_id = %run.id, pr_url = %pr_url, "skipping invalid GitHub PR URL")
-                }
-            }
-        }
-
-        if task_prs.is_empty() {
-            return ReviewSpawnOutcome::ReviewNeeded;
-        }
-
         let cfg = project_config.job_fields(settings.clone());
         let task = match self.fetch_task_for_run(run, &cfg).await {
             Ok(task) => task,
@@ -93,7 +109,7 @@ impl WorkRunsService {
             }
         };
 
-        self.update_task_pr_block(run, task.description.as_deref().unwrap_or(""), &task_prs)
+        self.update_task_pr_block(run, task.description.as_deref().unwrap_or(""), task_prs)
             .await;
 
         if !settings.review_enabled {
@@ -102,7 +118,7 @@ impl WorkRunsService {
 
         let mut review_running = false;
 
-        for task_pr in &task_prs {
+        for task_pr in task_prs {
             let params = InsertWorkRunParams {
                 team_id: run.team_id,
                 external_task_ref: run.external_task_ref.clone(),

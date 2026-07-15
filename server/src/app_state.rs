@@ -17,7 +17,9 @@ use crate::services::dispatcher::cancel_store::{
     CancelStore, InMemoryCancelStore, RedisCancelStore,
 };
 use crate::services::dispatcher::dispatch_store::DispatchStore;
+use crate::services::github_app::service::webhooks::GithubWebhookService;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::github_app::webhook_store::GithubWebhookStore;
 use crate::services::model_providers::auth::device_flow::RedisDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
@@ -45,6 +47,7 @@ pub struct AppState {
     pub jobs: WorkRunsService,
     pub events: WorkRunEventsService,
     pub github: GithubAppManager,
+    pub github_webhooks: GithubWebhookService,
     pub teams: TeamsService,
     pub jwt_secret: String,
     pub is_single_user: bool,
@@ -136,6 +139,11 @@ impl AppState {
             cancel_store.clone(),
             cfg.unhealthy_threshold,
         );
+        let github_webhooks = GithubWebhookService::new(
+            cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
+            GithubWebhookStore::redis(&cfg.redis_url)?,
+            jobs.clone(),
+        );
         let events = WorkRunEventsService::new(
             WorkRunEventsRepository::new(),
             work_runs.clone(),
@@ -155,6 +163,7 @@ impl AppState {
             jobs,
             events,
             github,
+            github_webhooks,
             teams,
             jwt_secret,
             is_single_user: cfg.is_single_user,
@@ -169,11 +178,12 @@ impl AppState {
         self,
         poll_period_secs: u64,
     ) -> crate::services::poller::service::PollerService {
+        let jobs = self.jobs.clone();
         crate::services::poller::service::PollerService::new(
             self.project_configs.clone(),
-            self.jobs.work_runs_repo.clone(),
+            jobs.work_runs_repo.clone(),
             self.providers.repository(),
-            self.jobs.db.clone(),
+            jobs.db.clone(),
             poll_period_secs,
         )
     }

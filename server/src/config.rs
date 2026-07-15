@@ -15,6 +15,7 @@ pub struct AppConfig {
     pub github_app_id: Option<u64>,
     pub github_app_private_key: Option<String>,
     pub github_app_slug: Option<String>,
+    pub github_webhook_secret: Option<String>,
     pub github_oauth_client_id: Option<String>,
     pub github_oauth_client_secret: Option<String>,
     pub github_oauth_redirect_url: Option<String>,
@@ -50,6 +51,7 @@ impl AppConfig {
             .and_then(|v| v.parse::<u64>().ok());
         let github_app_private_key = std::env::var("GITHUB_APP_PRIVATE_KEY").ok();
         let github_app_slug = std::env::var("GITHUB_APP_SLUG").ok();
+        let github_webhook_secret = std::env::var("GITHUB_WEBHOOK_SECRET").ok();
         let github_oauth_client_id = std::env::var("GITHUB_OAUTH_CLIENT_ID").ok();
         let github_oauth_client_secret = std::env::var("GITHUB_OAUTH_CLIENT_SECRET").ok();
         let github_oauth_redirect_url = std::env::var("GITHUB_OAUTH_REDIRECT_URL").ok();
@@ -69,6 +71,7 @@ impl AppConfig {
             github_app_id,
             github_app_private_key,
             github_app_slug,
+            github_webhook_secret,
             github_oauth_client_id,
             github_oauth_client_secret,
             github_oauth_redirect_url,

@@ -92,6 +92,12 @@ export const useTaskBoardViewModel = ({
     },
     [onSetColumnRole]
   );
+  const setReviewColumn = useCallback(
+    (value: string) => {
+      onSetColumnRole(optionToNullableColumn(value), 'review');
+    },
+    [onSetColumnRole]
+  );
   const setDoneColumn = useCallback(
     (value: string) => {
       onSetColumnRole(optionToNullableColumn(value), 'done');
@@ -296,9 +302,16 @@ export const useTaskBoardViewModel = ({
             onValueChange: setProgressColumn
           },
           {
+            id: 'board-settings-review-column',
+            label: 'Review column',
+            value: columnRoles.reviewColumn,
+            options: statusOptions,
+            onValueChange: setReviewColumn
+          },
+          {
             id: 'board-settings-done-column',
             label: 'Done column',
-            value: columnRoles.targetColumn,
+            value: columnRoles.doneColumn,
             options: statusOptions,
             onValueChange: setDoneColumn
           }
@@ -328,6 +341,7 @@ export const useTaskBoardViewModel = ({
       onFilterRepos: filterRepos,
       onPickupColumnChange: setPickupColumn,
       onProgressColumnChange: setProgressColumn,
+      onReviewColumnChange: setReviewColumn,
       onDoneColumnChange: setDoneColumn,
       onShowColumn: showColumn,
       onHideColumn: hideColumn,

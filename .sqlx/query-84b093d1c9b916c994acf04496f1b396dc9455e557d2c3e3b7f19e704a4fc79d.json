@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n              pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n              pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.id = $1\n             GROUP BY pc.id",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.review_column,\n             pc.done_column, pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n             pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.team_id = $1\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -54,71 +54,76 @@
       },
       {
         "ordinal": 8,
-        "name": "target_column",
+        "name": "review_column",
         "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "progress_column",
+        "name": "done_column",
         "type_info": "Text"
       },
       {
         "ordinal": 10,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "repo_full_names!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "repo_urls!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "review_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "review_max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "review_prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
@@ -129,6 +134,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -153,5 +159,5 @@
       true
     ]
   },
-  "hash": "0e33cb8286cd20d74bcafe1b3812807051a98d2dbf6d8400fc5e1adcd6237ac8"
+  "hash": "84b093d1c9b916c994acf04496f1b396dc9455e557d2c3e3b7f19e704a4fc79d"
 }

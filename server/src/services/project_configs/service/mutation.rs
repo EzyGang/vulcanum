@@ -51,7 +51,8 @@ impl ProjectConfigsService {
 
             resolve_column_if_set(&all_columns, &mut params.pickup_column)?;
             resolve_column_if_set(&all_columns, &mut params.progress_column)?;
-            resolve_column_if_set(&all_columns, &mut params.target_column)?;
+            resolve_column_if_set(&all_columns, &mut params.review_column)?;
+            resolve_column_if_set(&all_columns, &mut params.done_column)?;
         }
 
         let repo_url = params
@@ -73,7 +74,8 @@ impl ProjectConfigsService {
                 &UpdateProjectConfigParams {
                     name: params.name.as_deref(),
                     pickup_column: params.pickup_column.as_deref(),
-                    target_column: params.target_column.as_deref(),
+                    review_column: params.review_column.as_deref(),
+                    done_column: params.done_column.as_deref(),
                     progress_column: params.progress_column.as_deref(),
                     max_turns: params.max_turns,
                     prompt_template: params
@@ -125,5 +127,6 @@ impl ProjectConfigsService {
 fn has_column_changes(params: &UpdateProjectConfigRequest) -> bool {
     params.pickup_column.is_some()
         || params.progress_column.is_some()
-        || params.target_column.is_some()
+        || params.review_column.is_some()
+        || params.done_column.is_some()
 }

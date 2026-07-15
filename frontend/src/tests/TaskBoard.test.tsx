@@ -192,6 +192,7 @@ const makeProps = (
     onColumnScroll: vi.fn(),
     onPickupColumnChange: vi.fn(),
     onProgressColumnChange: vi.fn(),
+    onReviewColumnChange: vi.fn(),
     onDoneColumnChange: vi.fn(),
     onShowColumn: vi.fn(),
     onHideColumn: vi.fn(),
@@ -209,14 +210,15 @@ const makeProps = (
       return board.columns.map((column) => {
         const visibleCount = data.visibleTaskCounts[column.slug] ?? 20;
         const visibleTasks = column.tasks.slice(0, visibleCount);
-        const activeRoles = ['pickup', 'progress', 'done'] as const;
+        const activeRoles = ['pickup', 'progress', 'review', 'done'] as const;
         const columnRoles = data.columnRoles;
         const activeColumnRoles = activeRoles
           .filter(
             (role) =>
               (role === 'pickup' && columnRoles.pickupColumn === column.slug) ||
               (role === 'progress' && columnRoles.progressColumn === column.slug) ||
-              (role === 'done' && columnRoles.targetColumn === column.slug)
+              (role === 'review' && columnRoles.reviewColumn === column.slug) ||
+              (role === 'done' && columnRoles.doneColumn === column.slug)
           )
           .map((role) => ({ role }));
 
@@ -301,7 +303,8 @@ const makeProps = (
     columnRoles: {
       pickupColumn: 'to-do',
       progressColumn: 'to-do',
-      targetColumn: 'done'
+      reviewColumn: 'done',
+      doneColumn: 'done'
     },
     dropPreviewColumn: null,
     automationEnabled: false,
@@ -457,6 +460,7 @@ describe('TaskBoard.view', () => {
     expect(queryByText('Hidden task body')).toBeNull();
     expect(getAllByText('To Do').length).toBeGreaterThan(0);
     expect(getAllByText('Done').length).toBeGreaterThan(0);
+    expect(getAllByText('Review').length).toBeGreaterThan(0);
   });
 
   it('sends column hide and reorder actions from column headers', () => {
@@ -711,14 +715,16 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onLoadMoreColumn).toHaveBeenCalledWith('to-do');
   });
 
-  it('sets board column roles from a column header menu', () => {
+  it('sets Review and Done roles from a column header menu', () => {
     const props = makeProps();
     const { getByLabelText, getByText } = render(<TaskBoardView {...props} />);
 
     fireEvent.click(getByLabelText('Column role settings for Done'));
-    fireEvent.click(getByText('Set Pickup'));
+    fireEvent.click(getByText('Set Review'));
+    fireEvent.click(getByText('Set Done'));
 
-    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'pickup');
+    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'review');
+    expect(props.actions.onSetColumnRole).toHaveBeenCalledWith('done', 'done');
   });
 
   it('shows a drop preview when hovering another column', () => {

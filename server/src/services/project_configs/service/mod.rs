@@ -81,7 +81,8 @@ impl ProjectConfigsService {
 
         params.pickup_column = resolve_column_slug(&all_columns, &params.pickup_column)?;
         params.progress_column = resolve_column_slug(&all_columns, &params.progress_column)?;
-        params.target_column = resolve_column_slug(&all_columns, &params.target_column)?;
+        params.review_column = resolve_column_slug(&all_columns, &params.review_column)?;
+        params.done_column = resolve_column_slug(&all_columns, &params.done_column)?;
 
         let mut tx = self
             .db

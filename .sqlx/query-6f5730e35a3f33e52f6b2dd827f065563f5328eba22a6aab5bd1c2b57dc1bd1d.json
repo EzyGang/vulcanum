@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.target_column,\n             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n              pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,\n              pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM project_configs pc LEFT JOIN project_config_repos pcr ON pcr.project_config_id = pc.id\n             WHERE pc.enabled = true\n             GROUP BY pc.id\n             ORDER BY pc.created_at DESC",
+  "query": "INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, review_column,\n             done_column, progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)\n              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, review_column,\n              done_column, progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as \"repo_full_names!\", ARRAY[]::TEXT[] as \"repo_urls!\", agents_md,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at, provider_id as \"provider_id?\"",
   "describe": {
     "columns": [
       {
@@ -54,79 +54,115 @@
       },
       {
         "ordinal": 8,
-        "name": "target_column",
+        "name": "review_column",
         "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "progress_column",
+        "name": "done_column",
         "type_info": "Text"
       },
       {
         "ordinal": 10,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "repo_full_names!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "repo_urls!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "review_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "review_max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "review_prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Bool",
+        "Int4",
+        "Text",
+        "Int4"
+      ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -151,5 +187,5 @@
       true
     ]
   },
-  "hash": "eee1165fa7078e3b76b8d53005949be0125d0e824a63db2cc3e4b8c3691d2899"
+  "hash": "6f5730e35a3f33e52f6b2dd827f065563f5328eba22a6aab5bd1c2b57dc1bd1d"
 }

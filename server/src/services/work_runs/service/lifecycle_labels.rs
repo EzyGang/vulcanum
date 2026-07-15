@@ -14,15 +14,17 @@ pub(crate) enum LifecycleLabelState {
     ReviewRunning,
     NeedsAttention,
     ReadyForHuman,
+    Done,
 }
 
 impl LifecycleLabelState {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 6] = [
         Self::ImplementationRunning,
         Self::ReviewNeeded,
         Self::ReviewRunning,
         Self::NeedsAttention,
         Self::ReadyForHuman,
+        Self::Done,
     ];
 
     const fn color(self) -> &'static str {
@@ -32,6 +34,7 @@ impl LifecycleLabelState {
             Self::ReviewRunning => "#7C3AED",
             Self::NeedsAttention => "#DC2626",
             Self::ReadyForHuman => "#16A34A",
+            Self::Done => "#15803D",
         }
     }
 
@@ -42,6 +45,7 @@ impl LifecycleLabelState {
             Self::ReviewRunning => "Review running",
             Self::NeedsAttention => "Needs attention",
             Self::ReadyForHuman => "Ready for human",
+            Self::Done => "Done",
         }
     }
 }
@@ -57,9 +61,21 @@ impl WorkRunsService {
             None => return,
         };
 
-        let labels = match ensure_lifecycle_labels(&client, &config).await {
+        self.set_lifecycle_label_for_task(&config, &client, &run.external_task_ref, state, None)
+            .await;
+    }
+
+    pub(crate) async fn set_lifecycle_label_for_task(
+        &self,
+        config: &ProjectConfig,
+        client: &IntegrationClient,
+        task_ref: &str,
+        state: LifecycleLabelState,
+        attached_labels: Option<&[IntegrationLabel]>,
+    ) -> bool {
+        let labels = match ensure_lifecycle_labels(client, config).await {
             Some(labels) => labels,
-            None => return,
+            None => return false,
         };
 
         let target = match labels.get(&state) {
@@ -70,9 +86,10 @@ impl WorkRunsService {
                     state = ?state,
                     "missing lifecycle label after provisioning",
                 );
-                return;
+                return false;
             }
         };
+        let mut succeeded = true;
 
         for other_state in LifecycleLabelState::ALL {
             if other_state == state {
@@ -82,35 +99,38 @@ impl WorkRunsService {
             let Some(label) = labels.get(&other_state) else {
                 continue;
             };
+            if attached_labels.is_some_and(|attached| {
+                !attached
+                    .iter()
+                    .any(|attached_label| attached_label.id == label.id)
+            }) {
+                continue;
+            }
 
-            if let Err(e) = client
-                .remove_task_label(&run.external_task_ref, &label.id)
-                .await
-            {
+            if let Err(e) = client.remove_task_label(task_ref, &label.id).await {
                 tracing::warn!(
-                    work_run_id = %run.id,
-                    task_ref = %run.external_task_ref,
+                    task_ref,
                     label_id = %label.id,
                     label_name = %label.name,
                     error = %e,
                     "failed to remove lifecycle label",
                 );
+                succeeded = false;
             }
         }
 
-        if let Err(e) = client
-            .add_task_label(&run.external_task_ref, &target.id)
-            .await
-        {
+        if let Err(e) = client.add_task_label(task_ref, &target.id).await {
             tracing::warn!(
-                work_run_id = %run.id,
-                task_ref = %run.external_task_ref,
+                task_ref,
                 label_id = %target.id,
                 label_name = %target.name,
                 error = %e,
                 "failed to add lifecycle label",
             );
+            return false;
         }
+
+        succeeded
     }
 
     pub(crate) async fn set_lifecycle_label_after_result(

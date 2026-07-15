@@ -38,7 +38,23 @@ It connects your task tracker to sandboxed execution backends, dispatches work t
 
 ---
 
-## Why Vulcanum?
+## How It Works
+
+```
+Task Tracker (pickup column)  →  Server polls, creates work_run (pending)
+                                       ↓
+                                  Dispatcher assigns to idle worker (dispatched)
+                                       ↓
+Worker polls /api/v1/poll     →  Claims via /api/v1/jobs/{id}/ack (running)
+                                       ↓
+                                  Worker runs harness in isolated environment
+                                       ↓
+Task Tracker (Review)        ←  Server syncs status + PR comment  ←  Worker POSTs /result
+          ↓
+GitHub pull-request `closed` webhook → verify all linked PRs are terminal → move ticket to Done
+```
+
+## Security & Isolation
 
 Engineering teams adopting AI agents usually hit three problems:
 
@@ -167,10 +183,13 @@ Vulcanum connects to repositories through a **GitHub App** instead of personal a
 
 1. Go to **Settings → Developer settings → GitHub Apps → New GitHub App** in your GitHub account or organization.
 2. Fill in the required fields:
-   - **GitHub App name:** for example, `Vulcanum App`
-   - **Homepage URL:** your instance URL, for example, `http://localhost:8080`
-   - **Callback URL:** `{your_instance}/api/v1/github/callback`
-   - **Webhook:** disabled; Vulcanum does not use webhooks yet
+   - **GitHub App name**: e.g. `Vulcanum App`
+   - **Homepage URL**: your instance URL (e.g. `http://localhost:8080`)
+   - **Callback URL**: `{your_instance}/api/v1/github/callback`
+   - **Webhook URL**: `{your_instance}/api/v1/github/webhook`
+   - **Webhook secret**: generate a strong random value and retain it for the server configuration
+   - **Webhook active**: enabled
+   - **Subscribe to events**: select **Pull request**
 3. Under **Permissions → Repository permissions**, enable:
    - **Contents:** `Read and write`, required for cloning and pushing branches
    - **Pull requests:** `Read and write`, required for creating PRs
@@ -189,6 +208,7 @@ Add these environment variables to your `.env`:
 GITHUB_APP_ID=123456
 GITHUB_APP_PRIVATE_KEY=LS0tLS1CRUdJTi...SA+PRIVATE+KEY...LS0tLS1FTkQ=
 GITHUB_APP_SLUG=vulcanum-app
+GITHUB_WEBHOOK_SECRET=replace-with-the-same-random-webhook-secret
 ```
 
 > [!NOTE]

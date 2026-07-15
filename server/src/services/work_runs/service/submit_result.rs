@@ -68,6 +68,13 @@ impl WorkRunsService {
             .replace_pr_urls(&mut *tx, id, &pr_urls)
             .await?;
 
+        let task_prs = match (status, run.work_type) {
+            (WorkRunStatus::Completed, WorkRunType::Implementation) => {
+                self.persist_task_prs(&mut tx, &run, &pr_urls).await?
+            }
+            _ => Vec::new(),
+        };
+
         self.task_augmentations_repo
             .increment_usage(
                 &mut *tx,
@@ -156,9 +163,12 @@ impl WorkRunsService {
             "work_run completed by worker",
         );
 
-        let review_outcome = match (status, run.work_type) {
-            (WorkRunStatus::Completed, WorkRunType::Implementation) => {
-                Some(self.attach_prs_and_spawn_reviews(&run, &pr_urls).await)
+        let review_outcome = match (status, run.work_type, pr_urls.is_empty()) {
+            (WorkRunStatus::Completed, WorkRunType::Implementation, true) => {
+                Some(ReviewSpawnOutcome::NoPullRequests)
+            }
+            (WorkRunStatus::Completed, WorkRunType::Implementation, false) => {
+                Some(self.attach_prs_and_spawn_reviews(&run, &task_prs).await)
             }
             _ => None,
         };
@@ -178,6 +188,20 @@ impl WorkRunsService {
 
         self.set_lifecycle_label_after_result(&run, status, review_outcome)
             .await;
+
+        if matches!(status, WorkRunStatus::Completed) {
+            if let Err(e) = self
+                .reconcile_task_pr_completion(run.project_config_id, &run.external_task_ref)
+                .await
+            {
+                tracing::warn!(
+                    work_run_id = %run.id,
+                    task_ref = %run.external_task_ref,
+                    error = %e,
+                    "result-time PR completion reconciliation failed",
+                );
+            }
+        }
 
         Ok(updated)
     }

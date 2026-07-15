@@ -20,7 +20,8 @@ pub struct ProjectConfig {
     pub integration_type: IntegrationType,
     pub enabled: bool,
     pub pickup_column: String,
-    pub target_column: String,
+    pub review_column: String,
+    pub done_column: String,
     pub progress_column: String,
     pub max_turns: i32,
     pub prompt_template: Option<String>,
@@ -49,8 +50,10 @@ pub struct CreateProjectConfigRequest {
     pub pickup_column: String,
     #[serde(default = "default_progress_column")]
     pub progress_column: String,
-    #[serde(default = "default_target_column")]
-    pub target_column: String,
+    #[serde(default = "default_review_column")]
+    pub review_column: String,
+    #[serde(default = "default_done_column")]
+    pub done_column: String,
     #[serde(default = "default_max_turns")]
     pub max_turns: i32,
     #[serde(default)]
@@ -81,7 +84,9 @@ pub struct UpdateProjectConfigRequest {
     #[serde(default)]
     pub progress_column: Option<String>,
     #[serde(default)]
-    pub target_column: Option<String>,
+    pub review_column: Option<String>,
+    #[serde(default)]
+    pub done_column: Option<String>,
     #[serde(default)]
     pub max_turns: Option<i32>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
@@ -241,8 +246,12 @@ fn default_progress_column() -> String {
     "in-progress".to_owned()
 }
 
-fn default_target_column() -> String {
+fn default_review_column() -> String {
     "in-review".to_owned()
+}
+
+fn default_done_column() -> String {
+    "done".to_owned()
 }
 
 fn default_max_turns() -> i32 {

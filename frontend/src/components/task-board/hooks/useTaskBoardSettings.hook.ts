@@ -191,8 +191,10 @@ export const useTaskBoardSettings = (
         input.pickupColumn = requiredColumnSlug;
       } else if (role === 'progress') {
         input.progressColumn = requiredColumnSlug;
+      } else if (role === 'review') {
+        input.reviewColumn = requiredColumnSlug;
       } else if (role === 'done') {
-        input.targetColumn = requiredColumnSlug;
+        input.doneColumn = requiredColumnSlug;
       }
 
       columnRoleMutation.mutate(input, {

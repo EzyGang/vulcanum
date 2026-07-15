@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT tp.project_config_id, tp.external_task_ref\n             FROM task_prs tp\n             INNER JOIN project_configs pc ON pc.id = tp.project_config_id\n             INNER JOIN github_installations gi ON gi.team_id = pc.team_id\n             WHERE gi.github_installation_id = $1\n               AND LOWER(tp.repo_full_name) = LOWER($2)\n               AND tp.pr_number = $3\n             ORDER BY tp.project_config_id, tp.external_task_ref",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "cb83569eb583f43474ea5689370dd2472131b6857e17f73ae48bcae999063d77"
+}

@@ -1,11 +1,61 @@
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
+use crate::services::github_app::service::webhooks::GithubWebhookError;
 use crate::services::github_app::service::GithubInstallState;
+
+pub async fn webhook(
+    state: web::Data<AppState>,
+    request: HttpRequest,
+    body: web::Bytes,
+) -> Result<HttpResponse, AppError> {
+    let signature = match request
+        .headers()
+        .get("X-Hub-Signature-256")
+        .and_then(|value| value.to_str().ok())
+    {
+        Some(signature) => signature,
+        None => return Ok(HttpResponse::Unauthorized().finish()),
+    };
+    let event = match request
+        .headers()
+        .get("X-GitHub-Event")
+        .and_then(|value| value.to_str().ok())
+    {
+        Some(event) => event,
+        None => return Ok(HttpResponse::BadRequest().finish()),
+    };
+    let delivery = match request
+        .headers()
+        .get("X-GitHub-Delivery")
+        .and_then(|value| value.to_str().ok())
+    {
+        Some(delivery) => delivery,
+        None => return Ok(HttpResponse::BadRequest().finish()),
+    };
+
+    match state
+        .github_webhooks
+        .handle(signature, event, delivery, &body)
+        .await
+    {
+        Ok(_) => Ok(HttpResponse::Accepted().finish()),
+        Err(GithubWebhookError::InvalidSignature) => Ok(HttpResponse::Unauthorized().finish()),
+        Err(GithubWebhookError::InvalidPayload(_)) => Ok(HttpResponse::BadRequest().finish()),
+        Err(GithubWebhookError::NotConfigured) => {
+            tracing::error!("GitHub webhook received without GITHUB_WEBHOOK_SECRET");
+            Ok(HttpResponse::ServiceUnavailable().finish())
+        }
+        Err(GithubWebhookError::Persistence(e)) => {
+            tracing::error!(error = %e, "GitHub webhook delivery persistence failed");
+            Err(AppError::Internal)
+        }
+    }
+}
 
 pub async fn auth_redirect(
     state: web::Data<AppState>,

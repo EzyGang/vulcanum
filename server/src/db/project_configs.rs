@@ -22,7 +22,8 @@ fn map_sqlx_error(err: sqlx::Error) -> ProjectConfigsError {
 pub struct UpdateProjectConfigParams<'a> {
     pub name: Option<&'a str>,
     pub pickup_column: Option<&'a str>,
-    pub target_column: Option<&'a str>,
+    pub review_column: Option<&'a str>,
+    pub done_column: Option<&'a str>,
     pub progress_column: Option<&'a str>,
     pub max_turns: Option<i32>,
     pub prompt_template: Option<Option<&'a str>>,

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE project_configs SET\n             name = COALESCE($2, name),\n             pickup_column = COALESCE($3, pickup_column),\n             target_column = COALESCE($4, target_column),\n             progress_column = COALESCE($5, progress_column),\n             max_turns = COALESCE($6, max_turns),\n             prompt_template = CASE WHEN $7 THEN $8 ELSE prompt_template END,\n             repo_url = COALESCE($9, repo_url),\n             agents_md = CASE WHEN $10 THEN $11 ELSE agents_md END,\n             enabled = COALESCE($12, enabled),\n             external_workspace_id = COALESCE($13, external_workspace_id),\n             integration_type = COALESCE($14, integration_type),\n             provider_id = COALESCE($15, provider_id),\n             review_enabled = CASE WHEN $16 THEN $17 ELSE review_enabled END,\n             review_max_turns = CASE WHEN $18 THEN $19 ELSE review_max_turns END,\n             review_prompt_template = CASE WHEN $20 THEN $21 ELSE review_prompt_template END,\n             max_in_progress_tasks = CASE WHEN $22 THEN $23 ELSE max_in_progress_tasks END\n              WHERE id = $1\n              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, target_column,\n              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as \"repo_full_names!\", ARRAY[]::TEXT[] as \"repo_urls!\", agents_md,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at, provider_id as \"provider_id?\"",
+  "query": "UPDATE project_configs SET\n             name = COALESCE($2, name),\n             pickup_column = COALESCE($3, pickup_column),\n             review_column = COALESCE($4, review_column),\n             done_column = COALESCE($5, done_column),\n             progress_column = COALESCE($6, progress_column),\n             max_turns = COALESCE($7, max_turns),\n             prompt_template = CASE WHEN $8 THEN $9 ELSE prompt_template END,\n             repo_url = COALESCE($10, repo_url),\n             agents_md = CASE WHEN $11 THEN $12 ELSE agents_md END,\n             enabled = COALESCE($13, enabled),\n             external_workspace_id = COALESCE($14, external_workspace_id),\n             integration_type = COALESCE($15, integration_type),\n             provider_id = COALESCE($16, provider_id),\n             review_enabled = CASE WHEN $17 THEN $18 ELSE review_enabled END,\n             review_max_turns = CASE WHEN $19 THEN $20 ELSE review_max_turns END,\n             review_prompt_template = CASE WHEN $21 THEN $22 ELSE review_prompt_template END,\n             max_in_progress_tasks = CASE WHEN $23 THEN $24 ELSE max_in_progress_tasks END\n              WHERE id = $1\n              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as \"integration_type!: _\", enabled, pickup_column, review_column,\n              done_column, progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as \"repo_full_names!\", ARRAY[]::TEXT[] as \"repo_urls!\", agents_md,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,\n              created_at, provider_id as \"provider_id?\"",
   "describe": {
     "columns": [
       {
@@ -54,71 +54,76 @@
       },
       {
         "ordinal": 8,
-        "name": "target_column",
+        "name": "review_column",
         "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "progress_column",
+        "name": "done_column",
         "type_info": "Text"
       },
       {
         "ordinal": 10,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
         "name": "max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "repo_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "repo_full_names!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "repo_urls!",
         "type_info": "TextArray"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "agents_md",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "review_enabled",
         "type_info": "Bool"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "review_max_turns",
         "type_info": "Int4"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "review_prompt_template",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "provider_id?",
         "type_info": "Uuid"
       }
@@ -126,6 +131,7 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Text",
         "Text",
         "Text",
         "Text",
@@ -171,6 +177,7 @@
       false,
       false,
       false,
+      false,
       true,
       false,
       null,
@@ -184,5 +191,5 @@
       true
     ]
   },
-  "hash": "a4cc1f3839e6b8a0a7cbeec5c15bc6be5035cf049b4ed7a917663456cb4048f3"
+  "hash": "5156763343cbd3d92a43336ad0a42b3d16751760774e95ee3f3ae3468b9352f0"
 }

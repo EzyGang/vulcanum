@@ -9,6 +9,7 @@ mod get_job_tests;
 pub(crate) mod lifecycle_labels;
 pub mod list;
 pub mod poll;
+pub(crate) mod reconcile_pr_completion;
 pub(crate) mod record_review;
 pub mod refresh_github_token;
 pub mod spawn_review;
@@ -26,6 +27,7 @@ use crate::db::work_runs::WorkRunsRepository;
 use crate::db::workers::WorkersRepository;
 use crate::services::dispatcher::cancel_store::CancelStore;
 use crate::services::dispatcher::dispatch_store::DispatchStore;
+use crate::services::github_app::service::pull_requests::PullRequestStateReader;
 use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
@@ -38,6 +40,7 @@ pub struct WorkRunsService {
     pub project_configs: ProjectConfigsService,
     pub github: GithubAppManager,
     pub db: PgPool,
+    pub(crate) pr_state_reader: Arc<dyn PullRequestStateReader>,
     dispatch_store: Arc<dyn DispatchStore>,
     cancel_store: Arc<dyn CancelStore>,
     pub providers_repo: IntegrationProvidersRepository,
@@ -54,6 +57,7 @@ impl Clone for WorkRunsService {
             workers_repo: self.workers_repo.clone(),
             project_configs: self.project_configs.clone(),
             github: self.github.clone(),
+            pr_state_reader: self.pr_state_reader.clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
             cancel_store: self.cancel_store.clone(),
@@ -80,6 +84,8 @@ impl WorkRunsService {
         cancel_store: Arc<dyn CancelStore>,
         unhealthy_threshold: i32,
     ) -> Self {
+        let pr_state_reader: Arc<dyn PullRequestStateReader> = Arc::new(github.clone());
+
         Self {
             work_runs_repo,
             task_augmentations_repo,
@@ -87,6 +93,7 @@ impl WorkRunsService {
             project_configs,
             github,
             db,
+            pr_state_reader,
             dispatch_store,
             cancel_store,
             providers_repo,
@@ -112,6 +119,16 @@ impl WorkRunsService {
     #[must_use]
     pub(crate) fn with_task_fetcher(mut self, task_fetcher: Arc<dyn TaskFetcher>) -> Self {
         self.task_fetcher = Some(task_fetcher);
+        self
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn with_pr_state_reader(
+        mut self,
+        pr_state_reader: Arc<dyn PullRequestStateReader>,
+    ) -> Self {
+        self.pr_state_reader = pr_state_reader;
         self
     }
 }

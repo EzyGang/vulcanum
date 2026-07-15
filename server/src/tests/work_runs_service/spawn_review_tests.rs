@@ -135,9 +135,17 @@ async fn spawn_review_inherits_parent_task_metadata(pool: sqlx::PgPool) {
         .expect("Should insert parent implementation run");
     let pr_url = "https://github.com/acme/app/pull/17".to_owned();
 
-    let outcome = svc
-        .attach_prs_and_spawn_reviews(&run, std::slice::from_ref(&pr_url))
-        .await;
+    let mut tx = pool
+        .begin()
+        .await
+        .expect("Should begin task PR transaction");
+    let task_prs = svc
+        .persist_task_prs(&mut tx, &run, std::slice::from_ref(&pr_url))
+        .await
+        .expect("Should persist task PR");
+    tx.commit().await.expect("Should commit task PR");
+
+    let outcome = svc.attach_prs_and_spawn_reviews(&run, &task_prs).await;
 
     assert_eq!(outcome, ReviewSpawnOutcome::ReviewRunning);
     let review = sqlx::query!(

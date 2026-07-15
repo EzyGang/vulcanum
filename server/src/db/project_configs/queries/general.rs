@@ -19,8 +19,8 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
-             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.review_column,
+             pc.done_column, pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
              pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
@@ -46,8 +46,8 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
-             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.review_column,
+             pc.done_column, pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
               pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
@@ -74,8 +74,8 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
-             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.review_column,
+             pc.done_column, pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
               pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
@@ -101,8 +101,8 @@ impl ProjectConfigsRepository {
     {
         sqlx::query_as!(
             ProjectConfig,
-            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.target_column,
-             pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
+            r#"SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id, pc.integration_type as "integration_type!: _", pc.enabled, pc.pickup_column, pc.review_column,
+             pc.done_column, pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,
              COALESCE(array_agg(pcr.repo_full_name ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_full_names!",
              COALESCE(array_agg(pcr.repo_url ORDER BY pcr.position) FILTER (WHERE pcr.id IS NOT NULL), ARRAY[]::TEXT[]) as "repo_urls!",
               pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template, pc.max_in_progress_tasks,
@@ -131,11 +131,11 @@ impl ProjectConfigsRepository {
 
         sqlx::query_as!(
             ProjectConfig,
-            r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, target_column,
-             progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md,
+            r#"INSERT INTO project_configs (id, team_id, external_project_id, name, external_workspace_id, integration_type, enabled, pickup_column, review_column,
+             done_column, progress_column, max_turns, prompt_template, repo_url, agents_md, provider_id, review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, review_column,
+              done_column, progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md,
               review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
               created_at, provider_id as "provider_id?""#,
             id,
@@ -146,7 +146,8 @@ impl ProjectConfigsRepository {
             params.integration_type as _,
             params.enabled,
             params.pickup_column,
-            params.target_column,
+            params.review_column,
+            params.done_column,
             params.progress_column,
             params.max_turns,
             params.prompt_template.as_deref(),
@@ -177,29 +178,31 @@ impl ProjectConfigsRepository {
             r#"UPDATE project_configs SET
              name = COALESCE($2, name),
              pickup_column = COALESCE($3, pickup_column),
-             target_column = COALESCE($4, target_column),
-             progress_column = COALESCE($5, progress_column),
-             max_turns = COALESCE($6, max_turns),
-             prompt_template = CASE WHEN $7 THEN $8 ELSE prompt_template END,
-             repo_url = COALESCE($9, repo_url),
-             agents_md = CASE WHEN $10 THEN $11 ELSE agents_md END,
-             enabled = COALESCE($12, enabled),
-             external_workspace_id = COALESCE($13, external_workspace_id),
-             integration_type = COALESCE($14, integration_type),
-             provider_id = COALESCE($15, provider_id),
-             review_enabled = CASE WHEN $16 THEN $17 ELSE review_enabled END,
-             review_max_turns = CASE WHEN $18 THEN $19 ELSE review_max_turns END,
-             review_prompt_template = CASE WHEN $20 THEN $21 ELSE review_prompt_template END,
-             max_in_progress_tasks = CASE WHEN $22 THEN $23 ELSE max_in_progress_tasks END
+             review_column = COALESCE($4, review_column),
+             done_column = COALESCE($5, done_column),
+             progress_column = COALESCE($6, progress_column),
+             max_turns = COALESCE($7, max_turns),
+             prompt_template = CASE WHEN $8 THEN $9 ELSE prompt_template END,
+             repo_url = COALESCE($10, repo_url),
+             agents_md = CASE WHEN $11 THEN $12 ELSE agents_md END,
+             enabled = COALESCE($13, enabled),
+             external_workspace_id = COALESCE($14, external_workspace_id),
+             integration_type = COALESCE($15, integration_type),
+             provider_id = COALESCE($16, provider_id),
+             review_enabled = CASE WHEN $17 THEN $18 ELSE review_enabled END,
+             review_max_turns = CASE WHEN $19 THEN $20 ELSE review_max_turns END,
+             review_prompt_template = CASE WHEN $21 THEN $22 ELSE review_prompt_template END,
+             max_in_progress_tasks = CASE WHEN $23 THEN $24 ELSE max_in_progress_tasks END
               WHERE id = $1
-              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, target_column,
-              progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md,
+              RETURNING id, team_id, external_project_id, name, external_workspace_id, integration_type as "integration_type!: _", enabled, pickup_column, review_column,
+              done_column, progress_column, max_turns, prompt_template, repo_url, ARRAY[]::TEXT[] as "repo_full_names!", ARRAY[]::TEXT[] as "repo_urls!", agents_md,
               review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks,
               created_at, provider_id as "provider_id?""#,
             id,
             params.name,
             params.pickup_column,
-            params.target_column,
+            params.review_column,
+            params.done_column,
             params.progress_column,
             params.max_turns,
             params.prompt_template.is_some(),

@@ -3830,6 +3830,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]
@@ -4149,6 +4150,7 @@ dependencies = [
  "dotenvy",
  "eyre",
  "hex",
+ "hmac",
  "jsonwebtoken",
  "kaneo-cli",
  "log",
@@ -4163,6 +4165,7 @@ dependencies = [
  "sqlx",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-actix-web",
  "tracing-log",

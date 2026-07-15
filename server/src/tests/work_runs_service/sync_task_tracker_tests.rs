@@ -6,7 +6,7 @@ use crate::services::work_runs::service::sync_task_tracker::{
 };
 
 #[test]
-fn implementation_success_moves_to_target_column() {
+fn implementation_success_moves_to_review_column() {
     let column = implementation_result_column(
         Some(FinishStatus::Completed),
         WorkRunStatus::Completed,
@@ -42,7 +42,7 @@ fn implementation_failed_finish_stays_in_current_column() {
 }
 
 #[test]
-fn implementation_exit_code_success_moves_to_target_column() {
+fn implementation_exit_code_success_moves_to_review_column() {
     let column = implementation_result_column(None, WorkRunStatus::Completed, "in-review", false);
 
     assert_eq!(column, Some("in-review"));
@@ -61,7 +61,7 @@ fn implementation_blocked_finish_does_not_move_columns() {
 }
 
 #[test]
-fn review_success_moves_to_target_column() {
+fn review_success_moves_to_review_column() {
     let column = review_result_column(
         Some(FinishStatus::Completed),
         WorkRunStatus::Completed,

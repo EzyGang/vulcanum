@@ -174,3 +174,4 @@ src/services/<domain>/
 - `GITHUB_OAUTH_CLIENT_ID`
 - `GITHUB_OAUTH_CLIENT_SECRET`
 - `GITHUB_OAUTH_REDIRECT_URL`
+- `GITHUB_WEBHOOK_SECRET` - shared HMAC secret configured on the GitHub App webhook

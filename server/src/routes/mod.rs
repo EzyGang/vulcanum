@@ -52,6 +52,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             )
             .service(
                 web::scope("/github")
+                    .route("/webhook", web::post().to(github::webhook))
                     .route("/auth", web::get().to(github::auth_redirect))
                     .route("/auth-url", web::get().to(github::auth_url))
                     .route("/callback", web::get().to(github::callback))
@@ -175,6 +176,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             ),
     );
 }
+
+#[cfg(test)]
+mod github_tests;
 
 #[cfg(test)]
 mod instance_auth_tests;
