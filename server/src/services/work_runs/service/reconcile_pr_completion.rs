@@ -116,7 +116,7 @@ impl WorkRunsService {
                 task_ref,
                 expected_column = %config.review_column,
                 current_column = %current.status,
-                "task moved before PR completion update",
+                "skipping automatic PR completion because task left the Review column",
             );
             return Ok(false);
         }

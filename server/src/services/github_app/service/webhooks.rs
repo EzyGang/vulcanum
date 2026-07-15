@@ -5,6 +5,7 @@ use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
 use thiserror::Error;
+use tokio_util::sync::CancellationToken;
 
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::webhook_store::GithubWebhookStore;
@@ -12,6 +13,7 @@ use crate::services::work_runs::service::WorkRunsService;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(5);
 const DELIVERY_LEASE: Duration = Duration::from_secs(60);
+const MAX_DELIVERIES_PER_TICK: usize = 10;
 
 #[derive(Clone)]
 pub struct GithubWebhookService {
@@ -83,19 +85,37 @@ impl GithubWebhookService {
         Ok(GithubWebhookOutcome::Queued { inserted })
     }
 
-    pub async fn run(self) {
+    pub async fn run(self, cancellation: CancellationToken) {
         let mut interval = tokio::time::interval(POLL_INTERVAL);
 
         loop {
-            interval.tick().await;
-            while match self.process_pending_once().await {
-                Ok(processed) => processed,
+            tokio::select! {
+                () = cancellation.cancelled() => return,
+                _ = interval.tick() => {
+                    tokio::select! {
+                        () = cancellation.cancelled() => return,
+                        _ = self.process_batch() => (),
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) async fn process_batch(&self) -> usize {
+        let mut processed = 0;
+
+        for _ in 0..MAX_DELIVERIES_PER_TICK {
+            match self.process_pending_once().await {
+                Ok(true) => processed += 1,
+                Ok(false) => break,
                 Err(e) => {
                     tracing::error!(error = %e, "GitHub webhook delivery worker failed");
-                    false
+                    break;
                 }
-            } {}
+            }
         }
+
+        processed
     }
 
     pub(crate) async fn process_pending_once(&self) -> Result<bool, GithubAppError> {

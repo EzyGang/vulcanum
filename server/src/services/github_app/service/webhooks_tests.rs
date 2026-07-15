@@ -1,4 +1,7 @@
 use std::sync::Arc;
+use std::time::Duration;
+
+use tokio_util::sync::CancellationToken;
 
 use crate::services::github_app::service::webhooks::{
     verify_signature, GithubWebhookError, GithubWebhookOutcome, GithubWebhookService,
@@ -132,4 +135,53 @@ async fn unmatched_close_delivery_remains_retryable(pool: sqlx::PgPool) {
         .process_pending_once()
         .await
         .expect("retry unmatched delivery"));
+}
+
+#[sqlx::test]
+async fn worker_caps_each_processing_batch(pool: sqlx::PgPool) {
+    let state = test_helpers::build_state(pool).await;
+    let service = GithubWebhookService::new(
+        Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
+        GithubWebhookStore::in_memory(),
+        state.jobs,
+    );
+    let payload = test_helpers::github_webhook_payload("closed");
+    let signature = test_helpers::sign_github_webhook(&payload);
+
+    for delivery_number in 0..11 {
+        service
+            .handle(
+                &signature,
+                "pull_request",
+                &format!("delivery-batch-{delivery_number}"),
+                &payload,
+            )
+            .await
+            .expect("queue batch delivery");
+    }
+
+    assert_eq!(service.process_batch().await, 10);
+    assert!(service
+        .process_pending_once()
+        .await
+        .expect("process delivery left for next tick"));
+}
+
+#[sqlx::test]
+async fn worker_stops_when_cancelled(pool: sqlx::PgPool) {
+    let state = test_helpers::build_state(pool).await;
+    let service = GithubWebhookService::new(
+        Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
+        GithubWebhookStore::in_memory(),
+        state.jobs,
+    );
+    let cancellation = CancellationToken::new();
+    let worker = tokio::spawn(service.run(cancellation.child_token()));
+
+    cancellation.cancel();
+
+    tokio::time::timeout(Duration::from_secs(1), worker)
+        .await
+        .expect("worker observes cancellation")
+        .expect("worker exits cleanly");
 }
