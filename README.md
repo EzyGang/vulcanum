@@ -396,7 +396,7 @@ vulcanum worker daemon
 | `frontend/` | Preact control UI. |
 | `docker/agent/` | Worker image containing OpenCode, OMP, GitHub CLI, Kaneo CLI, and common development tools. |
 
-The JavaScript packages use pnpm workspaces and Turborepo. The Rust crates are members of the root Cargo workspace.
+The TypeScript packages use pnpm workspaces and Turborepo. The Rust crates are members of the root Cargo workspace.
 
 ### Development
 
