@@ -3,9 +3,7 @@ use uuid::Uuid;
 use crate::db::queryer::Queryer;
 use crate::db::teams::TeamsRepository;
 use crate::models::teams::errors::TeamsError;
-use crate::models::teams::model::{
-    Team, TeamMember, DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE,
-};
+use crate::models::teams::model::{Team, TeamMember};
 
 impl TeamsRepository {
     pub async fn create_personal_team<'c, Q>(
@@ -21,7 +19,7 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"INSERT INTO teams (id, name, personal_user_id, prompt_template, review_prompt_template)
-             VALUES ($1, $2, $3, $4, $5)
+             VALUES ($1, $2, $3, '', '')
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
               review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
@@ -29,8 +27,6 @@ impl TeamsRepository {
             id,
             name,
             user_id,
-            DEFAULT_PROMPT_TEMPLATE,
-            DEFAULT_REVIEW_PROMPT_TEMPLATE,
         )
         .fetch_one(db)
         .await
@@ -45,15 +41,13 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"INSERT INTO teams (id, name, prompt_template, review_prompt_template)
-             VALUES ($1, $2, $3, $4)
+             VALUES ($1, $2, '', '')
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
               primary_model_id, small_model_provider_key, small_model_id,
               review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
             name,
-            DEFAULT_PROMPT_TEMPLATE,
-            DEFAULT_REVIEW_PROMPT_TEMPLATE,
         )
         .fetch_one(db)
         .await

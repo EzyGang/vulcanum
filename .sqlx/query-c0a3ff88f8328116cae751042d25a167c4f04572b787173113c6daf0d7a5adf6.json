@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO teams (id, name, prompt_template, review_prompt_template)\n             VALUES ($1, $2, $3, $4)\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "INSERT INTO teams (id, name, prompt_template, review_prompt_template)\n             VALUES ($1, $2, '', '')\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -82,8 +82,6 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Text",
         "Text"
       ]
     },
@@ -105,5 +103,5 @@
       false
     ]
   },
-  "hash": "920b57f3685ee43e26e5e672ed1dd09315a6587e611966f5a4fed12117c37d30"
+  "hash": "c0a3ff88f8328116cae751042d25a167c4f04572b787173113c6daf0d7a5adf6"
 }

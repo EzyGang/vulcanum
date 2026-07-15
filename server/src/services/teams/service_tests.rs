@@ -8,9 +8,7 @@ use vulcanum_shared::api_types::AgentBackend;
 use crate::db::teams::TeamsRepository;
 use crate::models::auth::model::TeamPrincipal;
 use crate::models::teams::errors::TeamsError;
-use crate::models::teams::model::{
-    UpdateTeamRequest, DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE,
-};
+use crate::models::teams::model::UpdateTeamRequest;
 use crate::services::teams::invite_store::{
     hash_token, invite_redis_key, InMemoryTeamInviteStore, TeamInvitePayload, TeamInviteStore,
 };
@@ -136,8 +134,8 @@ async fn ensure_personal_team_is_idempotent(pool: sqlx::PgPool) {
         .expect("second ensure should reuse team");
 
     assert_eq!(first.id, second.id);
-    assert_eq!(first.prompt_template, DEFAULT_PROMPT_TEMPLATE);
-    assert_eq!(first.review_prompt_template, DEFAULT_REVIEW_PROMPT_TEMPLATE);
+    assert_eq!(first.prompt_template, "");
+    assert_eq!(first.review_prompt_template, "");
     assert_single_personal_team(&pool, "personal-idempotent").await;
 }
 
@@ -210,8 +208,8 @@ async fn create_for_user_adds_owner_membership(pool: sqlx::PgPool) {
     .expect("owner membership should exist");
 
     assert_eq!(role, "owner");
-    assert_eq!(team.review_prompt_template, DEFAULT_REVIEW_PROMPT_TEMPLATE);
-    assert_eq!(team.prompt_template, DEFAULT_PROMPT_TEMPLATE);
+    assert_eq!(team.review_prompt_template, "");
+    assert_eq!(team.prompt_template, "");
 }
 
 #[sqlx::test]

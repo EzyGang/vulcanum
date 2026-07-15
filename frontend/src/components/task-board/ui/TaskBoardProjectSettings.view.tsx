@@ -1,4 +1,5 @@
 import type { JSX } from 'preact';
+import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
@@ -11,7 +12,10 @@ interface TaskBoardProjectSettingsProps {
   disabled: boolean;
   actions: Pick<
     TaskBoardActions,
-    'onSettingsPromptInput' | 'onSettingsAgentsInput' | 'onSettingsMaxInProgressInput'
+    | 'onSettingsPromptInput'
+    | 'onResetSettingsPrompt'
+    | 'onSettingsAgentsInput'
+    | 'onSettingsMaxInProgressInput'
   >;
 }
 
@@ -27,7 +31,17 @@ export const TaskBoardProjectSettings = ({
     hasOverrides={data.hasOverrides}
   >
     <div class='flex flex-col gap-2'>
-      <Label for='board-settings-prompt'>Prompt template</Label>
+      <div class='flex items-center justify-between gap-3'>
+        <Label for='board-settings-prompt'>Prompt template</Label>
+        <Button
+          type='button'
+          variant='ghost'
+          disabled={disabled || !form.promptTemplate.trim()}
+          onClick={actions.onResetSettingsPrompt}
+        >
+          Reset to team default
+        </Button>
+      </div>
       <TextArea
         id='board-settings-prompt'
         value={form.promptTemplate}

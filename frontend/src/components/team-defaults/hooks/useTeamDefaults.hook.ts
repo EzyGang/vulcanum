@@ -23,6 +23,7 @@ const AGENT_BACKEND_ITEMS: SelectOption[] = [
 ];
 export const useTeamDefaults = (teamId: string | null) => {
   const promptTemplate = useSignal('');
+  const promptTemplateInherited = useSignal(true);
   const agentsMd = useSignal('');
   const primaryModelProviderKey = useSignal('');
   const primaryModelId = useSignal('');
@@ -32,6 +33,7 @@ export const useTeamDefaults = (teamId: string | null) => {
   const reviewEnabled = useSignal(false);
   const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
   const reviewPromptTemplate = useSignal('');
+  const reviewPromptTemplateInherited = useSignal(true);
   const maxInProgressTasks = useSignal(DEFAULT_MAX_IN_PROGRESS_TASKS);
   const formError = useSignal<string | null>(null);
 
@@ -59,6 +61,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       team.promptTemplate,
       teamDefaults?.promptTemplate ?? ''
     );
+    promptTemplateInherited.value = !team.promptTemplate.trim();
     agentsMd.value = team.agentsMd;
     primaryModelProviderKey.value = team.primaryModelProviderKey ?? '';
     primaryModelId.value = team.primaryModelId ?? '';
@@ -71,6 +74,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       team.reviewPromptTemplate,
       teamDefaults?.reviewPromptTemplate ?? ''
     );
+    reviewPromptTemplateInherited.value = !team.reviewPromptTemplate.trim();
     maxInProgressTasks.value = team.maxInProgressTasks;
   }, [teamId, team, teamDefaults]);
 
@@ -96,6 +100,7 @@ export const useTeamDefaults = (teamId: string | null) => {
   return {
     data: {
       promptTemplate,
+      promptTemplateInherited,
       agentsMd,
       primaryModelProviderKey,
       primaryModelId,
@@ -104,6 +109,7 @@ export const useTeamDefaults = (teamId: string | null) => {
       reviewEnabled,
       reviewMaxTurns,
       reviewPromptTemplate,
+      reviewPromptTemplateInherited,
       maxInProgressTasks,
       agentBackend,
       agentBackendItems: AGENT_BACKEND_ITEMS,
@@ -117,7 +123,14 @@ export const useTeamDefaults = (teamId: string | null) => {
       error: formError
     },
     actions: {
-      onPromptTemplateInput: textInputHandler(promptTemplate),
+      onPromptTemplateInput: (event: Event) => {
+        promptTemplateInherited.value = false;
+        promptTemplate.value = (event.target as HTMLTextAreaElement).value;
+      },
+      onResetPromptTemplate: () => {
+        promptTemplate.value = teamDefaults?.promptTemplate ?? '';
+        promptTemplateInherited.value = true;
+      },
       onAgentsMdInput: textInputHandler(agentsMd),
       onPrimaryProviderChange: (value: string) => {
         primaryModelProviderKey.value = value;
@@ -145,7 +158,14 @@ export const useTeamDefaults = (teamId: string | null) => {
           DEFAULT_REVIEW_MAX_TURNS
         );
       },
-      onReviewPromptTemplateInput: textInputHandler(reviewPromptTemplate),
+      onReviewPromptTemplateInput: (event: Event) => {
+        reviewPromptTemplateInherited.value = false;
+        reviewPromptTemplate.value = (event.target as HTMLTextAreaElement).value;
+      },
+      onResetReviewPromptTemplate: () => {
+        reviewPromptTemplate.value = teamDefaults?.reviewPromptTemplate ?? '';
+        reviewPromptTemplateInherited.value = true;
+      },
       onMaxInProgressTasksInput: (event: Event) => {
         maxInProgressTasks.value = parsePositiveNumber(
           (event.target as HTMLInputElement).value,
@@ -161,11 +181,7 @@ export const useTeamDefaults = (teamId: string | null) => {
         formError.value = null;
         try {
           await mutation.mutateAsync({
-            promptTemplate: promptTemplateForSubmit(
-              team?.promptTemplate,
-              promptTemplate.value,
-              teamDefaults?.promptTemplate
-            ),
+            promptTemplate: promptTemplateInherited.value ? '' : promptTemplate.value,
             agentsMd: agentsMd.value,
             primaryModelProviderKey: primaryModelProviderKey.value || null,
             primaryModelId: primaryModelId.value || null,
@@ -173,11 +189,9 @@ export const useTeamDefaults = (teamId: string | null) => {
             smallModelId: smallModelId.value || null,
             reviewEnabled: reviewEnabled.value,
             reviewMaxTurns: reviewMaxTurns.value,
-            reviewPromptTemplate: promptTemplateForSubmit(
-              team?.reviewPromptTemplate,
-              reviewPromptTemplate.value,
-              teamDefaults?.reviewPromptTemplate
-            ),
+            reviewPromptTemplate: reviewPromptTemplateInherited.value
+              ? ''
+              : reviewPromptTemplate.value,
             maxInProgressTasks: maxInProgressTasks.value,
             agentBackend: agentBackend.value
           });
@@ -195,20 +209,4 @@ const promptTemplateOrDefault = (template: string, defaultTemplate: string): str
   }
 
   return defaultTemplate;
-};
-
-const promptTemplateForSubmit = (
-  storedTemplate: string | undefined,
-  formTemplate: string,
-  defaultTemplate: string | undefined
-): string => {
-  if (
-    !storedTemplate?.trim() &&
-    defaultTemplate !== undefined &&
-    formTemplate === defaultTemplate
-  ) {
-    return '';
-  }
-
-  return formTemplate;
 };

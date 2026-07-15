@@ -1,4 +1,6 @@
-use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
+use crate::services::poller::prompts::{
+    ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION, REVIEW_GITHUB_INSTRUCTION,
+};
 
 #[test]
 fn environment_instruction_requires_repo_format_validation_and_tests() {
@@ -8,6 +10,14 @@ fn environment_instruction_requires_repo_format_validation_and_tests() {
     assert!(ENVIRONMENT_INSTRUCTION.contains("every repository you changed"));
     assert!(ENVIRONMENT_INSTRUCTION.contains("changed repository directory"));
     assert!(ENVIRONMENT_INSTRUCTION.contains("AGENTS.md"));
+}
+
+#[test]
+fn environment_instruction_only_blocks_on_irreproducible_infrastructure() {
+    assert!(ENVIRONMENT_INSTRUCTION.contains("reproduce it inside the container"));
+    assert!(ENVIRONMENT_INSTRUCTION.contains("PostgreSQL or Redis"));
+    assert!(ENVIRONMENT_INSTRUCTION.contains("only when it cannot be reproduced"));
+    assert!(ENVIRONMENT_INSTRUCTION.contains("failed setup or access attempt"));
 }
 
 #[test]
@@ -48,4 +58,13 @@ fn github_instruction_allows_blocker_branch_only_as_pr_base() {
 fn github_instruction_forbids_committing_directly_to_default_branch() {
     assert!(GITHUB_INSTRUCTION.contains("never commit directly"));
     assert!(GITHUB_INSTRUCTION.contains("main, master, or another default branch"));
+}
+
+#[test]
+fn review_github_instruction_is_read_only_and_head_specific() {
+    assert!(REVIEW_GITHUB_INSTRUCTION.contains("current head commit"));
+    assert!(REVIEW_GITHUB_INSTRUCTION.contains("without modifying the worktree"));
+    assert!(REVIEW_GITHUB_INSTRUCTION.contains("Do not create branches"));
+    assert!(REVIEW_GITHUB_INSTRUCTION.contains("Do not approve or request changes"));
+    assert!(!REVIEW_GITHUB_INSTRUCTION.contains("gh pr create"));
 }

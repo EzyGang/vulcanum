@@ -6,7 +6,9 @@ use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunType};
 use crate::services::model_providers::renderer::ModelSelection;
-use crate::services::poller::prompts::{ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION};
+use crate::services::poller::prompts::{
+    ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION, REVIEW_GITHUB_INSTRUCTION,
+};
 use crate::services::poller::service::repo_layout;
 use crate::services::poller::template::{render_template, TemplateVars};
 use crate::services::providers::client::IntegrationClient;
@@ -221,7 +223,7 @@ fn render_review_prompt(run: &WorkRun, cfg: &JobConfigFields, task: &Integration
     );
     prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
     if !repo_full_names.is_empty() {
-        prompt_text.push_str(GITHUB_INSTRUCTION);
+        prompt_text.push_str(REVIEW_GITHUB_INSTRUCTION);
     }
 
     prompt_text

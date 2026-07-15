@@ -260,12 +260,18 @@ export const useTaskBoardSettings = (
     actions: {
       onToggleRepo: toggleRepo,
       onSettingsPromptInput: textInputHandler(settingsPromptTemplate),
+      onResetSettingsPrompt: () => {
+        settingsPromptTemplate.value = '';
+      },
       onSettingsAgentsInput: textInputHandler(settingsAgentsMd),
       onSettingsReviewEnabledChange: (value: string) => {
         settingsReviewEnabled.value = value;
       },
       onSettingsReviewMaxTurnsInput: textInputHandler(settingsReviewMaxTurns),
       onSettingsReviewPromptInput: textInputHandler(settingsReviewPromptTemplate),
+      onResetSettingsReviewPrompt: () => {
+        settingsReviewPromptTemplate.value = '';
+      },
       onSettingsMaxInProgressInput: textInputHandler(settingsMaxInProgressTasks),
       onSubmitSettings: submitSettings,
       onSetColumnRole: setColumnRole,

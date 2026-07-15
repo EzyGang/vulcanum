@@ -17,6 +17,7 @@ interface TeamDefaultsViewProps {
   section: TeamDefaultsSection;
   data: {
     promptTemplate: Signal<string>;
+    promptTemplateInherited: Signal<boolean>;
     agentsMd: Signal<string>;
     primaryModelProviderKey: Signal<string>;
     primaryModelId: Signal<string>;
@@ -25,6 +26,7 @@ interface TeamDefaultsViewProps {
     reviewEnabled: Signal<boolean>;
     reviewMaxTurns: Signal<number>;
     reviewPromptTemplate: Signal<string>;
+    reviewPromptTemplateInherited: Signal<boolean>;
     maxInProgressTasks: Signal<number>;
     agentBackend: Signal<TeamAgentBackend>;
     agentBackendItems: SelectOption[];
@@ -39,6 +41,7 @@ interface TeamDefaultsViewProps {
   };
   actions: {
     onPromptTemplateInput: (event: Event) => void;
+    onResetPromptTemplate: () => void;
     onAgentsMdInput: (event: Event) => void;
     onPrimaryProviderChange: (value: string) => void;
     onPrimaryModelChange: (value: string) => void;
@@ -48,6 +51,7 @@ interface TeamDefaultsViewProps {
     onReviewEnabledChange: (checked: boolean) => void;
     onReviewMaxTurnsInput: (event: Event) => void;
     onReviewPromptTemplateInput: (event: Event) => void;
+    onResetReviewPromptTemplate: () => void;
     onMaxInProgressTasksInput: (event: Event) => void;
     onSubmit: (event: Event) => void;
   };
@@ -165,7 +169,17 @@ const AgentDefaultFields = ({
 }: Pick<TeamDefaultsViewProps, 'data' | 'status' | 'actions'>): JSX.Element => (
   <>
     <div class='flex flex-col gap-2'>
-      <Label for='team-default-prompt'>Prompt Template</Label>
+      <div class='flex items-center justify-between gap-3'>
+        <Label for='team-default-prompt'>Prompt Template</Label>
+        <Button
+          type='button'
+          variant='ghost'
+          disabled={status.saving || data.promptTemplateInherited.value}
+          onClick={actions.onResetPromptTemplate}
+        >
+          Reset to system default
+        </Button>
+      </div>
       <TextArea
         id='team-default-prompt'
         value={data.promptTemplate.value}
@@ -223,7 +237,17 @@ const AgentDefaultFields = ({
         </div>
       </div>
       <div class='flex flex-col gap-2'>
-        <Label for='team-review-prompt'>Review Prompt Template</Label>
+        <div class='flex items-center justify-between gap-3'>
+          <Label for='team-review-prompt'>Review Prompt Template</Label>
+          <Button
+            type='button'
+            variant='ghost'
+            disabled={status.saving || data.reviewPromptTemplateInherited.value}
+            onClick={actions.onResetReviewPromptTemplate}
+          >
+            Reset to system default
+          </Button>
+        </div>
         <TextArea
           id='team-review-prompt'
           value={data.reviewPromptTemplate.value}

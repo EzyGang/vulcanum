@@ -28,10 +28,12 @@ interface TaskBoardSettingsDialogProps {
     | 'onFilterRepos'
     | 'onSettingsDialogOpenChange'
     | 'onSettingsPromptInput'
+    | 'onResetSettingsPrompt'
     | 'onSettingsAgentsInput'
     | 'onSettingsReviewEnabledChange'
     | 'onSettingsReviewMaxTurnsInput'
     | 'onSettingsReviewPromptInput'
+    | 'onResetSettingsReviewPrompt'
     | 'onSettingsMaxInProgressInput'
     | 'onSubmitSettings'
   >;

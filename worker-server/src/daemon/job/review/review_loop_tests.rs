@@ -12,7 +12,7 @@ fn review_loop_continues_for_actionable_review_then_stops_at_cap() {
             "## CRITICAL\n- None\n\n## WARNINGS\n- Missing validation\n\n## SUGGESTIONS\n- None",
         ))
         .expect("actionable review should start fix pass");
-    assert!(prompt.contains("Switch to implementation mode"));
+    assert!(prompt.contains("Fix phase for the existing pull request"));
 
     let prompt = state
         .prompt_after_fix_turn()

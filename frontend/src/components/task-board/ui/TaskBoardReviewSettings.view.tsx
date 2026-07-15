@@ -1,4 +1,5 @@
 import type { JSX } from 'preact';
+import { Button } from '../../shared/ui/Button.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
 import { Select } from '../../shared/ui/Select.view';
@@ -18,6 +19,7 @@ interface TaskBoardReviewSettingsProps {
     | 'onSettingsReviewEnabledChange'
     | 'onSettingsReviewMaxTurnsInput'
     | 'onSettingsReviewPromptInput'
+    | 'onResetSettingsReviewPrompt'
   >;
 }
 
@@ -64,7 +66,17 @@ export const TaskBoardReviewSettings = ({
       </div>
     </div>
     <div class='flex flex-col gap-2'>
-      <Label for='board-review-prompt'>Review Prompt Template</Label>
+      <div class='flex items-center justify-between gap-3'>
+        <Label for='board-review-prompt'>Review Prompt Template</Label>
+        <Button
+          type='button'
+          variant='ghost'
+          disabled={disabled || !form.reviewPromptTemplate.trim()}
+          onClick={actions.onResetSettingsReviewPrompt}
+        >
+          Reset to team default
+        </Button>
+      </div>
       <TextArea
         id='board-review-prompt'
         value={form.reviewPromptTemplate}

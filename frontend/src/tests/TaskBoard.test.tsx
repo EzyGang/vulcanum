@@ -164,10 +164,12 @@ const makeProps = (
     onToggleRepo: vi.fn(),
     onFilterRepos: vi.fn(),
     onSettingsPromptInput: vi.fn(),
+    onResetSettingsPrompt: vi.fn(),
     onSettingsAgentsInput: vi.fn(),
     onSettingsReviewEnabledChange: vi.fn(),
     onSettingsReviewMaxTurnsInput: vi.fn(),
     onSettingsReviewPromptInput: vi.fn(),
+    onResetSettingsReviewPrompt: vi.fn(),
     onSettingsMaxInProgressInput: vi.fn(),
     onSubmitSettings: vi.fn((event: Event) => event.preventDefault()),
     onSetColumnRole: vi.fn(),
@@ -668,6 +670,21 @@ describe('TaskBoard.view', () => {
     fireEvent.submit(settingsForm as Element);
 
     expect(props.actions.onSubmitSettings).toHaveBeenCalledOnce();
+  });
+
+  it('resets prompt overrides from the settings modal', () => {
+    const props = makeProps();
+    props.data.settingsDialogOpen = true;
+    props.form.settings.promptTemplate = 'Custom implementation prompt';
+    props.form.settings.reviewPromptTemplate = 'Custom review prompt';
+    const { getAllByText } = render(<TaskBoardView {...props} />);
+    const resetButtons = getAllByText('Reset to team default');
+
+    fireEvent.click(resetButtons[0]);
+    fireEvent.click(resetButtons[1]);
+
+    expect(props.actions.onResetSettingsPrompt).toHaveBeenCalledOnce();
+    expect(props.actions.onResetSettingsReviewPrompt).toHaveBeenCalledOnce();
   });
 
   it('keeps board column roles out of the settings modal', () => {

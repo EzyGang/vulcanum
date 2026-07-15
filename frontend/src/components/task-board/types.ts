@@ -235,11 +235,13 @@ export interface TaskBoardActions {
   onToggleRepo: (repoFullName: string) => void;
   onFilterRepos: (event: Event) => void;
   onSettingsPromptInput: (event: Event) => void;
+  onResetSettingsPrompt: () => void;
   onSettingsAgentsInput: (event: Event) => void;
   onSettingsMaxInProgressInput: (event: Event) => void;
   onSettingsReviewEnabledChange: (value: string) => void;
   onSettingsReviewMaxTurnsInput: (event: Event) => void;
   onSettingsReviewPromptInput: (event: Event) => void;
+  onResetSettingsReviewPrompt: () => void;
   onSetColumnRole: (columnSlug: string | null, role: TaskBoardColumnRole) => void;
   onSubmitSettings: (event: Event) => void;
   onToggleAutomation: () => void;
