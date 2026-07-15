@@ -6,11 +6,13 @@
   <img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-green?style=for-the-badge" alt="AGPL-3.0-or-later">
 </p>
 
-Vulcanum connects the parts around an implementation agent.
+Vulcanum is being built as an agnostic orchestration layer between task trackers, implementation agents, and higher-level harnesses.
 
-It watches work in a task tracker, turns that work into jobs, sends those jobs to available workers, and keeps the original task up to date while the agent works. If the agent opens a pull request, Vulcanum can run a separate review agent and wait for the pull request to be closed or merged before marking the task done.
+It gives those systems one place to hand work off, run it, follow what happened, and return the result. The tracker does not need to know how a coding agent works. The coding agent does not need tracker-specific logic. A higher-level agent should be able to use the same Vulcanum CLI regardless of which tracker or execution backend sits behind it.
 
-The point is not to build another task tracker or another coding agent. Vulcanum is the layer between them.
+Execution also does not have to live on one machine. A worker can run on an idle PC or Mac at home while other workers run on a VPS or another machine. Vulcanum treats them as one pool and sends compatible work wherever capacity is available.
+
+The point is not to build another task tracker, another coding agent, or just another local agent runner. Vulcanum is the layer that lets those parts change independently and still work together.
 
 > [!WARNING]
 > Vulcanum is still pre-1.0. It is under active development, migrations and interfaces can change, and it should be run on infrastructure you control.
@@ -38,41 +40,45 @@ The point is not to build another task tracker or another coding agent. Vulcanum
 
 ## What Vulcanum Is For
 
-A small agent setup is easy enough: read a task, run a coding agent, and hope it leaves the repository in a useful state.
+The main problem Vulcanum tries to solve is coupling.
 
-The awkward parts show up later:
+Without a middle layer, the code that picks up a task usually knows about the tracker, the agent runner, the machine that will execute it, the repository host, and the way results should be reported. Adding a second tracker or agent backend means rebuilding a large part of that glue.
 
-- Which worker should get the task?
-- Is that worker already busy?
-- Which repository or repositories belong to the task?
-- Which agent backend and model should be used?
-- What happens when a worker restarts halfway through a run?
-- Where do live events, token usage, results, and pull requests go?
-- Who updates the task tracker?
-- Should a second agent review the pull request?
-- When is the task actually done?
+Vulcanum puts one boundary in the middle of three sides:
 
-Vulcanum handles that middle layer. The tracker remains useful to the people planning the work. The coding agent remains focused on implementation. Higher-level systems can ask Vulcanum to manage execution instead of learning how every worker and backend works.
+1. **Task trackers**, where people plan and follow the work.
+2. **Execution backends**, where implementation and review agents actually run.
+3. **Higher-level harnesses**, such as OpenClaw, Hermes, or a personal agent that wants to delegate software work.
 
-It is meant to be independent of the AI model, coding agent, task tracker, and higher-level harness around it. The current set of integrations is smaller than that goal, but the boundaries are already separate in the code.
+That separation is the main idea. Task trackers connect through provider interfaces. OpenCode, OMP, and future implementation agents connect through worker runtime interfaces. Higher-level harnesses will use a shared `SKILL.md` and the Vulcanum CLI rather than getting a custom integration for every harness.
+
+The distributed worker setup follows from that design. Workers can be on the same network or spread across different machines. You might keep one on a home machine that would otherwise sit idle, run another on a Mac, and add VPS workers for always-on capacity. They all connect to the same control plane and advertise what they can run.
+
+Worker registration, dispatch, concurrency, and crash recovery are necessary parts of making this reliable, but they are not the main selling point by themselves. The useful part is having one neutral layer that joins trackers, execution, and higher-level automation without making any one of them the center of the stack.
 
 ## Where It Fits
 
-There are two ways we expect people to use Vulcanum.
+### Task-tracker side
 
-### From a task tracker
+This is the working entry point today.
 
-This is the working path today.
+You configure a project, choose the column Vulcanum should watch, connect one or more GitHub repositories, and choose the execution settings. Moving a task into the pickup column starts the workflow. Vulcanum keeps the task updated as implementation, review, and pull request state change.
 
-You configure a project, choose the column Vulcanum should watch, connect one or more GitHub repositories, and choose the worker/agent settings. Moving a task into the pickup column is enough to start the workflow. Vulcanum moves the task through progress, review, and done as the run changes state.
+Kaneo is the current tracker backend. The server-side provider boundary is intended to support other trackers without changing the worker or agent runtime.
 
-### From a higher-level harness
+### Execution side
 
-Systems such as OpenClaw, Hermes, or a personal agent should not need a dedicated Vulcanum adapter.
+Workers connect to the control plane from whichever machines you want to use. Each worker reports its available capacity, execution mode, and agent backend. Vulcanum can then use local machines and remote hosts as one worker pool instead of tying the workflow to a single computer.
 
-The planned connection is a shareable `SKILL.md` plus an installed Vulcanum CLI. The skill explains how to use Vulcanum, and the CLI provides the actual commands. This keeps the connection agent-agnostic: anything that can install the skill and call the CLI can use the same interface.
+OpenCode and OMP are the current agent backends. Host, Docker, and Kata are the current execution modes.
 
-The current CLI is mainly for setting up and managing workers. It still needs the higher-level control commands before this path is complete.
+### Higher-level harness side
+
+OpenClaw, Hermes, or another personal agent should not need a dedicated Vulcanum adapter.
+
+The planned connection is a shareable `SKILL.md` plus an installed Vulcanum CLI. The skill explains how to use Vulcanum and the CLI provides the commands. Anything that can install the skill and call the CLI can use the same interface.
+
+The current CLI is mainly for setting up and managing workers. It still needs the higher-level control commands before this entry point is complete.
 
 ## A Typical Run
 
@@ -242,6 +248,9 @@ These application controls do not turn a shared deployment into a safe environme
 
 ### Running Locally
 
+<details>
+<summary>Show local development setup</summary>
+
 #### Prerequisites
 
 For the control plane:
@@ -328,7 +337,12 @@ GITHUB_OAUTH_REDIRECT_URL=http://localhost:8000/api/v1/auth/github/callback
 
 Model providers, model selection, team defaults, tracker providers, repositories, workflow columns, prompts, and review settings are configured in the UI.
 
+</details>
+
 ### Registering a Worker
+
+<details>
+<summary>Show worker registration commands</summary>
 
 Generate a registration code from the Workers page, then run setup on the worker host.
 
@@ -368,6 +382,8 @@ Use `--isolation none` for host execution. Non-interactive setup defaults to Doc
 ```bash
 vulcanum worker daemon
 ```
+
+</details>
 
 ### Repository Layout
 
