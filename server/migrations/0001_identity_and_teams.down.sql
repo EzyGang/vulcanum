@@ -1,6 +1,9 @@
+DROP TABLE IF EXISTS model_provider_configs;
+DROP TABLE IF EXISTS github_installations;
 DROP TABLE IF EXISTS user_refresh_tokens;
 DROP TABLE IF EXISTS user_identities;
 DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS teams;
 DROP TABLE IF EXISTS users;
+DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP EXTENSION IF EXISTS pgcrypto;

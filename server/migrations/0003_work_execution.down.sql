@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS task_augmentations;
+DROP TABLE IF EXISTS task_prs;
+DROP TABLE IF EXISTS work_run_reviews;
+DROP TABLE IF EXISTS work_run_repos;
+DROP TABLE IF EXISTS work_run_prs;
+DROP TABLE IF EXISTS work_run_events;
+DROP TABLE IF EXISTS work_runs;
+DROP TABLE IF EXISTS workers;
+DROP TYPE IF EXISTS work_run_type;
+DROP TYPE IF EXISTS work_run_status;
+DROP TYPE IF EXISTS worker_status;

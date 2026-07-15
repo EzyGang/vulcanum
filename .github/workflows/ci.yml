@@ -6,38 +6,28 @@ concurrency:
 
 on:
   push:
+  pull_request:
 
 env:
   SQLX_OFFLINE: true
   CARGO_INCREMENTAL: 0
 
 jobs:
-  ci-pass:
-    name: CI succeeded
-    runs-on: self-hosted
-    if: always()
-    needs:
-      - lint
-      - test
-    steps:
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - name: Check whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@v1.2.2
-        with:
-          jobs: ${{ toJSON(needs) }}
-
   lint:
-    name: Format & Lint & Type-Check
-    runs-on: self-hosted
+    name: Validate (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+          - macos-15
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Install Build Dependencies
-        run: |
-          sudo dpkg --configure -a
-          sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes clang libssl-dev pkg-config
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -45,18 +35,25 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v6
-        name: Install pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
         with:
           cache: true
       - uses: Swatinem/rust-cache@v2
-      - run: pnpm install
+        with:
+          key: lint-${{ matrix.runner }}
+      - run: pnpm install --frozen-lockfile
       - name: Run format, lint, and type-check
         run: pnpm run validate
 
   test:
-    name: Test
-    runs-on: self-hosted
+    name: Test (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     services:
       postgres:
         image: postgres
@@ -70,32 +67,49 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432
+          - 5432:5432
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Install Build Dependencies
-        run: |
-          sudo dpkg --configure -a
-          sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install --yes clang libssl-dev pkg-config
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v6
-        name: Install pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
         with:
           cache: true
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: test-${{ matrix.runner }}
       - name: Install SQLx CLI
-        run: cargo install sqlx-cli
+        run: cargo install sqlx-cli --locked
       - name: Run migrations
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_db
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/vulcanum_db
         run: sqlx migrate run --source server/migrations
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - name: Run tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_db
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/vulcanum_db
         run: pnpm run test
+
+  ci-pass:
+    name: CI succeeded
+    if: always()
+    needs:
+      - lint
+      - test
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}

@@ -10,7 +10,11 @@ permissions:
 jobs:
   build-agent:
     name: Build & Push
-    runs-on: self-hosted
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v6

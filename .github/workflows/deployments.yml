@@ -23,9 +23,13 @@ jobs:
   build-and-deploy:
     name: Build & Deploy
     if: github.event_name == 'push' || inputs.environment == 'dev'
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
     environment:
       name: dev
-    runs-on: self-hosted
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
       - uses: EzyGang/telegram-ci-status@v1

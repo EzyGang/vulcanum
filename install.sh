@@ -1,0 +1,109 @@
+#!/bin/sh
+
+set -eu
+
+REPOSITORY="${VULCANUM_REPOSITORY:-EzyGang/vulcanum}"
+INSTALL_DIR="${VULCANUM_INSTALL_DIR:-${HOME}/.local/bin}"
+VERSION="${VULCANUM_VERSION:-latest}"
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "error: required command '$1' was not found" >&2
+        exit 1
+    fi
+}
+
+resolve_target() {
+    os=$(uname -s)
+    arch=$(uname -m)
+
+    case "$os" in
+        Linux) os="unknown-linux-gnu" ;;
+        Darwin) os="apple-darwin" ;;
+        *)
+            echo "error: unsupported operating system: $os" >&2
+            exit 1
+            ;;
+    esac
+
+    case "$arch" in
+        x86_64|amd64) arch="x86_64" ;;
+        arm64|aarch64) arch="aarch64" ;;
+        *)
+            echo "error: unsupported architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+
+    printf '%s-%s\n' "$arch" "$os"
+}
+
+download() {
+    download_url=$1
+    download_output=$2
+
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --silent --show-error --output "$download_output" "$download_url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget --quiet --output-document="$download_output" "$download_url"
+    else
+        echo "error: either curl or wget is required" >&2
+        exit 1
+    fi
+}
+
+verify_checksum() {
+    checksum_archive=$1
+    checksum_file=$2
+    expected_checksum=$(awk '{print $1}' "$checksum_file")
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual_checksum=$(sha256sum "$checksum_archive" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual_checksum=$(shasum -a 256 "$checksum_archive" | awk '{print $1}')
+    else
+        echo "error: sha256sum or shasum is required to verify the download" >&2
+        exit 1
+    fi
+
+    if [ "$actual_checksum" != "$expected_checksum" ]; then
+        echo "error: checksum verification failed" >&2
+        exit 1
+    fi
+}
+
+require_command uname
+require_command tar
+require_command awk
+
+target=$(resolve_target)
+archive_name="vulcanum-${target}.tar.gz"
+
+if [ "$VERSION" = "latest" ]; then
+    release_url="https://github.com/${REPOSITORY}/releases/latest/download"
+else
+    case "$VERSION" in
+        v*) tag=$VERSION ;;
+        *) tag="v${VERSION}" ;;
+    esac
+    release_url="https://github.com/${REPOSITORY}/releases/download/${tag}"
+fi
+
+tmp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t vulcanum)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+
+echo "Downloading Vulcanum ${VERSION} for ${target}..."
+download "${release_url}/${archive_name}" "${tmp_dir}/${archive_name}"
+download "${release_url}/${archive_name}.sha256" "${tmp_dir}/${archive_name}.sha256"
+verify_checksum "${tmp_dir}/${archive_name}" "${tmp_dir}/${archive_name}.sha256"
+tar -xzf "${tmp_dir}/${archive_name}" -C "$tmp_dir"
+
+mkdir -p "$INSTALL_DIR"
+install -m 0755 "${tmp_dir}/vulcanum" "${INSTALL_DIR}/vulcanum"
+install -m 0755 "${tmp_dir}/vulcanum-server" "${INSTALL_DIR}/vulcanum-server"
+
+echo "Installed vulcanum and vulcanum-server to ${INSTALL_DIR}"
+case ":${PATH}:" in
+    *":${INSTALL_DIR}:"*) ;;
+    *) echo "Add ${INSTALL_DIR} to PATH to run the binaries." ;;
+esac

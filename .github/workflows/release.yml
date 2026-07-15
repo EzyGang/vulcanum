@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       release_type:
-        description: "Release type"
+        description: Release type
+        required: true
         type: choice
         options:
           - full
@@ -12,12 +13,21 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
-  release:
-    name: Build & Release
-    runs-on: self-hosted
-
+  metadata:
+    name: Resolve release metadata
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      name: ${{ steps.tag.outputs.name }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+      previous_tag: ${{ steps.tag.outputs.previous_tag }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -31,53 +41,134 @@ jobs:
 
       - name: Compute tag
         id: tag
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          version="${{ steps.version.outputs.version }}"
-          if [ "${{ inputs.release_type }}" = "alpha" ]; then
-            latest_alpha=$(git tag --list "v${version}-alpha.*" --sort=-v:refname | head -1 || true)
+          if [ "$RELEASE_TYPE" = "alpha" ]; then
+            latest_alpha=$(git tag --list "v${VERSION}-alpha.*" --sort=-v:refname | head -1 || true)
             if [ -z "$latest_alpha" ]; then
               alpha_num=1
-              prev_tag=$(git tag --list 'v*' --sort=-v:refname | grep -v '\-alpha' | head -1 || true)
+              previous_tag=$(git tag --list 'v*' --sort=-v:refname | grep -v '\-alpha' | head -1 || true)
             else
               alpha_num=$(echo "$latest_alpha" | sed 's/.*-alpha\.//')
               alpha_num=$((alpha_num + 1))
-              prev_tag="$latest_alpha"
+              previous_tag="$latest_alpha"
             fi
-            echo "tag=v${version}-alpha.${alpha_num}" >> "$GITHUB_OUTPUT"
-            echo "name=v${version}-alpha.${alpha_num}" >> "$GITHUB_OUTPUT"
+            tag="v${VERSION}-alpha.${alpha_num}"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           else
-            prev_tag=$(git tag --list 'v*' --sort=-v:refname | grep -v '\-alpha' | head -1 || true)
-            echo "tag=v${version}" >> "$GITHUB_OUTPUT"
-            echo "name=v${version}" >> "$GITHUB_OUTPUT"
+            previous_tag=$(git tag --list 'v*' --sort=-v:refname | grep -v '\-alpha' | head -1 || true)
+            tag="v${VERSION}"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "prev_tag=${prev_tag:-}" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "name=$tag" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=${previous_tag:-}" >> "$GITHUB_OUTPUT"
 
-      - name: Install Build Dependencies
-        run: sudo apt update && sudo apt install pkg-config libssl-dev clang -y
+  build:
+    name: Build (${{ matrix.target }})
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes clang libssl-dev pkg-config
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
-      - name: Cache Dependencies
+      - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
-      - name: Build CLI (release)
-        run: cargo build --release --bin vulcanum
+      - name: Build binaries
+        run: cargo build --locked --release --target "${{ matrix.target }}" --bin vulcanum --bin vulcanum-server
 
-      - name: Build Worker Server (release)
-        run: cargo build --release --bin vulcanum-server
+      - name: Package binaries
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          archive="vulcanum-${TARGET}.tar.gz"
+          tar -czf "$archive" -C "target/${TARGET}/release" vulcanum vulcanum-server
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$archive" > "${archive}.sha256"
+          else
+            shasum -a 256 "$archive" > "${archive}.sha256"
+          fi
 
-      - name: Create Release & Upload Assets
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulcanum-${{ matrix.target }}
+          path: |
+            vulcanum-${{ matrix.target }}.tar.gz
+            vulcanum-${{ matrix.target }}.tar.gz.sha256
+          if-no-files-found: error
+
+  approval:
+    name: Approve release
+    needs:
+      - metadata
+      - build
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Wait for release approval
+        uses: trstringer/manual-approval@fa642940caf8412403569b28b2db4a1df08a83a3
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: Galtozzy
+          minimum-approvals: 1
+          issue-title: Approve release ${{ needs.metadata.outputs.tag }}
+
+  release:
+    name: Publish release
+    needs:
+      - metadata
+      - approval
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    environment: release
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release and upload assets
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ needs.metadata.outputs.tag }}
           target_commitish: main
-          name: ${{ steps.tag.outputs.name }}
-          prerelease: ${{ steps.tag.outputs.prerelease == 'true' }}
+          name: ${{ needs.metadata.outputs.name }}
+          prerelease: ${{ needs.metadata.outputs.prerelease == 'true' }}
           generate_release_notes: true
-          previous_tag: ${{ steps.tag.outputs.prev_tag || null }}
-          files: |
-            target/release/vulcanum
-            target/release/vulcanum-server
+          previous_tag: ${{ needs.metadata.outputs.previous_tag || null }}
+          files: dist/*
+          fail_on_unmatched_files: true

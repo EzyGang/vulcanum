@@ -12,9 +12,13 @@ env:
 
 jobs:
   e2e:
-    name: E2E Worker-Server Protocol
-    runs-on: self-hosted
-
+    name: E2E Worker-Server Protocol (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     services:
       postgres:
         image: postgres
@@ -28,8 +32,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432
-
+          - 5432:5432
       redis:
         image: redis:7-alpine
         options: >-
@@ -38,42 +41,34 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 6379
-
+          - 6379:6379
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Install Build Dependencies
-        run: |
-          sudo dpkg --configure -a
-          sudo apt update && sudo apt install pkg-config libssl-dev clang -y
-
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install --yes clang libssl-dev pkg-config
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: pnpm/action-setup@v6
-        name: Install pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
         with:
           cache: true
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "e2e"
-          key: "e2e"
-
+          shared-key: e2e
+          key: ${{ matrix.runner }}
       - name: Install SQLx CLI
-        run: cargo install sqlx-cli
+        run: cargo install sqlx-cli --locked
       - name: Run migrations
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_e2e
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/vulcanum_e2e
         run: sqlx migrate run --source server/migrations
-
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - name: Run e2e tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@172.17.0.1:${{ job.services.postgres.ports[5432] }}/vulcanum_e2e
-          REDIS_URL: redis://172.17.0.1:${{ job.services.redis.ports[6379] }}
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/vulcanum_e2e
+          REDIS_URL: redis://localhost:6379
         run: pnpm --filter=@repo/server run test -- e2e
