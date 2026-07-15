@@ -29,10 +29,14 @@ pub async fn webhook(
         Some(event) => event,
         None => return Ok(HttpResponse::BadRequest().finish()),
     };
-    let delivery = request
+    let delivery = match request
         .headers()
         .get("X-GitHub-Delivery")
-        .and_then(|value| value.to_str().ok());
+        .and_then(|value| value.to_str().ok())
+    {
+        Some(delivery) => delivery,
+        None => return Ok(HttpResponse::BadRequest().finish()),
+    };
 
     match state
         .github_webhooks
@@ -46,8 +50,8 @@ pub async fn webhook(
             tracing::error!("GitHub webhook received without GITHUB_WEBHOOK_SECRET");
             Ok(HttpResponse::ServiceUnavailable().finish())
         }
-        Err(GithubWebhookError::Reconciliation(e)) => {
-            tracing::warn!(error = %e, "GitHub pull request webhook reconciliation failed");
+        Err(GithubWebhookError::Persistence(e)) => {
+            tracing::error!(error = %e, "GitHub webhook delivery persistence failed");
             Err(AppError::Internal)
         }
     }

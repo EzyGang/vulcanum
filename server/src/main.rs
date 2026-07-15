@@ -20,6 +20,7 @@ async fn main() -> eyre::Result<()> {
 
     let poller = app_state.clone().into_poller(cfg.poll_period_secs);
     tokio::spawn(poller.run());
+    tokio::spawn(app_state.github_webhooks.clone().run());
 
     tracing::info!("Starting server on 0.0.0.0:8000");
     HttpServer::new(move || {

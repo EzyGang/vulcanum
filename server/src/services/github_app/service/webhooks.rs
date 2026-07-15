@@ -1,16 +1,22 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
 use thiserror::Error;
 
-use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::github_app::errors::GithubAppError;
+use crate::services::github_app::webhook_store::GithubWebhookStore;
 use crate::services::work_runs::service::WorkRunsService;
+
+const POLL_INTERVAL: Duration = Duration::from_secs(5);
+const DELIVERY_LEASE: Duration = Duration::from_secs(60);
 
 #[derive(Clone)]
 pub struct GithubWebhookService {
     secret: Option<Arc<str>>,
+    store: GithubWebhookStore,
     work_runs: WorkRunsService,
 }
 
@@ -22,21 +28,26 @@ pub enum GithubWebhookError {
     InvalidSignature,
     #[error("invalid github webhook payload: {0}")]
     InvalidPayload(#[from] serde_json::Error),
-    #[error("pull request reconciliation failed: {0}")]
-    Reconciliation(#[from] WorkRunsError),
+    #[error("github webhook delivery persistence failed: {0}")]
+    Persistence(#[from] GithubAppError),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum GithubWebhookOutcome {
     Ignored,
-    Reconciled { moved: usize },
+    Queued { inserted: bool },
 }
 
 impl GithubWebhookService {
     #[must_use]
-    pub fn new(secret: Option<&str>, work_runs: WorkRunsService) -> Self {
+    pub(crate) fn new(
+        secret: Option<Arc<str>>,
+        store: GithubWebhookStore,
+        work_runs: WorkRunsService,
+    ) -> Self {
         Self {
-            secret: secret.map(Arc::from),
+            secret,
+            store,
             work_runs,
         }
     }
@@ -45,7 +56,7 @@ impl GithubWebhookService {
         &self,
         signature: &str,
         event: &str,
-        delivery: Option<&str>,
+        delivery: &str,
         body: &[u8],
     ) -> Result<GithubWebhookOutcome, GithubWebhookError> {
         verify_signature(self.secret.as_deref(), signature, body)?;
@@ -53,10 +64,10 @@ impl GithubWebhookService {
             Some(payload) => payload,
             None => return Ok(GithubWebhookOutcome::Ignored),
         };
-
-        let moved = self
-            .work_runs
-            .reconcile_pull_request_completion(
+        let inserted = self
+            .store
+            .enqueue(
+                delivery,
                 payload.installation.id,
                 &payload.repository.full_name,
                 payload.number,
@@ -65,14 +76,68 @@ impl GithubWebhookService {
 
         tracing::info!(
             github_delivery_id = delivery,
-            installation_id = payload.installation.id,
-            repo_full_name = %payload.repository.full_name,
-            pr_number = payload.number,
-            tasks_moved = moved,
-            "processed GitHub pull request webhook",
+            duplicate = !inserted,
+            "queued GitHub pull request webhook",
         );
 
-        Ok(GithubWebhookOutcome::Reconciled { moved })
+        Ok(GithubWebhookOutcome::Queued { inserted })
+    }
+
+    pub async fn run(self) {
+        let mut interval = tokio::time::interval(POLL_INTERVAL);
+
+        loop {
+            interval.tick().await;
+            while match self.process_pending_once().await {
+                Ok(processed) => processed,
+                Err(e) => {
+                    tracing::error!(error = %e, "GitHub webhook delivery worker failed");
+                    false
+                }
+            } {}
+        }
+    }
+
+    pub(crate) async fn process_pending_once(&self) -> Result<bool, GithubAppError> {
+        let delivery = match self.store.claim_pending(DELIVERY_LEASE).await? {
+            Some(delivery) => delivery,
+            None => return Ok(false),
+        };
+
+        match self
+            .work_runs
+            .reconcile_pull_request_completion(
+                delivery.installation_id,
+                &delivery.repo_full_name,
+                delivery.pr_number,
+            )
+            .await
+        {
+            Ok(outcome) if outcome.matched > 0 => {
+                self.store.complete(&delivery.delivery_id).await?;
+                tracing::info!(
+                    github_delivery_id = delivery.delivery_id,
+                    tasks_matched = outcome.matched,
+                    tasks_moved = outcome.moved,
+                    "processed GitHub pull request webhook",
+                );
+            }
+            Ok(_) => {
+                self.store
+                    .retry(&delivery, "no linked task PR found yet")
+                    .await?;
+            }
+            Err(e) => {
+                tracing::warn!(
+                    github_delivery_id = delivery.delivery_id,
+                    error = %e,
+                    "GitHub pull request webhook reconciliation failed; retry scheduled",
+                );
+                self.store.retry(&delivery, &e.to_string()).await?;
+            }
+        }
+
+        Ok(true)
     }
 }
 
@@ -106,11 +171,6 @@ fn closed_pull_request(
         "closed" => Ok(Some(payload)),
         _ => Ok(None),
     }
-}
-
-#[cfg(test)]
-pub(super) fn is_completion_event(event: &str, body: &[u8]) -> Result<bool, GithubWebhookError> {
-    closed_pull_request(event, body).map(|payload| payload.is_some())
 }
 
 #[derive(Deserialize)]

@@ -19,6 +19,7 @@ use crate::services::dispatcher::cancel_store::{
 use crate::services::dispatcher::dispatch_store::DispatchStore;
 use crate::services::github_app::service::webhooks::GithubWebhookService;
 use crate::services::github_app::service::GithubAppManager;
+use crate::services::github_app::webhook_store::GithubWebhookStore;
 use crate::services::model_providers::auth::device_flow::RedisDeviceFlowStore;
 use crate::services::model_providers::auth::encryption::SecretCipher;
 use crate::services::model_providers::auth::openai_chatgpt::OpenAiChatGptDeviceAuthProvider;
@@ -138,8 +139,11 @@ impl AppState {
             cancel_store.clone(),
             cfg.unhealthy_threshold,
         );
-        let github_webhooks =
-            GithubWebhookService::new(cfg.github_webhook_secret.as_deref(), jobs.clone());
+        let github_webhooks = GithubWebhookService::new(
+            cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
+            GithubWebhookStore::redis(&cfg.redis_url)?,
+            jobs.clone(),
+        );
         let events = WorkRunEventsService::new(
             WorkRunEventsRepository::new(),
             work_runs.clone(),
