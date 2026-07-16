@@ -52,12 +52,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - ubuntu-24.04
+        include:
+          - runner: ubuntu-24.04
+            postgres_image: postgres:17-alpine
+          - runner: macos-latest
+            postgres_image: ""
+          - runner: macos-15-intel
+            postgres_image: ""
     runs-on: ${{ matrix.runner }}
     services:
       postgres:
-        image: postgres
+        image: ${{ matrix.postgres_image }}
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: vulcanum_db
@@ -73,7 +78,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install --yes clang libssl-dev pkg-config
+      - name: Start macOS PostgreSQL
+        if: runner.os == 'macOS'
+        run: |
+          brew install postgresql
+          postgres_bin="$(brew --prefix postgresql)/bin"
+          echo "$postgres_bin" >> "$GITHUB_PATH"
+          "$postgres_bin/initdb" \
+            --pgdata "$RUNNER_TEMP/postgres" \
+            --username postgres \
+            --auth trust \
+            --encoding UTF8 \
+            --no-locale
+          "$postgres_bin/pg_ctl" \
+            -D "$RUNNER_TEMP/postgres" \
+            -l "$RUNNER_TEMP/postgres.log" \
+            -o "-p 5432 -c max_connections=200" \
+            -w start
+          "$postgres_bin/createdb" \
+            --host localhost \
+            --port 5432 \
+            --username postgres \
+            vulcanum_db
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-node@v6
@@ -96,6 +124,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/vulcanum_db
+          RUST_TEST_THREADS: "8"
         run: pnpm run test
 
   ci-pass:
