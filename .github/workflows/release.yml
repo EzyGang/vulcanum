@@ -115,7 +115,7 @@ jobs:
           fi
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vulcanum-${{ matrix.target }}
           path: |
@@ -150,7 +150,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
