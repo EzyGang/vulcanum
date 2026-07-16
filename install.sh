@@ -13,6 +13,42 @@ require_command() {
     fi
 }
 
+print_path_instructions() {
+    path_value=$INSTALL_DIR
+    if [ "$INSTALL_DIR" = "${HOME}/.local/bin" ]; then
+        path_value='$HOME/.local/bin'
+    fi
+
+    shell_name=${SHELL##*/}
+    echo
+
+    case "$shell_name" in
+        fish)
+            echo "Add it to PATH for current and future fish sessions:"
+            printf '  fish_add_path "%s"\n' "$path_value"
+            ;;
+        bash|zsh)
+            profile='$HOME/.bashrc'
+            if [ "$shell_name" = "zsh" ]; then
+                profile='$HOME/.zshrc'
+            fi
+
+            echo "Add it to PATH for this shell:"
+            printf '  export PATH="%s:$PATH"\n' "$path_value"
+            echo
+            echo "Persist it for future ${shell_name} sessions:"
+            echo "  echo 'export PATH=\"${path_value}:\$PATH\"' >> \"${profile}\""
+            echo "  . \"${profile}\""
+            ;;
+        *)
+            echo "Add it to PATH for this shell:"
+            printf '  export PATH="%s:$PATH"\n' "$path_value"
+            echo
+            echo "Add the same export command to your shell profile to persist it."
+            ;;
+    esac
+}
+
 resolve_target() {
     os=$(uname -s)
     arch=$(uname -m)
@@ -120,5 +156,5 @@ install -m 0755 "${tmp_dir}/vulcanum-server" "${INSTALL_DIR}/vulcanum-server"
 echo "Installed vulcanum and vulcanum-server to ${INSTALL_DIR}"
 case ":${PATH}:" in
     *":${INSTALL_DIR}:"*) ;;
-    *) echo "Add ${INSTALL_DIR} to PATH to run the binaries." ;;
+    *) print_path_instructions ;;
 esac

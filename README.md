@@ -52,9 +52,9 @@ The installer:
 - supports x86_64 and ARM64 Linux and macOS;
 - downloads the latest release archive and its SHA-256 checksum;
 - verifies the archive before installing either binary;
-- installs to `~/.local/bin` by default and tells you when that directory is not on `PATH`.
+- installs to `~/.local/bin` by default and, when needed, prints commands to update `PATH` for the current shell and persist it in Bash, Zsh, or Fish.
 
-It requires `tar`, `awk`, either `curl` or `wget`, and either `sha256sum` or `shasum`. To inspect the script before running it:
+It requires `tar`, `awk`, `sed`, either `curl` or `wget`, and either `sha256sum` or `shasum`. To inspect the script before running it:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
