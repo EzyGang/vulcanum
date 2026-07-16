@@ -2,10 +2,6 @@ export interface InstanceLoginRequest {
   password: string;
 }
 
-export interface InstanceLoginResponse {
-  token: string;
-}
-
 export interface AuthTokenResponse {
   accessToken: string;
   refreshToken: string;

@@ -9,7 +9,12 @@ use crate::test_helpers;
 #[sqlx::test]
 async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
-    let token = state.auth.instance_login("test-password").unwrap();
+    let token = state
+        .auth
+        .instance_login("test-password")
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -67,7 +72,12 @@ async fn connect_refresh_poll_no_jobs(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn full_job_lifecycle(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
-    let token = state.auth.instance_login("test-password").unwrap();
+    let token = state
+        .auth
+        .instance_login("test-password")
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -176,7 +186,12 @@ async fn full_job_lifecycle(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
-    let token = state.auth.instance_login("test-password").unwrap();
+    let token = state
+        .auth
+        .instance_login("test-password")
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -240,7 +255,12 @@ async fn ack_wrong_worker_returns_409(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn double_ack_returns_409(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
-    let token = state.auth.instance_login("test-password").unwrap();
+    let token = state
+        .auth
+        .instance_login("test-password")
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()

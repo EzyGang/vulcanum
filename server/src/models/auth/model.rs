@@ -49,11 +49,6 @@ pub struct InstanceLoginRequest {
     pub password: String,
 }
 
-#[derive(Serialize)]
-pub struct InstanceLoginResponse {
-    pub token: String,
-}
-
 #[derive(Deserialize)]
 pub struct RefreshRequest {
     pub refresh_token: String,

@@ -6,7 +6,7 @@ import {
   getAuthMode,
   getGithubLoginUrl
 } from '../../../services/auth/auth.service';
-import { acceptToken, login } from '../../../stores/auth.store';
+import { acceptTokenPair, login } from '../../../stores/auth.store';
 import { ApiError } from '../../../utils/api/client';
 
 export type LoginMode = 'loading' | 'single-user' | 'github' | 'unavailable';
@@ -54,7 +54,7 @@ export const useLogin = (): LoginViewProps => {
     if (code) {
       loading.value = true;
       exchangeAuthCode(code)
-        .then((tokenPair) => acceptToken(tokenPair.accessToken, true, tokenPair.refreshToken))
+        .then((tokenPair) => acceptTokenPair(tokenPair, true))
         .then(() => setLocation('/'))
         .catch(() => {
           error.value = 'GitHub login failed';

@@ -4,8 +4,8 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::{
     AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, GithubStartQuery,
-    InstanceLoginRequest, InstanceLoginResponse, LoginRequest, LoginResponse, LogoutRequest,
-    RefreshRequest, TeamPrincipal, VerifyQuery, VerifyResponse,
+    InstanceLoginRequest, LoginRequest, LoginResponse, LogoutRequest, RefreshRequest,
+    TeamPrincipal, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
@@ -36,9 +36,9 @@ pub async fn instance_login(
     state: web::Data<AppState>,
     body: web::Json<InstanceLoginRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let token = state.auth.instance_login(&body.password)?;
+    let response = state.auth.instance_login(&body.password).await?;
 
-    Ok(HttpResponse::Ok().json(InstanceLoginResponse { token }))
+    Ok(HttpResponse::Ok().json(response))
 }
 
 pub async fn mode(state: web::Data<AppState>) -> Result<HttpResponse, AppError> {
@@ -98,7 +98,7 @@ pub async fn refresh(
     state: web::Data<AppState>,
     body: web::Json<RefreshRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let response = state.auth.refresh_user_token(&body.refresh_token).await?;
+    let response = state.auth.refresh_token(&body.refresh_token).await?;
 
     Ok(HttpResponse::Ok().json(response))
 }
@@ -115,11 +115,10 @@ pub async fn me(state: web::Data<AppState>, auth: TeamPrincipal) -> Result<HttpR
 
 pub async fn logout(
     state: web::Data<AppState>,
-    _auth: TeamPrincipal,
     body: Option<web::Json<LogoutRequest>>,
 ) -> Result<HttpResponse, AppError> {
-    if let Some(refresh_token) = body.and_then(|body| body.refresh_token.clone()) {
-        state.auth.revoke_user_refresh_token(&refresh_token).await?;
+    if let Some(refresh_token) = body.and_then(|body| body.into_inner().refresh_token) {
+        state.auth.revoke_refresh_token(&refresh_token).await?;
     }
 
     Ok(HttpResponse::NoContent().finish())

@@ -3,14 +3,13 @@ import type {
   AuthModeResponse,
   AuthTokenResponse,
   InstanceLoginRequest,
-  InstanceLoginResponse,
   MeResponse,
   RefreshRequest
 } from '../../types/auth';
 import { get, post } from '../../utils/api/request';
 
 export const instanceLogin = (password: string) =>
-  post<InstanceLoginResponse>('/auth/instance-login', {
+  post<AuthTokenResponse>('/auth/instance-login', {
     password
   } as InstanceLoginRequest);
 

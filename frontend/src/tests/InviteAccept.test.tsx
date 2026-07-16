@@ -25,7 +25,7 @@ const authStore = vi.hoisted(() => {
   const selectedTeamId = { value: null as string | null };
 
   return {
-    acceptToken: vi.fn(async () => undefined),
+    acceptTokenPair: vi.fn(async () => undefined),
     accessToken,
     clearAuthState: vi.fn(() => {
       accessToken.value = null;

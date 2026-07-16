@@ -5,6 +5,7 @@ use sha2::Digest;
 
 use crate::models::auth::errors::AuthError;
 use crate::models::auth::model::AuthTokenResponse;
+use crate::services::auth::service::instance_login::INSTANCE_REFRESH_TOKEN_PREFIX;
 use crate::services::auth::service::AuthService;
 
 const USER_ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
@@ -43,6 +44,15 @@ impl AuthService {
     }
 
     #[must_use = "refreshed token pair should be returned to the caller"]
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthTokenResponse, AuthError> {
+        if refresh_token.starts_with(INSTANCE_REFRESH_TOKEN_PREFIX) {
+            return self.refresh_instance_token(refresh_token).await;
+        }
+
+        self.refresh_user_token(refresh_token).await
+    }
+
+    #[must_use = "refreshed token pair should be returned to the caller"]
     pub async fn refresh_user_token(
         &self,
         refresh_token: &str,
@@ -74,6 +84,14 @@ impl AuthService {
         self.repo
             .revoke_refresh_token(&self.db, &refresh_token_hash)
             .await
+    }
+
+    pub async fn revoke_refresh_token(&self, refresh_token: &str) -> Result<(), AuthError> {
+        if refresh_token.starts_with(INSTANCE_REFRESH_TOKEN_PREFIX) {
+            return self.revoke_instance_refresh_token(refresh_token).await;
+        }
+
+        self.revoke_user_refresh_token(refresh_token).await
     }
 
     pub fn create_user_callback_code(
@@ -114,11 +132,11 @@ impl AuthService {
     }
 }
 
-fn generate_random_token(length: usize) -> String {
+pub(super) fn generate_random_token(length: usize) -> String {
     vulcanum_shared::crypto::generate_alphanumeric_string(length)
 }
 
-fn hash_token(token: &str) -> String {
+pub(super) fn hash_token(token: &str) -> String {
     let mut hasher = sha2::Sha256::new();
     hasher.update(token.as_bytes());
     hex::encode(hasher.finalize())

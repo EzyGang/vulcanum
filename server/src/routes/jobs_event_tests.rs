@@ -10,7 +10,9 @@ async fn list_job_events_rejects_after_sequence_above_i64_max(pool: sqlx::PgPool
     let token = state
         .auth
         .instance_login("test-password")
-        .expect("should issue instance token");
+        .await
+        .expect("should issue instance token")
+        .access_token;
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(state))

@@ -1,11 +1,11 @@
 import {
   accessToken,
   clearAuthState,
-  REFRESH_STORAGE_KEY,
   refreshToken,
-  STORAGE_KEY,
+  replaceTokenPair,
   selectedTeamId
 } from '../../stores/auth.store';
+import type { AuthTokenResponse } from '../../types/auth';
 import { camelKeys, snakeKeys } from './snake-camel';
 
 const isDevelopment = import.meta.env.DEV;
@@ -59,32 +59,46 @@ const clearStoredTokens = (): void => {
   clearAuthState();
 };
 
-const refreshAccessToken = async (): Promise<boolean> => {
-  if (!refreshToken.value) return false;
+let refreshPromise: Promise<boolean> | null = null;
+
+const performTokenRefresh = async (): Promise<boolean> => {
+  const capturedRefreshToken = refreshToken.value;
+  if (!capturedRefreshToken) return false;
 
   const response = await fetch(buildUrl('/auth/refresh'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ refresh_token: refreshToken.value })
+    body: JSON.stringify({ refresh_token: capturedRefreshToken })
   });
 
   if (!response.ok) {
-    clearStoredTokens();
-    return false;
+    if (response.status === 401) {
+      if (refreshToken.value === capturedRefreshToken) clearStoredTokens();
+      return false;
+    }
+
+    throw new ApiError(response.status, response.statusText || 'Token refresh failed');
   }
 
-  const data = camelKeys(await response.json()) as {
-    accessToken: string;
-    refreshToken: string;
-  };
-  accessToken.value = data.accessToken;
-  refreshToken.value = data.refreshToken;
-  localStorage.setItem(STORAGE_KEY, data.accessToken);
-  localStorage.setItem(REFRESH_STORAGE_KEY, data.refreshToken);
+  const tokenPair = camelKeys(await response.json()) as AuthTokenResponse;
+  if (refreshToken.value !== capturedRefreshToken) return false;
 
+  replaceTokenPair(tokenPair);
   return true;
+};
+
+export const refreshAccessToken = (): Promise<boolean> => {
+  if (refreshPromise) return refreshPromise;
+
+  const operation = performTokenRefresh();
+  refreshPromise = operation;
+  const clearOperation = () => {
+    if (refreshPromise === operation) refreshPromise = null;
+  };
+  void operation.then(clearOperation, clearOperation);
+  return operation;
 };
 
 const shouldRefreshRequest = (path: string): boolean =>
@@ -177,9 +191,14 @@ export const fetchApi = async <T>(path: string, options: ApiFetchOptions = {}): 
 
   logRequest(method, url, body);
 
+  const sentAccessToken = accessToken.value;
   let response = await sendRequest();
-  if (response.status === 401 && shouldRefreshRequest(path) && (await refreshAccessToken())) {
-    response = await sendRequest();
+  if (response.status === 401 && shouldRefreshRequest(path)) {
+    if (sentAccessToken && sentAccessToken !== accessToken.value) {
+      response = await sendRequest();
+    } else if (await refreshAccessToken()) {
+      response = await sendRequest();
+    }
   }
 
   const isJson = response.headers.get('content-type')?.includes('application/json');

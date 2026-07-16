@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { getMe, instanceLogin } from '../services/auth/auth.service';
-import type { AuthTeam, AuthUser } from '../types/auth';
+import type { AuthTeam, AuthTokenResponse, AuthUser } from '../types/auth';
 import { fetchApi } from '../utils/api/client';
 
 export const STORAGE_KEY = 'vulcanum-auth-token';
@@ -36,24 +36,24 @@ export const clearAuthState = (): void => {
   localStorage.removeItem(REFRESH_STORAGE_KEY);
 };
 
-export const acceptToken = async (
-  token: string,
-  loadUser = true,
-  newRefreshToken?: string
+export const replaceTokenPair = (tokenPair: AuthTokenResponse): void => {
+  accessToken.value = tokenPair.accessToken;
+  refreshToken.value = tokenPair.refreshToken;
+  localStorage.setItem(STORAGE_KEY, tokenPair.accessToken);
+  localStorage.setItem(REFRESH_STORAGE_KEY, tokenPair.refreshToken);
+};
+
+export const acceptTokenPair = async (
+  tokenPair: AuthTokenResponse,
+  loadUser = true
 ): Promise<void> => {
-  accessToken.value = token;
-  localStorage.setItem(STORAGE_KEY, token);
-  if (newRefreshToken) {
-    refreshToken.value = newRefreshToken;
-    localStorage.setItem(REFRESH_STORAGE_KEY, newRefreshToken);
-  } else {
-    refreshToken.value = null;
-    clearSessionState();
-    localStorage.removeItem(REFRESH_STORAGE_KEY);
-  }
+  replaceTokenPair(tokenPair);
   if (loadUser) {
     await loadSession();
+    return;
   }
+
+  clearSessionState();
 };
 
 export const loadSession = async (): Promise<void> => {
@@ -70,24 +70,23 @@ export const loadSession = async (): Promise<void> => {
 };
 
 export const login = async (password: string): Promise<void> => {
-  const { token } = await instanceLogin(password);
-  await acceptToken(token, false);
+  const tokenPair = await instanceLogin(password);
+  await acceptTokenPair(tokenPair, false);
 };
 
 export const logout = async (): Promise<void> => {
-  const token = accessToken.value;
   const tokenToRevoke = refreshToken.value;
-  if (token) {
-    try {
-      await fetchApi('/auth/logout', {
-        method: 'POST',
-        body: {
-          refreshToken: tokenToRevoke
-        }
-      });
-    } catch {
-      // Local cleanup still removes the refresh token if the access token already expired.
-    }
-  }
   clearAuthState();
+  if (!tokenToRevoke) return;
+
+  try {
+    await fetchApi('/auth/logout', {
+      method: 'POST',
+      body: {
+        refreshToken: tokenToRevoke
+      }
+    });
+  } catch {
+    // Local cleanup is authoritative when the server is unavailable.
+  }
 };

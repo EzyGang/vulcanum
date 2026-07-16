@@ -84,7 +84,12 @@ async fn list_returns_configs(pool: sqlx::PgPool) {
     insert_config(&pool, "test-list-2").await;
 
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -110,7 +115,12 @@ async fn get_returns_config(pool: sqlx::PgPool) {
     let id = insert_config(&pool, "test-get").await;
 
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -136,7 +146,12 @@ async fn get_nonexistent_returns_404(pool: sqlx::PgPool) {
     let nonexistent = Uuid::new_v4();
 
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -160,7 +175,12 @@ async fn patch_updates_config(pool: sqlx::PgPool) {
     let id = insert_config_with_provider(&pool, "test-patch", provider_id).await;
 
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -188,7 +208,12 @@ async fn delete_removes_config(pool: sqlx::PgPool) {
     let id = insert_config(&pool, "test-delete").await;
 
     let state = build_state(pool.clone()).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -220,7 +245,12 @@ async fn delete_nonexistent_returns_404(pool: sqlx::PgPool) {
     let nonexistent = Uuid::new_v4();
 
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()

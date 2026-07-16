@@ -7,7 +7,12 @@ use crate::test_helpers;
 #[sqlx::test]
 async fn defaults_returns_prompt_templates(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool).await;
-    let token = state.auth.instance_login("test-password").unwrap();
+    let token = state
+        .auth
+        .instance_login("test-password")
+        .await
+        .unwrap()
+        .access_token;
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(state))

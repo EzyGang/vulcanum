@@ -8,7 +8,7 @@ import {
 } from '../../../services/auth/auth.service';
 import { acceptTeamInvite, previewTeamInvite } from '../../../services/teams/teams.service';
 import {
-  acceptToken,
+  acceptTokenPair,
   accessToken,
   loadSession,
   setSelectedTeamId
@@ -91,7 +91,7 @@ export const useInviteAccept = ({ token }: UseInviteAcceptArgs) => {
     exchangedCode.value = true;
     accepting.value = true;
     exchangeAuthCode(code)
-      .then((tokenPair) => acceptToken(tokenPair.accessToken, true, tokenPair.refreshToken))
+      .then((tokenPair) => acceptTokenPair(tokenPair, true))
       .then(() => acceptInvite())
       .catch((err) => {
         mode.value = 'invalid';

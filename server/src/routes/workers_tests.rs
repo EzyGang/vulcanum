@@ -18,7 +18,12 @@ fn auth_header(token: &str) -> (&str, String) {
 #[sqlx::test]
 async fn generate_code_returns_201(pool: sqlx::PgPool) {
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -176,7 +181,12 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
         .unwrap();
     let worker_id = connect.worker_id;
 
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
@@ -222,7 +232,12 @@ async fn list_workers_returns_200(pool: sqlx::PgPool) {
     test_helpers::insert_worker(&pool, "list-test-2").await;
 
     let state = build_state(pool).await;
-    let token = state.auth.instance_login(TEST_PASSWORD).unwrap();
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()

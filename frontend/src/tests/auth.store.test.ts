@@ -11,7 +11,7 @@ vi.mock('../utils/api/client', () => ({
 
 import { instanceLogin } from '../services/auth/auth.service';
 import {
-  acceptToken,
+  acceptTokenPair,
   accessToken,
   currentUser,
   login,
@@ -65,23 +65,28 @@ describe('auth.store', () => {
     expect(localStorage.getItem(TEAM_STORAGE_KEY)).toBeNull();
   });
 
-  it('acceptToken without refresh support clears stale session and team state', async () => {
-    refreshToken.value = 'old-refresh-token';
+  it('acceptTokenPair without user loading clears stale session and team state', async () => {
     currentUser.value = { id: 'old-user', email: 'old@example.com' };
     teams.value = [{ id: 'old-team', name: 'Old Team' }];
     selectedTeamId.value = 'old-team';
-    localStorage.setItem(REFRESH_STORAGE_KEY, 'old-refresh-token');
     localStorage.setItem(TEAM_STORAGE_KEY, 'old-team');
 
-    await acceptToken('instance-token', false);
+    await acceptTokenPair(
+      {
+        accessToken: 'instance-token',
+        refreshToken: 'instance-refresh-token',
+        refreshExpiresAt: '2030-01-01T00:00:00Z'
+      },
+      false
+    );
 
     expect(accessToken.value).toBe('instance-token');
-    expect(refreshToken.value).toBeNull();
+    expect(refreshToken.value).toBe('instance-refresh-token');
     expect(currentUser.value).toBeNull();
     expect(teams.value).toEqual([]);
     expect(selectedTeamId.value).toBeNull();
     expect(localStorage.getItem(TEST_KEY)).toBe('instance-token');
-    expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBe('instance-refresh-token');
     expect(localStorage.getItem(TEAM_STORAGE_KEY)).toBeNull();
   });
 
@@ -89,10 +94,7 @@ describe('auth.store', () => {
     accessToken.value = 'test-token';
     refreshToken.value = 'old-refresh-token';
     vi.mocked(fetchApi).mockImplementationOnce(async (_path, options) => {
-      if (!options) return undefined;
-
-      refreshToken.value = 'new-refresh-token';
-      expect(options.body).toEqual({ refreshToken: 'old-refresh-token' });
+      expect(options?.body).toEqual({ refreshToken: 'old-refresh-token' });
       return undefined;
     });
 
@@ -106,15 +108,20 @@ describe('auth.store', () => {
     });
   });
 
-  it('login sets token in signal and localStorage on success', async () => {
-    const mockToken = 'mock-session-token-abc123';
-    vi.mocked(instanceLogin).mockResolvedValue({ token: mockToken });
+  it('login stores the returned token pair', async () => {
+    vi.mocked(instanceLogin).mockResolvedValue({
+      accessToken: 'instance-access-token',
+      refreshToken: 'instance-refresh-token',
+      refreshExpiresAt: '2030-01-01T00:00:00Z'
+    });
 
     await login('correct-password');
 
     expect(instanceLogin).toHaveBeenCalledWith('correct-password');
-    expect(accessToken.value).toBe(mockToken);
-    expect(localStorage.getItem(TEST_KEY)).toBe(mockToken);
+    expect(accessToken.value).toBe('instance-access-token');
+    expect(refreshToken.value).toBe('instance-refresh-token');
+    expect(localStorage.getItem(TEST_KEY)).toBe('instance-access-token');
+    expect(localStorage.getItem(REFRESH_STORAGE_KEY)).toBe('instance-refresh-token');
   });
 
   it('login throws when password is wrong', async () => {

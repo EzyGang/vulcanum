@@ -14,7 +14,12 @@ use crate::test_helpers;
 #[sqlx::test]
 async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool.clone()).await;
-    let token = state.auth.instance_login("test-password").unwrap();
+    let token = state
+        .auth
+        .instance_login("test-password")
+        .await
+        .unwrap()
+        .access_token;
 
     let app = test::init_service(
         App::new()
