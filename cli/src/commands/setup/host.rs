@@ -27,6 +27,17 @@ pub(crate) fn which_path(binary: &str) -> Option<PathBuf> {
     })
 }
 
+#[cfg(target_os = "macos")]
+pub(crate) fn macos_user() -> anyhow::Result<String> {
+    let user_name = std::env::var("SUDO_USER")
+        .or_else(|_| std::env::var("USER"))
+        .map_err(|_| anyhow::anyhow!("failed to resolve current macOS user"))?;
+    if user_name == "root" {
+        anyhow::bail!("failed to resolve the macOS login user from the sudo environment");
+    }
+    Ok(user_name)
+}
+
 /// Verifies that the current user has passwordless sudo access.
 pub fn has_sudo_access() -> anyhow::Result<()> {
     let status = Command::new("sudo")

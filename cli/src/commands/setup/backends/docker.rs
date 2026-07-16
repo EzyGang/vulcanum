@@ -1,5 +1,7 @@
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(test)]
+mod macos_tests;
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -12,6 +14,9 @@ use crate::commands::setup::host::which_path;
 #[cfg(target_os = "linux")]
 use crate::commands::setup::service;
 
+#[cfg(any(test, target_os = "macos"))]
+const DOCKER_APP: &str = "/Applications/Docker.app";
+
 #[cfg(target_os = "linux")]
 const DOCKER_READY_ATTEMPTS: u8 = 15;
 #[cfg(target_os = "linux")]
@@ -21,6 +26,13 @@ const DOCKER_READY_DELAY: Duration = Duration::from_secs(1);
 pub(crate) enum DockerAccess {
     Direct,
     Sudo,
+}
+
+#[cfg(any(test, target_os = "macos"))]
+fn docker_desktop_launch_command(user_name: &str) -> Command {
+    let mut command = Command::new("sudo");
+    command.args(["-u", user_name, "open"]).arg(DOCKER_APP);
+    command
 }
 
 #[cfg(target_os = "macos")]

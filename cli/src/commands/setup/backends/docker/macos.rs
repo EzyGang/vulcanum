@@ -3,12 +3,15 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
-use crate::console;
 use vulcanum_shared::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
 
-use super::{docker_binary_path, docker_info_status, DockerAccess};
+use crate::commands::setup::host::macos_user;
+use crate::console;
 
-const DOCKER_APP: &str = "/Applications/Docker.app";
+use super::{
+    docker_binary_path, docker_desktop_launch_command, docker_info_status, DockerAccess, DOCKER_APP,
+};
+
 const DOCKER_START_ATTEMPTS: u16 = 120;
 const DOCKER_START_DELAY: Duration = Duration::from_secs(2);
 
@@ -143,8 +146,8 @@ fn remove_downloaded_dmg(dmg_path: &Path) {
 }
 
 fn launch_docker_desktop() -> anyhow::Result<()> {
-    let status = Command::new("open")
-        .args(["-a", "Docker"])
+    let user_name = macos_user()?;
+    let status = docker_desktop_launch_command(&user_name)
         .status()
         .map_err(|e| anyhow::anyhow!("failed to launch Docker Desktop: {e}"))?;
     if !status.success() {

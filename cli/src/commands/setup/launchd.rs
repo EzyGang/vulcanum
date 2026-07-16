@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::commands::setup::host::worker_server_path;
+use crate::commands::setup::host::{macos_user, worker_server_path};
 
 const LABEL: &str = "com.vulcanum.worker";
 const PLIST_PATH: &str = "/Library/LaunchDaemons/com.vulcanum.worker.plist";
@@ -10,7 +10,7 @@ const LAUNCHD_PATH: &str = "/opt/homebrew/bin:/usr/local/bin:/Applications/Docke
 
 pub(crate) fn configure_worker_service() -> anyhow::Result<()> {
     let binary_path = worker_server_path()?;
-    let user_name = service_user()?;
+    let user_name = macos_user()?;
     let home_dir = service_home()?;
     let plist = launchd_plist(&binary_path, &user_name, &home_dir);
     let tmp_path = std::env::temp_dir().join("com.vulcanum.worker.plist");
@@ -134,16 +134,6 @@ fn launchd_plist(binary_path: &str, user_name: &str, home_dir: &Path) -> String 
 </dict>\n\
 </plist>\n"
     )
-}
-
-fn service_user() -> anyhow::Result<String> {
-    let user_name = std::env::var("SUDO_USER")
-        .or_else(|_| std::env::var("USER"))
-        .map_err(|_| anyhow::anyhow!("failed to resolve current macOS user"))?;
-    if user_name == "root" {
-        anyhow::bail!("refusing to install launchd worker service as root; rerun setup from the target user account with passwordless sudo")
-    }
-    Ok(user_name)
 }
 
 fn service_home() -> anyhow::Result<PathBuf> {
