@@ -1,6 +1,6 @@
 #[cfg(target_os = "macos")]
 mod macos;
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod macos_tests;
 
 use std::path::PathBuf;
@@ -62,7 +62,10 @@ pub(crate) fn docker_binary_path() -> Option<PathBuf> {
 }
 
 pub(crate) fn docker_command() -> Command {
-    Command::new(docker_binary_path().unwrap_or_else(|| PathBuf::from("docker")))
+    let mut command = Command::new(docker_binary_path().unwrap_or_else(|| PathBuf::from("docker")));
+    #[cfg(target_os = "macos")]
+    macos::configure_docker_command(&mut command);
+    command
 }
 
 pub(crate) fn docker_info_status(access: DockerAccess) -> anyhow::Result<bool> {

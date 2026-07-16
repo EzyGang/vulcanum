@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use vulcanum_shared::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
 
-use crate::commands::setup::host::macos_user;
+use crate::commands::setup::host::{macos_user, which_path};
 use crate::console;
 
 use super::{
@@ -16,11 +16,14 @@ const DOCKER_START_ATTEMPTS: u16 = 120;
 const DOCKER_START_DELAY: Duration = Duration::from_secs(2);
 
 pub(super) fn install_docker() -> anyhow::Result<()> {
+    let user_name = macos_user()?;
     if docker_binary_path().is_none() {
-        install_docker_desktop()?;
+        install_docker_desktop(&user_name)?;
+    } else if which_path("docker").is_none() {
+        configure_installed_docker_desktop(&user_name)?;
     }
 
-    launch_docker_desktop()?;
+    launch_docker_desktop(&user_name)?;
     wait_for_docker_desktop()
 }
 
@@ -32,8 +35,32 @@ pub(super) fn docker_cli_path() -> Option<PathBuf> {
         false => None,
     }
 }
+pub(super) fn configure_docker_command(command: &mut Command) {
+    let Some(resources_bin) = Path::new(MACOS_DOCKER_DESKTOP_CLI_PATH).parent() else {
+        return;
+    };
+    let mut path = resources_bin.as_os_str().to_owned();
+    match std::env::var_os("PATH") {
+        Some(existing_path) if !existing_path.is_empty() => {
+            path.push(":");
+            path.push(existing_path);
+        }
+        Some(_) | None => (),
+    }
+    command.env("PATH", path);
+}
 
-fn install_docker_desktop() -> anyhow::Result<()> {
+pub(super) fn docker_desktop_install_command(app_path: &Path, user_name: &str) -> Command {
+    let installer = app_path.join("Contents/MacOS/install");
+    let mut command = Command::new("sudo");
+    command
+        .arg("-n")
+        .arg(installer)
+        .arg(format!("--user={user_name}"));
+    command
+}
+
+fn install_docker_desktop(user_name: &str) -> anyhow::Result<()> {
     let arch = docker_desktop_arch()?;
     let url = format!("https://desktop.docker.com/mac/main/{arch}/Docker.dmg");
     let dmg_path = std::env::temp_dir().join(format!("vulcanum-docker-{arch}.dmg"));
@@ -52,7 +79,7 @@ fn install_docker_desktop() -> anyhow::Result<()> {
     let install_result = console::progress(
         "Installing Docker.app from DMG",
         "Docker.app install",
-        || install_app_from_mount(&mount_path),
+        || run_docker_desktop_installer(&mount_path.join("Docker.app"), user_name),
     );
     detach_dmg(&mount_path);
     remove_downloaded_dmg(&dmg_path);
@@ -100,21 +127,28 @@ fn attach_dmg(dmg_path: &Path, mount_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn install_app_from_mount(mount_path: &Path) -> anyhow::Result<()> {
-    let source = mount_path.join("Docker.app");
-    if !source.exists() {
-        anyhow::bail!("Docker.app not found in mounted Docker Desktop DMG");
+fn configure_installed_docker_desktop(user_name: &str) -> anyhow::Result<()> {
+    console::progress(
+        "Configuring Docker Desktop CLI tools",
+        "Docker CLI tools",
+        || run_docker_desktop_installer(Path::new(DOCKER_APP), user_name),
+    )
+}
+
+fn run_docker_desktop_installer(app_path: &Path, user_name: &str) -> anyhow::Result<()> {
+    let installer = app_path.join("Contents/MacOS/install");
+    if !installer.is_file() {
+        anyhow::bail!(
+            "Docker Desktop installer not found at {}",
+            installer.display()
+        );
     }
 
-    let status = Command::new("sudo")
-        .arg("-n")
-        .arg("ditto")
-        .arg(&source)
-        .arg(DOCKER_APP)
+    let status = docker_desktop_install_command(app_path, user_name)
         .status()
-        .map_err(|e| anyhow::anyhow!("failed to install Docker.app: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("failed to install Docker Desktop: {e}"))?;
     if !status.success() {
-        anyhow::bail!("failed to install Docker.app into /Applications");
+        anyhow::bail!("Docker Desktop installer failed");
     }
     Ok(())
 }
@@ -145,9 +179,8 @@ fn remove_downloaded_dmg(dmg_path: &Path) {
     }
 }
 
-fn launch_docker_desktop() -> anyhow::Result<()> {
-    let user_name = macos_user()?;
-    let status = docker_desktop_launch_command(&user_name)
+fn launch_docker_desktop(user_name: &str) -> anyhow::Result<()> {
+    let status = docker_desktop_launch_command(user_name)
         .status()
         .map_err(|e| anyhow::anyhow!("failed to launch Docker Desktop: {e}"))?;
     if !status.success() {
