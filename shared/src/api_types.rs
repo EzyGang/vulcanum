@@ -10,6 +10,7 @@ use crate::runtime::types::FinishStatus;
 #[serde(rename_all = "snake_case")]
 pub enum AgentBackend {
     #[default]
+    #[serde(rename = "opencode")]
     OpenCode,
     OmpRpc,
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'preact/hooks';
 import {
   disconnectInstallation,
   getAuthUrl,
@@ -26,6 +27,14 @@ export const useGitHubApp = () => {
     enabled: !!installation,
     retry: false
   });
+
+  useEffect(() => {
+    if (!installation) {
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['github-repos'], refetchType: 'active' });
+  }, [installation?.id]);
 
   const disconnectMutation = useApiMutation((id: number) => disconnectInstallation(id), {
     onSuccess: () => {

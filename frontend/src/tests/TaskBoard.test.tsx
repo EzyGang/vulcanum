@@ -452,6 +452,24 @@ describe('taskBoard.helpers', () => {
 });
 
 describe('TaskBoard.view', () => {
+  it('shows setup guidance before a board exists', () => {
+    const props = makeProps();
+    props.data.selectedProjectKey = null;
+    const { getByRole, getByText } = render(<TaskBoardView {...props} />);
+
+    expect(getByText('Configure Vulcanum before adding a board')).toBeTruthy();
+    expect(getByRole('link', { name: 'Connect tracker' }).getAttribute('href')).toBe(
+      '/settings?tab=providers'
+    );
+    expect(getByRole('link', { name: 'Connect models' }).getAttribute('href')).toBe(
+      '/settings?tab=model-providers'
+    );
+    expect(getByRole('link', { name: 'Connect GitHub' }).getAttribute('href')).toBe(
+      '/settings?tab=github'
+    );
+    expect(getByRole('link', { name: 'Register worker' }).getAttribute('href')).toBe('/workers');
+  });
+
   it('renders provider columns and tasks without task bodies', () => {
     const props = makeProps();
     const { queryByText, getAllByText, getByText } = render(<TaskBoardView {...props} />);

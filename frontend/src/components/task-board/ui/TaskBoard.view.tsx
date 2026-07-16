@@ -14,6 +14,7 @@ import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import type { TaskBoardViewProps } from '../types';
 import { TaskBoardColumn } from './TaskBoardColumn.view';
+import { TaskBoardEmptyState } from './TaskBoardEmptyState.view';
 import { TaskBoardSettingsDialog } from './TaskBoardSettingsDialog.view';
 import { TaskCreateDialog } from './TaskCreateDialog.view';
 import { TaskDetailsDialog } from './TaskDetailsDialog.view';
@@ -80,12 +81,7 @@ export const TaskBoardView = ({
   actions
 }: TaskBoardViewProps): JSX.Element => {
   if (!selectedProjectKey) {
-    return (
-      <EmptyState
-        title='Select a board to begin'
-        description='Use the board picker in the navigation to choose a connected provider project.'
-      />
-    );
+    return <TaskBoardEmptyState />;
   }
 
   if (status.loading) {

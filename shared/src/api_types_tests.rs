@@ -11,9 +11,9 @@ fn worker_capabilities_default_to_opencode() {
 }
 
 #[test]
-fn worker_capabilities_use_snake_case_backend_names() {
+fn worker_capabilities_use_backend_wire_names() {
     let capabilities = WorkerCapabilities {
-        agent_backends: vec![AgentBackend::OmpRpc],
+        agent_backends: vec![AgentBackend::OpenCode, AgentBackend::OmpRpc],
         isolation_backends: vec!["host".to_owned(), "docker".to_owned()],
     };
 
@@ -21,8 +21,12 @@ fn worker_capabilities_use_snake_case_backend_names() {
     assert_eq!(
         encoded,
         serde_json::json!({
-            "agent_backends": ["omp_rpc"],
+            "agent_backends": ["opencode", "omp_rpc"],
             "isolation_backends": ["host", "docker"]
         })
     );
+
+    let decoded: WorkerCapabilities =
+        serde_json::from_value(encoded).expect("capabilities should deserialize");
+    assert_eq!(decoded, capabilities);
 }
