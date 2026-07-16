@@ -7,7 +7,7 @@ use std::{
 
 #[cfg(target_os = "linux")]
 use crate::commands::setup::docker_daemon::docker_runtime_registered;
-use crate::commands::setup::host::capacity_from_resources;
+use crate::commands::setup::host::{capacity_from_resources, has_sudo_access_with, SudoAction};
 use crate::commands::setup::prompts::resolve_backend;
 use crate::commands::setup::{Backend, InteractionMode};
 use crate::{console, IsolationBackend};
@@ -169,4 +169,57 @@ fn capacity_has_minimum_one_job() {
 #[test]
 fn capacity_uses_lower_cpu_or_memory_limit() {
     assert_eq!(capacity_from_resources(16, 8 * 1024 * 1024), 2);
+}
+
+#[test]
+fn sudo_check_skips_authorization_when_credentials_are_active() {
+    let mut actions = Vec::new();
+
+    has_sudo_access_with(|action| {
+        actions.push(action);
+        Ok(true)
+    })
+    .expect("active sudo credentials should pass");
+
+    assert_eq!(actions, [SudoAction::Check]);
+}
+
+#[test]
+fn sudo_check_prompts_and_rechecks_when_credentials_are_missing() {
+    let mut actions = Vec::new();
+
+    has_sudo_access_with(|action| {
+        actions.push(action);
+        Ok(action == SudoAction::Authorize || actions.len() == 3)
+    })
+    .expect("successful authorization should pass");
+
+    assert_eq!(
+        actions,
+        [SudoAction::Check, SudoAction::Authorize, SudoAction::Check]
+    );
+}
+
+#[test]
+fn sudo_check_reports_denied_authorization() {
+    let error = has_sudo_access_with(|_| Ok(false))
+        .expect_err("denied administrator authorization should fail");
+
+    assert_eq!(error.to_string(), "administrator authorization was denied");
+}
+
+#[test]
+fn sudo_check_rejects_authorization_without_noninteractive_access() {
+    let mut attempts = 0;
+    let error = has_sudo_access_with(|action| {
+        attempts += 1;
+        Ok(action == SudoAction::Authorize)
+    })
+    .expect_err("sudo without non-interactive access should fail");
+
+    assert_eq!(attempts, 3);
+    assert_eq!(
+        error.to_string(),
+        "sudo authorization succeeded, but non-interactive sudo is unavailable"
+    );
 }

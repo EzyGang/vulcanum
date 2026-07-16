@@ -38,17 +38,46 @@ pub(crate) fn macos_user() -> anyhow::Result<String> {
     Ok(user_name)
 }
 
-/// Verifies that the current user has passwordless sudo access.
+/// Ensures that sudo can run non-interactively during setup.
 pub fn has_sudo_access() -> anyhow::Result<()> {
-    let status = Command::new("sudo")
-        .args(["-n", "true"])
-        .status()
-        .map_err(|e| anyhow::anyhow!("failed to check sudo access: {e}"))?;
+    has_sudo_access_with(|action| {
+        let mut command = Command::new("sudo");
+        match action {
+            SudoAction::Check => {
+                command.args(["-n", "true"]);
+            }
+            SudoAction::Authorize => {
+                command.arg("-v");
+            }
+        }
 
-    if !status.success() {
-        anyhow::bail!(
-            "passwordless sudo is required. Ensure the user can run 'sudo -n true' without a password prompt."
-        );
+        command
+            .status()
+            .map(|status| status.success())
+            .map_err(|e| anyhow::anyhow!("failed to authorize administrator access: {e}"))
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SudoAction {
+    Check,
+    Authorize,
+}
+
+pub(crate) fn has_sudo_access_with<F>(mut run: F) -> anyhow::Result<()>
+where
+    F: FnMut(SudoAction) -> anyhow::Result<bool>,
+{
+    if run(SudoAction::Check)? {
+        return Ok(());
+    }
+
+    eprintln!("  Administrator access is required to configure the worker service.");
+    if !run(SudoAction::Authorize)? {
+        anyhow::bail!("administrator authorization was denied");
+    }
+    if !run(SudoAction::Check)? {
+        anyhow::bail!("sudo authorization succeeded, but non-interactive sudo is unavailable");
     }
 
     Ok(())
