@@ -19,6 +19,7 @@ The point is not to build another task tracker, another coding agent, or just an
 
 ## Contents
 
+- [Installation](#installation)
 - [What Vulcanum Is For](#what-vulcanum-is-for)
 - [Where It Fits](#where-it-fits)
 - [A Typical Run](#a-typical-run)
@@ -35,6 +36,43 @@ The point is not to build another task tracker, another coding agent, or just an
   - [Releases](#releases)
   - [Contributing](#contributing)
   - [License](#license)
+
+---
+
+## Installation
+
+The release installer downloads the `vulcanum` CLI and the `vulcanum-server` worker daemon on Linux or macOS:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh | sh
+```
+
+The installer:
+
+- supports x86_64 and ARM64 Linux and macOS;
+- downloads the latest release archive and its SHA-256 checksum;
+- verifies the archive before installing either binary;
+- installs to `~/.local/bin` by default and tells you when that directory is not on `PATH`.
+
+It requires `tar`, `awk`, either `curl` or `wget`, and either `sha256sum` or `shasum`. To inspect the script before running it:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  -o install.sh \
+  https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh
+less install.sh
+sh install.sh
+```
+
+Set `VULCANUM_VERSION` to install a specific release or `VULCANUM_INSTALL_DIR` to choose another destination:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh |
+  VULCANUM_VERSION=0.1.0 VULCANUM_INSTALL_DIR="$HOME/bin" sh
+```
+
+This installs the worker-side binaries only. The control-plane server, dispatcher, and frontend must still be deployed separately or run from source as described under [Running Locally](#running-locally).
 
 ---
 
@@ -430,14 +468,14 @@ Run `pnpm prep-queries` after changing server SQL queries.
 
 ### Releases
 
-Published files are listed on the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
+Published archives are listed on the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
 
-The current release workflow uploads two un-packaged binaries from a self-hosted runner:
+Each release includes `vulcanum` and `vulcanum-server` in checksum-protected archives for:
 
-- `vulcanum`, the CLI;
-- `vulcanum-server`, the worker daemon.
+- x86_64 and ARM64 Linux;
+- x86_64 and ARM64 macOS.
 
-It does not currently publish the control-plane server, dispatcher, frontend, installers, signed packages, or a platform matrix. Build from source when the published worker binaries do not match the target system.
+Use the [installation script](#installation) to select the archive for the current platform automatically. The release workflow does not publish the control-plane server, dispatcher, or frontend.
 
 ### Contributing
 

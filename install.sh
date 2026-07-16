@@ -52,6 +52,19 @@ download() {
     fi
 }
 
+resolve_latest_tag() {
+    release_metadata_path=$1
+    download "https://api.github.com/repos/${REPOSITORY}/releases?per_page=1" "$release_metadata_path"
+    latest_tag=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$release_metadata_path")
+
+    if [ -z "$latest_tag" ]; then
+        echo "error: no published Vulcanum release was found" >&2
+        exit 1
+    fi
+
+    printf '%s\n' "$latest_tag"
+}
+
 verify_checksum() {
     checksum_archive=$1
     checksum_file=$2
@@ -75,24 +88,26 @@ verify_checksum() {
 require_command uname
 require_command tar
 require_command awk
+require_command sed
+
+tmp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t vulcanum)
+trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
 
 target=$(resolve_target)
 archive_name="vulcanum-${target}.tar.gz"
 
 if [ "$VERSION" = "latest" ]; then
-    release_url="https://github.com/${REPOSITORY}/releases/latest/download"
+    tag=$(resolve_latest_tag "${tmp_dir}/release.json")
 else
     case "$VERSION" in
         v*) tag=$VERSION ;;
         *) tag="v${VERSION}" ;;
     esac
-    release_url="https://github.com/${REPOSITORY}/releases/download/${tag}"
 fi
 
-tmp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t vulcanum)
-trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+release_url="https://github.com/${REPOSITORY}/releases/download/${tag}"
 
-echo "Downloading Vulcanum ${VERSION} for ${target}..."
+echo "Downloading Vulcanum ${tag} for ${target}..."
 download "${release_url}/${archive_name}" "${tmp_dir}/${archive_name}"
 download "${release_url}/${archive_name}.sha256" "${tmp_dir}/${archive_name}.sha256"
 verify_checksum "${tmp_dir}/${archive_name}" "${tmp_dir}/${archive_name}.sha256"
