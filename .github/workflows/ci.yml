@@ -6,6 +6,8 @@ concurrency:
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 env:
@@ -133,11 +135,7 @@ jobs:
     needs:
       - lint
       - test
-    strategy:
-      matrix:
-        runner:
-          - ubuntu-24.04
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Check whether the needed jobs succeeded or failed
         uses: re-actors/alls-green@v1.2.2
