@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use super::docker::{retry_docker_pull_blocking_with, retry_docker_pull_with};
+use crate::runtime::docker::{retry_docker_pull_blocking_with, retry_docker_pull_with};
 
 #[tokio::test]
 async fn async_retry_succeeds_after_transient_failure() {

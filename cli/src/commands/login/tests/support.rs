@@ -1,8 +1,6 @@
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread;
-
-use vulcanum_shared::app_state::AppSession;
+pub(super) use crate::tests::http::{FakeServer, Response};
+use uuid::Uuid;
+use vulcanum_shared::state::app::AppSession;
 
 use super::super::{run_with, LoginRuntime};
 
@@ -105,8 +103,10 @@ impl Fixture {
         .await
     }
 
-    pub fn assert_saved_session(&self, instance_url: &str) {
-        assert_eq!(self.saved, vec![session(instance_url)]);
+    pub fn assert_saved_session(&self, instance_url: &str, team_id: Option<Uuid>) {
+        let mut expected = session(instance_url);
+        expected.team_id = team_id;
+        assert_eq!(self.saved, vec![expected]);
     }
 
     pub fn assert_secrets_not_emitted(&self, secrets: &[&str]) {
@@ -123,102 +123,6 @@ impl Fixture {
     pub fn stderr_text(&self) -> String {
         String::from_utf8(self.stderr.clone()).expect("stderr should be utf8")
     }
-}
-
-#[derive(Clone)]
-pub(super) struct Response {
-    status: &'static str,
-    body: String,
-}
-
-impl Response {
-    pub fn ok(body: &str) -> Self {
-        Self {
-            status: "200 OK",
-            body: body.to_owned(),
-        }
-    }
-
-    pub fn unauthorized(message: &str) -> Self {
-        Self {
-            status: "401 Unauthorized",
-            body: format!(r#"{{"error":"{message}"}}"#),
-        }
-    }
-}
-
-pub(super) struct Request {
-    pub target: String,
-    pub body: String,
-}
-
-pub(super) struct FakeServer {
-    pub url: String,
-    handle: thread::JoinHandle<Vec<Request>>,
-}
-
-impl FakeServer {
-    pub fn start(responses: Vec<Response>) -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("test server should bind");
-        let url = format!("http://{}", listener.local_addr().expect("test address"));
-        let handle = thread::spawn(move || {
-            responses
-                .into_iter()
-                .map(|response| {
-                    let (mut stream, _) = listener.accept().expect("request should connect");
-                    let request = read_request(&mut stream);
-                    write!(
-                        stream,
-                        "HTTP/1.1 {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                        response.status,
-                        response.body.len(),
-                        response.body
-                    )
-                    .expect("response should write");
-                    request
-                })
-                .collect()
-        });
-        Self { url, handle }
-    }
-
-    pub fn finish(self) -> Vec<Request> {
-        self.handle.join().expect("server should finish")
-    }
-}
-
-fn read_request(stream: &mut TcpStream) -> Request {
-    let mut bytes = Vec::new();
-    let mut buffer = [0_u8; 1024];
-    let header_end = loop {
-        let read = stream.read(&mut buffer).expect("request should read");
-        bytes.extend_from_slice(&buffer[..read]);
-        let Some(index) = bytes.windows(4).position(|window| window == b"\r\n\r\n") else {
-            continue;
-        };
-        break index + 4;
-    };
-    let headers = String::from_utf8_lossy(&bytes[..header_end]).into_owned();
-    let content_length = headers
-        .lines()
-        .find_map(|line| {
-            line.to_ascii_lowercase()
-                .strip_prefix("content-length: ")
-                .and_then(|value| value.parse::<usize>().ok())
-        })
-        .unwrap_or(0);
-    while bytes.len() < header_end + content_length {
-        let read = stream.read(&mut buffer).expect("body should read");
-        bytes.extend_from_slice(&buffer[..read]);
-    }
-    let target = headers
-        .split_whitespace()
-        .nth(1)
-        .expect("request target")
-        .to_owned();
-    let body = String::from_utf8(bytes[header_end..header_end + content_length].to_vec())
-        .expect("body utf8");
-    Request { target, body }
 }
 
 pub(super) fn session(instance_url: &str) -> AppSession {

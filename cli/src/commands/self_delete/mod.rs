@@ -1,12 +1,14 @@
 use std::path::Path;
 
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::paths;
+use vulcanum_shared::state::paths;
+use vulcanum_shared::state::worker::{self as worker_state, WorkerState};
 use vulcanum_shared::token::ensure_valid_token;
-use vulcanum_shared::worker_state::{self, WorkerState};
 
 use crate::commands::setup::service;
 use crate::console;
+#[cfg(test)]
+mod tests;
 
 pub async fn run() -> anyhow::Result<()> {
     console::info("Preparing worker self-delete...");

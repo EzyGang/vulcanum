@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::AuthTokenResponse;
+use vulcanum_shared::api::wire::AuthTokenResponse;
 
 use crate::models::auth::errors::AuthError;
 use crate::models::auth::model::VerifyQuery;

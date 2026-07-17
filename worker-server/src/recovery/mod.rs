@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::SessionExport;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::execution::artifact::read_finish_artifact;
 use crate::daemon::job::execution::submit::submit_turn_result;

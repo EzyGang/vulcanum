@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::review_feedback::review_requires_implementation;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 

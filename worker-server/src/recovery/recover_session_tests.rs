@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::Utc;
 use uuid::Uuid;
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobResponse, WorkRunType};
+use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, JobResponse, WorkRunType};
 
 use crate::recovery::recover_session::recovered_omp_env;
 use crate::state::journal::{JournalEntry, JournalStatus};

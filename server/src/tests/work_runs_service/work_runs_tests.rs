@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use uuid::Uuid;
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api::wire::AgentBackend;
 
 use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
@@ -30,7 +30,7 @@ use crate::services::providers::client::TaskFetcher;
 use crate::services::teams::service::TeamsService;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::test_helpers;
-use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::api::wire::SubmitResultRequest;
 
 fn build_github_manager(pool: sqlx::PgPool) -> GithubAppManager {
     let cfg = crate::config::AppConfig {

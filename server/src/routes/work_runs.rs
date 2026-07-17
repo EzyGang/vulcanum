@@ -6,7 +6,7 @@ use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
 use crate::models::work_runs::model::WorkRunStatus;
-use vulcanum_shared::api_types::{BulkDeleteRunsRequest, BulkDeleteRunsResponse, WireEvent};
+use vulcanum_shared::api::wire::{BulkDeleteRunsRequest, BulkDeleteRunsResponse, WireEvent};
 
 #[derive(Deserialize)]
 pub struct ListRunsQuery {

@@ -6,9 +6,9 @@ use std::time::Duration;
 use tokio::sync::{mpsc, watch, Mutex, RwLock};
 use tokio::task::JoinHandle;
 
-use vulcanum_shared::api_types::WireEvent;
+use vulcanum_shared::api::wire::WireEvent;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 

@@ -496,7 +496,7 @@ async fn get_events_admin_returns_full_list(pool: sqlx::PgPool) {
         .append_events(
             wr_id,
             worker_id,
-            vec![vulcanum_shared::api_types::WireEvent {
+            vec![vulcanum_shared::api::wire::WireEvent {
                 sequence: 1,
                 event_type: "session.started".to_owned(),
                 payload: serde_json::json!({}),
@@ -619,8 +619,8 @@ async fn get_events_recent_returns_last_n_ascending(pool: sqlx::PgPool) {
     let wr_id =
         test_helpers::insert_running_work_run(&pool, project_id, "recent-task", worker_id).await;
 
-    let events: Vec<vulcanum_shared::api_types::WireEvent> = (1..=25)
-        .map(|i| vulcanum_shared::api_types::WireEvent {
+    let events: Vec<vulcanum_shared::api::wire::WireEvent> = (1..=25)
+        .map(|i| vulcanum_shared::api::wire::WireEvent {
             sequence: i as u64,
             event_type: format!("e{i}"),
             payload: serde_json::json!({}),

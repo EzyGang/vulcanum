@@ -1,6 +1,6 @@
 use chrono::Utc;
 use uuid::Uuid;
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload};
+use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload};
 
 use crate::models::model_providers::model::ModelProviderConfig;
 use crate::services::model_providers::auth::credentials::{

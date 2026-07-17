@@ -4163,7 +4163,9 @@ dependencies = [
  "sys-info",
  "tokio",
  "tracing",
+ "unicode-width",
  "url",
+ "uuid",
  "vulcanum-shared",
 ]
 

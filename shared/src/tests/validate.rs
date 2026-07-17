@@ -4,7 +4,7 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
-use crate::api_types::AgentBackend;
+use crate::api::wire::AgentBackend;
 use crate::config::{IsolationBackend, WorkerConfig};
 use crate::validate::{validate_environment, Severity, ValidationIssue};
 

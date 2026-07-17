@@ -3,9 +3,14 @@ use super::support::{session, FakeServer, Fixture, Response, STATUS, TOKENS};
 #[tokio::test]
 async fn auth_failure_preserves_existing_session() {
     let server = FakeServer::start(vec![
-        Response::ok(STATUS),
-        Response::ok(r#"{"is_single_user":true}"#),
-        Response::unauthorized("invalid password"),
+        Response::ok("GET", "/api/v1/status", STATUS),
+        Response::ok("GET", "/api/v1/auth/mode", r#"{"is_single_user":true}"#),
+        Response::status(
+            "POST",
+            "/api/v1/auth/instance-login",
+            "401 Unauthorized",
+            r#"{"error":"invalid password"}"#,
+        ),
     ]);
     let existing = session("https://old.example");
     let mut fixture = Fixture::new(true);
@@ -27,9 +32,9 @@ async fn auth_failure_preserves_existing_session() {
 #[tokio::test]
 async fn explicit_instance_repairs_malformed_state_without_loading_it() {
     let server = FakeServer::start(vec![
-        Response::ok(STATUS),
-        Response::ok(r#"{"is_single_user":true}"#),
-        Response::ok(TOKENS),
+        Response::ok("GET", "/api/v1/status", STATUS),
+        Response::ok("GET", "/api/v1/auth/mode", r#"{"is_single_user":true}"#),
+        Response::ok("POST", "/api/v1/auth/instance-login", TOKENS),
     ]);
     let mut fixture = Fixture::new(false);
     fixture.load_error = true;
@@ -64,9 +69,9 @@ async fn malformed_state_aborts_implicit_instance_login() {
 #[tokio::test]
 async fn persistence_failure_never_prints_success() {
     let server = FakeServer::start(vec![
-        Response::ok(STATUS),
-        Response::ok(r#"{"is_single_user":true}"#),
-        Response::ok(TOKENS),
+        Response::ok("GET", "/api/v1/status", STATUS),
+        Response::ok("GET", "/api/v1/auth/mode", r#"{"is_single_user":true}"#),
+        Response::ok("POST", "/api/v1/auth/instance-login", TOKENS),
     ]);
     let mut fixture = Fixture::new(false);
     fixture.stdin = "instance-secret\n".to_owned();

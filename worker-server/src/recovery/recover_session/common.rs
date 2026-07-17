@@ -7,7 +7,7 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::execution::submit::{submit_result_request, SubmitResultParams};

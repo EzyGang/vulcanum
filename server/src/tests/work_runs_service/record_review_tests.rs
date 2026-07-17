@@ -1,6 +1,6 @@
 use chrono::Utc;
 use uuid::Uuid;
-use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::api::wire::SubmitResultRequest;
 
 use crate::db::work_runs::queries::InsertWorkRunParams;
 use crate::db::work_runs::WorkRunsRepository;

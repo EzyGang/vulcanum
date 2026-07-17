@@ -2,14 +2,43 @@ use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
 
-use crate::app_state::AppSession;
-use crate::state_file::{load_json, save_json};
+use crate::state::app::AppSession;
+use crate::state::file::{load_json, save_json};
 
 #[test]
 fn app_session_round_trips_through_restricted_json_helper() {
     let temp_dir = temp_path("round-trip");
     let path = temp_dir.join("nested").join("app.json");
     let expected = app_session();
+
+    save_json(&path, &expected).expect("session should save");
+    let actual = load_json(&path).expect("session should load");
+
+    assert_eq!(actual, Some(expected));
+    std::fs::remove_dir_all(temp_dir).expect("temporary directory should be removed");
+}
+
+#[test]
+fn legacy_app_session_without_team_id_loads_without_pin() {
+    let session: AppSession = serde_json::from_str(
+        r#"{
+            "instance_url":"https://vulcanum.example",
+            "access_token":"access-token",
+            "refresh_token":"refresh-token",
+            "refresh_expires_at":"2030-01-02T03:04:05Z"
+        }"#,
+    )
+    .expect("legacy session should deserialize");
+
+    assert_eq!(session.team_id, None);
+}
+
+#[test]
+fn pinned_team_survives_save_and_load() {
+    let temp_dir = temp_path("pinned-team");
+    let path = temp_dir.join("app.json");
+    let mut expected = app_session();
+    expected.team_id = Some(uuid::Uuid::from_u128(42));
 
     save_json(&path, &expected).expect("session should save");
     let actual = load_json(&path).expect("session should load");
@@ -25,8 +54,8 @@ fn public_save_state_uses_app_path_and_repairs_permissions() {
     use std::os::unix::fs::PermissionsExt;
     use std::sync::MutexGuard;
 
-    use crate::app_state::{load_state, save_state};
-    use crate::state_file::HOME_LOCK;
+    use crate::state::app::{load_state, save_state};
+    use crate::state::file::HOME_LOCK;
 
     struct HomeOverride {
         previous_home: Option<OsString>,
@@ -85,6 +114,7 @@ fn app_session() -> AppSession {
         refresh_expires_at: DateTime::parse_from_rfc3339("2030-01-02T03:04:05Z")
             .expect("fixed timestamp should parse")
             .with_timezone(&Utc),
+        team_id: None,
     }
 }
 

@@ -4,7 +4,7 @@ use crate::models::workers::model;
 use crate::services::workers::service::token::{build_jwt, generate_random_token, hash_token};
 use crate::services::workers::service::WorkersService;
 use chrono::{Duration, Utc};
-use vulcanum_shared::api_types::{ConnectRequest, ConnectResponse};
+use vulcanum_shared::api::wire::{ConnectRequest, ConnectResponse};
 
 impl WorkersService {
     pub async fn connect(&self, req: ConnectRequest) -> Result<ConnectResponse, WorkersError> {

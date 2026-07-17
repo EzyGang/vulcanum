@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::ResourceLimits;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::github_credentials::{

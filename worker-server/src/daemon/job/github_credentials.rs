@@ -6,10 +6,10 @@ use chrono::{DateTime, Utc};
 use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
-use vulcanum_shared::api_error::ApiError;
-use vulcanum_shared::api_types::RefreshGithubTokenResponse;
+use vulcanum_shared::api::error::ApiError;
+use vulcanum_shared::api::wire::RefreshGithubTokenResponse;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::isolation::github_credentials as isolation_github_credentials;

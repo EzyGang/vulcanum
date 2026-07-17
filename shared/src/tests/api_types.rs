@@ -1,4 +1,4 @@
-use crate::api_types::{AgentBackend, WorkerCapabilities};
+use crate::api::wire::{AgentBackend, WorkerCapabilities};
 
 #[test]
 fn worker_capabilities_default_to_opencode() {

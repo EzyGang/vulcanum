@@ -2,7 +2,7 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 use sha2::Digest;
-use vulcanum_shared::api_types::AuthTokenResponse;
+use vulcanum_shared::api::wire::AuthTokenResponse;
 
 use crate::models::auth::errors::AuthError;
 use crate::services::auth::service::instance_login::INSTANCE_REFRESH_TOKEN_PREFIX;

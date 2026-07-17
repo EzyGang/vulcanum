@@ -47,7 +47,7 @@ fn try_init_with_config_is_idempotent_after_successful_initialization() {
     let status = Command::new(std::env::current_exe().expect("test executable should resolve"))
         .env(CHILD_ENV, "1")
         .arg("--exact")
-        .arg("telemetry_tests::try_init_with_config_is_idempotent_after_successful_initialization")
+        .arg("tests::telemetry::try_init_with_config_is_idempotent_after_successful_initialization")
         .status()
         .expect("child telemetry test should run");
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use vulcanum_shared::api_types::{AgentConfigPayload, JobResponse};
+use vulcanum_shared::api::wire::{AgentConfigPayload, JobResponse};
 
 pub(crate) fn job_runtime_secrets(job: &JobResponse) -> HashMap<String, String> {
     let mut secrets = HashMap::new();

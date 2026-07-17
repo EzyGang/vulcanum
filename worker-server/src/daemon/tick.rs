@@ -1,6 +1,6 @@
 use tokio::time::sleep;
 
-use vulcanum_shared::api_error::is_fatal_api_error;
+use vulcanum_shared::api::error::is_fatal_api_error;
 
 use super::auth::{ensure_token_valid, with_retry_on_401};
 use super::queue::try_drain_queue;

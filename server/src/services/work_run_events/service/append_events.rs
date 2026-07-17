@@ -17,7 +17,7 @@ impl WorkRunEventsService {
         &self,
         work_run_id: Uuid,
         worker_id: Uuid,
-        events: Vec<vulcanum_shared::api_types::WireEvent>,
+        events: Vec<vulcanum_shared::api::wire::WireEvent>,
     ) -> Result<AppendResult, WorkRunEventsError> {
         let run = self
             .work_runs_repo

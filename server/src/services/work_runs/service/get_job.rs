@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use vulcanum_shared::api_types::{JobRepo, JobResponse};
+use vulcanum_shared::api::wire::{JobRepo, JobResponse};
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::providers::model::IntegrationTask;
@@ -248,11 +248,11 @@ fn empty_task(run: &WorkRun, cfg: &JobConfigFields) -> IntegrationTask {
 }
 
 #[must_use]
-fn shared_work_type(work_type: WorkRunType) -> vulcanum_shared::api_types::WorkRunType {
+fn shared_work_type(work_type: WorkRunType) -> vulcanum_shared::api::wire::WorkRunType {
     match work_type {
-        WorkRunType::Implementation => vulcanum_shared::api_types::WorkRunType::Implementation,
+        WorkRunType::Implementation => vulcanum_shared::api::wire::WorkRunType::Implementation,
         WorkRunType::PullRequestReview => {
-            vulcanum_shared::api_types::WorkRunType::PullRequestReview
+            vulcanum_shared::api::wire::WorkRunType::PullRequestReview
         }
     }
 }

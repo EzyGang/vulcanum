@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 
 #[must_use]
 pub fn initial_prompt(work_type: WorkRunType, workspace_prefix: &str, task_prompt: &str) -> String {

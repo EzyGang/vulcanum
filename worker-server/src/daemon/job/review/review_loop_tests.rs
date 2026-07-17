@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 
 use crate::daemon::job::review::review_loop::ReviewLoopState;

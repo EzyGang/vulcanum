@@ -1,9 +1,12 @@
 mod commands;
 mod console;
 mod prompts;
+#[cfg(test)]
+mod tests;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
+use uuid::Uuid;
 
 use crate::commands::setup::host::worker_server_path;
 
@@ -37,6 +40,16 @@ enum Command {
         #[command(subcommand)]
         cmd: WorkerCommand,
     },
+    /// Inspect registered workers
+    Workers {
+        #[command(subcommand)]
+        cmd: WorkersCommand,
+    },
+    /// Inspect and manage app settings
+    Settings {
+        #[command(subcommand)]
+        cmd: SettingsCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -67,6 +80,37 @@ enum WorkerCommand {
         #[arg(long, value_enum)]
         agent_backend: Option<AgentBackendArg>,
     },
+}
+
+#[derive(Subcommand)]
+enum WorkersCommand {
+    /// List workers for a team
+    List {
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+}
+
+#[derive(Subcommand)]
+enum SettingsCommand {
+    /// List settings for a team
+    List {
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+    /// Manage the local team pin
+    Team {
+        #[command(subcommand)]
+        cmd: SettingsTeamCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum SettingsTeamCommand {
+    /// Pin a team for app-facing commands
+    Set { team: Uuid },
+    /// Clear or reset the local team pin
+    Clear,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -105,6 +149,16 @@ async fn main() -> anyhow::Result<()> {
                 isolation,
                 agent_backend,
             } => commands::setup::run(code, instance, force, isolation, agent_backend).await,
+        },
+        Command::Workers { cmd } => match cmd {
+            WorkersCommand::List { team } => commands::app::workers::list(team).await,
+        },
+        Command::Settings { cmd } => match cmd {
+            SettingsCommand::List { team } => commands::app::settings::list(team).await,
+            SettingsCommand::Team { cmd } => match cmd {
+                SettingsTeamCommand::Set { team } => commands::app::settings::set_team(team).await,
+                SettingsTeamCommand::Clear => commands::app::settings::clear_team().await,
+            },
         },
     }
 }

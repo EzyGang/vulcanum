@@ -9,7 +9,7 @@ use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::service::WorkersService;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 use chrono::{Duration, Utc};
-use vulcanum_shared::api_types::{
+use vulcanum_shared::api::wire::{
     AgentBackend, ConnectRequest, RefreshRequest, WorkerCapabilities,
 };
 

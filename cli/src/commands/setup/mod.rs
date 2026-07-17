@@ -1,6 +1,6 @@
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api::wire::AgentBackend;
+use vulcanum_shared::state::worker as worker_state;
 use vulcanum_shared::validate::Severity;
-use vulcanum_shared::worker_state;
 
 use crate::console;
 use crate::AgentBackendArg;
@@ -21,7 +21,7 @@ pub(crate) mod service;
 mod systemd;
 
 #[cfg(test)]
-mod setup_tests;
+mod tests;
 
 pub async fn run(
     code: Option<String>,

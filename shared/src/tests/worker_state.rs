@@ -7,8 +7,8 @@ use std::sync::MutexGuard;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::state_file::HOME_LOCK;
-use crate::worker_state::{save_state, WorkerState};
+use crate::state::file::HOME_LOCK;
+use crate::state::worker::{save_state, WorkerState};
 
 struct HomeOverride {
     previous_home: Option<OsString>,

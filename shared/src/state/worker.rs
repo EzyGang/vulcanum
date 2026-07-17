@@ -15,15 +15,15 @@ pub struct WorkerState {
 }
 
 pub fn state_path() -> anyhow::Result<PathBuf> {
-    crate::paths::state_path()
+    crate::state::paths::state_path()
 }
 
 pub fn load_state() -> anyhow::Result<Option<WorkerState>> {
     let path = state_path()?;
-    crate::state_file::load_json(&path)
+    crate::state::file::load_json(&path)
 }
 
 pub fn save_state(state: &WorkerState) -> anyhow::Result<()> {
     let path = state_path()?;
-    crate::state_file::save_json(&path, state)
+    crate::state::file::save_json(&path, state)
 }

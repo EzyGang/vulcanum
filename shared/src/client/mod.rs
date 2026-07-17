@@ -1,10 +1,13 @@
+mod app;
 mod auth;
+#[cfg(test)]
+mod tests;
 
 use anyhow::Context;
 use uuid::Uuid;
 
-use crate::api_error::ApiError;
-use crate::api_types::{
+use crate::api::error::ApiError;
+use crate::api::wire::{
     AckRequest, AppendEventsRequest, AppendEventsResponse, ConnectRequest, ConnectResponse,
     JobResponse, PollResponse, RefreshGithubTokenResponse, RefreshRequest, RefreshResponse,
     StatusResponse, SubmitResultRequest, WireEvent, WorkerCapabilities,

@@ -1,8 +1,9 @@
 use std::io::{self, IsTerminal, Write};
 
 use anyhow::Context;
-use vulcanum_shared::app_state::{self, AppSession};
 use vulcanum_shared::client::{probe_url_with_scheme_fallback, ApiClient};
+use vulcanum_shared::constants::DEFAULT_TEAM_ID;
+use vulcanum_shared::state::app::{self as app_state, AppSession};
 
 use crate::prompts::prompt_instance_url;
 
@@ -89,7 +90,7 @@ async fn run_with(
     no_browser: bool,
     runtime: &mut LoginRuntime<'_>,
 ) -> anyhow::Result<()> {
-    let selected_instance = resolve_instance(instance, runtime)?;
+    let (selected_instance, existing_session) = resolve_instance(instance, runtime)?;
     let (canonical_instance, _) = probe_url_with_scheme_fallback(&selected_instance).await?;
     let client = ApiClient::new(&canonical_instance);
     let mode = client.auth_mode().await?;
@@ -108,12 +109,19 @@ async fn run_with(
             client.exchange_auth_code(&code).await?
         }
     };
+    let team_id = match mode.is_single_user {
+        true => Some(DEFAULT_TEAM_ID),
+        false => existing_session
+            .filter(|session| session.instance_url == canonical_instance)
+            .and_then(|session| session.team_id),
+    };
 
     let session = AppSession {
         instance_url: canonical_instance.clone(),
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         refresh_expires_at: tokens.refresh_expires_at,
+        team_id,
     };
     (runtime.save_session)(&session)?;
     writeln!(runtime.stderr, "  Logged in to {canonical_instance}")?;
@@ -123,15 +131,17 @@ async fn run_with(
 fn resolve_instance(
     instance: Option<String>,
     runtime: &mut LoginRuntime<'_>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<(String, Option<AppSession>)> {
     match instance {
-        Some(instance) => Ok(instance),
+        Some(instance) => Ok((instance, None)),
         None if !runtime.stdin_is_terminal => {
             anyhow::bail!("stdin is not a terminal; pass --instance <URL>")
         }
         None => {
-            let current = (runtime.load_session)()?.map(|session| session.instance_url);
-            (runtime.prompt_instance)(current)
+            let current = (runtime.load_session)()?;
+            let initial = current.as_ref().map(|session| session.instance_url.clone());
+            let selected = (runtime.prompt_instance)(initial)?;
+            Ok((selected, current))
         }
     }
 }
@@ -226,4 +236,4 @@ fn github_login_url(canonical_instance: &str) -> anyhow::Result<url::Url> {
 }
 
 #[cfg(test)]
-mod login_tests;
+mod tests;

@@ -9,8 +9,12 @@ async fn mode_specific_and_empty_inputs_fail_without_saving() {
         (false, false, Some("   ".to_owned()), false),
     ] {
         let server = FakeServer::start(vec![
-            Response::ok(STATUS),
-            Response::ok(&format!(r#"{{"is_single_user":{single_user}}}"#)),
+            Response::ok("GET", "/api/v1/status", STATUS),
+            Response::ok(
+                "GET",
+                "/api/v1/auth/mode",
+                format!(r#"{{"is_single_user":{single_user}}}"#),
+            ),
         ]);
         let mut fixture = Fixture::new(true);
         let result = fixture

@@ -6,7 +6,7 @@ use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
 use crate::models::workers::model::UpdateWorkerStatusRequest;
 use crate::routes::worker_auth::WorkerAuth;
-use vulcanum_shared::api_types::{ConnectRequest, RefreshRequest};
+use vulcanum_shared::api::wire::{ConnectRequest, RefreshRequest};
 
 pub async fn generate_code(
     state: web::Data<AppState>,

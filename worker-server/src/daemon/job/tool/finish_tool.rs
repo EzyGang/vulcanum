@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 
 const OPENCODE_TOOL_PREFIX_TS: &str = r#"import { tool } from "@opencode-ai/plugin"
 import { dirname, join } from "path"

@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use vulcanum_shared::api_types::{AgentBackend, JobRepo};
+use vulcanum_shared::api::wire::{AgentBackend, JobRepo};
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::providers::model::IntegrationTask;

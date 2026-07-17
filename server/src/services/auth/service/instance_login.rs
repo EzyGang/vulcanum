@@ -4,7 +4,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 use sha2::Sha256;
 use uuid::Uuid;
-use vulcanum_shared::api_types::AuthTokenResponse;
+use vulcanum_shared::api::wire::AuthTokenResponse;
 
 use crate::models::auth::errors::AuthError;
 use crate::services::auth::service::refresh::{generate_random_token, hash_token};
