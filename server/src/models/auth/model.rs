@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use vulcanum_shared::api_types::AuthTokenResponse;
 
 use crate::models::teams::model::{ProviderIdentity, Team};
 use crate::models::users::model::User;
@@ -45,11 +46,6 @@ pub struct UserInfo {
 }
 
 #[derive(Deserialize)]
-pub struct InstanceLoginRequest {
-    pub password: String,
-}
-
-#[derive(Deserialize)]
 pub struct RefreshRequest {
     pub refresh_token: String,
 }
@@ -57,18 +53,6 @@ pub struct RefreshRequest {
 #[derive(Deserialize)]
 pub struct LogoutRequest {
     pub refresh_token: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct AuthExchangeRequest {
-    pub code: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct AuthTokenResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub refresh_expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Deserialize)]
@@ -85,11 +69,6 @@ pub struct GithubCallbackQuery {
 pub struct GithubCallbackResult {
     pub token_pair: AuthTokenResponse,
     pub return_to: String,
-}
-
-#[derive(Serialize)]
-pub struct AuthModeResponse {
-    pub is_single_user: bool,
 }
 
 #[derive(Serialize)]

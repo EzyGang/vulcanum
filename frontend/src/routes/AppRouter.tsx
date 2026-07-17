@@ -1,6 +1,7 @@
 import type { ComponentChildren, JSX } from 'preact';
 import { Route, Switch, useParams } from 'wouter-preact';
 import { NavigationShellContainer } from '../components/app-shell/containers/NavigationShell.container';
+import { CliLogin } from '../pages/CliLogin';
 import { Dashboard } from '../pages/Dashboard';
 import { InviteAccept } from '../pages/InviteAccept';
 import { Login } from '../pages/Login';
@@ -30,6 +31,7 @@ const TeamDetailRoute = () => {
 export const AppRouter = () => (
   <Switch>
     <Route path='/login' component={Login} />
+    <Route path='/cli-login' component={CliLogin} />
     <Route path='/invites/:token' component={InviteAcceptRoute} />
     <Route path='/workers'>
       <AuthenticatedLayout>

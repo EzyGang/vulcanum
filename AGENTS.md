@@ -121,7 +121,8 @@ cargo run --bin vulcanum-web
 - Use `tracing` for structured logging, not `println!`.
 - Don't silence clippy warnings with `#[allow(...)]` unless already present — fix the issue instead.
 - Prefer **composition over inheritance**. Build behavior by combining small single-responsibility components rather than deep class hierarchies.
-- No inline test modules (`#[cfg(test)] mod tests { ... }` inside source files). Always place tests in separate `*_tests.rs` files alongside the module and include them in `mod.rs` with `#[cfg(test)] mod tests_module;`.
+- No inline test modules (`#[cfg(test)] mod tests { ... }` inside source files). Keep small test suites in separate `*_tests.rs` files alongside the module and register them with `#[cfg(test)] mod tests_module;`.
+- When a Rust test suite needs multiple files, place every test and helper under a single `<module>_tests/` directory, register it through `<module>_tests/mod.rs`, and split files by behavior or responsibility. Never keep both `<module>_tests.rs` and a same-named `<module>_tests/` directory.
 - Only test application-specific business logic. Do not write tests for framework internals (actix-web routing, SQLx pool management, serde serialization), third-party library behavior, or trivial glue code. Focus tests on: state transitions, input validation, error handling, and business rules.
   </important_rules>
 

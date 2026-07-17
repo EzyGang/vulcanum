@@ -1,5 +1,6 @@
 mod commands;
 mod console;
+mod prompts;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -7,7 +8,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use crate::commands::setup::host::worker_server_path;
 
 #[derive(Parser)]
-#[command(name = "vulcanum", about = "Vulcanum worker CLI")]
+#[command(name = "vulcanum", about = "Vulcanum CLI")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -15,6 +16,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Log in for app-facing commands
+    Login {
+        /// Instance URL (e.g. https://vulcanum.example.com)
+        #[arg(long)]
+        instance: Option<String>,
+        /// Read the single-user instance password from stdin
+        #[arg(long)]
+        password_stdin: bool,
+        /// Exchange an existing multi-user one-time code
+        #[arg(long)]
+        auth_code: Option<String>,
+        /// Print the multi-user login URL without opening a browser
+        #[arg(long)]
+        no_browser: bool,
+    },
     /// Worker commands (daemon, setup)
     #[command(visible_alias = "wrk")]
     Worker {
@@ -73,6 +89,12 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Command::Login {
+            instance,
+            password_stdin,
+            auth_code,
+            no_browser,
+        } => commands::login::run(instance, password_stdin, auth_code, no_browser).await,
         Command::Worker { cmd } => match cmd {
             WorkerCommand::Daemon => run_daemon_subcommand().await,
             WorkerCommand::SelfDelete => commands::self_delete::run().await,

@@ -1,3 +1,5 @@
+mod auth;
+
 use anyhow::Context;
 use uuid::Uuid;
 

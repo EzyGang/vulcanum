@@ -14,7 +14,7 @@ use crate::commands::setup::host::which_path;
 #[cfg(target_os = "linux")]
 use crate::commands::setup::service;
 
-#[cfg(any(test, target_os = "macos"))]
+#[cfg(target_os = "macos")]
 const DOCKER_APP: &str = "/Applications/Docker.app";
 
 #[cfg(target_os = "linux")]
@@ -28,7 +28,7 @@ pub(crate) enum DockerAccess {
     Sudo,
 }
 
-#[cfg(any(test, target_os = "macos"))]
+#[cfg(target_os = "macos")]
 fn docker_desktop_launch_command(user_name: &str) -> Command {
     let mut command = Command::new("sudo");
     command.args(["-u", user_name, "open"]).arg(DOCKER_APP);
@@ -62,10 +62,17 @@ pub(crate) fn docker_binary_path() -> Option<PathBuf> {
 }
 
 pub(crate) fn docker_command() -> Command {
-    let mut command = Command::new(docker_binary_path().unwrap_or_else(|| PathBuf::from("docker")));
+    let command = Command::new(docker_binary_path().unwrap_or_else(|| PathBuf::from("docker")));
     #[cfg(target_os = "macos")]
-    macos::configure_docker_command(&mut command);
-    command
+    {
+        let mut command = command;
+        macos::configure_docker_command(&mut command);
+        command
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        command
+    }
 }
 
 pub(crate) fn docker_info_status(access: DockerAccess) -> anyhow::Result<bool> {

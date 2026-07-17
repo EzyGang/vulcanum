@@ -1,5 +1,7 @@
+use vulcanum_shared::api_types::AuthTokenResponse;
+
 use crate::models::auth::errors::AuthError;
-use crate::models::auth::model::{AuthTokenResponse, VerifyQuery};
+use crate::models::auth::model::VerifyQuery;
 use crate::models::users::model::User;
 use crate::services::auth::service::AuthService;
 
