@@ -1,5 +1,8 @@
 import type { JSX } from 'preact';
 import { useCliLogin } from '../hooks/useCliLogin.hook';
-import { CliLoginView } from '../ui/CliLogin.view';
+import { CliLoginCodeView, CliLoginMissingView } from '../ui/CliLogin.view';
 
-export const CliLoginContainer = (): JSX.Element => <CliLoginView {...useCliLogin()} />;
+export const CliLoginContainer = (): JSX.Element => {
+  const login = useCliLogin();
+  return login.view.mode === 'code' ? <CliLoginCodeView {...login} /> : <CliLoginMissingView />;
+};

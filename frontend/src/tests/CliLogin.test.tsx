@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/preact';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CliLogin } from '../pages/CliLogin';
 
@@ -12,6 +12,10 @@ beforeEach(() => {
     configurable: true,
     value: { writeText }
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('CliLogin', () => {

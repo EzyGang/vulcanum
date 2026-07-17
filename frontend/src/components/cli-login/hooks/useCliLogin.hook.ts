@@ -1,17 +1,21 @@
-import { type Signal, useSignal } from '@preact/signals';
+import { useSignal } from '@preact/signals';
 import { useCallback } from 'preact/hooks';
 
-export type CopyStatus = 'idle' | 'copied' | 'failed';
+type CopyStatus = 'idle' | 'copied' | 'failed';
+export type CliLoginMode = 'code' | 'missing';
 
 export interface CliLoginViewProps {
   data: {
     code: string;
   };
   status: {
-    copy: Signal<CopyStatus>;
+    copyMessage: string;
   };
   actions: {
     onCopy: () => void;
+  };
+  view: {
+    mode: CliLoginMode;
   };
 }
 
@@ -30,7 +34,19 @@ export const useCliLogin = (): CliLoginViewProps => {
 
   return {
     data: { code },
-    status: { copy },
-    actions: { onCopy: handleCopy }
+    status: { copyMessage: getCopyMessage(copy.value) },
+    actions: { onCopy: handleCopy },
+    view: { mode: code ? 'code' : 'missing' }
   };
+};
+
+const getCopyMessage = (status: CopyStatus): string => {
+  switch (status) {
+    case 'copied':
+      return 'Copied';
+    case 'failed':
+      return 'Copy failed. Select the code manually.';
+    case 'idle':
+      return '';
+  }
 };
