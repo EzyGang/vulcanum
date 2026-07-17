@@ -2,14 +2,13 @@
 
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::MutexGuard;
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use crate::state_file::HOME_LOCK;
 use crate::worker_state::{save_state, WorkerState};
-
-static HOME_LOCK: Mutex<()> = Mutex::new(());
 
 struct HomeOverride {
     previous_home: Option<OsString>,

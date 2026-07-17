@@ -1,21 +1,7 @@
+use crate::prompts::nonempty;
+
 use crate::commands::setup::host::is_kvm_available;
 use crate::commands::setup::Backend;
-
-fn normalize_instance_url(input: &str) -> String {
-    let trimmed = input.trim();
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        trimmed.to_owned()
-    } else {
-        format!("https://{trimmed}")
-    }
-}
-
-fn nonempty(field: &str, input: &str) -> Result<(), String> {
-    if input.trim().is_empty() {
-        return Err(format!("{field} is required"));
-    }
-    Ok(())
-}
 
 pub(super) fn resolve_backend(
     mode: super::InteractionMode,
@@ -101,21 +87,6 @@ fn prompt_linux_backend() -> anyhow::Result<Backend> {
         2 => Ok(Backend::None),
         _ => anyhow::bail!("invalid backend selection"),
     }
-}
-
-pub fn prompt_instance_url() -> anyhow::Result<String> {
-    let url = dialoguer::Input::<String>::new()
-        .with_prompt("Instance URL")
-        .validate_with(|input: &String| {
-            let normalized = normalize_instance_url(input);
-            nonempty("Instance URL", input.as_str())?;
-            match url::Url::parse(&normalized) {
-                Ok(_) => Ok(()),
-                Err(_) => Err("Please enter a valid URL".to_owned()),
-            }
-        })
-        .interact_text()?;
-    Ok(normalize_instance_url(&url))
 }
 
 pub fn prompt_code() -> anyhow::Result<String> {

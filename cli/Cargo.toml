@@ -19,5 +19,6 @@ url = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process"] }
 indicatif = "0.17"
 dialoguer = "0.12"
+open = "5"
 tracing = "0.1"
 sys-info = "0.9"

@@ -1,11 +1,11 @@
 use actix_web::{web, HttpResponse};
+use vulcanum_shared::api_types::{AuthExchangeRequest, AuthModeResponse, InstanceLoginRequest};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::{
-    AuthExchangeRequest, AuthModeResponse, GithubCallbackQuery, GithubStartQuery,
-    InstanceLoginRequest, LoginRequest, LoginResponse, LogoutRequest, RefreshRequest,
-    TeamPrincipal, VerifyQuery, VerifyResponse,
+    GithubCallbackQuery, GithubStartQuery, LoginRequest, LoginResponse, LogoutRequest,
+    RefreshRequest, TeamPrincipal, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(

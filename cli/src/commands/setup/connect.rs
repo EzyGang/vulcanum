@@ -1,7 +1,8 @@
 use crate::commands::setup::host;
-use crate::commands::setup::prompts::{prompt_code, prompt_instance_url};
+use crate::commands::setup::prompts::prompt_code;
 use crate::commands::setup::service;
 use crate::console;
+use crate::prompts::prompt_instance_url;
 
 pub async fn verify_connection() -> anyhow::Result<()> {
     use vulcanum_shared::client::ApiClient;
@@ -22,7 +23,7 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
 
     let raw_instance = match instance {
         Some(url) => url,
-        None => prompt_instance_url()?,
+        None => prompt_instance_url(None)?,
     };
 
     console::info("Probing instance URL...");

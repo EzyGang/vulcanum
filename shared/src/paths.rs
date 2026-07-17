@@ -17,6 +17,10 @@ pub fn state_path() -> anyhow::Result<PathBuf> {
     vulcanum_dir().map(|d| d.join("worker.json"))
 }
 
+pub fn app_state_path() -> anyhow::Result<PathBuf> {
+    vulcanum_dir().map(|d| d.join("app.json"))
+}
+
 pub fn db_path() -> anyhow::Result<PathBuf> {
     vulcanum_dir().map(|d| d.join("worker.db"))
 }

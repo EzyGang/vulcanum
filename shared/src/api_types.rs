@@ -109,6 +109,28 @@ pub enum WorkRunType {
     PullRequestReview,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AuthModeResponse {
+    pub is_single_user: bool,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct InstanceLoginRequest {
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AuthExchangeRequest {
+    pub code: String,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct AuthTokenResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub refresh_expires_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConnectRequest {
     pub code: String,
