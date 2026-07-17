@@ -6,8 +6,6 @@ import { Select } from '../../shared/ui/Select.view';
 import { ThemeToggleContainer } from '../containers/ThemeToggle.container';
 import type { NavLink } from '../types';
 
-const LOGO_SRC = '/logo.svg';
-
 interface NavigationShellProps {
   children: ComponentChildren;
   data: {
@@ -101,7 +99,14 @@ export const NavigationShellView = ({
           <HamburgerIcon open={mobileMenuOpen} />
         </button>
         <div class='flex items-center gap-2 sm:gap-3'>
-          <img src={LOGO_SRC} alt='Vulcanum' class='h-7 w-7 sm:h-8 sm:w-8' />
+          <svg
+            viewBox='0 0 135.46666 135.46667'
+            role='img'
+            aria-label='Vulcanum'
+            class='h-7 w-7 sm:h-8 sm:w-8'
+          >
+            <use href='/logo.svg#layer1' />
+          </svg>
           <h1 class='text-base sm:text-lg font-semibold text-text-primary uppercase tracking-wide'>
             Vulcanum
           </h1>

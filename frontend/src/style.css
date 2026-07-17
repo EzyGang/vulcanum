@@ -104,6 +104,7 @@
    ============================================ */
 
 html[data-theme="dark"] {
+  color-scheme: dark;
   --bg-page: oklch(0% 0 0);
   --bg-card: oklch(14% 0 0);
   --bg-input: oklch(20% 0 0);
@@ -141,6 +142,7 @@ html[data-theme="dark"] {
    ============================================ */
 
 html[data-theme="light"] {
+  color-scheme: light;
   --bg-page: oklch(98% 0 0);
   --bg-card: oklch(100% 0 0);
   --bg-input: oklch(100% 0 0);
