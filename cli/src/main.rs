@@ -4,14 +4,12 @@ mod prompts;
 #[cfg(test)]
 mod tests;
 
+use crate::commands::app::args::{
+    GithubCommand, ModelProvidersCommand, ModelSelectionCommand, RunsCommand, SettingsCommand,
+    SettingsModelsCommand, SettingsTeamCommand, TaskTrackersCommand, WorkersCommand,
+};
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
-use uuid::Uuid;
-
-use crate::commands::app::args::{
-    GithubCommand, ModelProvidersCommand, ModelSelectionCommand, SettingsCommand,
-    SettingsModelsCommand, SettingsTeamCommand, TaskTrackersCommand,
-};
 
 use crate::commands::setup::host::worker_server_path;
 
@@ -50,6 +48,11 @@ enum Command {
         #[command(subcommand)]
         cmd: WorkersCommand,
     },
+    /// Inspect work runs
+    Runs {
+        #[command(subcommand)]
+        cmd: RunsCommand,
+    },
     /// Inspect and manage app settings
     Settings {
         #[command(subcommand)]
@@ -84,15 +87,6 @@ enum WorkerCommand {
         /// Agent backend to use (opencode or omp-rpc)
         #[arg(long, value_enum)]
         agent_backend: Option<AgentBackendArg>,
-    },
-}
-
-#[derive(Subcommand)]
-enum WorkersCommand {
-    /// List workers for a team
-    List {
-        #[arg(long)]
-        team: Option<Uuid>,
     },
 }
 
@@ -135,6 +129,9 @@ async fn main() -> anyhow::Result<()> {
         },
         Command::Workers { cmd } => match cmd {
             WorkersCommand::List { team } => commands::app::workers::list(team).await,
+        },
+        Command::Runs { cmd } => match cmd {
+            RunsCommand::List { team } => commands::app::runs::list(team).await,
         },
         Command::Settings { cmd } => run_settings_command(cmd).await,
     }

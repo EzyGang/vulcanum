@@ -2,6 +2,24 @@ use clap::{Subcommand, ValueEnum};
 use uuid::Uuid;
 
 #[derive(Subcommand)]
+pub(crate) enum WorkersCommand {
+    /// List workers for a team
+    List {
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum RunsCommand {
+    /// List work runs for a team
+    List {
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum SettingsCommand {
     /// List settings for a team
     List {

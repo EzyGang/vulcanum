@@ -2,9 +2,10 @@ use clap::Parser;
 use uuid::Uuid;
 
 use crate::commands::app::args::{
-    DirectModelProviderAuth, ModelProvidersCommand, SettingsCommand, SettingsTeamCommand,
+    DirectModelProviderAuth, ModelProvidersCommand, RunsCommand, SettingsCommand,
+    SettingsTeamCommand, WorkersCommand,
 };
-use crate::{Cli, Command, WorkerCommand, WorkersCommand};
+use crate::{Cli, Command, WorkerCommand};
 
 const TEAM: &str = "00000000-0000-0000-0000-00000000002A";
 
@@ -26,6 +27,15 @@ fn app_command_forms_parse_exactly() {
         workers.command,
         Command::Workers {
             cmd: WorkersCommand::List { team: Some(team) }
+        } if team == expected
+    ));
+
+    let runs = Cli::try_parse_from(["vulcanum", "runs", "list", "--team", TEAM])
+        .expect("runs team override should parse");
+    assert!(matches!(
+        runs.command,
+        Command::Runs {
+            cmd: RunsCommand::List { team: Some(team) }
         } if team == expected
     ));
 
@@ -194,6 +204,7 @@ fn settings_credential_conflicts_and_invalid_values_fail_to_parse() {
 fn malformed_team_uuid_fails_during_parsing() {
     for args in [
         vec!["vulcanum", "workers", "list", "--team", "not-a-uuid"],
+        vec!["vulcanum", "runs", "list", "--team", "not-a-uuid"],
         vec!["vulcanum", "settings", "list", "--team", "not-a-uuid"],
         vec!["vulcanum", "settings", "team", "set", "not-a-uuid"],
     ] {

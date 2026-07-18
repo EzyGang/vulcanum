@@ -71,6 +71,25 @@ Prints the selected team's workers with these columns:
 
 This plural `workers` namespace is separate from the singular `worker` lifecycle namespace.
 
+## Work run inspection
+
+### List work runs
+
+```bash
+vulcanum runs list [--team <UUID>]
+```
+
+Prints the selected team's work runs in API order with:
+
+- work run ID
+- related ticket reference and title
+- implementation or pull-request-review type
+- current status
+- total token usage with input, output, and combined cache usage
+- model, duration, and creation timestamp
+
+Missing usage and timing values are rendered as `-`. Ticket titles, references, and model names are terminal-escaped before display.
+
 ## Settings
 
 All settings commands use the team-selection precedence described above and require the control-plane permissions for the resolved team. `settings list` prints stable IDs for task trackers and model providers; mutation commands use those IDs rather than names.
