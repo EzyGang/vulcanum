@@ -1,4 +1,5 @@
 pub(crate) mod args;
+pub(crate) mod projects;
 pub(crate) mod runs;
 pub(crate) mod settings;
 pub(crate) mod workers;

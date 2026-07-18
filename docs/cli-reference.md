@@ -90,6 +90,44 @@ Prints the selected team's work runs in API order with:
 
 Missing usage and timing values are rendered as `-`. Ticket titles, references, and model names are terminal-escaped before display.
 
+## Project access
+
+### List projects
+
+```bash
+vulcanum projects list [--team <UUID>]
+```
+
+Prints each configured project's stable ID, name, task-tracker provider, external project ID, automation state, and attached GitHub repositories.
+
+### Add a project
+
+```bash
+vulcanum projects add [--repo <OWNER/NAME>]... [--team <UUID>]
+vulcanum projects add --provider <UUID> --workspace <ID> --project <ID> \
+  [--repo <OWNER/NAME>]... [--team <UUID>]
+```
+
+The interactive form lists unconfigured projects from every connected task tracker, then offers a multi-select list of repositories available to the team's GitHub App. The explicit form requires all three source flags and validates every repeated `--repo` value against that same repository catalog. A newly added project starts with automation disabled so its prompts and workflow settings can be reviewed in the app before activation.
+
+### List available repositories
+
+```bash
+vulcanum projects repos list [--team <UUID>]
+```
+
+Pulls the repositories currently accessible through the team's GitHub App and prints their owner, name, and full `OWNER/NAME` value. Use the full value with `projects add --repo` or `projects repos set --repo`.
+
+### Edit project repositories
+
+```bash
+vulcanum projects repos set <PROJECT_ID> [--team <UUID>]
+vulcanum projects repos set <PROJECT_ID> --repo <OWNER/NAME>... [--team <UUID>]
+vulcanum projects repos set <PROJECT_ID> --clear [--team <UUID>]
+```
+
+With no repository flags, `set` pulls the available repositories, preselects those already attached to the project, and opens a multi-select prompt. Repeated `--repo` values replace the attachment set non-interactively after catalog validation. `--clear` removes every repository without requiring a GitHub connection.
+
 ## Settings
 
 All settings commands use the team-selection precedence described above and require the control-plane permissions for the resolved team. `settings list` prints stable IDs for task trackers and model providers; mutation commands use those IDs rather than names.

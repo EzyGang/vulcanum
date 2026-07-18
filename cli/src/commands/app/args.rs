@@ -20,6 +20,59 @@ pub(crate) enum RunsCommand {
 }
 
 #[derive(Subcommand)]
+pub(crate) enum ProjectsCommand {
+    /// List configured projects for a team
+    List {
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+    /// Add an available task-tracker project
+    Add {
+        /// Task-tracker provider ID; omit all source flags for interactive selection
+        #[arg(long, requires_all = ["workspace", "project"])]
+        provider: Option<Uuid>,
+        /// Provider workspace ID
+        #[arg(long, requires_all = ["provider", "project"])]
+        workspace: Option<String>,
+        /// Provider project ID
+        #[arg(long, requires_all = ["provider", "workspace"])]
+        project: Option<String>,
+        /// Attach an available GitHub repository; repeat for multiple repositories
+        #[arg(long = "repo")]
+        repos: Vec<String>,
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+    /// Inspect or replace project repository attachments
+    Repos {
+        #[command(subcommand)]
+        cmd: ProjectReposCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum ProjectReposCommand {
+    /// List repositories available to the team's GitHub App
+    List {
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+    /// Replace the repositories attached to a configured project
+    Set {
+        /// Configured project ID
+        project_id: Uuid,
+        /// Attach an available GitHub repository; repeat to select multiple repositories
+        #[arg(long = "repo")]
+        repos: Vec<String>,
+        /// Remove every attached repository
+        #[arg(long, conflicts_with = "repos")]
+        clear: bool,
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
+}
+
+#[derive(Subcommand)]
 pub(crate) enum SettingsCommand {
     /// List settings for a team
     List {

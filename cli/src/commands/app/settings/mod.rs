@@ -1,4 +1,5 @@
 pub(crate) mod device_oauth;
+pub(crate) mod dispatch;
 pub(crate) mod github;
 pub(crate) mod model_providers;
 pub(crate) mod models;

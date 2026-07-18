@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::api::app::github::{GithubAppInstallation, GithubAuthUrlResponse};
+use crate::api::app::github::{GithubAppInstallation, GithubAuthUrlResponse, GithubRepo};
 use crate::client::ApiClient;
 
 impl ApiClient {
@@ -20,6 +20,14 @@ impl ApiClient {
     ) -> anyhow::Result<Option<GithubAppInstallation>> {
         self.team_get("github/installation", team_id, access_token)
             .await
+    }
+
+    pub async fn list_github_repos(
+        &self,
+        team_id: Uuid,
+        access_token: &str,
+    ) -> anyhow::Result<Vec<GithubRepo>> {
+        self.team_get("github/repos", team_id, access_token).await
     }
 
     pub async fn delete_github_app_installation(
