@@ -8,6 +8,14 @@ pub struct AppProject {
     pub name: String,
     pub external_workspace_id: String,
     pub enabled: bool,
+    #[serde(default)]
+    pub pickup_column: String,
+    #[serde(default)]
+    pub progress_column: String,
+    #[serde(default)]
+    pub review_column: String,
+    #[serde(default)]
+    pub done_column: String,
     pub repo_full_names: Vec<String>,
     pub provider_id: Option<Uuid>,
 }
@@ -35,7 +43,18 @@ pub struct CreateProjectRequest {
     pub repo_full_names: Vec<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
 pub struct UpdateProjectRequest {
-    pub repo_full_names: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pickup_column: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub progress_column: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_column: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub done_column: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repo_full_names: Option<Vec<String>>,
 }

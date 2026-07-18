@@ -7,6 +7,8 @@ mod tests;
 use crate::commands::app::args::{
     ProjectReposCommand, ProjectsCommand, RunsCommand, SettingsCommand, WorkersCommand,
 };
+use crate::commands::app::board::args::BoardCommand;
+use crate::commands::app::projects::args::{ProjectAutomationCommand, ProjectColumnsCommand};
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -51,6 +53,11 @@ enum Command {
     Projects {
         #[command(subcommand)]
         cmd: ProjectsCommand,
+    },
+    /// Browse and manage a configured project's task board
+    Board {
+        #[command(subcommand)]
+        cmd: BoardCommand,
     },
     /// Inspect work runs
     Runs {
@@ -152,6 +159,38 @@ async fn main() -> anyhow::Result<()> {
                 })
                 .await
             }
+            ProjectsCommand::Automation { cmd } => match cmd {
+                ProjectAutomationCommand::Enable { project_id, team } => {
+                    commands::app::projects::configuration::set_automation(project_id, true, team)
+                        .await
+                }
+                ProjectAutomationCommand::Disable { project_id, team } => {
+                    commands::app::projects::configuration::set_automation(project_id, false, team)
+                        .await
+                }
+            },
+            ProjectsCommand::Columns { cmd } => match cmd {
+                ProjectColumnsCommand::Set {
+                    project_id,
+                    pickup,
+                    in_progress,
+                    in_review,
+                    done,
+                    team,
+                } => {
+                    commands::app::projects::configuration::set_columns(
+                        commands::app::projects::configuration::ColumnsOptions {
+                            project_id,
+                            pickup,
+                            in_progress,
+                            in_review,
+                            done,
+                            team,
+                        },
+                    )
+                    .await
+                }
+            },
             ProjectsCommand::Repos { cmd } => match cmd {
                 ProjectReposCommand::List { team } => {
                     commands::app::projects::repos::list(team).await
@@ -174,6 +213,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             },
         },
+        Command::Board { cmd } => commands::app::board::run(cmd).await,
         Command::Runs { cmd } => match cmd {
             RunsCommand::List { team } => commands::app::runs::list(team).await,
         },

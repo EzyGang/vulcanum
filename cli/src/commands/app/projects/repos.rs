@@ -123,7 +123,8 @@ pub(super) async fn set_with(
         .await?
     };
     let request = UpdateProjectRequest {
-        repo_full_names: repos,
+        repo_full_names: Some(repos),
+        ..UpdateProjectRequest::default()
     };
     let updated = context
         .client

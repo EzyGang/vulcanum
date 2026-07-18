@@ -5,6 +5,8 @@ use crate::commands::app::args::{
     DirectModelProviderAuth, ModelProvidersCommand, ProjectReposCommand, ProjectsCommand,
     RunsCommand, SettingsCommand, SettingsTeamCommand, WorkersCommand,
 };
+use crate::commands::app::board::args::{BoardCommand, BoardTasksCommand};
+use crate::commands::app::projects::args::{ProjectAutomationCommand, ProjectColumnsCommand};
 use crate::{Cli, Command, WorkerCommand};
 
 const TEAM: &str = "00000000-0000-0000-0000-00000000002A";
@@ -109,6 +111,64 @@ fn app_command_forms_parse_exactly() {
         "vulcanum", "projects", "repos", "set", project_id, "--repo", "acme/api", "--clear",
     ])
     .is_err());
+
+    let automation = Cli::try_parse_from([
+        "vulcanum",
+        "projects",
+        "automation",
+        "enable",
+        project_id,
+        "--team",
+        TEAM,
+    ])
+    .expect("project automation should parse");
+    assert!(matches!(
+        automation.command,
+        Command::Projects {
+            cmd: ProjectsCommand::Automation {
+                cmd: ProjectAutomationCommand::Enable {
+                    project_id: id,
+                    team: Some(team)
+                }
+            }
+        } if id == Uuid::from_u128(4) && team == expected
+    ));
+
+    let columns = Cli::try_parse_from([
+        "vulcanum",
+        "projects",
+        "columns",
+        "set",
+        project_id,
+        "--pickup",
+        "To Do",
+        "--in-progress",
+        "In Progress",
+        "--in-review",
+        "In Review",
+        "--done",
+        "Done",
+    ])
+    .expect("project columns should parse");
+    assert!(matches!(
+        columns.command,
+        Command::Projects {
+            cmd: ProjectsCommand::Columns {
+                cmd: ProjectColumnsCommand::Set {
+                    project_id: id,
+                    pickup: Some(pickup),
+                    in_progress: Some(progress),
+                    in_review: Some(review),
+                    done: Some(done),
+                    ..
+                }
+            }
+        } if id == Uuid::from_u128(4)
+            && pickup == "To Do"
+            && progress == "In Progress"
+            && review == "In Review"
+            && done == "Done"
+    ));
 
     let settings = Cli::try_parse_from(["vulcanum", "settings", "list", "--team", TEAM])
         .expect("settings team override should parse");
@@ -269,6 +329,75 @@ fn settings_credential_conflicts_and_invalid_values_fail_to_parse() {
     ] {
         assert!(Cli::try_parse_from(args).is_err());
     }
+}
+
+#[test]
+fn board_command_branches_parse_with_project_guidance_inputs() {
+    let project_id = "00000000-0000-0000-0000-000000000004";
+    for args in [
+        vec!["vulcanum", "board", "view", project_id, "--limit", "3"],
+        vec![
+            "vulcanum",
+            "board",
+            "column",
+            project_id,
+            "In Progress",
+            "--page",
+            "2",
+            "--page-size",
+            "10",
+        ],
+        vec![
+            "vulcanum",
+            "board",
+            "tasks",
+            "create",
+            project_id,
+            "New task",
+            "--body-stdin",
+        ],
+        vec!["vulcanum", "board", "tasks", "get", project_id, "VLC-42"],
+        vec![
+            "vulcanum", "board", "tasks", "edit", project_id, "VLC-42", "--title", "Updated",
+        ],
+        vec![
+            "vulcanum", "board", "tasks", "move", project_id, "VLC-42", "Done",
+        ],
+        vec![
+            "vulcanum", "board", "tasks", "search", project_id, "--query", "parser", "--label",
+            "backend",
+        ],
+    ] {
+        Cli::try_parse_from(args).expect("board command branch should parse");
+    }
+
+    let get = Cli::try_parse_from(["vulcanum", "board", "tasks", "get", project_id, "VLC-42"])
+        .expect("board task get should parse");
+    assert!(matches!(
+        get.command,
+        Command::Board {
+            cmd: BoardCommand::Tasks {
+                cmd: BoardTasksCommand::Get {
+                    project_id: id,
+                    task,
+                    ..
+                }
+            }
+        } if id == Uuid::from_u128(4) && task == "VLC-42"
+    ));
+
+    assert!(Cli::try_parse_from([
+        "vulcanum",
+        "board",
+        "tasks",
+        "create",
+        project_id,
+        "New task",
+        "--body",
+        "inline",
+        "--body-stdin",
+    ])
+    .is_err());
 }
 
 #[test]

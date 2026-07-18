@@ -72,7 +72,8 @@ async fn create_project_posts_selected_source_and_repositories() {
 async fn update_project_patches_repositories_only() {
     let (base_url, handle) = serve_once("200 OK", PROJECT_RESPONSE);
     let request = UpdateProjectRequest {
-        repo_full_names: vec!["acme/api".to_owned()],
+        repo_full_names: Some(vec!["acme/api".to_owned()]),
+        ..UpdateProjectRequest::default()
     };
 
     let updated = ApiClient::new(base_url)

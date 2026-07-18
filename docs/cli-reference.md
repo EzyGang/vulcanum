@@ -110,6 +110,18 @@ vulcanum projects add --provider <UUID> --workspace <ID> --project <ID> \
 
 The interactive form lists unconfigured projects from every connected task tracker, then offers a multi-select list of repositories available to the team's GitHub App. The explicit form requires all three source flags and validates every repeated `--repo` value against that same repository catalog. A newly added project starts with automation disabled so its prompts and workflow settings can be reviewed in the app before activation.
 
+### Configure project automation
+
+```bash
+vulcanum projects automation enable <PROJECT_ID> [--team <UUID>]
+vulcanum projects automation disable <PROJECT_ID> [--team <UUID>]
+vulcanum projects columns set <PROJECT_ID> \
+  [--pickup <COLUMN>] [--in-progress <COLUMN>] \
+  [--in-review <COLUMN>] [--done <COLUMN>] [--team <UUID>]
+```
+
+Automation is enabled or disabled independently of the workflow column marks. `columns set` requires at least one column flag and preserves every omitted mark. Each `COLUMN` accepts a board column name, slug, or provider ID; the CLI validates it against the current board and stores the canonical slug. Multiple marks are updated atomically.
+
 ### List available repositories
 
 ```bash
@@ -127,6 +139,62 @@ vulcanum projects repos set <PROJECT_ID> --clear [--team <UUID>]
 ```
 
 With no repository flags, `set` pulls the available repositories, preselects those already attached to the project, and opens a multi-select prompt. Repeated `--repo` values replace the attachment set non-interactively after catalog validation. `--clear` removes every repository without requiring a GitHub connection.
+
+## Task board
+
+Every task-board command requires the configured project UUID printed by `vulcanum projects list`. The CLI resolves that project to its task-tracker provider and external project ID; provider IDs are not accepted in the project position. `--team` follows the standard override and local-pin precedence.
+
+### View a board
+
+```bash
+vulcanum board view <PROJECT_ID> [--limit <COUNT>] [--team <UUID>]
+```
+
+Prints the project's automation state and its pickup, in-progress, in-review, and done marks before the task table. Configured marks show both column name and slug; empty marks show `— (unset)`, and marks no longer present on the provider board show `(missing)`. The task table is grouped by understandable column name and slug. Each task row includes its task slug, provider task ID, title, and labels. The default limit is five tasks per column; truncated columns show the number of remaining tasks.
+
+### List one column
+
+```bash
+vulcanum board column <PROJECT_ID> <COLUMN> \
+  [--page <NUMBER>] [--page-size <COUNT>] [--team <UUID>]
+```
+
+`COLUMN` accepts a column name, slug, or provider column ID. Pages are one-based and default to 20 tasks.
+
+### Create a task
+
+```bash
+vulcanum board tasks create <PROJECT_ID> <TITLE> \
+  [--body <TEXT> | --body-stdin] [--status <STATUS>] [--priority <PRIORITY>] \
+  [--team <UUID>]
+```
+
+`--body-stdin` reads the complete standard-input stream and preserves multiline content. It conflicts with `--body`. For example:
+
+```bash
+cat task-body.txt | vulcanum board tasks create <PROJECT_ID> "Investigate failure" --body-stdin
+```
+
+### Get, edit, or move one task
+
+```bash
+vulcanum board tasks get <PROJECT_ID> <TASK> [--team <UUID>]
+vulcanum board tasks edit <PROJECT_ID> <TASK> \
+  [--title <TITLE>] [--body <TEXT> | --body-stdin] [--team <UUID>]
+vulcanum board tasks move <PROJECT_ID> <TASK> <COLUMN> [--team <UUID>]
+```
+
+`TASK` accepts either the provider task ID or a case-insensitive task slug such as `VLC-42`. Edit preserves omitted title or body fields. Move accepts a destination column name, slug, or provider column ID and moves only the selected task.
+
+### Search tasks
+
+```bash
+vulcanum board tasks search <PROJECT_ID> \
+  [--query <TEXT>] [--column <COLUMN>] [--label <LABEL>] \
+  [--page <NUMBER>] [--page-size <COUNT>] [--team <UUID>]
+```
+
+Search matches task slug, title, and body case-insensitively. Column and label filters can be combined; labels accept a name or provider label ID. Results are sorted by task slug and print slug, title, column, and labels.
 
 ## Settings
 

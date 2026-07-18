@@ -1,6 +1,8 @@
 use clap::{Subcommand, ValueEnum};
 use uuid::Uuid;
 
+use crate::commands::app::projects::args::{ProjectAutomationCommand, ProjectColumnsCommand};
+
 #[derive(Subcommand)]
 pub(crate) enum WorkersCommand {
     /// List workers for a team
@@ -42,6 +44,16 @@ pub(crate) enum ProjectsCommand {
         repos: Vec<String>,
         #[arg(long)]
         team: Option<Uuid>,
+    },
+    /// Enable or disable project automation
+    Automation {
+        #[command(subcommand)]
+        cmd: ProjectAutomationCommand,
+    },
+    /// Mark columns used by the automation workflow
+    Columns {
+        #[command(subcommand)]
+        cmd: ProjectColumnsCommand,
     },
     /// Inspect or replace project repository attachments
     Repos {

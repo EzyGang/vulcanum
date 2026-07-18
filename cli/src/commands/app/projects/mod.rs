@@ -1,4 +1,8 @@
+pub(crate) mod args;
 mod catalog;
+pub(crate) mod configuration;
+#[cfg(test)]
+mod configuration_tests;
 pub(crate) mod repos;
 mod runtime;
 #[cfg(test)]
