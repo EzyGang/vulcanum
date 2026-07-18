@@ -1,7 +1,25 @@
+pub(crate) mod device_oauth;
+pub(crate) mod github;
+pub(crate) mod model_providers;
+pub(crate) mod models;
+pub(crate) mod task_trackers;
+
+mod credentials;
+#[cfg(test)]
+mod credentials_tests;
+#[cfg(test)]
+mod mutation_tests;
+#[cfg(test)]
+mod oauth_tests;
+mod runtime;
+
 use std::io;
 
 use uuid::Uuid;
-use vulcanum_shared::api::app::{AppModelProvider, AppTeam, GithubAppInstallation};
+use vulcanum_shared::api::app::github::GithubAppInstallation;
+use vulcanum_shared::api::app::model_providers::AppModelProvider;
+use vulcanum_shared::api::app::task_trackers::TaskTracker;
+use vulcanum_shared::api::app::teams::AppTeam;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::constants::DEFAULT_TEAM_ID;
 use vulcanum_shared::state::app as app_state;
@@ -128,7 +146,7 @@ pub(super) async fn clear_team_with(runtime: &mut AppRuntime<'_>) -> anyhow::Res
 
 fn render_settings(
     team: &AppTeam,
-    trackers: Vec<vulcanum_shared::api::app::TaskTracker>,
+    trackers: Vec<TaskTracker>,
     providers: Vec<AppModelProvider>,
     installation: Option<GithubAppInstallation>,
 ) -> String {
@@ -149,13 +167,14 @@ fn render_settings(
             .into_iter()
             .map(|tracker| {
                 vec![
+                    tracker.id.to_string(),
                     tracker.name,
                     tracker.provider_type,
                     redact_url(&tracker.instance_url),
                 ]
             })
             .collect();
-        output.push_str(&render_table(&["NAME", "TYPE", "INSTANCE URL"], rows));
+        output.push_str(&render_table(&["ID", "NAME", "TYPE", "INSTANCE URL"], rows));
         output.push('\n');
     }
 
@@ -175,9 +194,10 @@ fn render_settings(
                     .and_then(|oauth| oauth.email.or(oauth.account_id))
                     .unwrap_or_else(|| "-".to_owned());
                 vec![
+                    provider.id.to_string(),
                     provider.display_name,
                     provider.provider_key,
-                    provider.auth_type,
+                    provider.auth_type.to_string(),
                     credential_fields,
                     oauth_account,
                 ]
@@ -185,6 +205,7 @@ fn render_settings(
             .collect();
         output.push_str(&render_table(
             &[
+                "ID",
                 "NAME",
                 "PROVIDER",
                 "AUTH",

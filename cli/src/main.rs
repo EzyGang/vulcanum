@@ -8,6 +8,11 @@ use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 use uuid::Uuid;
 
+use crate::commands::app::args::{
+    GithubCommand, ModelProvidersCommand, ModelSelectionCommand, SettingsCommand,
+    SettingsModelsCommand, SettingsTeamCommand, TaskTrackersCommand,
+};
+
 use crate::commands::setup::host::worker_server_path;
 
 #[derive(Parser)]
@@ -91,28 +96,6 @@ enum WorkersCommand {
     },
 }
 
-#[derive(Subcommand)]
-enum SettingsCommand {
-    /// List settings for a team
-    List {
-        #[arg(long)]
-        team: Option<Uuid>,
-    },
-    /// Manage the local team pin
-    Team {
-        #[command(subcommand)]
-        cmd: SettingsTeamCommand,
-    },
-}
-
-#[derive(Subcommand)]
-enum SettingsTeamCommand {
-    /// Pin a team for app-facing commands
-    Set { team: Uuid },
-    /// Clear or reset the local team pin
-    Clear,
-}
-
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum IsolationBackend {
     Kata,
@@ -153,13 +136,138 @@ async fn main() -> anyhow::Result<()> {
         Command::Workers { cmd } => match cmd {
             WorkersCommand::List { team } => commands::app::workers::list(team).await,
         },
-        Command::Settings { cmd } => match cmd {
-            SettingsCommand::List { team } => commands::app::settings::list(team).await,
-            SettingsCommand::Team { cmd } => match cmd {
-                SettingsTeamCommand::Set { team } => commands::app::settings::set_team(team).await,
-                SettingsTeamCommand::Clear => commands::app::settings::clear_team().await,
-            },
+        Command::Settings { cmd } => run_settings_command(cmd).await,
+    }
+}
+
+async fn run_settings_command(cmd: SettingsCommand) -> anyhow::Result<()> {
+    match cmd {
+        SettingsCommand::List { team } => commands::app::settings::list(team).await,
+        SettingsCommand::Team { cmd } => match cmd {
+            SettingsTeamCommand::Set { team } => commands::app::settings::set_team(team).await,
+            SettingsTeamCommand::Clear => commands::app::settings::clear_team().await,
         },
+        SettingsCommand::Models { cmd } => match cmd {
+            SettingsModelsCommand::Primary { cmd } => {
+                run_model_selection(commands::app::settings::models::ModelSlot::Primary, cmd).await
+            }
+            SettingsModelsCommand::Small { cmd } => {
+                run_model_selection(commands::app::settings::models::ModelSlot::Small, cmd).await
+            }
+        },
+        SettingsCommand::TaskTrackers { cmd } => match cmd {
+            TaskTrackersCommand::Add {
+                name,
+                instance_url,
+                credentials_stdin,
+                team,
+            } => {
+                commands::app::settings::task_trackers::add(
+                    name,
+                    instance_url,
+                    credentials_stdin,
+                    team,
+                )
+                .await
+            }
+            TaskTrackersCommand::Update {
+                id,
+                name,
+                instance_url,
+                credentials_stdin,
+                prompt_credentials,
+                team,
+            } => {
+                commands::app::settings::task_trackers::update(
+                    commands::app::settings::task_trackers::UpdateOptions {
+                        id,
+                        name,
+                        instance_url,
+                        credentials_stdin,
+                        prompt_credentials,
+                        team,
+                    },
+                )
+                .await
+            }
+            TaskTrackersCommand::Remove { id, team } => {
+                commands::app::settings::task_trackers::remove(id, team).await
+            }
+        },
+        SettingsCommand::ModelProviders { cmd } => match cmd {
+            ModelProvidersCommand::Add {
+                provider_key,
+                name,
+                auth,
+                credentials_stdin,
+                team,
+            } => {
+                commands::app::settings::model_providers::add(
+                    commands::app::settings::model_providers::AddOptions {
+                        provider_key,
+                        name,
+                        auth,
+                        credentials_stdin,
+                        team,
+                    },
+                )
+                .await
+            }
+            ModelProvidersCommand::Update {
+                id,
+                name,
+                auth,
+                credentials_stdin,
+                prompt_credentials,
+                team,
+            } => {
+                commands::app::settings::model_providers::update(
+                    commands::app::settings::model_providers::UpdateOptions {
+                        id,
+                        name,
+                        auth,
+                        credentials_stdin,
+                        prompt_credentials,
+                        team,
+                    },
+                )
+                .await
+            }
+            ModelProvidersCommand::Remove { id, team } => {
+                commands::app::settings::model_providers::remove(id, team).await
+            }
+            ModelProvidersCommand::ConnectOpenai {
+                name,
+                no_browser,
+                team,
+            } => {
+                commands::app::settings::device_oauth::connect_openai(name, no_browser, team).await
+            }
+        },
+        SettingsCommand::Github { cmd } => match cmd {
+            GithubCommand::Connect { no_browser, team } => {
+                commands::app::settings::github::connect(no_browser, team).await
+            }
+            GithubCommand::Disconnect { team } => {
+                commands::app::settings::github::disconnect(team).await
+            }
+        },
+    }
+}
+
+async fn run_model_selection(
+    slot: commands::app::settings::models::ModelSlot,
+    cmd: ModelSelectionCommand,
+) -> anyhow::Result<()> {
+    match cmd {
+        ModelSelectionCommand::Set {
+            provider_key,
+            model_id,
+            team,
+        } => commands::app::settings::models::set(slot, provider_key, model_id, team).await,
+        ModelSelectionCommand::Clear { team } => {
+            commands::app::settings::models::clear(slot, team).await
+        }
     }
 }
 

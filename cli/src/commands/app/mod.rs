@@ -1,3 +1,4 @@
+pub(crate) mod args;
 pub(crate) mod settings;
 pub(crate) mod workers;
 
@@ -7,7 +8,7 @@ mod tests;
 use std::io::Write;
 
 use uuid::Uuid;
-use vulcanum_shared::api::app::AppTeam;
+use vulcanum_shared::api::app::teams::AppTeam;
 use vulcanum_shared::api::error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::state::app::AppSession;

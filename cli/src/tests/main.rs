@@ -1,7 +1,10 @@
 use clap::Parser;
 use uuid::Uuid;
 
-use crate::{Cli, Command, SettingsCommand, SettingsTeamCommand, WorkerCommand, WorkersCommand};
+use crate::commands::app::args::{
+    DirectModelProviderAuth, ModelProvidersCommand, SettingsCommand, SettingsTeamCommand,
+};
+use crate::{Cli, Command, WorkerCommand, WorkersCommand};
 
 const TEAM: &str = "00000000-0000-0000-0000-00000000002A";
 
@@ -56,6 +59,135 @@ fn app_command_forms_parse_exactly() {
             }
         }
     ));
+}
+
+#[test]
+fn settings_mutation_branches_parse() {
+    for args in [
+        vec![
+            "vulcanum", "settings", "models", "primary", "set", "openai", "gpt-5",
+        ],
+        vec!["vulcanum", "settings", "models", "primary", "clear"],
+        vec![
+            "vulcanum",
+            "settings",
+            "models",
+            "small",
+            "set",
+            "openai",
+            "gpt-5-mini",
+        ],
+        vec!["vulcanum", "settings", "models", "small", "clear"],
+        vec![
+            "vulcanum",
+            "settings",
+            "task-trackers",
+            "add",
+            "--name",
+            "Kaneo",
+            "--instance-url",
+            "https://tasks.example",
+            "--credentials-stdin",
+        ],
+        vec![
+            "vulcanum",
+            "settings",
+            "task-trackers",
+            "update",
+            TEAM,
+            "--prompt-credentials",
+        ],
+        vec!["vulcanum", "settings", "task-trackers", "remove", TEAM],
+        vec![
+            "vulcanum",
+            "settings",
+            "model-providers",
+            "add",
+            "anthropic",
+        ],
+        vec![
+            "vulcanum",
+            "settings",
+            "model-providers",
+            "update",
+            TEAM,
+            "--auth",
+            "none",
+        ],
+        vec!["vulcanum", "settings", "model-providers", "remove", TEAM],
+        vec![
+            "vulcanum",
+            "settings",
+            "model-providers",
+            "connect-openai",
+            "--no-browser",
+        ],
+        vec!["vulcanum", "settings", "github", "connect", "--no-browser"],
+        vec!["vulcanum", "settings", "github", "disconnect"],
+    ] {
+        Cli::try_parse_from(args).expect("settings mutation branch should parse");
+    }
+}
+
+#[test]
+fn model_provider_add_defaults_to_api_key_auth() {
+    let cli = Cli::try_parse_from([
+        "vulcanum",
+        "settings",
+        "model-providers",
+        "add",
+        "anthropic",
+    ])
+    .expect("provider add should parse");
+    assert!(matches!(
+        cli.command,
+        Command::Settings {
+            cmd: SettingsCommand::ModelProviders {
+                cmd: ModelProvidersCommand::Add {
+                    auth: DirectModelProviderAuth::ApiKey,
+                    ..
+                }
+            }
+        }
+    ));
+}
+
+#[test]
+fn settings_credential_conflicts_and_invalid_values_fail_to_parse() {
+    for args in [
+        vec![
+            "vulcanum",
+            "settings",
+            "task-trackers",
+            "update",
+            TEAM,
+            "--credentials-stdin",
+            "--prompt-credentials",
+        ],
+        vec![
+            "vulcanum",
+            "settings",
+            "model-providers",
+            "update",
+            TEAM,
+            "--credentials-stdin",
+            "--prompt-credentials",
+        ],
+        vec!["vulcanum", "settings", "task-trackers", "remove", "invalid"],
+        vec!["vulcanum", "settings", "model-providers", "add"],
+        vec!["vulcanum", "settings", "models", "primary", "set", "openai"],
+        vec![
+            "vulcanum",
+            "settings",
+            "model-providers",
+            "add",
+            "openai",
+            "--auth",
+            "device-oauth",
+        ],
+    ] {
+        assert!(Cli::try_parse_from(args).is_err());
+    }
 }
 
 #[test]

@@ -18,12 +18,12 @@ async fn settings_list_renders_complete_redacted_snapshot() {
         Response::ok(
             "GET",
             "/api/v1/providers",
-            r#"[{"name":"Linear\nProd","provider_type":"linear","instance_url":"https://user:password@linear.example/path?api_key=tracker-secret#fragment","api_key":"tracker-api-key"}]"#,
+            r#"[{"id":"00000000-0000-0000-0000-000000000031","name":"Linear\nProd","provider_type":"linear","instance_url":"https://user:password@linear.example/path?api_key=tracker-secret#fragment","api_key":"tracker-api-key"}]"#,
         ),
         Response::ok(
             "GET",
             "/api/v1/model-providers",
-            r#"[{"display_name":"OpenAI","provider_key":"openai","auth_type":"oauth","credential_fields":["organization"],"oauth":{"account_id":"account-secret","email":"dev@example.com"},"credential_values":{"api_key":"model-secret"}}]"#,
+            r#"[{"id":"00000000-0000-0000-0000-000000000032","display_name":"OpenAI","provider_key":"openai","auth_type":"device_oauth","credential_fields":["organization"],"oauth":{"account_id":"account-secret","email":"dev@example.com"},"credential_values":{"api_key":"model-secret"}}]"#,
         ),
         Response::ok("GET", "/api/v1/github/installation", "null"),
     ]);

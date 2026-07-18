@@ -1,3 +1,6 @@
+mod contracts;
+mod mutations;
+
 use uuid::Uuid;
 
 use crate::client::tests::support::serve_once;
@@ -62,7 +65,7 @@ async fn team_scoped_app_reads_send_team_and_bearer_headers() {
     );
     assert_eq!(workers[0].active_jobs, 1);
 
-    let tracker = r#"[{"name":"Linear","provider_type":"linear","instance_url":"https://linear.app","api_key":"ignored"}]"#;
+    let tracker = r#"[{"id":"00000000-0000-0000-0000-000000000003","name":"Linear","provider_type":"linear","instance_url":"https://linear.app","api_key":"ignored"}]"#;
     let (base_url, handle) = serve_once("200 OK", tracker);
     let trackers = ApiClient::new(base_url)
         .list_task_trackers(TEAM_ID, "app-access")
@@ -74,7 +77,7 @@ async fn team_scoped_app_reads_send_team_and_bearer_headers() {
     );
     assert_eq!(trackers[0].provider_type, "linear");
 
-    let provider = r#"[{"display_name":"OpenAI","provider_key":"openai","auth_type":"oauth","credential_fields":["organization"],"oauth":{"account_id":"acct","email":"dev@example.com"},"credential_values":{"secret":"ignored"}}]"#;
+    let provider = r#"[{"id":"00000000-0000-0000-0000-000000000004","display_name":"OpenAI","provider_key":"openai","auth_type":"device_oauth","credential_fields":["organization"],"oauth":{"account_id":"acct","email":"dev@example.com"},"credential_values":{"secret":"ignored"}}]"#;
     let (base_url, handle) = serve_once("200 OK", provider);
     let providers = ApiClient::new(base_url)
         .list_model_providers(TEAM_ID, "app-access")
