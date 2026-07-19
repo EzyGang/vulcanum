@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use vulcanum_shared::state::app::AppSession;
 
-use super::configuration::{set_automation_with, set_columns_with, ColumnsOptions};
+use super::super::configuration::{set_automation_with, set_columns_with, ColumnsOptions};
 use crate::commands::app::AppRuntime;
 use crate::tests::http::{FakeServer, Response};
 

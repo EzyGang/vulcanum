@@ -104,17 +104,13 @@ pub(super) fn project_mark(board: &TaskBoardResponse, value: &str) -> String {
     if value.is_empty() {
         return "— (unset)".to_owned();
     }
-    match board.board.columns.iter().find(|column| {
-        column.id.eq_ignore_ascii_case(value)
-            || column.slug.eq_ignore_ascii_case(value)
-            || column.name.eq_ignore_ascii_case(value)
-    }) {
-        Some(column) => format!(
+    match find_column(board, value) {
+        Ok(column) => format!(
             "{} ({})",
             escape_terminal(&column.name),
             escape_terminal(&column.slug)
         ),
-        None => format!("{} (missing)", escape_terminal(value)),
+        Err(_) => format!("{} (missing)", escape_terminal(value)),
     }
 }
 

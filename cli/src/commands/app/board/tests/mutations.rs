@@ -4,7 +4,7 @@ use super::fixtures::{
     board_responses, ignore_save, project_responses, runtime, session, task_response, PROJECT_ID,
     PROVIDER_ID,
 };
-use crate::commands::app::board::tasks::{self, CreateOptions, EditOptions};
+use crate::commands::app::board::task_mutations::{self as tasks, CreateOptions, EditOptions};
 use crate::tests::http::{FakeServer, Response};
 
 #[tokio::test]

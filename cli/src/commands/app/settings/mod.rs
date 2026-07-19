@@ -6,13 +6,9 @@ pub(crate) mod models;
 pub(crate) mod task_trackers;
 
 mod credentials;
-#[cfg(test)]
-mod credentials_tests;
-#[cfg(test)]
-mod mutation_tests;
-#[cfg(test)]
-mod oauth_tests;
 mod runtime;
+#[cfg(test)]
+mod tests;
 
 use std::io;
 

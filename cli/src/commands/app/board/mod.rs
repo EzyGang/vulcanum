@@ -1,5 +1,6 @@
 pub(crate) mod args;
 pub(in crate::commands::app) mod support;
+mod task_mutations;
 mod tasks;
 #[cfg(test)]
 mod tests;
@@ -57,8 +58,8 @@ async fn run_with(
                 priority,
                 team,
             } => {
-                tasks::create(
-                    tasks::CreateOptions {
+                task_mutations::create(
+                    task_mutations::CreateOptions {
                         project_id,
                         title,
                         body,
@@ -85,8 +86,8 @@ async fn run_with(
                 body_stdin,
                 team,
             } => {
-                tasks::edit(
-                    tasks::EditOptions {
+                task_mutations::edit(
+                    task_mutations::EditOptions {
                         project_id,
                         task,
                         title,
@@ -104,7 +105,7 @@ async fn run_with(
                 task,
                 column,
                 team,
-            } => tasks::move_task(project_id, &task, &column, team, runtime).await,
+            } => task_mutations::move_task(project_id, &task, &column, team, runtime).await,
             BoardTasksCommand::Search {
                 project_id,
                 query,

@@ -1,9 +1,9 @@
 use uuid::Uuid;
 use vulcanum_shared::state::app::AppSession;
 
-use super::repos::{list_with as list_repos_with, set_with, EditOptions};
-use super::runtime::ProjectsRuntime;
-use super::{add_with, list_with, AddOptions};
+use super::super::repos::{list_with as list_repos_with, set_with, EditOptions};
+use super::super::runtime::ProjectsRuntime;
+use super::super::{add_with, list_with, AddOptions};
 use crate::commands::app::AppRuntime;
 use crate::tests::http::{FakeServer, Response};
 
