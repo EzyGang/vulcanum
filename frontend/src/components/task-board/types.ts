@@ -159,12 +159,19 @@ export interface TaskBoardReviewSettingsData {
   hasOverrides: boolean;
 }
 
+export interface TaskBoardRunCountStat {
+  label: string;
+  valueLabel: string;
+}
+
 export interface TaskBoardProjectUsagePeriodData {
   label: string;
   detail: string;
   tokensLabel: string;
   finishedRunsLabel: string;
   breakdownLabel: string;
+  runCountsLabel: string;
+  runCountStats: TaskBoardRunCountStat[];
   counters: TaskBoardUsageCounters;
   emptyMessage: string | null;
 }

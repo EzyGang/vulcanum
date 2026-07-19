@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_refresh_tokens\n             SET token_hash = $1,\n                 expires_at = $2,\n                 last_used_at = $3\n             WHERE token_hash = $4\n               AND revoked_at IS NULL\n               AND expires_at > $3\n             RETURNING user_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fa607b6a37b6388f83de69ee829e176cde0002d6561ddf02dac35506039bf038"
+}

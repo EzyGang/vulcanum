@@ -7,6 +7,14 @@ const hasUsage = (counters: TaskBoardUsageCounters): boolean =>
 
 const finishedRunsLabel = (count: number): string =>
   `${formatTokenCount(count)} finished ${count === 1 ? 'run' : 'runs'}`;
+const runCountStats = (
+  counters: TaskBoardUsageCounters
+): TaskBoardProjectUsagePeriodData['runCountStats'] => [
+  { label: 'Implement', valueLabel: formatTokenCount(counters.implementationRunsCount) },
+  { label: 'Review', valueLabel: formatTokenCount(counters.reviewRunsCount) },
+  { label: 'Successful', valueLabel: formatTokenCount(counters.successfulRunsCount) },
+  { label: 'Failed', valueLabel: formatTokenCount(counters.failedRunsCount) }
+];
 
 const buildPeriod = (
   label: string,
@@ -19,6 +27,8 @@ const buildPeriod = (
   tokensLabel: `${formatTokenCount(counters.tokensUsed)} tokens`,
   finishedRunsLabel: finishedRunsLabel(counters.finishedRunsCount),
   breakdownLabel: `${label} token breakdown`,
+  runCountsLabel: `${label} run counts`,
+  runCountStats: runCountStats(counters),
   counters,
   emptyMessage: hasUsage(counters) ? null : emptyMessage
 });

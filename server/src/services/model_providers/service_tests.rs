@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use serde_json::{json, Value};
-use sqlx::Row;
 use vulcanum_shared::api::wire::AgentBackend;
 
 use crate::db::model_providers::ModelProvidersRepository;
@@ -251,14 +250,14 @@ async fn update_to_none_auth_clears_stored_credentials(pool: sqlx::PgPool) {
     assert!(updated.credential_fields.is_empty());
     assert!(updated.oauth.is_none());
 
-    let stored_credentials: Value =
-        sqlx::query("SELECT credentials FROM model_provider_configs WHERE id = $1")
-            .bind(created.id)
-            .fetch_one(&pool)
-            .await
-            .expect("fetch stored provider")
-            .try_get("credentials")
-            .expect("read credentials");
+    let stored_credentials: Value = sqlx::query!(
+        "SELECT credentials FROM model_provider_configs WHERE id = $1",
+        created.id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("fetch stored provider")
+    .credentials;
     assert!(stored_credentials.is_null());
 }
 

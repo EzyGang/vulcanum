@@ -3,6 +3,7 @@ use uuid::Uuid;
 use crate::db::queryer::Queryer;
 use crate::db::work_runs::WorkRunsRepository;
 use crate::models::work_runs::errors::WorkRunsError;
+use crate::models::work_runs::model::WorkRunStatus;
 
 impl WorkRunsRepository {
     pub async fn reset_orphaned_dispatched<'c, Q: Queryer<'c>>(
@@ -10,7 +11,7 @@ impl WorkRunsRepository {
         db: Q,
         threshold_secs: i64,
     ) -> Result<u64, WorkRunsError> {
-        self.reset_stale_assigned_runs(db, "'dispatched'::work_run_status", threshold_secs)
+        self.reset_stale_assigned_runs(db, WorkRunStatus::Dispatched, threshold_secs)
             .await
     }
 
@@ -37,7 +38,7 @@ impl WorkRunsRepository {
         db: Q,
         threshold_secs: i64,
     ) -> Result<u64, WorkRunsError> {
-        self.reset_stale_assigned_runs(db, "'running'::work_run_status", threshold_secs)
+        self.reset_stale_assigned_runs(db, WorkRunStatus::Running, threshold_secs)
             .await
     }
 
@@ -74,15 +75,15 @@ impl WorkRunsRepository {
     async fn reset_stale_assigned_runs<'c, Q: Queryer<'c>>(
         &self,
         db: Q,
-        status: &str,
+        status: WorkRunStatus,
         threshold_secs: i64,
     ) -> Result<u64, WorkRunsError> {
-        let query = format!(
+        let row = sqlx::query!(
             r#"WITH candidates AS (
                 SELECT id, worker_id
                 FROM work_runs
-                WHERE status = {status}
-                AND updated_at < NOW() - INTERVAL '1 second' * $1
+                WHERE status = $1
+                AND updated_at < NOW() - INTERVAL '1 second' * $2
                 AND finish_blocked_reason IS NULL
             ),
             reset_runs AS (
@@ -111,17 +112,16 @@ impl WorkRunsRepository {
                 WHERE w.id = affected_workers.worker_id
                 RETURNING w.id
             )
-            SELECT COUNT(*)::bigint
+            SELECT COUNT(*)::bigint AS "reset_count!"
             FROM reset_runs
-            CROSS JOIN (SELECT COUNT(*) FROM updated_workers) AS updated_worker_count"#
-        );
+            CROSS JOIN (SELECT COUNT(*) FROM updated_workers) AS updated_worker_count"#,
+            &status as &WorkRunStatus,
+            threshold_secs as f64,
+        )
+        .fetch_one(db)
+        .await
+        .map_err(WorkRunsError::from)?;
 
-        let (reset_count,): (i64,) = sqlx::query_as(&query)
-            .bind(threshold_secs as f64)
-            .fetch_one(db)
-            .await
-            .map_err(WorkRunsError::from)?;
-
-        Ok(reset_count as u64)
+        Ok(row.reset_count as u64)
     }
 }

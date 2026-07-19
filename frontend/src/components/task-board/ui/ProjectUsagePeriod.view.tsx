@@ -25,6 +25,22 @@ export const ProjectUsagePeriodView = ({
         <div role='group' aria-label={data.breakdownLabel}>
           <RunUsageStats run={data.counters} />
         </div>
+        <div class='flex flex-col gap-2'>
+          <span class='text-xs font-medium uppercase tracking-wider text-text-muted'>Runs</span>
+          <div role='group' aria-label={data.runCountsLabel} class='grid grid-cols-2 gap-2'>
+            {data.runCountStats.map((stat) => (
+              <div
+                key={stat.label}
+                class='flex items-center justify-between gap-3 border border-border-base bg-bg-card px-2.5 py-2'
+              >
+                <span class='text-xs text-text-muted'>{stat.label}</span>
+                <span class='font-mono text-sm font-medium tabular-nums text-text-primary'>
+                  {stat.valueLabel}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </>
     )}
   </div>

@@ -136,7 +136,11 @@ const makeProjectUsage = (): TaskBoardProjectUsage => ({
     outputTokens: 345,
     cacheReadTokens: 80,
     cacheWriteTokens: 12,
-    finishedRunsCount: 2
+    finishedRunsCount: 5,
+    implementationRunsCount: 3,
+    reviewRunsCount: 2,
+    successfulRunsCount: 4,
+    failedRunsCount: 1
   },
   thisWeek: {
     tokensUsed: 345,
@@ -144,7 +148,11 @@ const makeProjectUsage = (): TaskBoardProjectUsage => ({
     outputTokens: 95,
     cacheReadTokens: 20,
     cacheWriteTokens: 4,
-    finishedRunsCount: 1
+    finishedRunsCount: 2,
+    implementationRunsCount: 1,
+    reviewRunsCount: 1,
+    successfulRunsCount: 1,
+    failedRunsCount: 1
   }
 });
 
@@ -511,10 +519,14 @@ describe('TaskBoard.view', () => {
 
     expect(usage.textContent).toContain('Total');
     expect(usage.textContent).toContain('1.5K tokens');
-    expect(usage.textContent).toContain('2 finished runs');
+    expect(usage.textContent).toContain('5 finished runs');
+    expect(usage.textContent).toContain('Implement3');
+    expect(usage.textContent).toContain('Review2');
+    expect(usage.textContent).toContain('Successful4');
+    expect(usage.textContent).toContain('Failed1');
     expect(usage.textContent).toContain('This week');
     expect(usage.textContent).toContain('345 tokens');
-    expect(usage.textContent).toContain('1 finished run');
+    expect(usage.textContent).toContain('2 finished runs');
     expect(usage.textContent).toContain('Monday 00:00 UTC to now');
   });
 
@@ -528,7 +540,11 @@ describe('TaskBoard.view', () => {
         outputTokens: 0,
         cacheReadTokens: 0,
         cacheWriteTokens: 0,
-        finishedRunsCount: 0
+        finishedRunsCount: 0,
+        implementationRunsCount: 0,
+        reviewRunsCount: 0,
+        successfulRunsCount: 0,
+        failedRunsCount: 0
       }
     });
 

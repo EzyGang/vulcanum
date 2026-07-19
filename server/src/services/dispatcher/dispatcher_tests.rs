@@ -26,28 +26,34 @@ const DEFAULT_STALE_THRESHOLD: u64 = 120;
 const DEFAULT_STALLED_THRESHOLD: u64 = 1800;
 
 async fn worker_load(pool: &PgPool, worker_id: uuid::Uuid) -> (WorkerStatus, i32) {
-    sqlx::query_as::<_, (WorkerStatus, i32)>(
-        "SELECT status, active_jobs FROM workers WHERE id = $1",
+    let row = sqlx::query!(
+        r#"SELECT status AS "status: WorkerStatus", active_jobs
+           FROM workers
+           WHERE id = $1"#,
+        worker_id,
     )
-    .bind(worker_id)
     .fetch_one(pool)
     .await
-    .expect("Should query worker load")
+    .expect("Should query worker load");
+
+    (row.status, row.active_jobs)
 }
 
 async fn age_work_run(pool: &PgPool, work_run_id: uuid::Uuid) {
-    sqlx::query("ALTER TABLE work_runs DISABLE TRIGGER trg_work_runs_updated_at")
+    sqlx::query!("ALTER TABLE work_runs DISABLE TRIGGER trg_work_runs_updated_at")
         .execute(pool)
         .await
         .expect("Should disable work_runs updated_at trigger");
 
-    sqlx::query("UPDATE work_runs SET updated_at = NOW() - INTERVAL '10 minutes' WHERE id = $1")
-        .bind(work_run_id)
-        .execute(pool)
-        .await
-        .expect("Should age work run");
+    sqlx::query!(
+        "UPDATE work_runs SET updated_at = NOW() - INTERVAL '10 minutes' WHERE id = $1",
+        work_run_id,
+    )
+    .execute(pool)
+    .await
+    .expect("Should age work run");
 
-    sqlx::query("ALTER TABLE work_runs ENABLE TRIGGER trg_work_runs_updated_at")
+    sqlx::query!("ALTER TABLE work_runs ENABLE TRIGGER trg_work_runs_updated_at")
         .execute(pool)
         .await
         .expect("Should enable work_runs updated_at trigger");
@@ -158,17 +164,19 @@ async fn dispatch_recovers_capacity_from_orphaned_dispatched_run(pool: PgPool) {
     assert_eq!(summary.orphaned, 1);
     assert_eq!(summary.dispatched, 1);
 
-    let (run_status, run_worker_id) = sqlx::query_as::<_, (WorkRunStatus, Option<uuid::Uuid>)>(
-        "SELECT status, worker_id FROM work_runs WHERE id = $1",
+    let run = sqlx::query!(
+        r#"SELECT status AS "status: WorkRunStatus", worker_id
+           FROM work_runs
+           WHERE id = $1"#,
+        wr_id,
     )
-    .bind(wr_id)
     .fetch_one(&pool)
     .await
     .expect("Should query redispatched run");
     let (status, active_jobs) = worker_load(&pool, worker_id).await;
 
-    assert!(matches!(run_status, WorkRunStatus::Dispatched));
-    assert_eq!(run_worker_id, Some(worker_id));
+    assert!(matches!(run.status, WorkRunStatus::Dispatched));
+    assert_eq!(run.worker_id, Some(worker_id));
     assert!(matches!(status, WorkerStatus::Busy));
     assert_eq!(active_jobs, 1);
 }
@@ -187,18 +195,20 @@ async fn reset_stalled_running_releases_worker_capacity(pool: PgPool) {
         .await
         .expect("Should reset stalled run");
 
-    let (run_status, run_worker_id) = sqlx::query_as::<_, (WorkRunStatus, Option<uuid::Uuid>)>(
-        "SELECT status, worker_id FROM work_runs WHERE id = $1",
+    let run = sqlx::query!(
+        r#"SELECT status AS "status: WorkRunStatus", worker_id
+           FROM work_runs
+           WHERE id = $1"#,
+        wr_id,
     )
-    .bind(wr_id)
     .fetch_one(&pool)
     .await
     .expect("Should query reset run");
     let (status, active_jobs) = worker_load(&pool, worker_id).await;
 
     assert_eq!(reset, 1);
-    assert!(matches!(run_status, WorkRunStatus::Pending));
-    assert_eq!(run_worker_id, None);
+    assert!(matches!(run.status, WorkRunStatus::Pending));
+    assert_eq!(run.worker_id, None);
     assert!(matches!(status, WorkerStatus::Idle));
     assert_eq!(active_jobs, 0);
 }

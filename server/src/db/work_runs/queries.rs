@@ -199,24 +199,32 @@ impl WorkRunsRepository {
         parent_work_run_id: Uuid,
         current_work_run_id: Uuid,
     ) -> Result<ReviewSiblingSummary, WorkRunsError> {
-        let (active_count, failed_count): (i64, i64) = sqlx::query_as(
+        let row = sqlx::query!(
             r#"SELECT
-             COUNT(*) FILTER (WHERE status IN ('pending'::work_run_status, 'dispatched'::work_run_status, 'running'::work_run_status)) AS active_count,
-             COUNT(*) FILTER (WHERE status = 'failed'::work_run_status) AS failed_count
+             COUNT(*) FILTER (
+                 WHERE status IN (
+                     'pending'::work_run_status,
+                     'dispatched'::work_run_status,
+                     'running'::work_run_status
+                 )
+             ) AS "active_count!",
+             COUNT(*) FILTER (
+                 WHERE status = 'failed'::work_run_status
+             ) AS "failed_count!"
              FROM work_runs
              WHERE parent_work_run_id = $1
              AND id != $2
              AND work_type = 'pull_request_review'::work_run_type"#,
+            parent_work_run_id,
+            current_work_run_id,
         )
-        .bind(parent_work_run_id)
-        .bind(current_work_run_id)
         .fetch_one(db)
         .await
         .map_err(WorkRunsError::from)?;
 
         Ok(ReviewSiblingSummary {
-            active_count,
-            failed_count,
+            active_count: row.active_count,
+            failed_count: row.failed_count,
         })
     }
 

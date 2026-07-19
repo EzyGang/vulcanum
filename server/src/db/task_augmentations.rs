@@ -38,7 +38,7 @@ impl TaskAugmentationsRepository {
     where
         Q: Queryer<'c>,
     {
-        sqlx::query(
+        sqlx::query!(
             r#"INSERT INTO task_augmentations (
                 team_id, project_config_id, external_task_ref, tokens_used, input_tokens,
                 output_tokens, cache_read_tokens, cache_write_tokens, finished_runs_count
@@ -52,15 +52,15 @@ impl TaskAugmentationsRepository {
                 cache_write_tokens = task_augmentations.cache_write_tokens + EXCLUDED.cache_write_tokens,
                 finished_runs_count = task_augmentations.finished_runs_count + 1,
                 updated_at = NOW()"#,
+            params.team_id,
+            params.project_config_id,
+            params.external_task_ref,
+            params.tokens_used,
+            params.input_tokens,
+            params.output_tokens,
+            params.cache_read_tokens,
+            params.cache_write_tokens,
         )
-        .bind(params.team_id)
-        .bind(params.project_config_id)
-        .bind(params.external_task_ref)
-        .bind(params.tokens_used)
-        .bind(params.input_tokens)
-        .bind(params.output_tokens)
-        .bind(params.cache_read_tokens)
-        .bind(params.cache_write_tokens)
         .execute(db)
         .await
         .map_err(WorkRunsError::from)?;
@@ -82,29 +82,30 @@ impl TaskAugmentationsRepository {
             return Ok(Vec::new());
         }
 
-        sqlx::query_as::<_, TaskBoardTaskAugmentation>(
+        sqlx::query_as!(
+            TaskBoardTaskAugmentation,
             r#"WITH requested AS (
                 SELECT task_ref, position
                 FROM UNNEST($3::TEXT[]) WITH ORDINALITY AS refs(task_ref, position)
             )
-            SELECT requested.task_ref AS external_task_ref,
+            SELECT requested.task_ref AS "external_task_ref!",
                    augmentation.tokens_used,
                    augmentation.input_tokens,
                    augmentation.output_tokens,
                    augmentation.cache_read_tokens,
                    augmentation.cache_write_tokens,
                    augmentation.finished_runs_count,
-                   augmentation.updated_at
+                   augmentation.updated_at AS "updated_at!"
             FROM requested
             JOIN task_augmentations augmentation
               ON augmentation.team_id = $1
              AND augmentation.project_config_id = $2
              AND augmentation.external_task_ref = requested.task_ref
             ORDER BY requested.position ASC"#,
+            team_id,
+            project_config_id,
+            external_task_refs,
         )
-        .bind(team_id)
-        .bind(project_config_id)
-        .bind(external_task_refs)
         .fetch_all(db)
         .await
         .map_err(WorkRunsError::from)

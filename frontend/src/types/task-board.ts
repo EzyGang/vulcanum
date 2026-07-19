@@ -13,13 +13,20 @@ export interface TaskBoardLabel {
   color: string;
 }
 
-export interface TaskBoardUsageCounters {
+export interface TaskBoardTokenUsageCounters {
   tokensUsed: number;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+}
+
+export interface TaskBoardUsageCounters extends TaskBoardTokenUsageCounters {
   finishedRunsCount: number;
+  implementationRunsCount: number;
+  reviewRunsCount: number;
+  successfulRunsCount: number;
+  failedRunsCount: number;
 }
 
 export interface TaskBoardProjectUsage {
@@ -27,8 +34,9 @@ export interface TaskBoardProjectUsage {
   thisWeek: TaskBoardUsageCounters;
 }
 
-export interface TaskBoardTaskAugmentation extends TaskBoardUsageCounters {
+export interface TaskBoardTaskAugmentation extends TaskBoardTokenUsageCounters {
   externalTaskRef: string;
+  finishedRunsCount: number;
   updatedAt: string;
 }
 

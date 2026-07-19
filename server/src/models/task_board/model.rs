@@ -31,6 +31,10 @@ pub struct TaskBoardUsageCounters {
     pub cache_read_tokens: i64,
     pub cache_write_tokens: i64,
     pub finished_runs_count: i64,
+    pub implementation_runs_count: i64,
+    pub review_runs_count: i64,
+    pub successful_runs_count: i64,
+    pub failed_runs_count: i64,
 }
 
 #[derive(Debug, Clone, Copy, Default, serde::Serialize)]

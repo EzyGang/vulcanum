@@ -1,4 +1,3 @@
-use sqlx::Row;
 use uuid::Uuid;
 
 use crate::db::queryer::Queryer;
@@ -167,7 +166,7 @@ impl TeamsRepository {
         Q: Queryer<'c>,
     {
         let id = Uuid::new_v4();
-        sqlx::query(
+        sqlx::query!(
             r#"INSERT INTO user_identities (id, user_id, provider, provider_user_id, provider_login, provider_verified_at)
              VALUES ($1, $2, $3, $4, $5, NOW())
              ON CONFLICT (provider, provider_user_id) DO UPDATE SET
@@ -175,12 +174,12 @@ impl TeamsRepository {
                  provider_login = EXCLUDED.provider_login,
                  provider_verified_at = NOW(),
                  updated_at = NOW()"#,
+            id,
+            user_id,
+            provider,
+            provider_user_id,
+            provider_login,
         )
-        .bind(id)
-        .bind(user_id)
-        .bind(provider)
-        .bind(provider_user_id)
-        .bind(provider_login)
         .execute(db)
         .await
         .map(|_| ())
@@ -195,27 +194,17 @@ impl TeamsRepository {
     where
         Q: Queryer<'c>,
     {
-        let rows = sqlx::query(
+        sqlx::query_as!(
+            ProviderIdentity,
             r#"SELECT provider, provider_user_id, provider_login, provider_verified_at
              FROM user_identities
              WHERE user_id = $1
              ORDER BY provider ASC"#,
+            user_id,
         )
-        .bind(user_id)
         .fetch_all(db)
-        .await?;
-
-        rows.into_iter()
-            .map(|row| {
-                Ok(ProviderIdentity {
-                    provider: row.try_get("provider")?,
-                    provider_user_id: row.try_get("provider_user_id")?,
-                    provider_login: row.try_get("provider_login")?,
-                    provider_verified_at: row.try_get("provider_verified_at")?,
-                })
-            })
-            .collect::<Result<Vec<_>, sqlx::Error>>()
-            .map_err(TeamsError::from)
+        .await
+        .map_err(TeamsError::from)
     }
 
     pub async fn user_has_identity<'c, Q>(

@@ -13,11 +13,13 @@ async fn poller_inserts_tasks(pool: PgPool) {
     let mock = Arc::new(MockTaskFetcher::new());
     let provider_id = insert_provider(&pool).await;
     let project_id = insert_project_config(&pool, "kaneo-proj-1", provider_id).await;
-    sqlx::query("UPDATE project_configs SET progress_column = 'doing' WHERE id = $1")
-        .bind(project_id)
-        .execute(&pool)
-        .await
-        .expect("Should set custom progress column");
+    sqlx::query!(
+        "UPDATE project_configs SET progress_column = 'doing' WHERE id = $1",
+        project_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("Should set custom progress column");
 
     let mut task = make_task("task-1", "Fix login bug");
     task.project_slug = Some("VLC".to_owned());

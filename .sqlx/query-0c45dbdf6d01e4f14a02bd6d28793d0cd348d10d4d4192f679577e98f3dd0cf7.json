@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE work_runs DISABLE TRIGGER trg_work_runs_updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0c45dbdf6d01e4f14a02bd6d28793d0cd348d10d4d4192f679577e98f3dd0cf7"
+}

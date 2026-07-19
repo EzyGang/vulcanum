@@ -102,6 +102,8 @@ impl WorkRunsService {
                     output_tokens: params.output_tokens,
                     cache_read_tokens: params.cache_read_tokens,
                     cache_write_tokens: params.cache_write_tokens,
+                    work_type: run.work_type,
+                    status,
                 },
             )
             .await?;

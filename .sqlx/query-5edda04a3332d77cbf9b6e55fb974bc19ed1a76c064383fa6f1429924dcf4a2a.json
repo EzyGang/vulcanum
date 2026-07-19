@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH bounds AS (\n                SELECT\n                    (statement_timestamp() AT TIME ZONE 'UTC')::DATE AS today,\n                    DATE_TRUNC('week', statement_timestamp() AT TIME ZONE 'UTC')::DATE AS week_start\n            )\n            SELECT\n                COALESCE(SUM(tokens_used), 0)::BIGINT AS \"total_tokens_used!\",\n                COALESCE(SUM(input_tokens), 0)::BIGINT AS \"total_input_tokens!\",\n                COALESCE(SUM(output_tokens), 0)::BIGINT AS \"total_output_tokens!\",\n                COALESCE(SUM(cache_read_tokens), 0)::BIGINT AS \"total_cache_read_tokens!\",\n                COALESCE(SUM(cache_write_tokens), 0)::BIGINT AS \"total_cache_write_tokens!\",\n                COALESCE(SUM(finished_runs_count), 0)::BIGINT AS \"total_finished_runs_count!\",\n                COALESCE(SUM(implementation_runs_count), 0)::BIGINT\n                    AS \"total_implementation_runs_count!\",\n                COALESCE(SUM(review_runs_count), 0)::BIGINT AS \"total_review_runs_count!\",\n                COALESCE(SUM(successful_runs_count), 0)::BIGINT AS \"total_successful_runs_count!\",\n                COALESCE(SUM(failed_runs_count), 0)::BIGINT AS \"total_failed_runs_count!\",\n                COALESCE(SUM(tokens_used) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_tokens_used!\",\n                COALESCE(SUM(input_tokens) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_input_tokens!\",\n                COALESCE(SUM(output_tokens) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_output_tokens!\",\n                COALESCE(SUM(cache_read_tokens) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_cache_read_tokens!\",\n                COALESCE(SUM(cache_write_tokens) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_cache_write_tokens!\",\n                COALESCE(SUM(finished_runs_count) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_finished_runs_count!\",\n                COALESCE(SUM(implementation_runs_count) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_implementation_runs_count!\",\n                COALESCE(SUM(review_runs_count) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_review_runs_count!\",\n                COALESCE(SUM(successful_runs_count) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_successful_runs_count!\",\n                COALESCE(SUM(failed_runs_count) FILTER (\n                    WHERE usage_date BETWEEN bounds.week_start AND bounds.today\n                ), 0)::BIGINT AS \"week_failed_runs_count!\"\n            FROM project_usage_daily\n            CROSS JOIN bounds\n            WHERE project_config_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_tokens_used!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_input_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_output_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_cache_read_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_cache_write_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_finished_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "total_implementation_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "total_review_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "total_successful_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "total_failed_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "week_tokens_used!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "week_input_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 12,
+        "name": "week_output_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 13,
+        "name": "week_cache_read_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 14,
+        "name": "week_cache_write_tokens!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 15,
+        "name": "week_finished_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 16,
+        "name": "week_implementation_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 17,
+        "name": "week_review_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 18,
+        "name": "week_successful_runs_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 19,
+        "name": "week_failed_runs_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "5edda04a3332d77cbf9b6e55fb974bc19ed1a76c064383fa6f1429924dcf4a2a"
+}

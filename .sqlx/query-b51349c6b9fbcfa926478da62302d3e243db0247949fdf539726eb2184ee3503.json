@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE instance_refresh_tokens\n            SET token_hash = $1,\n                expires_at = $2,\n                last_used_at = $3\n            WHERE token_hash = $4\n              AND password_fingerprint = $5\n              AND revoked_at IS NULL\n              AND expires_at > $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b51349c6b9fbcfa926478da62302d3e243db0247949fdf539726eb2184ee3503"
+}

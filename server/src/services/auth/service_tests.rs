@@ -165,10 +165,11 @@ async fn instance_login_rejects_wrong_password_without_creating_session(pool: sq
         service.instance_login("wrong-password").await,
         Err(AuthError::InvalidPassword)
     ));
-    let row_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM instance_refresh_tokens")
-        .fetch_one(&pool)
-        .await
-        .expect("count instance refresh sessions");
+    let row_count: i64 =
+        sqlx::query_scalar!(r#"SELECT COUNT(*) AS "count!" FROM instance_refresh_tokens"#)
+            .fetch_one(&pool)
+            .await
+            .expect("count instance refresh sessions");
     assert_eq!(row_count, 0);
 }
 
