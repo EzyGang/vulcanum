@@ -3,6 +3,7 @@ import type { SelectOption } from '../../types/shared';
 import type {
   TaskBoard,
   TaskBoardLabel,
+  TaskBoardProjectUsage,
   TaskBoardTask,
   TaskBoardTaskAugmentation
 } from '../../types/task-board';
@@ -161,6 +162,7 @@ export interface TaskBoardReviewSettingsData {
 export interface TaskBoardViewData {
   selectedProjectKey: string | null;
   board?: TaskBoard;
+  projectUsage?: TaskBoardProjectUsage;
   boardColumnCount: number;
   columns: TaskBoardColumnData[];
   hiddenColumns: TaskBoardHiddenColumnData[];

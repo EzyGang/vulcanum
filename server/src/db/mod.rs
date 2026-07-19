@@ -3,6 +3,7 @@ pub mod dispatcher;
 pub mod github_app;
 pub mod model_providers;
 pub mod project_configs;
+pub mod project_usage;
 pub mod provider_configs;
 pub mod queryer;
 pub mod task_augmentations;

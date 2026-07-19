@@ -7,6 +7,7 @@ use vulcanum_shared::api::wire::AgentBackend;
 use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::project_usage::ProjectUsageRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::db::teams::TeamsRepository;
@@ -82,6 +83,7 @@ fn build_service(pool: sqlx::PgPool) -> WorkRunsService {
     WorkRunsService::new(
         WorkRunsRepository::new(),
         TaskAugmentationsRepository::new(),
+        ProjectUsageRepository::new(),
         WorkersRepository::new(),
         project_configs,
         build_github_manager(pool.clone()),
@@ -550,7 +552,7 @@ async fn delete_run_removes_dispatched_when_worker_active_jobs_already_zero(pool
 }
 
 #[sqlx::test]
-async fn submit_result_accumulates_task_augmentation_usage_by_task_ref(pool: sqlx::PgPool) {
+async fn submit_result_accumulates_task_and_project_usage_once_per_result(pool: sqlx::PgPool) {
     fn result_request(
         exit_code: i32,
         tokens_used: i64,
@@ -588,6 +590,11 @@ async fn submit_result_accumulates_task_augmentation_usage_by_task_ref(pool: sql
         .await
         .expect("Should submit first result");
     assert!(matches!(first_job.status, WorkRunStatus::Completed));
+    let retried_job = svc
+        .submit_result(first_wr_id, worker_id, result_request(0, 100, 40, 60, 7, 3))
+        .await
+        .expect("Should accept an idempotent result retry");
+    assert!(matches!(retried_job.status, WorkRunStatus::Completed));
 
     let second_wr_id =
         test_helpers::insert_running_work_run(&pool, project_id, "task-usage", worker_id).await;
@@ -611,6 +618,19 @@ async fn submit_result_accumulates_task_augmentation_usage_by_task_ref(pool: sql
     assert_eq!(rows[0].cache_read_tokens, 9);
     assert_eq!(rows[0].cache_write_tokens, 4);
     assert_eq!(rows[0].finished_runs_count, 2);
+
+    let project_usage = ProjectUsageRepository::new()
+        .summary(&pool, project_id)
+        .await
+        .expect("Should load project usage");
+    assert_eq!(project_usage.total.tokens_used, 125);
+    assert_eq!(project_usage.total.input_tokens, 50);
+    assert_eq!(project_usage.total.output_tokens, 75);
+    assert_eq!(project_usage.total.cache_read_tokens, 9);
+    assert_eq!(project_usage.total.cache_write_tokens, 4);
+    assert_eq!(project_usage.total.finished_runs_count, 2);
+    assert_eq!(project_usage.this_week.tokens_used, 125);
+    assert_eq!(project_usage.this_week.finished_runs_count, 2);
 }
 
 #[sqlx::test]

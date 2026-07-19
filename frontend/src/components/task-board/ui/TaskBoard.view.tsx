@@ -13,6 +13,7 @@ import { Button } from '../../shared/ui/Button.view';
 import { EmptyState } from '../../shared/ui/EmptyState.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import type { TaskBoardViewProps } from '../types';
+import { ProjectUsageSummary } from './ProjectUsageSummary.view';
 import { TaskBoardColumn } from './TaskBoardColumn.view';
 import { TaskBoardEmptyState } from './TaskBoardEmptyState.view';
 import { TaskBoardSettingsDialog } from './TaskBoardSettingsDialog.view';
@@ -56,6 +57,7 @@ export const TaskBoardView = ({
   data: {
     selectedProjectKey,
     board,
+    projectUsage,
     boardColumnCount,
     columns,
     hiddenColumns,
@@ -167,6 +169,8 @@ export const TaskBoardView = ({
           </Button>
         </div>
       </div>
+
+      {projectUsage && <ProjectUsageSummary usage={projectUsage} />}
 
       {showMissingRepoWarning && (
         <section

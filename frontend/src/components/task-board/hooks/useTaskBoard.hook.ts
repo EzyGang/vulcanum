@@ -93,6 +93,7 @@ export const useTaskBoard = () => {
     data: {
       selectedProjectKey: selectedTaskProjectKey.value,
       board,
+      projectUsage: boardQuery.data?.projectUsage,
       ...viewModel.data,
       statusOptions,
       repoItems,
