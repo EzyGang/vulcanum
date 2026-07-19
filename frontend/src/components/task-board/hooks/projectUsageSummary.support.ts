@@ -29,15 +29,8 @@ export const buildProjectUsageSummary = (
   if (!usage) return undefined;
 
   return {
-    emptyMessage: hasUsage(usage.total)
-      ? null
-      : 'No accepted run usage recorded for this project yet.',
-    total: buildPeriod(
-      'Total',
-      'All accepted runs',
-      usage.total,
-      'No accepted run usage recorded for this project yet.'
-    ),
+    emptyMessage: hasUsage(usage.total) ? null : 'No token usage yet.',
+    total: buildPeriod('Total', 'All time', usage.total, 'No token usage yet.'),
     thisWeek: buildPeriod(
       'This week',
       'Monday 00:00 UTC to now',

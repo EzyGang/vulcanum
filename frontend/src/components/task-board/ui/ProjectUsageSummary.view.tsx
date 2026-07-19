@@ -8,7 +8,7 @@ export const ProjectUsageSummaryView = ({
   <section aria-label='Project usage' class='border border-border-base bg-bg-panel'>
     <div class='flex flex-col gap-1 border-b border-border-base px-4 py-3'>
       <h3 class='text-sm font-medium text-text-primary'>Project usage</h3>
-      <p class='text-xs text-text-muted'>Accepted work run token usage</p>
+      <p class='text-xs text-text-muted'>Token usage</p>
     </div>
     {data.emptyMessage ? (
       <p class='p-4 text-sm text-text-muted'>{data.emptyMessage}</p>
