@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use vulcanum_shared::api_types::{JobRepo, RefreshGithubTokenResponse};
+use vulcanum_shared::api::wire::{JobRepo, RefreshGithubTokenResponse};
 
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunStatus};

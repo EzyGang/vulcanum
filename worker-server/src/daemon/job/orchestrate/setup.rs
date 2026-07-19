@@ -4,12 +4,12 @@ use std::sync::Arc;
 use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
-use vulcanum_shared::api_types::JobResponse;
+use vulcanum_shared::api::wire::JobResponse;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::execution::event_reporter::EventReporter;
 use crate::daemon::job::execution::submit::{submit_failed_result, FailedResult};

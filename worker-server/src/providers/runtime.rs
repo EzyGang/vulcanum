@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api::wire::AgentBackend;
 use vulcanum_shared::runtime::agent::{AgentRuntime, RunningSession};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;

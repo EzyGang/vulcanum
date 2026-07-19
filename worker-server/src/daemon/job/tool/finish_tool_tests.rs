@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 
 use crate::daemon::job::tool::finish_tool::{finish_run_tool_ts, omp_finish_run_tool_ts};
 

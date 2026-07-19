@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse};
-use vulcanum_shared::api_types::{AuthExchangeRequest, AuthModeResponse, InstanceLoginRequest};
+use vulcanum_shared::api::wire::{AuthExchangeRequest, AuthModeResponse, InstanceLoginRequest};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;

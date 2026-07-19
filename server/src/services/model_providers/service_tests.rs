@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use serde_json::{json, Value};
 use sqlx::Row;
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api::wire::AgentBackend;
 
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::models::model_providers::errors::ModelProvidersError;

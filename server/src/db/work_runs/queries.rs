@@ -11,7 +11,7 @@ use crate::db::work_runs::WorkRunsRepository;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunListItem, WorkRunStatus, WorkRunType};
 use crate::util::github::github_repo_url;
-use vulcanum_shared::api_types::JobRepo;
+use vulcanum_shared::api::wire::JobRepo;
 
 pub struct InsertWorkRunParams {
     pub team_id: Uuid,

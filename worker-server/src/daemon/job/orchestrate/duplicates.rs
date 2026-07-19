@@ -3,9 +3,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
+use vulcanum_shared::api::error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::execution::submit::resubmit_stored_result;

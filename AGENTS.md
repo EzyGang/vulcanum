@@ -98,6 +98,14 @@ cargo run --bin vulcanum-web
 
 ## Rust Code Guidelines
 
+### Rust module layout
+
+- Group three or more files that share a clear responsibility into a named submodule directory. Prefer semantic names such as `authority/`, `session/`, and `transport/` over repeated filename prefixes such as `authority_*` or `session_*`.
+- Once a responsibility has its own directory, remove that prefix from its child filenames: use `session/metrics.rs`, not `session/session_metrics.rs`.
+- Add another subdirectory only when it creates a real responsibility boundary and leaves each level easier to scan. Do not create one-file directories or speculative nesting.
+- Keep production modules beside their owning domain. Do not flatten files into `rust/src/` merely to shorten import paths.
+- A domain's unit tests belong under its `tests/` submodule and should mirror production concerns, for example `network/tests/protocol.rs`. Do not scatter `*_tests.rs` files through a large production directory.
+
 ### Important Rules
 
 <important_rules>

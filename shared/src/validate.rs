@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::api_types::AgentBackend;
+use crate::api::wire::AgentBackend;
 use crate::config::{IsolationBackend, WorkerConfig};
 #[cfg(target_os = "macos")]
 use crate::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;

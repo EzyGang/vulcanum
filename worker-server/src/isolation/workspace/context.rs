@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api::wire::AgentBackend;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 

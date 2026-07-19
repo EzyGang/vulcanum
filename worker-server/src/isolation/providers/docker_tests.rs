@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use uuid::Uuid;
-use vulcanum_shared::api_types::AgentBackend;
+use vulcanum_shared::api::wire::AgentBackend;
 
 use crate::isolation::github_credentials::GitHubCredentialBridge;
 use crate::isolation::providers::docker::{

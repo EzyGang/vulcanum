@@ -3,10 +3,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::api::wire::SubmitResultRequest;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::state::journal::{Journal, JournalEntry, JournalResultUpdate, JournalStatus};

@@ -15,9 +15,9 @@ use tokio::time::sleep;
 
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::{load_config, WorkerConfig};
-use vulcanum_shared::paths;
+use vulcanum_shared::state::paths;
+use vulcanum_shared::state::worker::{load_state, WorkerState};
 use vulcanum_shared::validate::is_environment_ready_for_config;
-use vulcanum_shared::worker_state::{load_state, WorkerState};
 
 use crate::recovery;
 use crate::state::journal::Journal;

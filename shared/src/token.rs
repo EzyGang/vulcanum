@@ -2,7 +2,7 @@ use anyhow::Context;
 use chrono::Utc;
 
 use crate::client::ApiClient;
-use crate::worker_state::{save_state, WorkerState};
+use crate::state::worker::{save_state, WorkerState};
 
 pub async fn ensure_valid_token(
     client: &ApiClient,

@@ -4,11 +4,11 @@ use std::sync::Arc;
 use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
-use vulcanum_shared::api_types::WorkRunType;
+use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use super::execution::artifact::read_finish_artifact;
 use super::execution::event_reporter::EventReporter;

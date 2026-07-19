@@ -1,6 +1,6 @@
 use actix_web::{web, HttpResponse};
 use uuid::Uuid;
-use vulcanum_shared::api_types::{
+use vulcanum_shared::api::wire::{
     AckRequest, AppendEventsRequest, AppendEventsResponse, ListEventsResponse, PollResponse,
     SubmitResultRequest,
 };
@@ -96,7 +96,7 @@ pub async fn append_events(
 pub async fn list_events(
     state: web::Data<AppState>,
     path: web::Path<Uuid>,
-    query: web::Query<vulcanum_shared::api_types::ListEventsQuery>,
+    query: web::Query<vulcanum_shared::api::wire::ListEventsQuery>,
     auth: WorkerOrInstanceAuth,
 ) -> Result<HttpResponse, AppError> {
     let work_run_id = path.into_inner();
@@ -151,10 +151,10 @@ pub async fn list_events(
         }
     };
 
-    let events: Vec<vulcanum_shared::api_types::WireEvent> = result
+    let events: Vec<vulcanum_shared::api::wire::WireEvent> = result
         .events
         .into_iter()
-        .map(|e| vulcanum_shared::api_types::WireEvent {
+        .map(|e| vulcanum_shared::api::wire::WireEvent {
             sequence: e.sequence as u64,
             event_type: e.event_type,
             payload: e.payload,

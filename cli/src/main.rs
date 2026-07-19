@@ -1,7 +1,14 @@
 mod commands;
 mod console;
 mod prompts;
+#[cfg(test)]
+mod tests;
 
+use crate::commands::app::args::{
+    ProjectReposCommand, ProjectsCommand, RunsCommand, SettingsCommand, WorkersCommand,
+};
+use crate::commands::app::board::args::BoardCommand;
+use crate::commands::app::projects::args::{ProjectAutomationCommand, ProjectColumnsCommand};
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -36,6 +43,31 @@ enum Command {
     Worker {
         #[command(subcommand)]
         cmd: WorkerCommand,
+    },
+    /// Inspect registered workers
+    Workers {
+        #[command(subcommand)]
+        cmd: WorkersCommand,
+    },
+    /// Inspect and add projects
+    Projects {
+        #[command(subcommand)]
+        cmd: ProjectsCommand,
+    },
+    /// Browse and manage a configured project's task board
+    Board {
+        #[command(subcommand)]
+        cmd: BoardCommand,
+    },
+    /// Inspect work runs
+    Runs {
+        #[command(subcommand)]
+        cmd: RunsCommand,
+    },
+    /// Inspect and manage app settings
+    Settings {
+        #[command(subcommand)]
+        cmd: SettingsCommand,
     },
 }
 
@@ -106,6 +138,86 @@ async fn main() -> anyhow::Result<()> {
                 agent_backend,
             } => commands::setup::run(code, instance, force, isolation, agent_backend).await,
         },
+        Command::Workers { cmd } => match cmd {
+            WorkersCommand::List { team } => commands::app::workers::list(team).await,
+        },
+        Command::Projects { cmd } => match cmd {
+            ProjectsCommand::List { team } => commands::app::projects::list(team).await,
+            ProjectsCommand::Add {
+                provider,
+                workspace,
+                project,
+                repos,
+                team,
+            } => {
+                commands::app::projects::add(commands::app::projects::AddOptions {
+                    provider,
+                    workspace,
+                    project,
+                    repos,
+                    team,
+                })
+                .await
+            }
+            ProjectsCommand::Automation { cmd } => match cmd {
+                ProjectAutomationCommand::Enable { project_id, team } => {
+                    commands::app::projects::configuration::set_automation(project_id, true, team)
+                        .await
+                }
+                ProjectAutomationCommand::Disable { project_id, team } => {
+                    commands::app::projects::configuration::set_automation(project_id, false, team)
+                        .await
+                }
+            },
+            ProjectsCommand::Columns { cmd } => match cmd {
+                ProjectColumnsCommand::Set {
+                    project_id,
+                    pickup,
+                    in_progress,
+                    in_review,
+                    done,
+                    team,
+                } => {
+                    commands::app::projects::configuration::set_columns(
+                        commands::app::projects::configuration::ColumnsOptions {
+                            project_id,
+                            pickup,
+                            in_progress,
+                            in_review,
+                            done,
+                            team,
+                        },
+                    )
+                    .await
+                }
+            },
+            ProjectsCommand::Repos { cmd } => match cmd {
+                ProjectReposCommand::List { team } => {
+                    commands::app::projects::repos::list(team).await
+                }
+                ProjectReposCommand::Set {
+                    project_id,
+                    repos,
+                    clear,
+                    team,
+                } => {
+                    commands::app::projects::repos::set(
+                        commands::app::projects::repos::EditOptions {
+                            project_id,
+                            repos,
+                            clear,
+                            team,
+                        },
+                    )
+                    .await
+                }
+            },
+        },
+        Command::Board { cmd } => commands::app::board::run(cmd).await,
+        Command::Runs { cmd } => match cmd {
+            RunsCommand::List { team } => commands::app::runs::list(team).await,
+        },
+        Command::Settings { cmd } => commands::app::settings::dispatch::run(cmd).await,
     }
 }
 

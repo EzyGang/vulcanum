@@ -3,7 +3,7 @@ use actix_web::{test, web, App};
 use crate::app_state::AppState;
 use crate::routes;
 use crate::test_helpers;
-use vulcanum_shared::api_types::ConnectRequest;
+use vulcanum_shared::api::wire::ConnectRequest;
 
 const TEST_PASSWORD: &str = "test-password";
 

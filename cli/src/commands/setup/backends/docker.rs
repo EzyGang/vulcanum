@@ -1,7 +1,7 @@
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(all(test, target_os = "macos"))]
-mod macos_tests;
+mod tests;
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};

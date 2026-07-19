@@ -7,9 +7,9 @@ use chrono::{Duration, Utc};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::api::error::ApiError;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 

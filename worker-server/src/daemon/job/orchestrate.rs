@@ -8,12 +8,12 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use vulcanum_shared::api_error::{is_fatal_api_error, ApiError};
+use vulcanum_shared::api::error::{is_fatal_api_error, ApiError};
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::WorkerConfig;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
-use vulcanum_shared::worker_state::WorkerState;
+use vulcanum_shared::state::worker::WorkerState;
 
 use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{submit_failed_result, FailedResult};

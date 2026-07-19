@@ -5,8 +5,8 @@ use std::str::FromStr;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
-use crate::api_types::AgentBackend;
-use crate::paths;
+use crate::api::wire::AgentBackend;
+use crate::state::paths;
 
 fn default_harness() -> String {
     IsolationBackend::Host.as_str().to_owned()

@@ -1,4 +1,4 @@
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
+use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 

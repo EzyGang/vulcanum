@@ -3,7 +3,7 @@ use std::path::Path;
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::{AgentBackend, JobRepo};
+use vulcanum_shared::api::wire::{AgentBackend, JobRepo};
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::WorkspaceRepo;
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::path::Path;
 
-use crate::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
+use crate::api::wire::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use crate::runtime::errors::HarnessError;
 use crate::runtime::types::{IsolatedEnvironment, ResourceLimits};
 

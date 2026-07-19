@@ -8,7 +8,7 @@ use crate::models::work_run_events::errors::WorkRunEventsError;
 use crate::services::dispatcher::cancel_store::{CancelStore, InMemoryCancelStore};
 use crate::services::work_run_events::service::WorkRunEventsService;
 use crate::test_helpers;
-use vulcanum_shared::api_types::WireEvent;
+use vulcanum_shared::api::wire::WireEvent;
 
 fn make_wire_event(seq: u64, event_type: &str) -> WireEvent {
     WireEvent {

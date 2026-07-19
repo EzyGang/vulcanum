@@ -1,4 +1,4 @@
-use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::api::error::ApiError;
 
 use crate::daemon::job::github_credentials::is_retryable_refresh_error;
 

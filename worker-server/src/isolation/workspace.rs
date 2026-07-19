@@ -6,7 +6,7 @@ use std::path::Path;
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::{
+use vulcanum_shared::api::wire::{
     AgentBackend, AgentConfigPayload, OpenCodeProviderConfig, WorkRunType,
 };
 use vulcanum_shared::runtime::errors::HarnessError;

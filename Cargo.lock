@@ -4154,6 +4154,7 @@ name = "vulcanum-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "dialoguer",
  "hostname",
@@ -4163,7 +4164,9 @@ dependencies = [
  "sys-info",
  "tokio",
  "tracing",
+ "unicode-width",
  "url",
+ "uuid",
  "vulcanum-shared",
 ]
 
@@ -4223,6 +4226,7 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tracing-test",
+ "url",
  "uuid",
 ]
 

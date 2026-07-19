@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use crate::api_types::{
+use crate::api::wire::{
     AuthExchangeRequest, AuthModeResponse, AuthTokenResponse, InstanceLoginRequest,
 };
 use crate::client::{map_response, ApiClient};

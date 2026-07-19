@@ -20,6 +20,7 @@ The point is not to build another task tracker, another coding agent, or just an
 ## Contents
 
 - [Installation](#installation)
+- [CLI Reference](docs/cli-reference.md)
 - [What Vulcanum Is For](#what-vulcanum-is-for)
 - [Where It Fits](#where-it-fits)
 - [A Typical Run](#a-typical-run)
@@ -116,7 +117,7 @@ OpenClaw, Hermes, or another personal agent should not need a dedicated Vulcanum
 
 The planned connection is a shareable `SKILL.md` plus an installed Vulcanum CLI. The skill explains how to use Vulcanum and the CLI provides the commands. Anything that can install the skill and call the CLI can use the same interface.
 
-The current CLI is mainly for setting up and managing workers. It still needs the higher-level control commands before this entry point is complete.
+The CLI supports worker lifecycle management plus authenticated worker and settings inspection. Higher-level run-control commands are still planned.
 
 ## A Typical Run
 
@@ -245,7 +246,7 @@ Despite the binary name, this is the worker daemon. It polls the control plane, 
 
 #### `vulcanum`
 
-This is the CLI. Today it provisions, registers, starts, and removes workers. The higher-level harness commands are planned additions to this binary.
+This is the CLI. It provisions, registers, starts, and removes workers, and exposes authenticated worker and settings inspection commands. See the [CLI reference](docs/cli-reference.md) for command syntax, authentication, and team-selection behavior.
 
 #### Frontend
 

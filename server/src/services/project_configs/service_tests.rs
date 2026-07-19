@@ -183,6 +183,13 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
     .await
     .expect("provider should insert");
     let config_id = test_helpers::insert_project_config(&pool, "cross-team-provider-update").await;
+    sqlx::query!(
+        "INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position) VALUES ($1, 'acme/api', 'https://github.com/acme/api', 0)",
+        config_id
+    )
+    .execute(&pool)
+    .await
+    .expect("project repository should update");
 
     let err = svc
         .update(
@@ -232,7 +239,7 @@ async fn update_rejects_enabling_automation_without_repos(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn update_allows_empty_repo_list_without_enabling_automation(pool: sqlx::PgPool) {
+async fn update_rejects_empty_repo_list_while_automation_remains_enabled(pool: sqlx::PgPool) {
     let svc = ProjectConfigsService::new(
         ProjectConfigsRepository::new(),
         pool.clone(),
@@ -244,7 +251,7 @@ async fn update_allows_empty_repo_list_without_enabling_automation(pool: sqlx::P
         test_helpers::insert_project_config_with_provider(&pool, "empty-repo-update", provider_id)
             .await;
 
-    let config = svc
+    let err = svc
         .update(
             config_id,
             test_helpers::DEFAULT_TEAM_ID,
@@ -254,9 +261,9 @@ async fn update_allows_empty_repo_list_without_enabling_automation(pool: sqlx::P
             },
         )
         .await
-        .expect("empty repository update should be allowed unless automation is being enabled");
+        .expect_err("enabled automation must retain at least one repository");
 
-    assert!(config.repo_full_names.is_empty());
+    assert!(matches!(err, ProjectConfigsError::RepositoriesRequired));
 }
 
 async fn insert_provider(pool: &sqlx::PgPool) -> uuid::Uuid {

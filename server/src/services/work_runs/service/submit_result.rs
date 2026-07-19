@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use vulcanum_shared::api_types::SubmitResultRequest;
+use vulcanum_shared::api::wire::SubmitResultRequest;
 use vulcanum_shared::runtime::types::FinishStatus;
 
 use crate::db::task_augmentations::IncrementTaskUsageParams;

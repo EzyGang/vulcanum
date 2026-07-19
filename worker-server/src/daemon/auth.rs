@@ -5,9 +5,9 @@ use anyhow::Context;
 use chrono::Utc;
 use tokio::sync::{Mutex, RwLock};
 
-use vulcanum_shared::api_error::ApiError;
+use vulcanum_shared::api::error::ApiError;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::worker_state::{save_state, WorkerState};
+use vulcanum_shared::state::worker::{save_state, WorkerState};
 
 static REFRESH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -82,7 +82,7 @@ async fn refresh_access_token(
 
 async fn update_worker_state(
     worker_state: &Arc<RwLock<WorkerState>>,
-    resp: vulcanum_shared::api_types::RefreshResponse,
+    resp: vulcanum_shared::api::wire::RefreshResponse,
 ) -> anyhow::Result<WorkerState> {
     let state = {
         let mut state = worker_state.write().await;

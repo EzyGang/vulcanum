@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, OpenCodeProviderConfig};
+use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, OpenCodeProviderConfig};
 
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::model_providers::model::ModelProviderConfig;

@@ -6,7 +6,7 @@ use crate::prompts::prompt_instance_url;
 
 pub async fn verify_connection() -> anyhow::Result<()> {
     use vulcanum_shared::client::ApiClient;
-    use vulcanum_shared::worker_state;
+    use vulcanum_shared::state::worker as worker_state;
 
     let state =
         worker_state::load_state()?.ok_or_else(|| anyhow::anyhow!("no worker state found"))?;
@@ -16,10 +16,10 @@ pub async fn verify_connection() -> anyhow::Result<()> {
 }
 
 pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> anyhow::Result<()> {
-    use vulcanum_shared::api_types::WorkerCapabilities;
+    use vulcanum_shared::api::wire::WorkerCapabilities;
     use vulcanum_shared::client::{probe_url_with_scheme_fallback, ApiClient};
     use vulcanum_shared::config::load_config;
-    use vulcanum_shared::worker_state::{save_state, WorkerState};
+    use vulcanum_shared::state::worker::{save_state, WorkerState};
 
     let raw_instance = match instance {
         Some(url) => url,

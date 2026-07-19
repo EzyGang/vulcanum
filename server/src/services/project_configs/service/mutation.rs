@@ -20,14 +20,13 @@ impl ProjectConfigsService {
             return Err(ProjectConfigsError::NotFound);
         }
 
-        if params.enabled == Some(true) && !existing.enabled {
-            let repo_full_names = params
-                .repo_full_names
-                .as_deref()
-                .unwrap_or(&existing.repo_full_names);
-            if !has_repo_full_names(repo_full_names) {
-                return Err(ProjectConfigsError::RepositoriesRequired);
-            }
+        let enabled = params.enabled.unwrap_or(existing.enabled);
+        let repo_full_names = params
+            .repo_full_names
+            .as_deref()
+            .unwrap_or(&existing.repo_full_names);
+        if enabled && !has_repo_full_names(repo_full_names) {
+            return Err(ProjectConfigsError::RepositoriesRequired);
         }
 
         let provider_id = match params.provider_id {

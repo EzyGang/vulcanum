@@ -4,7 +4,7 @@ use std::process::Stdio;
 
 use tokio::fs;
 
-use vulcanum_shared::api_types::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
+use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
 use vulcanum_shared::runtime::docker::retry_docker_pull;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;

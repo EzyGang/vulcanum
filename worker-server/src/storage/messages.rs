@@ -5,7 +5,7 @@ use anyhow::Context;
 use serde_json::Value;
 use uuid::Uuid;
 
-use vulcanum_shared::paths;
+use vulcanum_shared::state::paths;
 
 pub struct MessageStore;
 
