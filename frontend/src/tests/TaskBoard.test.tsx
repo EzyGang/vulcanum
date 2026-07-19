@@ -94,6 +94,7 @@ vi.mock('../components/shared/ui/Tooltip.view', () => {
   return { Tooltip };
 });
 
+import { buildProjectUsageSummary } from '../components/task-board/hooks/projectUsageSummary.support';
 import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
@@ -224,7 +225,7 @@ const makeProps = (
   const data: TaskBoardViewProps['data'] = {
     selectedProjectKey: 'provider-1/project-1',
     board,
-    projectUsage: makeProjectUsage(),
+    projectUsageSummary: buildProjectUsageSummary(makeProjectUsage()),
     get boardColumnCount() {
       return Math.max(board.columns.length, 1);
     },
@@ -519,16 +520,17 @@ describe('TaskBoard.view', () => {
 
   it('keeps total usage visible when the current week is empty', () => {
     const props = makeProps();
-    const projectUsage = props.data.projectUsage;
-    if (!projectUsage) throw new Error('Expected project usage fixture');
-    projectUsage.thisWeek = {
-      tokensUsed: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-      finishedRunsCount: 0
-    };
+    props.data.projectUsageSummary = buildProjectUsageSummary({
+      ...makeProjectUsage(),
+      thisWeek: {
+        tokensUsed: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        finishedRunsCount: 0
+      }
+    });
 
     const { getByRole } = render(<TaskBoardView {...props} />);
     const usage = getByRole('region', { name: 'Project usage' });

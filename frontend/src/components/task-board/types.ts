@@ -3,9 +3,9 @@ import type { SelectOption } from '../../types/shared';
 import type {
   TaskBoard,
   TaskBoardLabel,
-  TaskBoardProjectUsage,
   TaskBoardTask,
-  TaskBoardTaskAugmentation
+  TaskBoardTaskAugmentation,
+  TaskBoardUsageCounters
 } from '../../types/task-board';
 
 export type TaskBoardColumnRole = 'pickup' | 'progress' | 'review' | 'done';
@@ -159,10 +159,34 @@ export interface TaskBoardReviewSettingsData {
   hasOverrides: boolean;
 }
 
+export interface TaskBoardProjectUsagePeriodData {
+  label: string;
+  detail: string;
+  tokensLabel: string;
+  finishedRunsLabel: string;
+  breakdownLabel: string;
+  counters: TaskBoardUsageCounters;
+  emptyMessage: string | null;
+}
+
+export interface TaskBoardProjectUsageSummaryData {
+  emptyMessage: string | null;
+  total: TaskBoardProjectUsagePeriodData;
+  thisWeek: TaskBoardProjectUsagePeriodData;
+}
+
+export interface TaskBoardProjectUsagePeriodViewProps {
+  data: TaskBoardProjectUsagePeriodData;
+}
+
+export interface TaskBoardProjectUsageSummaryViewProps {
+  data: TaskBoardProjectUsageSummaryData;
+}
+
 export interface TaskBoardViewData {
   selectedProjectKey: string | null;
   board?: TaskBoard;
-  projectUsage?: TaskBoardProjectUsage;
+  projectUsageSummary?: TaskBoardProjectUsageSummaryData;
   boardColumnCount: number;
   columns: TaskBoardColumnData[];
   hiddenColumns: TaskBoardHiddenColumnData[];
