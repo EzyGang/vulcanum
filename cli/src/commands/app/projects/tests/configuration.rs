@@ -138,7 +138,7 @@ fn project_response_with_repositories(enabled: bool, repo_full_names: &str) -> S
 }
 
 fn board_response() -> &'static str {
-    r#"{"provider_id":"00000000-0000-0000-0000-000000000003","provider_type":"kaneo","board":{"project":{"id":"KAN","name":"Platform","slug":"kan"},"columns":[{"id":"col-todo","name":"To Do","slug":"to-do","is_final":false,"tasks":[]},{"id":"col-progress","name":"In Progress","slug":"in-progress","is_final":false,"tasks":[]},{"id":"col-review","name":"In Review","slug":"in-review","is_final":false,"tasks":[]},{"id":"col-done","name":"Done","slug":"done","is_final":true,"tasks":[]}],"labels":[]},"task_augmentations":[]}"#
+    r#"{"provider_id":"00000000-0000-0000-0000-000000000003","provider_type":"kaneo","board":{"project":{"id":"KAN","name":"Platform","slug":"kan"},"columns":[{"id":"col-todo","name":"To Do","slug":"to-do","is_final":false,"tasks":[]},{"id":"col-progress","name":"In Progress","slug":"in-progress","is_final":false,"tasks":[]},{"id":"col-review","name":"In Review","slug":"in-review","is_final":false,"tasks":[]},{"id":"col-done","name":"Done","slug":"done","is_final":true,"tasks":[]}],"labels":[]},"project_usage":{"total":{"tokens_used":0,"input_tokens":0,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":0,"finished_runs_count":0},"this_week":{"tokens_used":0,"input_tokens":0,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":0,"finished_runs_count":0}},"task_augmentations":[]}"#
 }
 
 fn board_target() -> String {
