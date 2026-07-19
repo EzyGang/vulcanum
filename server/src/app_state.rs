@@ -5,6 +5,7 @@ use crate::db::auth::AuthRepository;
 use crate::db::github_app::GithubAppRepository;
 use crate::db::model_providers::ModelProvidersRepository;
 use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::project_usage::ProjectUsageRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::db::teams::TeamsRepository;
@@ -92,12 +93,14 @@ impl AppState {
             cfg.jwt_secret.clone(),
             cfg,
         )?;
+        let project_usage_repo = ProjectUsageRepository::new();
         let project_configs_repo = ProjectConfigsRepository::new();
         let task_board = TaskBoardService::new(
             db_pool.clone(),
             providers_repo.clone(),
             project_configs_repo.clone(),
             TaskAugmentationsRepository::new(),
+            project_usage_repo.clone(),
         );
         let project_configs = ProjectConfigsService::new(
             project_configs_repo.clone(),
@@ -129,6 +132,7 @@ impl AppState {
         let jobs = WorkRunsService::new(
             work_runs.clone(),
             TaskAugmentationsRepository::new(),
+            project_usage_repo,
             workers_repo,
             project_configs.clone(),
             github.clone(),

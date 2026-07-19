@@ -19,7 +19,24 @@ pub struct TaskBoardResponse {
     pub provider_id: Uuid,
     pub provider_type: IntegrationType,
     pub board: IntegrationBoard,
+    pub project_usage: TaskBoardProjectUsage,
     pub task_augmentations: Vec<TaskBoardTaskAugmentation>,
+}
+
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct TaskBoardUsageCounters {
+    pub tokens_used: i64,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub finished_runs_count: i64,
+}
+
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct TaskBoardProjectUsage {
+    pub total: TaskBoardUsageCounters,
+    pub this_week: TaskBoardUsageCounters,
 }
 
 #[derive(Debug, Clone, FromRow, serde::Serialize)]

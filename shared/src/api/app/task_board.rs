@@ -6,6 +6,7 @@ pub struct TaskBoardResponse {
     pub provider_id: Uuid,
     pub provider_type: String,
     pub board: TaskBoard,
+    pub project_usage: TaskBoardProjectUsage,
     pub task_augmentations: Vec<TaskAugmentation>,
 }
 
@@ -53,6 +54,22 @@ pub struct TaskLabel {
     pub id: String,
     pub name: String,
     pub color: String,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize)]
+pub struct TaskBoardUsageCounters {
+    pub tokens_used: i64,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: i64,
+    pub cache_write_tokens: i64,
+    pub finished_runs_count: i64,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize)]
+pub struct TaskBoardProjectUsage {
+    pub total: TaskBoardUsageCounters,
+    pub this_week: TaskBoardUsageCounters,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize)]

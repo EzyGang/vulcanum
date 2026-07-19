@@ -1,5 +1,3 @@
-import type { WorkRunTokenUsage } from './runs';
-
 export interface TaskProviderProject {
   providerId: string;
   providerType: string;
@@ -15,14 +13,22 @@ export interface TaskBoardLabel {
   color: string;
 }
 
-export interface TaskBoardTaskAugmentation extends WorkRunTokenUsage {
-  externalTaskRef: string;
+export interface TaskBoardUsageCounters {
   tokensUsed: number;
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
   finishedRunsCount: number;
+}
+
+export interface TaskBoardProjectUsage {
+  total: TaskBoardUsageCounters;
+  thisWeek: TaskBoardUsageCounters;
+}
+
+export interface TaskBoardTaskAugmentation extends TaskBoardUsageCounters {
+  externalTaskRef: string;
   updatedAt: string;
 }
 
@@ -65,6 +71,7 @@ export interface TaskBoardResponse {
   providerId: string;
   providerType: string;
   board: TaskBoard;
+  projectUsage: TaskBoardProjectUsage;
   taskAugmentations: TaskBoardTaskAugmentation[];
 }
 

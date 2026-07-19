@@ -94,10 +94,11 @@ vi.mock('../components/shared/ui/Tooltip.view', () => {
   return { Tooltip };
 });
 
+import { buildProjectUsageSummary } from '../components/task-board/hooks/projectUsageSummary.support';
 import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
-import type { TaskBoardTaskAugmentation } from '../types/task-board';
+import type { TaskBoardProjectUsage, TaskBoardTaskAugmentation } from '../types/task-board';
 
 const makeTask = (id: string, title = `Task ${id}`) => ({
   id,
@@ -126,6 +127,25 @@ const makeAugmentation = (
   finishedRunsCount: 2,
   updatedAt: '2026-01-02T00:00:00Z',
   ...overrides
+});
+
+const makeProjectUsage = (): TaskBoardProjectUsage => ({
+  total: {
+    tokensUsed: 1545,
+    inputTokens: 1200,
+    outputTokens: 345,
+    cacheReadTokens: 80,
+    cacheWriteTokens: 12,
+    finishedRunsCount: 2
+  },
+  thisWeek: {
+    tokensUsed: 345,
+    inputTokens: 250,
+    outputTokens: 95,
+    cacheReadTokens: 20,
+    cacheWriteTokens: 4,
+    finishedRunsCount: 1
+  }
 });
 
 const makeProps = (
@@ -205,6 +225,7 @@ const makeProps = (
   const data: TaskBoardViewProps['data'] = {
     selectedProjectKey: 'provider-1/project-1',
     board,
+    projectUsageSummary: buildProjectUsageSummary(makeProjectUsage()),
     get boardColumnCount() {
       return Math.max(board.columns.length, 1);
     },
@@ -481,6 +502,41 @@ describe('TaskBoard.view', () => {
     expect(getAllByText('To Do').length).toBeGreaterThan(0);
     expect(getAllByText('Done').length).toBeGreaterThan(0);
     expect(getAllByText('Review').length).toBeGreaterThan(0);
+  });
+
+  it('shows total and current-week project usage together', () => {
+    const props = makeProps();
+    const { getByRole } = render(<TaskBoardView {...props} />);
+    const usage = getByRole('region', { name: 'Project usage' });
+
+    expect(usage.textContent).toContain('Total');
+    expect(usage.textContent).toContain('1.5K tokens');
+    expect(usage.textContent).toContain('2 finished runs');
+    expect(usage.textContent).toContain('This week');
+    expect(usage.textContent).toContain('345 tokens');
+    expect(usage.textContent).toContain('1 finished run');
+    expect(usage.textContent).toContain('Monday 00:00 UTC to now');
+  });
+
+  it('keeps total usage visible when the current week is empty', () => {
+    const props = makeProps();
+    props.data.projectUsageSummary = buildProjectUsageSummary({
+      ...makeProjectUsage(),
+      thisWeek: {
+        tokensUsed: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        finishedRunsCount: 0
+      }
+    });
+
+    const { getByRole } = render(<TaskBoardView {...props} />);
+    const usage = getByRole('region', { name: 'Project usage' });
+
+    expect(usage.textContent).toContain('1.5K tokens');
+    expect(usage.textContent).toContain('No usage this week.');
   });
 
   it('sends column hide and reorder actions from column headers', () => {

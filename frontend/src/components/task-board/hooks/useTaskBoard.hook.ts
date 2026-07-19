@@ -4,6 +4,7 @@ import { listProjects } from '../../../services/projects/projects.service';
 import { getTaskBoard } from '../../../services/task-board/task-board.service';
 import { parseTaskProjectKey, selectedTaskProjectKey } from '../../../stores/task-board.store';
 import { useApiQuery } from '../../../utils/api/query/hooks';
+import { buildProjectUsageSummary } from './projectUsageSummary.support';
 import {
   boardQueryKey,
   columnRolesForProject,
@@ -93,6 +94,7 @@ export const useTaskBoard = () => {
     data: {
       selectedProjectKey: selectedTaskProjectKey.value,
       board,
+      projectUsageSummary: buildProjectUsageSummary(boardQuery.data?.projectUsage),
       ...viewModel.data,
       statusOptions,
       repoItems,

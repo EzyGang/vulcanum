@@ -4,6 +4,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::db::project_configs::ProjectConfigsRepository;
+use crate::db::project_usage::ProjectUsageRepository;
 use crate::db::provider_configs::IntegrationProvidersRepository;
 use crate::db::task_augmentations::TaskAugmentationsRepository;
 use crate::models::project_configs::errors::ProjectConfigsError;
@@ -34,6 +35,7 @@ pub struct TaskBoardService {
     providers_repo: IntegrationProvidersRepository,
     project_configs_repo: ProjectConfigsRepository,
     task_augmentations_repo: TaskAugmentationsRepository,
+    project_usage_repo: ProjectUsageRepository,
 }
 
 impl TaskBoardService {
@@ -43,12 +45,14 @@ impl TaskBoardService {
         providers_repo: IntegrationProvidersRepository,
         project_configs_repo: ProjectConfigsRepository,
         task_augmentations_repo: TaskAugmentationsRepository,
+        project_usage_repo: ProjectUsageRepository,
     ) -> Self {
         Self {
             db,
             providers_repo,
             project_configs_repo,
             task_augmentations_repo,
+            project_usage_repo,
         }
     }
 
@@ -84,11 +88,16 @@ impl TaskBoardService {
         let task_augmentations = self
             .task_augmentations(team_id, project_config.id, &board)
             .await?;
+        let project_usage = self
+            .project_usage_repo
+            .summary(&self.db, project_config.id)
+            .await?;
 
         Ok(TaskBoardResponse {
             provider_id: provider.id,
             provider_type: provider.provider_type,
             board,
+            project_usage,
             task_augmentations,
         })
     }
