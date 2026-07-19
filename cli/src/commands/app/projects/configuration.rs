@@ -53,6 +53,13 @@ pub(super) async fn set_automation_with(
     runtime: &mut AppRuntime<'_>,
 ) -> anyhow::Result<()> {
     let (context, project, team_id, _) = load_project(project_id, team, runtime).await?;
+    if enabled && project.repo_full_names.is_empty() {
+        anyhow::bail!(
+            "Project automation requires an attached repository. Attach one with \
+             `vulcanum projects repos set {} --repo OWNER/NAME`, then retry.",
+            project.id
+        );
+    }
     let request = UpdateProjectRequest {
         enabled: Some(enabled),
         ..UpdateProjectRequest::default()

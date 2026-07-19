@@ -48,8 +48,29 @@ async fn automation_enable_and_disable_patch_only_enabled_state() {
 }
 
 #[tokio::test]
+async fn automation_enable_rejects_project_without_repositories_before_patch() {
+    let responses = project_responses(project_response_with_repositories(false, "[]"));
+    let server = FakeServer::start(responses);
+    let mut output = Vec::new();
+    let loaded = session(&server.url);
+    let mut load = || Ok(Some(loaded.clone()));
+    let mut save = ignore_save;
+    let mut app = runtime(&mut output, &mut load, &mut save);
+
+    let error = set_automation_with(PROJECT_ID, true, None, &mut app)
+        .await
+        .expect_err("automation enable should require a repository");
+    let requests = server.finish();
+
+    assert!(error.to_string().contains(&format!(
+        "vulcanum projects repos set {PROJECT_ID} --repo OWNER/NAME"
+    )));
+    assert!(!requests.iter().any(|request| request.method == "PATCH"));
+}
+
+#[tokio::test]
 async fn column_marking_resolves_names_ids_and_slugs_before_atomic_patch() {
-    let updated = r#"{"id":"00000000-0000-0000-0000-000000000004","external_project_id":"KAN","name":"Platform","external_workspace_id":"core","enabled":true,"pickup_column":"to-do","progress_column":"in-progress","review_column":"in-review","done_column":"done","provider_id":"00000000-0000-0000-0000-000000000003","repo_full_names":[]}"#;
+    let updated = r#"{"id":"00000000-0000-0000-0000-000000000004","external_project_id":"KAN","name":"Platform","external_workspace_id":"core","enabled":true,"pickup_column":"to-do","progress_column":"in-progress","review_column":"in-review","done_column":"done","provider_id":"00000000-0000-0000-0000-000000000003","repo_full_names":["acme/api"]}"#;
     let mut responses = project_responses(project_response(true));
     responses.push(Response::ok("GET", &board_target(), board_response()));
     responses.push(Response::ok("PATCH", &project_target(), updated));
@@ -107,8 +128,12 @@ fn project_responses(project: String) -> Vec<Response> {
 }
 
 fn project_response(enabled: bool) -> String {
+    project_response_with_repositories(enabled, r#"["acme/api"]"#)
+}
+
+fn project_response_with_repositories(enabled: bool, repo_full_names: &str) -> String {
     format!(
-        r#"{{"id":"{PROJECT_ID}","external_project_id":"KAN","name":"Platform","external_workspace_id":"core","enabled":{enabled},"pickup_column":"","progress_column":"","review_column":"","done_column":"","provider_id":"{PROVIDER_ID}","repo_full_names":[]}}"#
+        r#"{{"id":"{PROJECT_ID}","external_project_id":"KAN","name":"Platform","external_workspace_id":"core","enabled":{enabled},"pickup_column":"","progress_column":"","review_column":"","done_column":"","provider_id":"{PROVIDER_ID}","repo_full_names":{repo_full_names}}}"#
     )
 }
 
