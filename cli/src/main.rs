@@ -9,6 +9,7 @@ use crate::commands::app::args::{
 };
 use crate::commands::app::board::args::BoardCommand;
 use crate::commands::app::projects::args::{ProjectAutomationCommand, ProjectColumnsCommand};
+use crate::commands::skills::SkillsCommand;
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -68,6 +69,11 @@ enum Command {
     Settings {
         #[command(subcommand)]
         cmd: SettingsCommand,
+    },
+    /// Install or print Vulcanum agent skills
+    Skills {
+        #[command(subcommand)]
+        cmd: SkillsCommand,
     },
 }
 
@@ -218,6 +224,7 @@ async fn main() -> anyhow::Result<()> {
             RunsCommand::List { team } => commands::app::runs::list(team).await,
         },
         Command::Settings { cmd } => commands::app::settings::dispatch::run(cmd).await,
+        Command::Skills { cmd } => commands::skills::run(cmd).await,
     }
 }
 

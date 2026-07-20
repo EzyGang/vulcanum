@@ -75,6 +75,31 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 
 This installs the worker-side binaries only. The control-plane server, dispatcher, and frontend must still be deployed separately or run from source as described under [Running Locally](#running-locally).
 
+### Install the agent skills
+
+After installing the CLI, install both Vulcanum agent skills into a supported coding agent:
+
+```bash
+vulcanum skills install
+```
+
+The command uses the first available package runner—`pnpm dlx`, `npx`, `bunx`, or `yarn dlx`—to install `vulcanum-cli` and `vulcanum-ticket-template` from this repository. At least one supported JavaScript package runner must be available.
+
+Install only one skill when needed:
+
+```bash
+vulcanum skills install cli
+vulcanum skills install ticket-template
+```
+
+To place a skill manually or pass it directly to an agent, print its complete `SKILL.md` to standard output:
+
+```bash
+vulcanum skills install ticket-template --stdout > ./SKILL.md
+```
+
+See the [CLI reference](docs/cli-reference.md#agent-skills) for canonical skill names and command behavior.
+
 ---
 
 ## What Vulcanum Is For

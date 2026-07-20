@@ -265,6 +265,33 @@ Connect prints the short-lived installation URL and opens it unless `--no-browse
 
 Credential input is read only after authentication and team resolution. Prompting requires a terminal; scripts and agents must pass `--credentials-stdin`. Secrets are sent once and are never echoed, written to local app state, rendered in success output, or attached to sanitized request errors.
 
+## Agent skills
+
+Install both bundled Vulcanum skills through the first available supported JavaScript package runner:
+
+```bash
+vulcanum skills install
+```
+
+The CLI checks `pnpm`, `npx`, `bunx`, then `yarn`. It invokes the open agent-skills installer against `EzyGang/vulcanum` and explicitly selects `vulcanum-cli` and `vulcanum-ticket-template`, so other skills discoverable in the repository are not installed.
+
+Install one skill by its short name:
+
+```bash
+vulcanum skills install cli
+vulcanum skills install ticket-template
+```
+
+The canonical names `vulcanum-cli` and `vulcanum-ticket-template` are accepted as aliases.
+
+Use `--stdout` with exactly one skill to print its complete `SKILL.md` without invoking a package manager:
+
+```bash
+vulcanum skills install ticket-template --stdout > ./SKILL.md
+```
+
+Only skill content is written to standard output, making redirection safe. Installer errors and missing package runners return a nonzero status.
+
 ## Worker lifecycle
 
 The singular `worker` namespace manages the worker installed on the current machine. `wrk` is a visible alias for `worker`.
