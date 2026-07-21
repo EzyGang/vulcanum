@@ -52,9 +52,9 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
             &pool,
             InsertWorkRunParams {
                 team_id: test_helpers::DEFAULT_TEAM_ID,
-                external_task_ref: "task-review-warning".to_owned(),
-                task_title: None,
-                task_slug: None,
+                external_task_ref: "github-pr:acme/app#42".to_owned(),
+                task_title: Some("Review pull request".to_owned()),
+                task_slug: Some("acme/app#42".to_owned()),
                 project_config_id: project_id,
                 repo_full_names: Vec::new(),
                 status: WorkRunStatus::Pending,
@@ -62,6 +62,8 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
                 parent_work_run_id: None,
                 review_target_pr_url: Some("https://github.com/acme/app/pull/42".to_owned()),
                 review_target_repo_full_name: Some("acme/app".to_owned()),
+                github_installation_id: Some(123),
+                github_delivery_id: Some("delivery-review-warning".to_owned()),
             },
         )
         .await
@@ -141,6 +143,25 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
         .unwrap_or_default()
         .contains("Missing authorization check"));
     assert!(!review.review_already_exists);
+
+    let task_usage_count = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM task_augmentations WHERE external_task_ref = $1",
+        review_run.external_task_ref,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("task augmentation count should load")
+    .unwrap_or(0);
+    let project_usage_count = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM project_usage_daily WHERE project_config_id = $1",
+        project_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("project usage count should load")
+    .unwrap_or(0);
+    assert_eq!(task_usage_count, 0);
+    assert_eq!(project_usage_count, 1);
 
     let child_count = sqlx::query!(
         "SELECT COUNT(*) as count FROM work_runs WHERE parent_work_run_id = $1",

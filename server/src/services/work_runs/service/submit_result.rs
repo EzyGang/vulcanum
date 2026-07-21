@@ -76,21 +76,23 @@ impl WorkRunsService {
             _ => Vec::new(),
         };
 
-        self.task_augmentations_repo
-            .increment_usage(
-                &mut *tx,
-                IncrementTaskUsageParams {
-                    team_id: run.team_id,
-                    project_config_id: run.project_config_id,
-                    external_task_ref: &run.external_task_ref,
-                    tokens_used: params.tokens_used,
-                    input_tokens: params.input_tokens,
-                    output_tokens: params.output_tokens,
-                    cache_read_tokens: params.cache_read_tokens,
-                    cache_write_tokens: params.cache_write_tokens,
-                },
-            )
-            .await?;
+        if !run.is_standalone_review() {
+            self.task_augmentations_repo
+                .increment_usage(
+                    &mut *tx,
+                    IncrementTaskUsageParams {
+                        team_id: run.team_id,
+                        project_config_id: run.project_config_id,
+                        external_task_ref: &run.external_task_ref,
+                        tokens_used: params.tokens_used,
+                        input_tokens: params.input_tokens,
+                        output_tokens: params.output_tokens,
+                        cache_read_tokens: params.cache_read_tokens,
+                        cache_write_tokens: params.cache_write_tokens,
+                    },
+                )
+                .await?;
+        }
 
         self.project_usage_repo
             .increment_daily(
@@ -190,23 +192,27 @@ impl WorkRunsService {
             _ => None,
         };
 
-        self.sync_task_tracker_on_result(
-            &run,
-            &params,
-            status,
-            &pr_urls,
-            matches!(review_outcome, Some(ReviewSpawnOutcome::ReviewRunning)),
-        )
-        .await;
+        if !run.is_standalone_review() {
+            self.sync_task_tracker_on_result(
+                &run,
+                &params,
+                status,
+                &pr_urls,
+                matches!(review_outcome, Some(ReviewSpawnOutcome::ReviewRunning)),
+            )
+            .await;
+        }
 
         if matches!(run.work_type, WorkRunType::PullRequestReview) {
             self.record_review_result(&run, &params).await;
         }
 
-        self.set_lifecycle_label_after_result(&run, status, review_outcome)
-            .await;
+        if !run.is_standalone_review() {
+            self.set_lifecycle_label_after_result(&run, status, review_outcome)
+                .await;
+        }
 
-        if matches!(status, WorkRunStatus::Completed) {
+        if matches!(status, WorkRunStatus::Completed) && !run.is_standalone_review() {
             if let Err(e) = self
                 .reconcile_task_pr_completion(run.project_config_id, &run.external_task_ref)
                 .await

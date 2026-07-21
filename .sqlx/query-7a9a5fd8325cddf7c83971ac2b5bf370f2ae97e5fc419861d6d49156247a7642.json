@@ -1,0 +1,164 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pc.id, pc.team_id, pc.external_project_id, pc.name, pc.external_workspace_id,\n             pc.integration_type as \"integration_type!: _\", pc.enabled, pc.pickup_column, pc.review_column,\n             pc.done_column, pc.progress_column, pc.max_turns, pc.prompt_template, pc.repo_url,\n             COALESCE(array_agg(all_repos.repo_full_name ORDER BY all_repos.position)\n                 FILTER (WHERE all_repos.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_full_names!\",\n             COALESCE(array_agg(all_repos.repo_url ORDER BY all_repos.position)\n                 FILTER (WHERE all_repos.id IS NOT NULL), ARRAY[]::TEXT[]) as \"repo_urls!\",\n             pc.agents_md, pc.review_enabled, pc.review_max_turns, pc.review_prompt_template,\n             pc.max_in_progress_tasks, pc.created_at, pc.provider_id as \"provider_id?\"\n             FROM github_installations gi\n             INNER JOIN project_configs pc ON pc.team_id = gi.team_id\n             INNER JOIN project_config_repos matched_repo ON matched_repo.project_config_id = pc.id\n             LEFT JOIN project_config_repos all_repos ON all_repos.project_config_id = pc.id\n             WHERE gi.github_installation_id = $1\n               AND pc.enabled = true\n               AND LOWER(matched_repo.repo_full_name) = LOWER($2)\n             GROUP BY pc.id\n             ORDER BY pc.created_at ASC, pc.id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "external_project_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "external_workspace_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "integration_type!: _",
+        "type_info": {
+          "Custom": {
+            "name": "integration_type",
+            "kind": {
+              "Enum": [
+                "kaneo"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "pickup_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "review_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "done_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "progress_column",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "repo_full_names!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 15,
+        "name": "repo_urls!",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 16,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 18,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 19,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "max_in_progress_tasks",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 21,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 22,
+        "name": "provider_id?",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      null,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "7a9a5fd8325cddf7c83971ac2b5bf370f2ae97e5fc419861d6d49156247a7642"
+}

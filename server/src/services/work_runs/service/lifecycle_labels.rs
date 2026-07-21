@@ -56,6 +56,10 @@ impl WorkRunsService {
         run: &WorkRun,
         state: LifecycleLabelState,
     ) {
+        if run.is_standalone_review() {
+            return;
+        }
+
         let (config, client) = match self.lifecycle_label_client(run).await {
             Some(parts) => parts,
             None => return,
@@ -139,6 +143,10 @@ impl WorkRunsService {
         status: WorkRunStatus,
         review_outcome: Option<ReviewSpawnOutcome>,
     ) {
+        if run.is_standalone_review() {
+            return;
+        }
+
         let state = match (run.work_type, status) {
             (WorkRunType::Implementation, WorkRunStatus::Completed) => {
                 match review_outcome.unwrap_or(ReviewSpawnOutcome::NoPullRequests) {

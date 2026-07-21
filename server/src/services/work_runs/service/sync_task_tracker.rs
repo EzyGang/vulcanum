@@ -15,6 +15,10 @@ impl WorkRunsService {
         pr_urls: &[String],
         has_review_work: bool,
     ) {
+        if run.is_standalone_review() {
+            return;
+        }
+
         let project_config = match self.project_configs.find_by_id(run.project_config_id).await {
             Ok(c) => c,
             Err(e) => {

@@ -12,8 +12,10 @@ async fn webhook_accepts_valid_delivery(pool: sqlx::PgPool) {
     let mut state = test_helpers::build_state(pool.clone()).await;
     state.github_webhooks = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
+        Some(Arc::from("vulcanum-app")),
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
+        Arc::new(state.github.clone()),
     );
     let app = test::init_service(
         App::new()
@@ -43,8 +45,10 @@ async fn webhook_rejects_invalid_signature(pool: sqlx::PgPool) {
     let mut state = test_helpers::build_state(pool.clone()).await;
     state.github_webhooks = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
+        Some(Arc::from("vulcanum-app")),
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
+        Arc::new(state.github.clone()),
     );
     let app = test::init_service(
         App::new()
@@ -70,8 +74,10 @@ async fn webhook_requires_delivery_identifier(pool: sqlx::PgPool) {
     let mut state = test_helpers::build_state(pool.clone()).await;
     state.github_webhooks = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
+        Some(Arc::from("vulcanum-app")),
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
+        Arc::new(state.github.clone()),
     );
     let app = test::init_service(
         App::new()

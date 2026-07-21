@@ -65,6 +65,16 @@ impl TeamsService {
     pub async fn get_team(&self, team_id: Uuid) -> Result<Team, TeamsError> {
         self.repo.get_by_id(&self.db, team_id).await
     }
+    pub async fn is_provider_identity_member(
+        &self,
+        team_id: Uuid,
+        provider: &str,
+        provider_user_id: &str,
+    ) -> Result<bool, TeamsError> {
+        self.repo
+            .is_provider_identity_member(&self.db, team_id, provider, provider_user_id)
+            .await
+    }
 
     #[must_use = "team lookup results should be handled"]
     pub async fn get_for_principal(

@@ -27,21 +27,23 @@ impl WorkRunsService {
         let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
 
-        let (provider_instance_url, provider_api_key) = match cfg.provider_id {
-            Some(pid) => match self
-                .providers_repo
-                .find_by_id(&self.db, pid, cfg.team_id)
-                .await
-            {
-                Ok(provider) => (provider.instance_url, provider.api_key),
-                Err(_) => (String::new(), String::new()),
-            },
-            None => (String::new(), String::new()),
+        let (provider_instance_url, provider_api_key) = if run.is_standalone_review() {
+            (String::new(), String::new())
+        } else {
+            match cfg.provider_id {
+                Some(pid) => match self
+                    .providers_repo
+                    .find_by_id(&self.db, pid, cfg.team_id)
+                    .await
+                {
+                    Ok(provider) => (provider.instance_url, provider.api_key),
+                    Err(_) => (String::new(), String::new()),
+                },
+                None => (String::new(), String::new()),
+            }
         };
 
-        let github_token = self
-            .mint_github_token_for_repos(id, cfg.team_id, &repos)
-            .await?;
+        let github_token = self.mint_github_token_for_repos(&run, &repos).await?;
 
         let team = self.project_configs.teams.get_team(cfg.team_id).await?;
         let rendered = self
@@ -108,6 +110,10 @@ impl WorkRunsService {
         run: &WorkRun,
         cfg: &JobConfigFields,
     ) -> Result<IntegrationTask, WorkRunsError> {
+        if run.is_standalone_review() {
+            return Ok(empty_task(run, cfg));
+        }
+
         if let Some(fetcher) = &self.task_fetcher {
             return Ok(fetcher.fetch_task(&run.external_task_ref).await?);
         }
@@ -233,7 +239,7 @@ fn render_review_prompt(run: &WorkRun, cfg: &JobConfigFields, task: &Integration
 fn empty_task(run: &WorkRun, cfg: &JobConfigFields) -> IntegrationTask {
     IntegrationTask {
         id: run.external_task_ref.clone(),
-        title: String::new(),
+        title: run.task_title.clone().unwrap_or_default(),
         project_id: cfg.external_project_id.clone(),
         description: None,
         status: String::new(),

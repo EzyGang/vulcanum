@@ -216,6 +216,8 @@ pub async fn insert_pending_work_run_for_team(
         parent_work_run_id: None,
         review_target_pr_url: None,
         review_target_repo_full_name: None,
+        github_installation_id: None,
+        github_delivery_id: None,
     };
 
     repo.insert_work_run(pool, params)
@@ -265,6 +267,8 @@ pub async fn insert_running_work_run_for_team(
         parent_work_run_id: None,
         review_target_pr_url: None,
         review_target_repo_full_name: None,
+        github_installation_id: None,
+        github_delivery_id: None,
     };
     let id = repo
         .insert_work_run(pool, params)
@@ -387,8 +391,10 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     );
     let github_webhooks = GithubWebhookService::new(
         cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
+        cfg.github_app_slug.as_deref().map(Arc::<str>::from),
         GithubWebhookStore::in_memory(),
         jobs.clone(),
+        Arc::new(github.clone()),
     );
     let events = WorkRunEventsService::new(
         WorkRunEventsRepository::new(),

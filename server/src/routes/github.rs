@@ -46,8 +46,8 @@ pub async fn webhook(
         Ok(_) => Ok(HttpResponse::Accepted().finish()),
         Err(GithubWebhookError::InvalidSignature) => Ok(HttpResponse::Unauthorized().finish()),
         Err(GithubWebhookError::InvalidPayload(_)) => Ok(HttpResponse::BadRequest().finish()),
-        Err(GithubWebhookError::NotConfigured) => {
-            tracing::error!("GitHub webhook received without GITHUB_WEBHOOK_SECRET");
+        Err(GithubWebhookError::NotConfigured | GithubWebhookError::MissingAppSlug) => {
+            tracing::error!("GitHub webhook received without required GitHub App configuration");
             Ok(HttpResponse::ServiceUnavailable().finish())
         }
         Err(GithubWebhookError::Persistence(e)) => {

@@ -37,7 +37,7 @@ export const TaskBoardReviewSettings = ({
 }: TaskBoardReviewSettingsProps): JSX.Element => (
   <TaskBoardSettingsSection
     title='Review automation'
-    description='Implementation runs spawn PR review jobs from submitted pull requests. Override review enablement, follow-up passes, and review prompt.'
+    description='Review jobs start after implementation submits a pull request or when an authorized team member mentions the GitHub App on a pull request. Override review enablement, follow-up passes, and review prompt.'
     hasOverrides={data.hasOverrides}
   >
     <div class='grid grid-cols-1 gap-4 md:grid-cols-2'>

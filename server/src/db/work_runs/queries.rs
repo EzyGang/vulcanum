@@ -25,6 +25,8 @@ pub struct InsertWorkRunParams {
     pub parent_work_run_id: Option<Uuid>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,
+    pub github_installation_id: Option<i64>,
+    pub github_delivery_id: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -49,11 +51,13 @@ impl WorkRunsRepository {
             WorkRun,
             r#"WITH inserted AS (
                 INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,
-                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
+                 github_installation_id, github_delivery_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 RETURNING id, team_id, external_task_ref, task_title, task_slug, project_config_id, worker_id, status,
                  work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
-                 result_pr_url, result_exit_code, tokens_used, duration_ms, input_tokens, output_tokens,
+                 github_installation_id, github_delivery_id, result_pr_url, result_exit_code, tokens_used,
+                 duration_ms, input_tokens, output_tokens,
                  cache_read_tokens, cache_write_tokens, model_used, finish_status, result_summary,
                  finish_blocked_reason, finish_next_column, created_at, updated_at
             ),
@@ -61,12 +65,13 @@ impl WorkRunsRepository {
                 INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
                 SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position
                 FROM inserted
-                JOIN UNNEST($12::text[], $13::text[], $14::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
+                JOIN UNNEST($14::text[], $15::text[], $16::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
                 RETURNING 1
             )
             SELECT id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
              review_target_pr_url, review_target_repo_full_name,
+             github_installation_id, github_delivery_id,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -86,6 +91,8 @@ impl WorkRunsRepository {
             params.parent_work_run_id,
             params.review_target_pr_url.as_deref(),
             params.review_target_repo_full_name.as_deref(),
+            params.github_installation_id,
+            params.github_delivery_id.as_deref(),
             &params.repo_full_names,
             &repo_urls,
             &positions,
@@ -109,8 +116,9 @@ impl WorkRunsRepository {
         let result = sqlx::query!(
             r#"WITH inserted AS (
                 INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,
-                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
+                 github_installation_id, github_delivery_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ON CONFLICT DO NOTHING
                 RETURNING id
             ),
@@ -118,7 +126,7 @@ impl WorkRunsRepository {
                 INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)
                 SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position
                 FROM inserted
-                JOIN UNNEST($12::text[], $13::text[], $14::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
+                JOIN UNNEST($14::text[], $15::text[], $16::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE
                 RETURNING 1
             )
             SELECT EXISTS(SELECT 1 FROM inserted) AS "inserted!"
@@ -134,6 +142,8 @@ impl WorkRunsRepository {
             params.parent_work_run_id,
             params.review_target_pr_url.as_deref(),
             params.review_target_repo_full_name.as_deref(),
+            params.github_installation_id,
+            params.github_delivery_id.as_deref(),
             &params.repo_full_names,
             &repo_urls,
             &positions,
@@ -238,6 +248,7 @@ impl WorkRunsRepository {
             r#"SELECT id, team_id, external_task_ref, task_title as "task_title?: String", task_slug as "task_slug?: String", project_config_id, worker_id, status as "status: WorkRunStatus",
              work_type as "work_type: WorkRunType", parent_work_run_id,
              review_target_pr_url, review_target_repo_full_name,
+             github_installation_id, github_delivery_id,
              result_pr_url, result_exit_code, tokens_used, duration_ms,
              input_tokens as "input_tokens?: i64", output_tokens as "output_tokens?: i64",
              cache_read_tokens as "cache_read_tokens?: i64", cache_write_tokens as "cache_write_tokens?: i64",
@@ -268,6 +279,7 @@ impl WorkRunsRepository {
              w.name as "worker_name: Option<String>",
              wr.status as "status: WorkRunStatus", wr.work_type as "work_type: WorkRunType", wr.parent_work_run_id,
              wr.review_target_pr_url, wr.review_target_repo_full_name,
+             wr.github_installation_id, wr.github_delivery_id,
              wr.result_pr_url, wr.result_exit_code, wr.tokens_used, wr.duration_ms,
              wr.input_tokens as "input_tokens?: i64", wr.output_tokens as "output_tokens?: i64",
              wr.cache_read_tokens as "cache_read_tokens?: i64", wr.cache_write_tokens as "cache_write_tokens?: i64",

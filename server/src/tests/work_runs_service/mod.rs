@@ -1,3 +1,4 @@
+mod github_review_tests;
 mod pr_completion_tests;
 mod record_review_tests;
 mod spawn_review_tests;

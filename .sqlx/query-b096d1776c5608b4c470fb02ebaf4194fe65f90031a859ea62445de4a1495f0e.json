@@ -1,0 +1,61 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH inserted AS (\n                INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,\n                 work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,\n                 github_installation_id, github_delivery_id)\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)\n                ON CONFLICT DO NOTHING\n                RETURNING id\n            ),\n            inserted_repos AS (\n                INSERT INTO work_run_repos (work_run_id, repo_full_name, repo_url, position)\n                SELECT inserted.id, repos.repo_full_name, repos.repo_url, repos.position\n                FROM inserted\n                JOIN UNNEST($14::text[], $15::text[], $16::int4[]) AS repos(repo_full_name, repo_url, position) ON TRUE\n                RETURNING 1\n            )\n            SELECT EXISTS(SELECT 1 FROM inserted) AS \"inserted!\"\n            FROM (SELECT COUNT(*) FROM inserted_repos) AS inserted_repo_count",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "inserted!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "work_run_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "dispatched",
+                "running",
+                "completed",
+                "failed",
+                "stalled"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Text",
+        "Text",
+        "Int8",
+        "Text",
+        "TextArray",
+        "TextArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b096d1776c5608b4c470fb02ebaf4194fe65f90031a859ea62445de4a1495f0e"
+}

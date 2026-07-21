@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE work_runs SET status = 'running'::work_run_status\n             WHERE id = $1 AND worker_id = $2 AND status = 'dispatched'::work_run_status\n             RETURNING id, team_id, external_task_ref, task_title as \"task_title?: String\", task_slug as \"task_slug?: String\", project_config_id, worker_id, status as \"status: WorkRunStatus\",\n              work_type as \"work_type: WorkRunType\", parent_work_run_id,\n              review_target_pr_url, review_target_repo_full_name,\n             result_pr_url, result_exit_code, tokens_used, duration_ms,\n             input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n             cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n             model_used,\n             finish_status, result_summary, finish_blocked_reason, finish_next_column,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "UPDATE work_runs SET status = 'failed'::work_run_status, result_exit_code = 1, tokens_used = 0, duration_ms = 0,\n             input_tokens = 0, output_tokens = 0, cache_read_tokens = 0, cache_write_tokens = 0\n             WHERE id = $1 AND status IN ('running'::work_run_status, 'dispatched'::work_run_status)\n             RETURNING id, team_id, external_task_ref, task_title as \"task_title?: String\", task_slug as \"task_slug?: String\", project_config_id, worker_id, status as \"status: WorkRunStatus\",\n              work_type as \"work_type: WorkRunType\", parent_work_run_id,\n              review_target_pr_url, review_target_repo_full_name,\n              github_installation_id, github_delivery_id,\n             result_pr_url, result_exit_code, tokens_used, duration_ms,\n             input_tokens as \"input_tokens?: i64\", output_tokens as \"output_tokens?: i64\",\n             cache_read_tokens as \"cache_read_tokens?: i64\", cache_write_tokens as \"cache_write_tokens?: i64\",\n             model_used,\n             finish_status, result_summary, finish_blocked_reason, finish_next_column,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\", updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -89,83 +89,92 @@
       },
       {
         "ordinal": 12,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 13,
+        "name": "github_delivery_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
         "name": "result_pr_url",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "result_exit_code",
         "type_info": "Int4"
       },
       {
-        "ordinal": 14,
+        "ordinal": 16,
         "name": "tokens_used",
         "type_info": "Int8"
       },
       {
-        "ordinal": 15,
+        "ordinal": 17,
         "name": "duration_ms",
         "type_info": "Int8"
       },
       {
-        "ordinal": 16,
+        "ordinal": 18,
         "name": "input_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 17,
+        "ordinal": 19,
         "name": "output_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 18,
+        "ordinal": 20,
         "name": "cache_read_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "cache_write_tokens?: i64",
         "type_info": "Int8"
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "model_used",
         "type_info": "Text"
       },
       {
-        "ordinal": 21,
+        "ordinal": 23,
         "name": "finish_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 24,
         "name": "result_summary",
         "type_info": "Text"
       },
       {
-        "ordinal": 23,
+        "ordinal": 25,
         "name": "finish_blocked_reason",
         "type_info": "Text"
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "finish_next_column",
         "type_info": "Text"
       },
       {
-        "ordinal": 25,
+        "ordinal": 27,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 26,
+        "ordinal": 28,
         "name": "updated_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -196,8 +205,10 @@
       true,
       true,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "bf7191879fe27df381d5d012fdeccbbceb270b5fc8dbe0acaa57cd543773f040"
+  "hash": "3501418dc32f788f3b3a95a3c8bbd400f43976e992e68fa5bd4caeccaa2cc0de"
 }

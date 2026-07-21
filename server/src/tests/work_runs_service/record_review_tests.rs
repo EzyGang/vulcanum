@@ -70,6 +70,8 @@ async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::P
                 parent_work_run_id: None,
                 review_target_pr_url: Some("https://github.com/acme/app/pull/7".to_owned()),
                 review_target_repo_full_name: Some("acme/app".to_owned()),
+                github_installation_id: None,
+                github_delivery_id: None,
             },
         )
         .await
@@ -127,6 +129,8 @@ fn review_run(review_target_pr_url: Option<&str>) -> WorkRun {
         parent_work_run_id: None,
         review_target_pr_url: review_target_pr_url.map(str::to_owned),
         review_target_repo_full_name: None,
+        github_installation_id: None,
+        github_delivery_id: None,
         result_pr_url: None,
         result_exit_code: None,
         tokens_used: None,

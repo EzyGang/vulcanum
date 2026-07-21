@@ -51,6 +51,10 @@ impl GithubRepo {
 pub fn github_repo_url(full_name: &str) -> String {
     format!("{GITHUB_REPO_URL_PREFIX}{full_name}")
 }
+#[must_use]
+pub fn github_pr_url(repo_full_name: &str, number: i64) -> String {
+    format!("{GITHUB_REPO_URL_PREFIX}{repo_full_name}/pull/{number}")
+}
 
 #[must_use]
 pub fn github_repo_full_name_from_url(url: &str) -> String {

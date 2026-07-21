@@ -131,6 +131,8 @@ impl WorkRunsService {
                 parent_work_run_id: Some(run.id),
                 review_target_pr_url: Some(task_pr.pr_url.clone()),
                 review_target_repo_full_name: Some(task_pr.repo_full_name.clone()),
+                github_installation_id: None,
+                github_delivery_id: None,
             };
 
             match self

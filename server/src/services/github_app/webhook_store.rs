@@ -12,12 +12,43 @@ use tokio::sync::Mutex;
 
 use crate::models::github_app::errors::GithubAppError;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum GithubWebhookKind {
+    PullRequestClosed,
+    ReviewRequested,
+}
+
+impl GithubWebhookKind {
+    #[must_use]
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::PullRequestClosed => "pull_request_closed",
+            Self::ReviewRequested => "review_requested",
+        }
+    }
+
+    fn from_stored(value: Option<&str>) -> Result<Self, GithubAppError> {
+        match value {
+            None | Some("") => Ok(Self::PullRequestClosed),
+            Some("pull_request_closed") => Ok(Self::PullRequestClosed),
+            Some("review_requested") => Ok(Self::ReviewRequested),
+            Some(value) => Err(GithubAppError::Redis(format!(
+                "unknown GitHub webhook delivery kind: {value}"
+            ))),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct GithubWebhookDelivery {
     pub delivery_id: String,
+    pub kind: GithubWebhookKind,
     pub installation_id: i64,
     pub repo_full_name: String,
     pub pr_number: i64,
+    pub sender_id: Option<String>,
+    pub pr_title: Option<String>,
+    pub project_selector: Option<String>,
     pub attempts: i32,
 }
 
@@ -49,41 +80,19 @@ impl GithubWebhookStore {
         Self::Memory(Arc::new(Mutex::new(HashMap::new())))
     }
 
-    pub async fn enqueue(
-        &self,
-        delivery_id: &str,
-        installation_id: i64,
-        repo_full_name: &str,
-        pr_number: i64,
-    ) -> Result<bool, GithubAppError> {
+    pub async fn enqueue(&self, delivery: GithubWebhookDelivery) -> Result<bool, GithubAppError> {
         match self {
-            Self::Redis(client) => {
-                redis_store::enqueue(
-                    client,
-                    delivery_id,
-                    installation_id,
-                    repo_full_name,
-                    pr_number,
-                    now_millis()?,
-                )
-                .await
-            }
+            Self::Redis(client) => redis_store::enqueue(client, &delivery, now_millis()?).await,
             #[cfg(test)]
             Self::Memory(deliveries) => {
                 let mut deliveries = deliveries.lock().await;
-                if deliveries.contains_key(delivery_id) {
+                if deliveries.contains_key(&delivery.delivery_id) {
                     return Ok(false);
                 }
                 deliveries.insert(
-                    delivery_id.to_owned(),
+                    delivery.delivery_id.clone(),
                     MemoryDelivery {
-                        delivery: GithubWebhookDelivery {
-                            delivery_id: delivery_id.to_owned(),
-                            installation_id,
-                            repo_full_name: repo_full_name.to_owned(),
-                            pr_number,
-                            attempts: 0,
-                        },
+                        delivery,
                         next_attempt_at: now_millis()?,
                         completed: false,
                     },
