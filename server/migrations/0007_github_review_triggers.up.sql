@@ -5,3 +5,12 @@ ALTER TABLE work_runs
 CREATE UNIQUE INDEX unique_work_run_github_delivery
     ON work_runs (github_delivery_id)
     WHERE github_delivery_id IS NOT NULL;
+
+CREATE TABLE github_review_tickets (
+    project_config_id UUID NOT NULL REFERENCES project_configs(id) ON DELETE CASCADE,
+    repo_full_name TEXT NOT NULL,
+    pr_number BIGINT NOT NULL,
+    external_task_ref TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (project_config_id, repo_full_name, pr_number)
+);

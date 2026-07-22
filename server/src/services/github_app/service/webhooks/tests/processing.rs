@@ -161,6 +161,15 @@ async fn setup_review_request(pool: &sqlx::PgPool) {
     .await
     .expect("connect repo");
     sqlx::query!(
+        r#"INSERT INTO github_review_tickets
+           (project_config_id, repo_full_name, pr_number, external_task_ref)
+           VALUES ($1, 'acme/widgets', 42, 'webhook-review-ticket')"#,
+        project_id,
+    )
+    .execute(pool)
+    .await
+    .expect("insert review ticket");
+    sqlx::query!(
         "INSERT INTO github_installations (github_installation_id, account_login, team_id) VALUES (123, 'acme', $1)",
         test_helpers::DEFAULT_TEAM_ID,
     )

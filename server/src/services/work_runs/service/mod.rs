@@ -13,6 +13,7 @@ pub(crate) mod reconcile_pr_completion;
 pub(crate) mod record_review;
 pub mod refresh_github_token;
 pub(crate) mod request_github_review;
+pub(crate) mod review_ticket;
 pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;
@@ -34,6 +35,9 @@ use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::providers::client::TaskFetcher;
+use crate::services::work_runs::service::review_ticket::{
+    IntegrationReviewTicketCreator, ReviewTicketCreator,
+};
 
 pub struct WorkRunsService {
     pub work_runs_repo: WorkRunsRepository,
@@ -44,6 +48,7 @@ pub struct WorkRunsService {
     pub github: GithubAppManager,
     pub db: PgPool,
     pub(crate) pr_state_reader: Arc<dyn PullRequestStateReader>,
+    review_ticket_creator: Arc<dyn ReviewTicketCreator>,
     dispatch_store: Arc<dyn DispatchStore>,
     cancel_store: Arc<dyn CancelStore>,
     pub providers_repo: IntegrationProvidersRepository,
@@ -62,6 +67,7 @@ impl Clone for WorkRunsService {
             project_configs: self.project_configs.clone(),
             github: self.github.clone(),
             pr_state_reader: self.pr_state_reader.clone(),
+            review_ticket_creator: self.review_ticket_creator.clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
             cancel_store: self.cancel_store.clone(),
@@ -90,6 +96,8 @@ impl WorkRunsService {
         unhealthy_threshold: i32,
     ) -> Self {
         let pr_state_reader: Arc<dyn PullRequestStateReader> = Arc::new(github.clone());
+        let review_ticket_creator: Arc<dyn ReviewTicketCreator> =
+            Arc::new(IntegrationReviewTicketCreator);
 
         Self {
             work_runs_repo,
@@ -100,6 +108,7 @@ impl WorkRunsService {
             github,
             db,
             pr_state_reader,
+            review_ticket_creator,
             dispatch_store,
             cancel_store,
             providers_repo,
@@ -135,6 +144,16 @@ impl WorkRunsService {
         pr_state_reader: Arc<dyn PullRequestStateReader>,
     ) -> Self {
         self.pr_state_reader = pr_state_reader;
+        self
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn with_review_ticket_creator(
+        mut self,
+        review_ticket_creator: Arc<dyn ReviewTicketCreator>,
+    ) -> Self {
+        self.review_ticket_creator = review_ticket_creator;
         self
     }
 }

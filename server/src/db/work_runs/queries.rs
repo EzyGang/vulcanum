@@ -4,6 +4,7 @@ mod limits;
 pub(crate) mod prs;
 mod reset;
 mod result;
+mod review_tickets;
 
 use uuid::Uuid;
 

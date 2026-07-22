@@ -114,6 +114,10 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::LifecycleLabelUpdate => Self::Internal,
             WorkRunsError::GithubApp(e) => e.into(),
             WorkRunsError::ModelProvider(e) => e.into(),
+            WorkRunsError::ProviderConfig(e) => {
+                tracing::error!(error = %e, operation = "work_runs", "provider config error");
+                Self::Internal
+            }
             WorkRunsError::Provider(e) => {
                 tracing::error!(error = %e, operation = "work_runs", "provider error");
                 Self::Internal

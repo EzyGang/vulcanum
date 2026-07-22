@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT external_task_ref\n               FROM github_review_tickets\n               WHERE project_config_id = $1 AND repo_full_name = $2 AND pr_number = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cf9e1debb57a1dad61b50d6f2e13459375d99a9ef20e5612e7ab8b2157f4237f"
+}

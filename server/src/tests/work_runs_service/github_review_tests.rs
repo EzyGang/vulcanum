@@ -1,19 +1,68 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+
+use async_trait::async_trait;
 use uuid::Uuid;
 
+use crate::models::project_configs::model::ProjectConfig;
+use crate::models::provider_configs::model::IntegrationProvider;
+use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::request_github_review::{
     GithubReviewRequest, GithubReviewRequestOutcome,
+};
+use crate::services::work_runs::service::review_ticket::{
+    review_ticket_input, ReviewTicketCreator,
 };
 use crate::test_helpers;
 
 const INSTALLATION_ID: i64 = 123;
 const SENDER_ID: &str = "456";
 
+#[derive(Default)]
+struct MockReviewTicketCreator {
+    created_count: AtomicUsize,
+}
+
+#[async_trait]
+impl ReviewTicketCreator for MockReviewTicketCreator {
+    async fn create(
+        &self,
+        _provider: &IntegrationProvider,
+        _project: &ProjectConfig,
+        repo_full_name: &str,
+        pr_number: i64,
+        _pr_title: &str,
+    ) -> Result<String, WorkRunsError> {
+        self.created_count.fetch_add(1, Ordering::SeqCst);
+        Ok(format!("review-ticket-{repo_full_name}-{pr_number}"))
+    }
+}
+
 #[sqlx::test]
 async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
     let project_id = setup_review_project(&pool).await;
     let state = test_helpers::build_state(pool.clone()).await;
+    let mut state = state;
+    state.jobs = state
+        .jobs
+        .clone()
+        .with_review_ticket_creator(Arc::new(MockReviewTicketCreator::default()));
 
+    let project = state
+        .jobs
+        .project_configs
+        .find_by_id(project_id)
+        .await
+        .expect("review project");
+    let ticket_input = review_ticket_input(&project, "acme/widgets", 42, "Review me");
+    assert_eq!(ticket_input.project_id, "github-review-project");
+    assert_eq!(ticket_input.status, "in review");
+    assert_eq!(ticket_input.title, "Review PR #42: Review me");
+    assert_eq!(
+        ticket_input.body,
+        "Review pull request: https://github.com/acme/widgets/pull/42"
+    );
     let outcome = state
         .jobs
         .request_github_review(GithubReviewRequest {
@@ -42,15 +91,15 @@ async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
     .expect("standalone review row");
     assert_eq!(run.team_id, test_helpers::DEFAULT_TEAM_ID);
     assert_eq!(run.project_config_id, project_id);
-    assert_eq!(run.external_task_ref, "github-pr:acme/widgets#42");
-    assert_eq!(run.task_title.as_deref(), Some("Review me"));
+    assert_eq!(run.external_task_ref, "review-ticket-acme/widgets-42");
+    assert_eq!(run.task_title.as_deref(), Some("Review PR #42: Review me"));
     assert_eq!(run.task_slug.as_deref(), Some("Acme/Widgets#42"));
     assert_eq!(run.status, WorkRunStatus::Pending);
     assert_eq!(run.work_type, WorkRunType::PullRequestReview);
     assert_eq!(run.parent_work_run_id, None);
     assert_eq!(
         run.review_target_pr_url.as_deref(),
-        Some("https://github.com/Acme/Widgets/pull/42")
+        Some("https://github.com/acme/widgets/pull/42")
     );
     assert_eq!(
         run.review_target_repo_full_name.as_deref(),
@@ -63,6 +112,12 @@ async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
 async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) {
     setup_review_project(&pool).await;
     let state = test_helpers::build_state(pool.clone()).await;
+    let creator = Arc::new(MockReviewTicketCreator::default());
+    let mut state = state;
+    state.jobs = state
+        .jobs
+        .clone()
+        .with_review_ticket_creator(creator.clone());
 
     let unauthorized = state
         .jobs
@@ -98,7 +153,7 @@ async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) 
             delivery_id: "delivery-2",
             installation_id: INSTALLATION_ID,
             sender_id: SENDER_ID,
-            repo_full_name: "acme/widgets",
+            repo_full_name: "Acme/Widgets",
             pr_number: 42,
             pr_title: "Review me again",
             project_selector: None,
@@ -115,6 +170,7 @@ async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) 
     .execute(&pool)
     .await
     .expect("complete first review");
+    assert_eq!(creator.created_count.load(Ordering::SeqCst), 1);
     let delivery_retry = state
         .jobs
         .request_github_review(GithubReviewRequest {
@@ -143,6 +199,15 @@ async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) 
         .expect("create review for new delivery");
     assert_eq!(delivery_retry, GithubReviewRequestOutcome::AlreadyActive);
     assert_eq!(new_delivery, GithubReviewRequestOutcome::Spawned);
+    assert_eq!(creator.created_count.load(Ordering::SeqCst), 1);
+    let task_refs = sqlx::query_scalar!(
+        "SELECT external_task_ref FROM work_runs WHERE review_target_pr_url = $1 ORDER BY created_at",
+        "https://github.com/acme/widgets/pull/42",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("review task references");
+    assert_eq!(task_refs, vec!["review-ticket-acme/widgets-42"; 2]);
 }
 
 #[sqlx::test]
@@ -151,6 +216,11 @@ async fn github_review_request_requires_deterministic_project_selection(pool: sq
     let second_id = test_helpers::insert_project_config(&pool, "github-review-project-two").await;
     connect_repo(&pool, second_id).await;
     let state = test_helpers::build_state(pool.clone()).await;
+    let mut state = state;
+    state.jobs = state
+        .jobs
+        .clone()
+        .with_review_ticket_creator(Arc::new(MockReviewTicketCreator::default()));
 
     let ambiguous = state
         .jobs
@@ -209,6 +279,11 @@ async fn github_review_request_explains_disabled_invalid_and_missing_projects(po
     .await
     .expect("disable project review");
     let state = test_helpers::build_state(pool).await;
+    let mut state = state;
+    state.jobs = state
+        .jobs
+        .clone()
+        .with_review_ticket_creator(Arc::new(MockReviewTicketCreator::default()));
 
     assert!(matches!(
         state
@@ -269,7 +344,24 @@ async fn setup_review_project(pool: &sqlx::PgPool) -> Uuid {
     .execute(pool)
     .await
     .expect("enable team reviews");
-    let project_id = test_helpers::insert_project_config(pool, "github-review-project").await;
+    let provider_id = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
+        provider_id,
+        test_helpers::DEFAULT_TEAM_ID,
+        "review-provider",
+        "http://review-provider.invalid",
+        "test-key",
+    )
+    .execute(pool)
+    .await
+    .expect("insert review provider");
+    let project_id = test_helpers::insert_project_config_with_provider(
+        pool,
+        "github-review-project",
+        provider_id,
+    )
+    .await;
     sqlx::query!(
         "INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position) VALUES ($1, $2, $3, 0)",
         project_id,
@@ -328,4 +420,19 @@ async fn connect_repo(pool: &sqlx::PgPool, project_id: Uuid) {
     .execute(pool)
     .await
     .expect("connect repository");
+    let provider_id = sqlx::query_scalar!(
+        "SELECT id FROM integration_providers WHERE team_id = $1 ORDER BY created_at LIMIT 1",
+        test_helpers::DEFAULT_TEAM_ID,
+    )
+    .fetch_one(pool)
+    .await
+    .expect("review provider");
+    sqlx::query!(
+        "UPDATE project_configs SET provider_id = $1 WHERE id = $2",
+        provider_id,
+        project_id,
+    )
+    .execute(pool)
+    .await
+    .expect("attach review provider");
 }

@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS github_review_tickets;
+
 DROP INDEX IF EXISTS unique_work_run_github_delivery;
 
 ALTER TABLE work_runs
