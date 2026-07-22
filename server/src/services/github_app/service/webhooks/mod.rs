@@ -1,5 +1,7 @@
 mod events;
+mod processing;
 mod responses;
+mod review_requests;
 #[cfg(test)]
 mod tests;
 
@@ -14,16 +16,10 @@ use tokio_util::sync::CancellationToken;
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
 use crate::services::github_app::service::webhooks::events::parse_event;
-use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
-use crate::services::github_app::webhook_store::{
-    GithubWebhookDelivery, GithubWebhookKind, GithubWebhookStore,
-};
-use crate::services::work_runs::service::request_github_review::GithubReviewRequest;
+use crate::services::github_app::webhook_store::GithubWebhookStore;
 use crate::services::work_runs::service::WorkRunsService;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(5);
-const DELIVERY_LEASE: Duration = Duration::from_secs(60);
-const MAX_DELIVERIES_PER_TICK: usize = 10;
 
 #[derive(Clone)]
 pub struct GithubWebhookService {
@@ -112,123 +108,6 @@ impl GithubWebhookService {
             }
         }
     }
-
-    pub(crate) async fn process_batch(&self) -> usize {
-        let mut processed = 0;
-
-        for _ in 0..MAX_DELIVERIES_PER_TICK {
-            match self.process_pending_once().await {
-                Ok(true) => processed += 1,
-                Ok(false) => break,
-                Err(error) => {
-                    tracing::error!(%error, "GitHub webhook delivery worker failed");
-                    break;
-                }
-            }
-        }
-
-        processed
-    }
-
-    pub(crate) async fn process_pending_once(&self) -> Result<bool, GithubAppError> {
-        let delivery = match self.store.claim_pending(DELIVERY_LEASE).await? {
-            Some(delivery) => delivery,
-            None => return Ok(false),
-        };
-
-        match delivery.kind {
-            GithubWebhookKind::PullRequestClosed => {
-                self.process_pull_request_closed(&delivery).await?
-            }
-            GithubWebhookKind::ReviewRequested => self.process_review_requested(&delivery).await?,
-        }
-        Ok(true)
-    }
-
-    async fn process_pull_request_closed(
-        &self,
-        delivery: &GithubWebhookDelivery,
-    ) -> Result<(), GithubAppError> {
-        match self
-            .work_runs
-            .reconcile_pull_request_completion(
-                delivery.installation_id,
-                &delivery.repo_full_name,
-                delivery.pr_number,
-            )
-            .await
-        {
-            Ok(outcome) if outcome.matched > 0 => {
-                self.store.complete(&delivery.delivery_id).await?;
-                tracing::info!(
-                    github_delivery_id = delivery.delivery_id,
-                    tasks_matched = outcome.matched,
-                    tasks_moved = outcome.moved,
-                    "processed GitHub pull request webhook",
-                );
-            }
-            Ok(_) => {
-                self.store
-                    .retry(delivery, "no linked task PR found yet")
-                    .await?;
-            }
-            Err(error) => {
-                tracing::warn!(
-                    github_delivery_id = delivery.delivery_id,
-                    %error,
-                    "GitHub pull request webhook reconciliation failed; retry scheduled",
-                );
-                self.store.retry(delivery, &error.to_string()).await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn process_review_requested(
-        &self,
-        delivery: &GithubWebhookDelivery,
-    ) -> Result<(), GithubAppError> {
-        let sender_id = required(&delivery.sender_id, "sender_id")?;
-        let pr_title = required(&delivery.pr_title, "pr_title")?;
-        let outcome = match self
-            .work_runs
-            .request_github_review(GithubReviewRequest {
-                delivery_id: &delivery.delivery_id,
-                installation_id: delivery.installation_id,
-                sender_id,
-                repo_full_name: &delivery.repo_full_name,
-                pr_number: delivery.pr_number,
-                pr_title,
-                project_selector: delivery.project_selector.as_deref(),
-            })
-            .await
-        {
-            Ok(outcome) => outcome,
-            Err(error) => {
-                self.store.retry(delivery, &error.to_string()).await?;
-                return Ok(());
-            }
-        };
-        let app_slug = self
-            .app_slug
-            .as_deref()
-            .ok_or(GithubAppError::NotConfigured)?;
-        match respond_to_outcome(
-            self.comment_writer.as_ref(),
-            app_slug,
-            &delivery.delivery_id,
-            delivery.installation_id,
-            &delivery.repo_full_name,
-            delivery.pr_number,
-            &outcome,
-        )
-        .await
-        {
-            Ok(()) => self.store.complete(&delivery.delivery_id).await?,
-            Err(error) => self.store.retry(delivery, &error.to_string()).await?,
-        }
-        Ok(())
-    }
 }
 
 pub(super) fn verify_signature(
@@ -246,10 +125,4 @@ pub(super) fn verify_signature(
     mac.update(body);
     mac.verify_slice(&expected)
         .map_err(|_| GithubWebhookError::InvalidSignature)
-}
-
-fn required<'a>(value: &'a Option<String>, field: &str) -> Result<&'a str, GithubAppError> {
-    value
-        .as_deref()
-        .ok_or_else(|| GithubAppError::Redis(format!("review webhook omitted {field}")))
 }

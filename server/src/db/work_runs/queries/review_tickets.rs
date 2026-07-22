@@ -121,17 +121,17 @@ impl WorkRunsRepository {
         Ok(updated)
     }
 
-    pub async fn release_github_review_ticket_reservation(
+    pub async fn renew_github_review_ticket_reservation(
         &self,
         db: &PgPool,
         project_config_id: Uuid,
         repo_full_name: &str,
         pr_number: i64,
         token: Uuid,
-    ) -> Result<(), WorkRunsError> {
-        sqlx::query!(
+    ) -> Result<bool, WorkRunsError> {
+        let renewed = sqlx::query!(
             r#"UPDATE github_review_tickets
-               SET creation_started_at = '-infinity'::timestamptz
+               SET creation_started_at = NOW()
                WHERE project_config_id = $1
                  AND repo_full_name = $2
                  AND pr_number = $3
@@ -143,9 +143,11 @@ impl WorkRunsRepository {
             token,
         )
         .execute(db)
-        .await?;
+        .await?
+        .rows_affected()
+            == 1;
 
-        Ok(())
+        Ok(renewed)
     }
 
     async fn github_review_ticket_state(

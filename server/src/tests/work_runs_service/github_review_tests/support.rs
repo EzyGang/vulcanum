@@ -2,6 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use async_trait::async_trait;
+use tokio::sync::Notify;
 use uuid::Uuid;
 
 use crate::models::project_configs::model::ProjectConfig;
@@ -18,6 +19,9 @@ pub(super) struct MockReviewTicketCreator {
     pub created_count: AtomicUsize,
     pub lookup_count: AtomicUsize,
     existing_task_ref: Mutex<Option<String>>,
+    slow_create: bool,
+    create_started: Notify,
+    create_release: Notify,
 }
 
 impl MockReviewTicketCreator {
@@ -26,6 +30,21 @@ impl MockReviewTicketCreator {
             existing_task_ref: Mutex::new(Some(external_task_ref.to_owned())),
             ..Self::default()
         }
+    }
+
+    pub fn slow() -> Self {
+        Self {
+            slow_create: true,
+            ..Self::default()
+        }
+    }
+
+    pub async fn wait_for_create(&self) {
+        self.create_started.notified().await;
+    }
+
+    pub fn release_create(&self) {
+        self.create_release.notify_one();
     }
 
     pub fn created_count(&self) -> usize {
@@ -63,6 +82,10 @@ impl ReviewTicketCreator for MockReviewTicketCreator {
         _pr_title: &str,
     ) -> Result<String, WorkRunsError> {
         self.created_count.fetch_add(1, Ordering::SeqCst);
+        if self.slow_create {
+            self.create_started.notify_one();
+            self.create_release.notified().await;
+        }
         Ok(format!("review-ticket-{repo_full_name}-{pr_number}"))
     }
 }
