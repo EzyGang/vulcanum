@@ -1,4 +1,5 @@
 use crate::models::github_app::errors::GithubAppError;
+use crate::services::github_app::service::webhooks::processing::DeliveryDisposition;
 use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
 use crate::services::github_app::service::webhooks::GithubWebhookService;
 use crate::services::github_app::webhook_store::GithubWebhookDelivery;
@@ -8,7 +9,7 @@ impl GithubWebhookService {
     pub(super) async fn process_review_requested(
         &self,
         delivery: &GithubWebhookDelivery,
-    ) -> Result<(), GithubAppError> {
+    ) -> Result<DeliveryDisposition, GithubAppError> {
         let sender_id = required(&delivery.sender_id, "sender_id")?;
         let pr_title = required(&delivery.pr_title, "pr_title")?;
         let outcome = match self
@@ -25,10 +26,7 @@ impl GithubWebhookService {
             .await
         {
             Ok(outcome) => outcome,
-            Err(error) => {
-                self.store.retry(delivery, &error.to_string()).await?;
-                return Ok(());
-            }
+            Err(error) => return Ok(DeliveryDisposition::Retry(error.to_string())),
         };
         let app_slug = self
             .app_slug
@@ -45,10 +43,9 @@ impl GithubWebhookService {
         )
         .await
         {
-            Ok(()) => self.store.complete(&delivery.delivery_id).await?,
-            Err(error) => self.store.retry(delivery, &error.to_string()).await?,
+            Ok(()) => Ok(DeliveryDisposition::Complete),
+            Err(error) => Ok(DeliveryDisposition::Retry(error.to_string())),
         }
-        Ok(())
     }
 }
 

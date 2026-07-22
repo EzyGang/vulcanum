@@ -10,6 +10,8 @@ use std::sync::Arc;
 #[cfg(test)]
 use tokio::sync::Mutex;
 
+use uuid::Uuid;
+
 use crate::models::github_app::errors::GithubAppError;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -52,6 +54,12 @@ pub(crate) struct GithubWebhookDelivery {
     pub attempts: i32,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct GithubWebhookClaim {
+    pub delivery: GithubWebhookDelivery,
+    token: Uuid,
+}
+
 #[derive(Clone)]
 pub(crate) enum GithubWebhookStore {
     Redis(redis::Client),
@@ -65,6 +73,7 @@ pub(crate) struct MemoryDelivery {
     delivery: GithubWebhookDelivery,
     next_attempt_at: u64,
     completed: bool,
+    claim_token: Option<Uuid>,
 }
 
 impl GithubWebhookStore {
@@ -95,6 +104,7 @@ impl GithubWebhookStore {
                         delivery,
                         next_attempt_at: now_millis()?,
                         completed: false,
+                        claim_token: None,
                     },
                 );
                 Ok(true)
@@ -105,10 +115,11 @@ impl GithubWebhookStore {
     pub async fn claim_pending(
         &self,
         lease: Duration,
-    ) -> Result<Option<GithubWebhookDelivery>, GithubAppError> {
+    ) -> Result<Option<GithubWebhookClaim>, GithubAppError> {
         let now = now_millis()?;
+        let token = Uuid::new_v4();
         match self {
-            Self::Redis(client) => redis_store::claim_pending(client, now, lease).await,
+            Self::Redis(client) => redis_store::claim_pending(client, now, lease, token).await,
             #[cfg(test)]
             Self::Memory(deliveries) => {
                 let mut deliveries = deliveries.lock().await;
@@ -120,7 +131,11 @@ impl GithubWebhookStore {
                     Some(entry) => {
                         entry.delivery.attempts += 1;
                         entry.next_attempt_at = now.saturating_add(duration_millis(lease));
-                        Ok(Some(entry.delivery.clone()))
+                        entry.claim_token = Some(token);
+                        Ok(Some(GithubWebhookClaim {
+                            delivery: entry.delivery.clone(),
+                            token,
+                        }))
                     }
                     None => Ok(None),
                 }
@@ -128,34 +143,68 @@ impl GithubWebhookStore {
         }
     }
 
-    pub async fn complete(&self, delivery_id: &str) -> Result<(), GithubAppError> {
+    pub async fn renew(
+        &self,
+        claim: &GithubWebhookClaim,
+        lease: Duration,
+    ) -> Result<bool, GithubAppError> {
+        let lease_expires_at = now_millis()?.saturating_add(duration_millis(lease));
         match self {
-            Self::Redis(client) => redis_store::complete(client, delivery_id).await,
+            Self::Redis(client) => redis_store::renew(client, claim, lease_expires_at).await,
             #[cfg(test)]
             Self::Memory(deliveries) => {
-                if let Some(entry) = deliveries.lock().await.get_mut(delivery_id) {
-                    entry.completed = true;
-                }
-                Ok(())
+                let mut deliveries = deliveries.lock().await;
+                let renewed = deliveries
+                    .get_mut(&claim.delivery.delivery_id)
+                    .filter(|entry| !entry.completed && entry.claim_token == Some(claim.token))
+                    .map(|entry| entry.next_attempt_at = lease_expires_at)
+                    .is_some();
+                Ok(renewed)
+            }
+        }
+    }
+
+    pub async fn complete(&self, claim: &GithubWebhookClaim) -> Result<bool, GithubAppError> {
+        match self {
+            Self::Redis(client) => redis_store::complete(client, claim).await,
+            #[cfg(test)]
+            Self::Memory(deliveries) => {
+                let mut deliveries = deliveries.lock().await;
+                let completed = deliveries
+                    .get_mut(&claim.delivery.delivery_id)
+                    .filter(|entry| entry.claim_token == Some(claim.token))
+                    .map(|entry| {
+                        entry.completed = true;
+                        entry.claim_token = None;
+                    })
+                    .is_some();
+                Ok(completed)
             }
         }
     }
 
     pub async fn retry(
         &self,
-        delivery: &GithubWebhookDelivery,
+        claim: &GithubWebhookClaim,
         error: &str,
-    ) -> Result<(), GithubAppError> {
-        let delay = Duration::from_secs(2_u64.pow(delivery.attempts.clamp(1, 8) as u32));
+    ) -> Result<bool, GithubAppError> {
+        let attempts = claim.delivery.attempts.clamp(1, 8) as u32;
+        let delay = Duration::from_secs(2_u64.pow(attempts));
         let next_attempt = now_millis()?.saturating_add(duration_millis(delay));
         match self {
-            Self::Redis(client) => redis_store::retry(client, delivery, error, next_attempt).await,
+            Self::Redis(client) => redis_store::retry(client, claim, error, next_attempt).await,
             #[cfg(test)]
             Self::Memory(deliveries) => {
-                if let Some(entry) = deliveries.lock().await.get_mut(&delivery.delivery_id) {
-                    entry.next_attempt_at = next_attempt;
-                }
-                Ok(())
+                let mut deliveries = deliveries.lock().await;
+                let retried = deliveries
+                    .get_mut(&claim.delivery.delivery_id)
+                    .filter(|entry| entry.claim_token == Some(claim.token))
+                    .map(|entry| {
+                        entry.next_attempt_at = next_attempt;
+                        entry.claim_token = None;
+                    })
+                    .is_some();
+                Ok(retried)
             }
         }
     }

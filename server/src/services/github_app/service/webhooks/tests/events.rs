@@ -77,11 +77,11 @@ async fn issue_comment_command_is_queued_with_review_fields(pool: sqlx::PgPool) 
         .await
         .expect("claim queued request")
         .expect("request exists");
-    assert_eq!(queued.kind, GithubWebhookKind::ReviewRequested);
-    assert_eq!(queued.sender_id.as_deref(), Some("456"));
-    assert_eq!(queued.pr_title.as_deref(), Some("Review me"));
+    assert_eq!(queued.delivery.kind, GithubWebhookKind::ReviewRequested);
+    assert_eq!(queued.delivery.sender_id.as_deref(), Some("456"));
+    assert_eq!(queued.delivery.pr_title.as_deref(), Some("Review me"));
     assert_eq!(
-        queued.project_selector.as_deref(),
+        queued.delivery.project_selector.as_deref(),
         Some("project:00000000-0000-0000-0000-000000000123")
     );
 }

@@ -143,7 +143,7 @@ async fn selection_reply_contains_marker_and_exact_commands() {
         .contains(&format!("@{APP_SLUG} review project:{second_id}")));
 }
 
-async fn setup_review_request(pool: &sqlx::PgPool) {
+pub(super) async fn setup_review_request(pool: &sqlx::PgPool) {
     test_helpers::ensure_default_team(pool).await;
     sqlx::query!(
         "UPDATE teams SET review_enabled = true WHERE id = $1",

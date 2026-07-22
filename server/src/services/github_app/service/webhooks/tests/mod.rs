@@ -1,4 +1,5 @@
 mod events;
+mod leases;
 mod processing;
 
 use std::sync::Arc;
@@ -40,12 +41,19 @@ impl PullRequestCommentWriter for RecordingWriter {
 }
 
 fn service(state: &crate::app_state::AppState) -> GithubWebhookService {
+    service_with_writer(state, Arc::new(state.github.clone()))
+}
+
+fn service_with_writer(
+    state: &crate::app_state::AppState,
+    writer: Arc<dyn PullRequestCommentWriter>,
+) -> GithubWebhookService {
     GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         Some(Arc::from(APP_SLUG)),
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
-        Arc::new(state.github.clone()),
+        writer,
     )
 }
 

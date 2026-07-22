@@ -1,8 +1,10 @@
 use std::time::Duration;
 
+use uuid::Uuid;
+
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::webhook_store::{
-    duration_millis, GithubWebhookDelivery, GithubWebhookKind,
+    duration_millis, GithubWebhookClaim, GithubWebhookDelivery, GithubWebhookKind,
 };
 
 const KEY_PREFIX: &str = "vulcanum:github:webhook:";
@@ -68,7 +70,8 @@ pub(super) async fn claim_pending(
     client: &redis::Client,
     now: u64,
     lease: Duration,
-) -> Result<Option<GithubWebhookDelivery>, GithubAppError> {
+    token: Uuid,
+) -> Result<Option<GithubWebhookClaim>, GithubAppError> {
     let mut connection = connection(client).await?;
     let claimed: Option<ClaimedDelivery> = redis::Script::new(
         r#"local ids = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, 1)
@@ -82,6 +85,7 @@ pub(super) async fn claim_pending(
                return nil
            end
            local attempts = redis.call('HINCRBY', key, 'attempts', 1)
+           redis.call('HSET', key, 'claim_token', ARGV[5])
            redis.call('EXPIRE', key, ARGV[4])
            redis.call('ZADD', KEYS[1], ARGV[3], id)
            local values = redis.call('HMGET', key, 'kind', 'installation_id', 'repo_full_name', 'pr_number', 'sender_id', 'pr_title', 'project_selector')
@@ -92,6 +96,7 @@ pub(super) async fn claim_pending(
     .arg(KEY_PREFIX)
     .arg(now.saturating_add(duration_millis(lease)))
     .arg(DEDUPE_TTL_SECONDS)
+    .arg(token.to_string())
     .invoke_async(&mut connection)
     .await
     .map_err(redis_error)?;
@@ -107,61 +112,108 @@ pub(super) async fn claim_pending(
             pr_title,
             project_selector,
             attempts,
-        )) => Ok(Some(GithubWebhookDelivery {
-            delivery_id,
-            kind: GithubWebhookKind::from_stored(kind.as_deref())?,
-            installation_id,
-            repo_full_name,
-            pr_number,
-            sender_id: non_empty(sender_id),
-            pr_title: non_empty(pr_title),
-            project_selector: non_empty(project_selector),
-            attempts,
+        )) => Ok(Some(GithubWebhookClaim {
+            delivery: GithubWebhookDelivery {
+                delivery_id,
+                kind: GithubWebhookKind::from_stored(kind.as_deref())?,
+                installation_id,
+                repo_full_name,
+                pr_number,
+                sender_id: non_empty(sender_id),
+                pr_title: non_empty(pr_title),
+                project_selector: non_empty(project_selector),
+                attempts,
+            },
+            token,
         })),
         None => Ok(None),
     }
 }
 
+pub(super) async fn renew(
+    client: &redis::Client,
+    claim: &GithubWebhookClaim,
+    lease_expires_at: u64,
+) -> Result<bool, GithubAppError> {
+    let mut connection = connection(client).await?;
+    let renewed: i64 = redis::Script::new(
+        r#"if redis.call('HGET', KEYS[1], 'claim_token') ~= ARGV[1]
+               or redis.call('HGET', KEYS[1], 'completed') == '1' then
+               return 0
+           end
+           redis.call('EXPIRE', KEYS[1], ARGV[2])
+           redis.call('ZADD', KEYS[2], ARGV[3], ARGV[4])
+           return 1"#,
+    )
+    .key(delivery_key(&claim.delivery.delivery_id))
+    .key(PENDING_KEY)
+    .arg(claim.token.to_string())
+    .arg(DEDUPE_TTL_SECONDS)
+    .arg(lease_expires_at)
+    .arg(&claim.delivery.delivery_id)
+    .invoke_async(&mut connection)
+    .await
+    .map_err(redis_error)?;
+
+    Ok(renewed == 1)
+}
+
 pub(super) async fn complete(
     client: &redis::Client,
-    delivery_id: &str,
-) -> Result<(), GithubAppError> {
+    claim: &GithubWebhookClaim,
+) -> Result<bool, GithubAppError> {
     let mut connection = connection(client).await?;
-    redis::Script::new(
-        r#"redis.call('HSET', KEYS[1], 'completed', 1)
-           redis.call('EXPIRE', KEYS[1], ARGV[1])
-           redis.call('ZREM', KEYS[2], ARGV[2])"#,
+    let completed: i64 = redis::Script::new(
+        r#"if redis.call('HGET', KEYS[1], 'claim_token') ~= ARGV[1] then
+               return 0
+           end
+           redis.call('HSET', KEYS[1], 'completed', 1)
+           redis.call('HDEL', KEYS[1], 'claim_token')
+           redis.call('EXPIRE', KEYS[1], ARGV[2])
+           redis.call('ZREM', KEYS[2], ARGV[3])
+           return 1"#,
     )
-    .key(delivery_key(delivery_id))
+    .key(delivery_key(&claim.delivery.delivery_id))
     .key(PENDING_KEY)
+    .arg(claim.token.to_string())
     .arg(DEDUPE_TTL_SECONDS)
-    .arg(delivery_id)
-    .invoke_async::<()>(&mut connection)
+    .arg(&claim.delivery.delivery_id)
+    .invoke_async(&mut connection)
     .await
-    .map_err(redis_error)
+    .map_err(redis_error)?;
+
+    Ok(completed == 1)
 }
 
 pub(super) async fn retry(
     client: &redis::Client,
-    delivery: &GithubWebhookDelivery,
+    claim: &GithubWebhookClaim,
     error: &str,
     next_attempt: u64,
-) -> Result<(), GithubAppError> {
+) -> Result<bool, GithubAppError> {
     let mut connection = connection(client).await?;
-    redis::Script::new(
-        r#"redis.call('HSET', KEYS[1], 'last_error', ARGV[1])
-           redis.call('EXPIRE', KEYS[1], ARGV[2])
-           redis.call('ZADD', KEYS[2], ARGV[3], ARGV[4])"#,
+    let retried: i64 = redis::Script::new(
+        r#"if redis.call('HGET', KEYS[1], 'claim_token') ~= ARGV[1] then
+               return 0
+           end
+           redis.call('HSET', KEYS[1], 'last_error', ARGV[2])
+           redis.call('HDEL', KEYS[1], 'claim_token')
+           redis.call('EXPIRE', KEYS[1], ARGV[3])
+           redis.call('ZADD', KEYS[2], ARGV[4], ARGV[5])
+           return 1"#,
     )
-    .key(delivery_key(&delivery.delivery_id))
+    .key(delivery_key(&claim.delivery.delivery_id))
     .key(PENDING_KEY)
+    .arg(claim.token.to_string())
     .arg(error)
     .arg(DEDUPE_TTL_SECONDS)
     .arg(next_attempt)
-    .arg(&delivery.delivery_id)
-    .invoke_async::<()>(&mut connection)
+    .arg(&claim.delivery.delivery_id)
+    .invoke_async(&mut connection)
     .await
-    .map_err(redis_error)
+    .map_err(redis_error)?;
+
+    Ok(retried == 1)
 }
 
 fn non_empty(value: Option<String>) -> Option<String> {

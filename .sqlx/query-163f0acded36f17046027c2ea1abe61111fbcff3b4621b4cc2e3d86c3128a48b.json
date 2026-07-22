@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH inserted AS (\n                   INSERT INTO github_review_tickets\n                       (project_config_id, repo_full_name, pr_number, creation_token)\n                   VALUES ($1, $2, $3, $4)\n                   ON CONFLICT DO NOTHING\n                   RETURNING external_task_ref, creation_token,\n                       FALSE AS recovering, TRUE AS acquired\n               ),\n               acquired AS (\n                   UPDATE github_review_tickets\n                   SET creation_token = $4, creation_started_at = NOW()\n                   WHERE project_config_id = $1\n                     AND repo_full_name = $2\n                     AND pr_number = $3\n                     AND external_task_ref IS NULL\n                     AND creation_started_at <= NOW() - INTERVAL '5 minutes'\n                     AND NOT EXISTS (SELECT 1 FROM inserted)\n                   RETURNING external_task_ref, creation_token,\n                       TRUE AS recovering, TRUE AS acquired\n               ),\n               current AS (\n                   SELECT external_task_ref, creation_token,\n                       FALSE AS recovering, FALSE AS acquired\n                   FROM github_review_tickets\n                   WHERE project_config_id = $1\n                     AND repo_full_name = $2\n                     AND pr_number = $3\n                     AND NOT EXISTS (SELECT 1 FROM inserted)\n                     AND NOT EXISTS (SELECT 1 FROM acquired)\n               )\n               SELECT external_task_ref,\n                   creation_token AS \"creation_token!\",\n                   recovering AS \"recovering!\",\n                   acquired AS \"acquired!\"\n               FROM inserted\n               UNION ALL\n               SELECT external_task_ref, creation_token, recovering, acquired\n               FROM acquired\n               UNION ALL\n               SELECT external_task_ref, creation_token, recovering, acquired\n               FROM current\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "creation_token!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "recovering!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "acquired!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "163f0acded36f17046027c2ea1abe61111fbcff3b4621b4cc2e3d86c3128a48b"
+}

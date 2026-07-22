@@ -138,6 +138,10 @@ impl From<GithubAppError> for AppError {
                 tracing::error!(error = %e, operation = "github_app", "database error");
                 Self::Internal
             }
+            GithubAppError::DeliveryLeaseLost => {
+                tracing::error!(operation = "github_app", "webhook delivery lease lost");
+                Self::Internal
+            }
             GithubAppError::Redis(e) => {
                 tracing::error!(error = %e, operation = "github_app", "redis error");
                 Self::Internal
