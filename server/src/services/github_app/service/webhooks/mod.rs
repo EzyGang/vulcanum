@@ -18,6 +18,7 @@ use crate::services::github_app::service::webhooks::responses::respond_to_outcom
 use crate::services::github_app::webhook_store::{
     GithubWebhookDelivery, GithubWebhookKind, GithubWebhookStore,
 };
+use crate::services::work_runs::service::request_github_review::GithubReviewRequest;
 use crate::services::work_runs::service::WorkRunsService;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(5);
@@ -191,15 +192,15 @@ impl GithubWebhookService {
         let pr_title = required(&delivery.pr_title, "pr_title")?;
         let outcome = match self
             .work_runs
-            .request_github_review(
-                &delivery.delivery_id,
-                delivery.installation_id,
+            .request_github_review(GithubReviewRequest {
+                delivery_id: &delivery.delivery_id,
+                installation_id: delivery.installation_id,
                 sender_id,
-                &delivery.repo_full_name,
-                delivery.pr_number,
+                repo_full_name: &delivery.repo_full_name,
+                pr_number: delivery.pr_number,
                 pr_title,
-                delivery.project_selector.as_deref(),
-            )
+                project_selector: delivery.project_selector.as_deref(),
+            })
             .await
         {
             Ok(outcome) => outcome,

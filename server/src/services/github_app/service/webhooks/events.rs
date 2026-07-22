@@ -45,11 +45,12 @@ fn review_request(
 ) -> Result<Option<GithubWebhookDelivery>, GithubWebhookError> {
     let app_slug = app_slug.ok_or(GithubWebhookError::MissingAppSlug)?;
     let payload = serde_json::from_slice::<IssueCommentEvent>(body)?;
+    let command = review_command(&payload.comment.body, app_slug);
     if payload.action != "created"
         || payload.issue.state != "open"
         || payload.issue.pull_request.is_none()
         || is_app_sender(&payload.sender.login, app_slug)
-        || !contains_mention(&payload.comment.body, app_slug)
+        || command.is_none()
     {
         return Ok(None);
     }
@@ -62,23 +63,72 @@ fn review_request(
         pr_number: payload.issue.number,
         sender_id: Some(payload.sender.id.to_string()),
         pr_title: Some(payload.issue.title),
-        project_selector: project_selector(&payload.comment.body),
+        project_selector: command.flatten(),
         attempts: 0,
     }))
 }
 
-fn contains_mention(body: &str, app_slug: &str) -> bool {
-    let body = body.as_bytes();
+fn review_command(body: &str, app_slug: &str) -> Option<Option<String>> {
+    let body_bytes = body.as_bytes();
     let mention = format!("@{app_slug}").to_ascii_lowercase();
     let mention = mention.as_bytes();
-    if mention.len() > body.len() {
-        return false;
+    if mention.len() > body_bytes.len() {
+        return None;
     }
 
-    (0..=body.len() - mention.len()).any(|index| {
-        body[index..index + mention.len()].eq_ignore_ascii_case(mention)
-            && boundary_before(body, index)
-            && boundary_after(body, index + mention.len())
+    for index in 0..=body_bytes.len() - mention.len() {
+        let end = index + mention.len();
+        if body_bytes[index..end].eq_ignore_ascii_case(mention)
+            && boundary_before(body_bytes, index)
+            && boundary_after(body_bytes, end)
+        {
+            let Some(command) = parse_review_command(&body[end..]) else {
+                continue;
+            };
+            return Some(command);
+        }
+    }
+
+    None
+}
+
+fn parse_review_command(suffix: &str) -> Option<Option<String>> {
+    let suffix = suffix.trim_start();
+    let command = suffix.get(..6)?;
+    if !command.eq_ignore_ascii_case("review") {
+        return None;
+    }
+
+    let remainder = &suffix[6..];
+    if remainder
+        .chars()
+        .next()
+        .is_some_and(|character| !character.is_whitespace())
+    {
+        return None;
+    }
+
+    let selector = trim_selector(remainder.trim());
+    if selector.is_empty() {
+        return Some(None);
+    }
+    if selector.split_whitespace().count() != 1
+        || !selector
+            .get(..8)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("project:"))
+    {
+        return None;
+    }
+
+    Some(Some(selector.to_owned()))
+}
+
+fn trim_selector(value: &str) -> &str {
+    value.trim_matches(|character: char| {
+        matches!(
+            character,
+            '`' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}'
+        )
     })
 }
 
@@ -96,31 +146,6 @@ fn is_login_byte(value: u8) -> bool {
 
 fn is_app_sender(login: &str, app_slug: &str) -> bool {
     login.eq_ignore_ascii_case(app_slug) || login.eq_ignore_ascii_case(&format!("{app_slug}[bot]"))
-}
-
-fn project_selector(body: &str) -> Option<String> {
-    let selectors = body
-        .split_whitespace()
-        .map(|token| {
-            token.trim_matches(|character: char| {
-                matches!(
-                    character,
-                    '`' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}'
-                )
-            })
-        })
-        .filter(|token| {
-            token
-                .get(..8)
-                .is_some_and(|prefix| prefix.eq_ignore_ascii_case("project:"))
-        })
-        .collect::<Vec<_>>();
-
-    match selectors.as_slice() {
-        [] => None,
-        [selector] => Some((*selector).to_owned()),
-        _ => Some(selectors.join(" ")),
-    }
 }
 
 #[derive(Deserialize)]

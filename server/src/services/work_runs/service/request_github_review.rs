@@ -7,6 +7,17 @@ use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_pr_url;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct GithubReviewRequest<'a> {
+    pub delivery_id: &'a str,
+    pub installation_id: i64,
+    pub sender_id: &'a str,
+    pub repo_full_name: &'a str,
+    pub pr_number: i64,
+    pub pr_title: &'a str,
+    pub project_selector: Option<&'a str>,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ReviewProjectOption {
     pub project_config_id: Uuid,
@@ -32,24 +43,14 @@ pub(crate) enum GithubReviewRequestOutcome {
 }
 
 impl WorkRunsService {
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "The approved webhook service boundary carries seven primitive event fields"
-    )]
     pub(crate) async fn request_github_review(
         &self,
-        delivery_id: &str,
-        installation_id: i64,
-        sender_id: &str,
-        repo_full_name: &str,
-        pr_number: i64,
-        pr_title: &str,
-        project_selector: Option<&str>,
+        request: GithubReviewRequest<'_>,
     ) -> Result<GithubReviewRequestOutcome, WorkRunsError> {
         let team_id = match self
             .github
             .repo
-            .find_team_id_by_github_installation(&self.db, installation_id)
+            .find_team_id_by_github_installation(&self.db, request.installation_id)
             .await?
         {
             Some(team_id) => team_id,
@@ -58,7 +59,7 @@ impl WorkRunsService {
         let authorized = self
             .project_configs
             .teams
-            .is_provider_identity_member(team_id, "github", sender_id)
+            .is_provider_identity_member(team_id, "github", request.sender_id)
             .await?;
         if !authorized {
             return Ok(GithubReviewRequestOutcome::Unauthorized);
@@ -66,7 +67,7 @@ impl WorkRunsService {
 
         let configs = self
             .project_configs
-            .list_enabled_for_github_repo(installation_id, repo_full_name)
+            .list_enabled_for_github_repo(request.installation_id, request.repo_full_name)
             .await?;
         if configs.is_empty() {
             return Ok(GithubReviewRequestOutcome::NoMatchingProject { team_id });
@@ -82,7 +83,7 @@ impl WorkRunsService {
             }
         }
         let options = response_options(team_id, &enabled);
-        let selected = match select_project(project_selector, &enabled, &disabled) {
+        let selected = match select_project(request.project_selector, &enabled, &disabled) {
             ProjectSelection::Selected(config) => config,
             ProjectSelection::Disabled => {
                 return Ok(GithubReviewRequestOutcome::ReviewDisabled(options));
@@ -104,20 +105,24 @@ impl WorkRunsService {
                 InsertWorkRunParams {
                     team_id,
                     external_task_ref: format!(
-                        "github-pr:{}#{pr_number}",
-                        repo_full_name.to_ascii_lowercase()
+                        "github-pr:{}#{}",
+                        request.repo_full_name.to_ascii_lowercase(),
+                        request.pr_number,
                     ),
-                    task_title: Some(pr_title.to_owned()),
-                    task_slug: Some(format!("{repo_full_name}#{pr_number}")),
+                    task_title: Some(request.pr_title.to_owned()),
+                    task_slug: Some(format!("{}#{}", request.repo_full_name, request.pr_number)),
                     project_config_id: selected.id,
-                    repo_full_names: vec![repo_full_name.to_owned()],
+                    repo_full_names: vec![request.repo_full_name.to_owned()],
                     status: WorkRunStatus::Pending,
                     work_type: WorkRunType::PullRequestReview,
                     parent_work_run_id: None,
-                    review_target_pr_url: Some(github_pr_url(repo_full_name, pr_number)),
-                    review_target_repo_full_name: Some(repo_full_name.to_owned()),
-                    github_installation_id: Some(installation_id),
-                    github_delivery_id: Some(delivery_id.to_owned()),
+                    review_target_pr_url: Some(github_pr_url(
+                        request.repo_full_name,
+                        request.pr_number,
+                    )),
+                    review_target_repo_full_name: Some(request.repo_full_name.to_owned()),
+                    github_installation_id: Some(request.installation_id),
+                    github_delivery_id: Some(request.delivery_id.to_owned()),
                 },
             )
             .await?;

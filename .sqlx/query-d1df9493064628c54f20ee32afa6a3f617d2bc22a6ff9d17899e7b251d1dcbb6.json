@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO users (id, email) VALUES ('webhook-user', 'webhook@example.com')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d1df9493064628c54f20ee32afa6a3f617d2bc22a6ff9d17899e7b251d1dcbb6"
+}

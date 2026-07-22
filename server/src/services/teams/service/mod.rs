@@ -1,4 +1,6 @@
 pub mod invites;
+mod provider_identity;
+mod resolve;
 
 use std::sync::Arc;
 
@@ -9,7 +11,7 @@ use vulcanum_shared::api::wire::AgentBackend;
 use crate::db::teams::TeamsRepository;
 use crate::models::auth::model::TeamPrincipal;
 use crate::models::teams::errors::TeamsError;
-use crate::models::teams::model::{ProviderIdentity, Team, TeamMemberInfo, UpdateTeamRequest};
+use crate::models::teams::model::{Team, TeamMemberInfo, UpdateTeamRequest};
 use crate::services::teams::invite_store::{InMemoryTeamInviteStore, TeamInviteStore};
 
 #[derive(Clone)]
@@ -64,16 +66,6 @@ impl TeamsService {
     #[must_use = "team lookup results should be handled"]
     pub async fn get_team(&self, team_id: Uuid) -> Result<Team, TeamsError> {
         self.repo.get_by_id(&self.db, team_id).await
-    }
-    pub async fn is_provider_identity_member(
-        &self,
-        team_id: Uuid,
-        provider: &str,
-        provider_user_id: &str,
-    ) -> Result<bool, TeamsError> {
-        self.repo
-            .is_provider_identity_member(&self.db, team_id, provider, provider_user_id)
-            .await
     }
 
     #[must_use = "team lookup results should be handled"]
@@ -204,49 +196,6 @@ impl TeamsService {
         self.authorize_team_read(team_id, principal, single_user)
             .await?;
         self.repo.list_members(&self.db, team_id).await
-    }
-
-    #[must_use = "identity list results should be handled"]
-    pub async fn list_identities_for_user(
-        &self,
-        user_id: &str,
-    ) -> Result<Vec<ProviderIdentity>, TeamsError> {
-        self.repo.list_identities_for_user(&self.db, user_id).await
-    }
-
-    #[must_use = "resolved team id should be used"]
-    pub async fn resolve_team(
-        &self,
-        principal: &TeamPrincipal,
-        single_user: bool,
-    ) -> Result<Uuid, TeamsError> {
-        match principal {
-            TeamPrincipal::Instance { team_id } => {
-                if !single_user {
-                    return Err(TeamsError::AccessDenied);
-                }
-                match team_id {
-                    Some(team_id) => Ok(self.repo.get_by_id(&self.db, *team_id).await?.id),
-                    None => Ok(self.repo.get_default_team(&self.db).await?.id),
-                }
-            }
-            TeamPrincipal::User { user_id, team_id } => match team_id {
-                Some(team_id) => {
-                    self.repo
-                        .verify_membership(&self.db, *team_id, user_id)
-                        .await?;
-                    Ok(*team_id)
-                }
-                None => Ok(self
-                    .repo
-                    .list_for_user(&self.db, user_id)
-                    .await?
-                    .into_iter()
-                    .next()
-                    .ok_or(TeamsError::NotFound)?
-                    .id),
-            },
-        }
     }
 
     pub async fn ensure_personal_team(

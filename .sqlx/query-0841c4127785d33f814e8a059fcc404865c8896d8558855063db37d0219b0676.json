@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO team_members (team_id, user_id) VALUES ($1, 'webhook-user')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0841c4127785d33f814e8a059fcc404865c8896d8558855063db37d0219b0676"
+}

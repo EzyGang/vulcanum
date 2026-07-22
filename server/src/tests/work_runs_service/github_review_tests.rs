@@ -1,7 +1,9 @@
 use uuid::Uuid;
 
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
-use crate::services::work_runs::service::request_github_review::GithubReviewRequestOutcome;
+use crate::services::work_runs::service::request_github_review::{
+    GithubReviewRequest, GithubReviewRequestOutcome,
+};
 use crate::test_helpers;
 
 const INSTALLATION_ID: i64 = 123;
@@ -14,15 +16,15 @@ async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
 
     let outcome = state
         .jobs
-        .request_github_review(
-            "delivery-1",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "Acme/Widgets",
-            42,
-            "Review me",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "delivery-1",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "Acme/Widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: None,
+        })
         .await
         .expect("request review");
 
@@ -64,43 +66,43 @@ async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) 
 
     let unauthorized = state
         .jobs
-        .request_github_review(
-            "unauthorized",
-            INSTALLATION_ID,
-            "999",
-            "acme/widgets",
-            42,
-            "Review me",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "unauthorized",
+            installation_id: INSTALLATION_ID,
+            sender_id: "999",
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: None,
+        })
         .await
         .expect("reject unauthorized sender");
     assert_eq!(unauthorized, GithubReviewRequestOutcome::Unauthorized);
 
     let first = state
         .jobs
-        .request_github_review(
-            "delivery-1",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "acme/widgets",
-            42,
-            "Review me",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "delivery-1",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: None,
+        })
         .await
         .expect("create first review");
     let active_duplicate = state
         .jobs
-        .request_github_review(
-            "delivery-2",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "acme/widgets",
-            42,
-            "Review me again",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "delivery-2",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review me again",
+            project_selector: None,
+        })
         .await
         .expect("deduplicate active review");
     assert_eq!(first, GithubReviewRequestOutcome::Spawned);
@@ -115,28 +117,28 @@ async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) 
     .expect("complete first review");
     let delivery_retry = state
         .jobs
-        .request_github_review(
-            "delivery-1",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "acme/widgets",
-            42,
-            "Review me",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "delivery-1",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: None,
+        })
         .await
         .expect("deduplicate delivery retry");
     let new_delivery = state
         .jobs
-        .request_github_review(
-            "delivery-3",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "acme/widgets",
-            42,
-            "Review latest head",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "delivery-3",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review latest head",
+            project_selector: None,
+        })
         .await
         .expect("create review for new delivery");
     assert_eq!(delivery_retry, GithubReviewRequestOutcome::AlreadyActive);
@@ -152,15 +154,15 @@ async fn github_review_request_requires_deterministic_project_selection(pool: sq
 
     let ambiguous = state
         .jobs
-        .request_github_review(
-            "ambiguous",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "acme/widgets",
-            42,
-            "Review me",
-            None,
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "ambiguous",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: None,
+        })
         .await
         .expect("require project selection");
     match ambiguous {
@@ -174,15 +176,15 @@ async fn github_review_request_requires_deterministic_project_selection(pool: sq
 
     let selected = state
         .jobs
-        .request_github_review(
-            "selected",
-            INSTALLATION_ID,
-            SENDER_ID,
-            "acme/widgets",
-            42,
-            "Review me",
-            Some(&format!("project:{second_id}")),
-        )
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "selected",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: Some(&format!("project:{second_id}")),
+        })
         .await
         .expect("select project");
     assert_eq!(selected, GithubReviewRequestOutcome::Spawned);
@@ -211,15 +213,15 @@ async fn github_review_request_explains_disabled_invalid_and_missing_projects(po
     assert!(matches!(
         state
             .jobs
-            .request_github_review(
-                "disabled",
-                INSTALLATION_ID,
-                SENDER_ID,
-                "acme/widgets",
-                42,
-                "Review me",
-                Some(&format!("project:{project_id}")),
-            )
+            .request_github_review(GithubReviewRequest {
+                delivery_id: "disabled",
+                installation_id: INSTALLATION_ID,
+                sender_id: SENDER_ID,
+                repo_full_name: "acme/widgets",
+                pr_number: 42,
+                pr_title: "Review me",
+                project_selector: Some(&format!("project:{project_id}")),
+            })
             .await
             .expect("disabled outcome"),
         GithubReviewRequestOutcome::ReviewDisabled(_)
@@ -227,15 +229,15 @@ async fn github_review_request_explains_disabled_invalid_and_missing_projects(po
     assert!(matches!(
         state
             .jobs
-            .request_github_review(
-                "invalid",
-                INSTALLATION_ID,
-                SENDER_ID,
-                "acme/widgets",
-                42,
-                "Review me",
-                Some("project:not-a-uuid"),
-            )
+            .request_github_review(GithubReviewRequest {
+                delivery_id: "invalid",
+                installation_id: INSTALLATION_ID,
+                sender_id: SENDER_ID,
+                repo_full_name: "acme/widgets",
+                pr_number: 42,
+                pr_title: "Review me",
+                project_selector: Some("project:not-a-uuid"),
+            })
             .await
             .expect("invalid outcome"),
         GithubReviewRequestOutcome::InvalidProjectSelection(_)
@@ -243,15 +245,15 @@ async fn github_review_request_explains_disabled_invalid_and_missing_projects(po
     assert!(matches!(
         state
             .jobs
-            .request_github_review(
-                "missing",
-                INSTALLATION_ID,
-                SENDER_ID,
-                "acme/other",
-                42,
-                "Review me",
-                None,
-            )
+            .request_github_review(GithubReviewRequest {
+                delivery_id: "missing",
+                installation_id: INSTALLATION_ID,
+                sender_id: SENDER_ID,
+                repo_full_name: "acme/other",
+                pr_number: 42,
+                pr_title: "Review me",
+                project_selector: None,
+            })
             .await
             .expect("missing outcome"),
         GithubReviewRequestOutcome::NoMatchingProject { .. }
