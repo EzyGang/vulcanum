@@ -23,6 +23,8 @@ pub enum WorkRunsError {
     InvalidPagination(String),
     #[error("failed to update task lifecycle label")]
     LifecycleLabelUpdate,
+    #[error("review ticket creation is already in progress")]
+    ReviewTicketCreationPending,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]

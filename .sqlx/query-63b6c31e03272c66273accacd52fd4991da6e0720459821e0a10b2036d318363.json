@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT team_id, external_task_ref, task_title, task_slug, project_config_id,\n           status as \"status: WorkRunStatus\", work_type as \"work_type: WorkRunType\",\n           parent_work_run_id, review_target_pr_url, review_target_repo_full_name,\n           github_installation_id, github_delivery_id\n           FROM work_runs WHERE github_delivery_id = $1",
+  "query": "SELECT team_id, external_task_ref, task_title, task_slug, project_config_id,\n           status as \"status: WorkRunStatus\", work_type as \"work_type: WorkRunType\",\n           parent_work_run_id, review_target_pr_url, review_target_repo_full_name,\n           github_installation_id\n           FROM work_runs WHERE github_delivery_id = $1",
   "describe": {
     "columns": [
       {
@@ -81,11 +81,6 @@
         "ordinal": 10,
         "name": "github_installation_id",
         "type_info": "Int8"
-      },
-      {
-        "ordinal": 11,
-        "name": "github_delivery_id",
-        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -104,9 +99,8 @@
       true,
       true,
       true,
-      true,
       true
     ]
   },
-  "hash": "002a61ccdaf9fa0b7c841bc36373c0a33d54a1ecf2febcabd76a43a06486876d"
+  "hash": "63b6c31e03272c66273accacd52fd4991da6e0720459821e0a10b2036d318363"
 }

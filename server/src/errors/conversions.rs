@@ -112,6 +112,7 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::DeleteRunning => Self::CannotDeleteRunning,
             WorkRunsError::InvalidPagination(message) => Self::BadRequest(message),
             WorkRunsError::LifecycleLabelUpdate => Self::Internal,
+            WorkRunsError::ReviewTicketCreationPending => Self::Internal,
             WorkRunsError::GithubApp(e) => e.into(),
             WorkRunsError::ModelProvider(e) => e.into(),
             WorkRunsError::ProviderConfig(e) => {

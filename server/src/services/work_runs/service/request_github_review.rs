@@ -1,7 +1,6 @@
 use uuid::Uuid;
 
 use crate::db::work_runs::queries::InsertWorkRunParams;
-use crate::models::project_configs::errors::ProjectConfigsError;
 use crate::models::project_configs::model::ProjectConfig;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
@@ -102,7 +101,7 @@ impl WorkRunsService {
 
         let normalized_repo = request.repo_full_name.to_ascii_lowercase();
         let external_task_ref = self
-            .get_or_create_github_review_ticket(
+            .resolve_github_review_ticket(
                 selected,
                 &normalized_repo,
                 request.pr_number,
@@ -136,50 +135,6 @@ impl WorkRunsService {
             true => Ok(GithubReviewRequestOutcome::Spawned),
             false => Ok(GithubReviewRequestOutcome::AlreadyActive),
         }
-    }
-
-    async fn get_or_create_github_review_ticket(
-        &self,
-        project: &ProjectConfig,
-        normalized_repo: &str,
-        pr_number: i64,
-        pr_title: &str,
-    ) -> Result<String, WorkRunsError> {
-        let mut transaction = self.db.begin().await?;
-        self.work_runs_repo
-            .lock_github_review_ticket(&mut transaction, project.id, normalized_repo, pr_number)
-            .await?;
-        let existing = self
-            .work_runs_repo
-            .find_github_review_ticket(&mut transaction, project.id, normalized_repo, pr_number)
-            .await?;
-        let external_task_ref = match existing {
-            Some(external_task_ref) => external_task_ref,
-            None => {
-                let provider_id = project.provider_id.ok_or(ProjectConfigsError::NoProvider)?;
-                let provider = self
-                    .providers_repo
-                    .find_by_id(&self.db, provider_id, project.team_id)
-                    .await?;
-                let external_task_ref = self
-                    .review_ticket_creator
-                    .create(&provider, project, normalized_repo, pr_number, pr_title)
-                    .await?;
-                self.work_runs_repo
-                    .insert_github_review_ticket(
-                        &mut transaction,
-                        project.id,
-                        normalized_repo,
-                        pr_number,
-                        &external_task_ref,
-                    )
-                    .await?;
-                external_task_ref
-            }
-        };
-        transaction.commit().await?;
-
-        Ok(external_task_ref)
     }
 }
 

@@ -10,7 +10,9 @@ CREATE TABLE github_review_tickets (
     project_config_id UUID NOT NULL REFERENCES project_configs(id) ON DELETE CASCADE,
     repo_full_name TEXT NOT NULL,
     pr_number BIGINT NOT NULL,
-    external_task_ref TEXT NOT NULL,
+    external_task_ref TEXT,
+    creation_token UUID NOT NULL,
+    creation_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (project_config_id, repo_full_name, pr_number)
 );

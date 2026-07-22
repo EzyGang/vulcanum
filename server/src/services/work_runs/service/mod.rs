@@ -13,6 +13,7 @@ pub(crate) mod reconcile_pr_completion;
 pub(crate) mod record_review;
 pub mod refresh_github_token;
 pub(crate) mod request_github_review;
+pub(crate) mod resolve_review_ticket;
 pub(crate) mod review_ticket;
 pub mod spawn_review;
 pub mod submit_result;

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO github_review_tickets\n           (project_config_id, repo_full_name, pr_number, external_task_ref, creation_token)\n           VALUES ($1, 'acme/widgets', 42, 'webhook-review-ticket', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8db71a63e343e55f0f0c4447b1eded63756aee4b61a764c423d99ecb6929f456"
+}

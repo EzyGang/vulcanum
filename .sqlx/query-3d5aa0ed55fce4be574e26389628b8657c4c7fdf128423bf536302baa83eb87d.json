@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO github_review_tickets\n           (project_config_id, repo_full_name, pr_number, creation_token)\n           VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3d5aa0ed55fce4be574e26389628b8657c4c7fdf128423bf536302baa83eb87d"
+}

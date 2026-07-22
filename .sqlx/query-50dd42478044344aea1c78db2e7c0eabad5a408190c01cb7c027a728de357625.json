@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE github_review_tickets\n                       SET creation_token = $4, creation_started_at = NOW()\n                       WHERE project_config_id = $1\n                         AND repo_full_name = $2\n                         AND pr_number = $3\n                         AND external_task_ref IS NULL\n                         AND creation_started_at <= NOW() - INTERVAL '5 minutes'\n                       RETURNING creation_token",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "creation_token",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "50dd42478044344aea1c78db2e7c0eabad5a408190c01cb7c027a728de357625"
+}
