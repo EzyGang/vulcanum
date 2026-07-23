@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE github_review_tickets\n           SET creation_started_at = NOW() - INTERVAL '10 minutes'\n           WHERE project_config_id = $1 AND repo_full_name = $2 AND pr_number = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aaff7094b3c5b340a440a38b4e1ce5ee42de1a665f7c90ce9b23b19cdd7b8b63"
+}

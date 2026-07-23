@@ -267,6 +267,8 @@ fn build_work_run_params(config: &ProjectConfig, task: &IntegrationTask) -> Inse
         parent_work_run_id: None,
         review_target_pr_url: None,
         review_target_repo_full_name: None,
+        github_installation_id: None,
+        github_delivery_id: None,
     }
 }
 

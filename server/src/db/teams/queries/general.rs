@@ -244,6 +244,35 @@ impl TeamsRepository {
             false => Err(TeamsError::AccessDenied),
         }
     }
+    pub async fn is_provider_identity_member<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        provider: &str,
+        provider_user_id: &str,
+    ) -> Result<bool, TeamsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                SELECT 1
+                FROM user_identities ui
+                INNER JOIN team_members tm ON tm.user_id = ui.user_id
+                WHERE tm.team_id = $1
+                  AND ui.provider = $2
+                  AND ui.provider_user_id = $3
+                  AND ui.provider_verified_at IS NOT NULL
+            )"#,
+            team_id,
+            provider,
+            provider_user_id,
+        )
+        .fetch_one(db)
+        .await
+        .map(|value| value.unwrap_or(false))
+        .map_err(TeamsError::from)
+    }
 
     pub async fn get_member_role<'c, Q>(
         &self,

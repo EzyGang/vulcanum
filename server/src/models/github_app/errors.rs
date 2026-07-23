@@ -18,6 +18,8 @@ pub enum GithubAppError {
     Base64Decode(String),
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("github webhook delivery lease was lost")]
+    DeliveryLeaseLost,
     #[error("redis error: {0}")]
     Redis(String),
 }

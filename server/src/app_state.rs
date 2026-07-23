@@ -145,8 +145,10 @@ impl AppState {
         );
         let github_webhooks = GithubWebhookService::new(
             cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
+            cfg.github_app_slug.as_deref().map(Arc::<str>::from),
             GithubWebhookStore::redis(&cfg.redis_url)?,
             jobs.clone(),
+            Arc::new(github.clone()),
         );
         let events = WorkRunEventsService::new(
             WorkRunEventsRepository::new(),

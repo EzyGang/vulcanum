@@ -22,9 +22,7 @@ impl WorkRunsService {
         }
 
         let repos = self.github_repos_for_work_run(&run).await?;
-        let cfg = self.job_config_fields_for_run(&run).await?;
-        self.mint_github_token_for_repos(id, cfg.team_id, &repos)
-            .await
+        self.mint_github_token_for_repos(&run, &repos).await
     }
 
     pub(crate) async fn github_repos_for_work_run(
@@ -36,8 +34,7 @@ impl WorkRunsService {
 
     pub(crate) async fn mint_github_token_for_repos(
         &self,
-        work_run_id: Uuid,
-        team_id: Uuid,
+        run: &WorkRun,
         repos: &[JobRepo],
     ) -> Result<RefreshGithubTokenResponse, WorkRunsError> {
         let repo_full_names = repos
@@ -52,15 +49,27 @@ impl WorkRunsService {
             });
         }
 
-        let token = match self
-            .github
-            .generate_installation_token_for_repos(team_id, &repo_full_names)
-            .await
-        {
+        let token_result = match run.github_installation_id {
+            Some(installation_id) => {
+                self.github
+                    .generate_installation_token_for_installation(
+                        run.team_id,
+                        installation_id,
+                        &repo_full_names,
+                    )
+                    .await
+            }
+            None => {
+                self.github
+                    .generate_installation_token_for_repos(run.team_id, &repo_full_names)
+                    .await
+            }
+        };
+        let token = match token_result {
             Ok(token) => token,
             Err(e) => {
                 tracing::error!(
-                    work_run_id = %work_run_id,
+                    work_run_id = %run.id,
                     error = %e,
                     "failed to mint github installation token"
                 );

@@ -50,9 +50,11 @@ pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
         | WorkRunsError::DeleteRunning
         | WorkRunsError::InvalidPagination(_)
         | WorkRunsError::LifecycleLabelUpdate
+        | WorkRunsError::ReviewTicketCreationPending
         | WorkRunsError::Dispatch(_)
         | WorkRunsError::GithubApp(_)
         | WorkRunsError::ModelProvider(_)
+        | WorkRunsError::ProviderConfig(_)
         | WorkRunsError::Provider(_)
         | WorkRunsError::ProjectConfig(_)
         | WorkRunsError::Team(_)

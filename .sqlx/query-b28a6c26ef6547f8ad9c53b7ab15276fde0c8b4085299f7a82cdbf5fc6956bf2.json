@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(\n                SELECT 1\n                FROM user_identities ui\n                INNER JOIN team_members tm ON tm.user_id = ui.user_id\n                WHERE tm.team_id = $1\n                  AND ui.provider = $2\n                  AND ui.provider_user_id = $3\n                  AND ui.provider_verified_at IS NOT NULL\n            )",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b28a6c26ef6547f8ad9c53b7ab15276fde0c8b4085299f7a82cdbf5fc6956bf2"
+}

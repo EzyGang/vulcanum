@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position) VALUES ($1, 'acme/widgets', 'https://github.com/acme/widgets', 0)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f19751fd856ccada703f9676e8f43201a781a196cfc34c7f2b1b20ac07d97690"
+}

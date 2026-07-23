@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT parent_work_run_id, github_installation_id, github_delivery_id FROM work_runs WHERE github_delivery_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "parent_work_run_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_delivery_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a979822691d99b98613103cb5c6d28082555447cb090edb93ad7569127150f59"
+}

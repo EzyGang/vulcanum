@@ -2,6 +2,7 @@ use crate::models::dispatcher::errors::DispatchError;
 use crate::models::github_app::errors::GithubAppError;
 use crate::models::model_providers::errors::ModelProvidersError;
 use crate::models::project_configs::errors::ProjectConfigsError;
+use crate::models::provider_configs::errors::IntegrationProvidersError;
 use crate::models::providers::errors::IntegrationError;
 use crate::models::teams::errors::TeamsError;
 use crate::models::workers::errors::WorkersError;
@@ -22,6 +23,8 @@ pub enum WorkRunsError {
     InvalidPagination(String),
     #[error("failed to update task lifecycle label")]
     LifecycleLabelUpdate,
+    #[error("review ticket creation is already in progress")]
+    ReviewTicketCreationPending,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]
@@ -30,6 +33,8 @@ pub enum WorkRunsError {
     GithubApp(#[from] GithubAppError),
     #[error("model provider error: {0}")]
     ModelProvider(#[from] ModelProvidersError),
+    #[error("integration provider configuration error: {0}")]
+    ProviderConfig(#[from] IntegrationProvidersError),
     #[error("integration provider error: {0}")]
     Provider(#[from] IntegrationError),
     #[error("project config error: {0}")]

@@ -51,6 +51,15 @@ impl ProjectConfigsService {
     pub async fn list_enabled(&self) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
         self.repo.list_enabled(&self.db).await
     }
+    pub async fn list_enabled_for_github_repo(
+        &self,
+        github_installation_id: i64,
+        repo_full_name: &str,
+    ) -> Result<Vec<ProjectConfig>, ProjectConfigsError> {
+        self.repo
+            .list_enabled_for_github_repo(&self.db, github_installation_id, repo_full_name)
+            .await
+    }
 
     pub async fn get_by_id(
         &self,

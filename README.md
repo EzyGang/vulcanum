@@ -375,9 +375,17 @@ Repository cloning and pull request tracking use a GitHub App. For local develop
 
 - Callback URL: `http://localhost:8000/api/v1/github/callback`
 - Webhook URL: `http://localhost:8000/api/v1/github/webhook`
-- Webhook event: **Pull request**
+- Webhook events: **Pull request** and **Issue comment**
 - **Contents** permission: read and write
 - **Pull requests** permission: read and write
+- **Issues** permission: read and write
+
+To review any open pull request in a repository connected to an enabled project, an authorized
+team member can comment `@app-slug review`. If the repository belongs to multiple review-enabled
+projects, Vulcanum replies with project-specific commands; use
+`@app-slug review project:<project-config-uuid>` to select one. GitHub models pull request timeline
+comments as issue comments, so the app needs **Issues: read** to receive commands and **Issues:
+write** to post project-selection guidance.
 
 Add the app values to `.env`:
 

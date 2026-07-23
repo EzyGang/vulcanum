@@ -23,7 +23,7 @@ Repositories:
 
 Follow the repository instructions, keep changes focused on the task, and keep the final response concise."#;
 
-pub const DEFAULT_REVIEW_PROMPT_TEMPLATE: &str = r#"Review this pull request for the linked task.
+pub const DEFAULT_REVIEW_PROMPT_TEMPLATE: &str = r#"Review this pull request. Use linked-task context when it is available.
 
 Before judging the implementation, inspect the repository instructions and project manifests. Follow every AGENTS.md file that applies to the changed directories. Spawn focused read-only subagents when they would help check correctness, tests, security, or project conventions; they must not edit files.
 

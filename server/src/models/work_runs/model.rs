@@ -37,6 +37,8 @@ pub struct WorkRun {
     pub parent_work_run_id: Option<Uuid>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,
+    pub github_installation_id: Option<i64>,
+    pub github_delivery_id: Option<String>,
     pub result_pr_url: Option<String>,
     pub result_exit_code: Option<i32>,
     pub tokens_used: Option<i64>,
@@ -52,6 +54,12 @@ pub struct WorkRun {
     pub finish_next_column: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+impl WorkRun {
+    #[must_use]
+    pub fn is_standalone_review(&self) -> bool {
+        self.work_type == WorkRunType::PullRequestReview && self.github_delivery_id.is_some()
+    }
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]
@@ -69,6 +77,8 @@ pub struct WorkRunListItem {
     pub parent_work_run_id: Option<Uuid>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,
+    pub github_installation_id: Option<i64>,
+    pub github_delivery_id: Option<String>,
     pub result_pr_url: Option<String>,
     pub result_exit_code: Option<i32>,
     pub tokens_used: Option<i64>,

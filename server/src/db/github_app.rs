@@ -35,6 +35,22 @@ impl GithubAppRepository {
 
         Ok(row)
     }
+    pub async fn find_team_id_by_github_installation<'c, Q>(
+        &self,
+        db: Q,
+        github_installation_id: i64,
+    ) -> Result<Option<Uuid>, GithubAppError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            "SELECT team_id FROM github_installations WHERE github_installation_id = $1",
+            github_installation_id,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(GithubAppError::Database)
+    }
 
     pub async fn insert_installation<'c, Q: Queryer<'c>>(
         &self,

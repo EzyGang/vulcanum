@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE github_review_tickets\n               SET external_task_ref = $5\n               WHERE project_config_id = $1\n                 AND repo_full_name = $2\n                 AND pr_number = $3\n                 AND creation_token = $4\n                 AND external_task_ref IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b41387f4136e0db721ca7e2ed3ca36d3d7cf64e938881fc76caf919d2a1c49b4"
+}
