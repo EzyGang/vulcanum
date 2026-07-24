@@ -132,7 +132,7 @@ Kaneo is the current tracker backend. The server-side provider boundary is inten
 
 ### Execution side
 
-Workers connect to the control plane from whichever machines you want to use. Each worker reports its available capacity, execution mode, and agent backend. Vulcanum can then use local machines and remote hosts as one worker pool instead of tying the workflow to a single computer.
+Workers connect to the control plane from whichever machines you want to use. Each worker reports its available capacity and execution mode. Vulcanum can then use local machines and remote hosts as one worker pool instead of tying the workflow to a single computer.
 
 OpenCode and OMP are the current agent backends. Host, Docker, and Kata are the current execution modes.
 
@@ -165,10 +165,10 @@ A failed or blocked run stays failed in Vulcanum and does not quietly advance th
 The current implementation supports:
 
 - **Kaneo projects and task boards.** Vulcanum can read projects, watch configured columns, create and update tasks, move tasks, post comments, and manage labels.
-- **OpenCode and OMP.** Workers select one of these agent backends during setup and advertise that capability to the server.
+- **OpenCode and OMP.** Team defaults select the agent backend for each run, and every worker can execute either backend.
 - **GitHub repositories and pull requests.** A GitHub App provides repository access, short-lived clone credentials, pull request tracking, and close/merge webhooks.
 - **Host, Docker, and Kata execution.** Each worker is configured with one execution mode.
-- **Concurrent workers.** The dispatcher respects worker capabilities and available job slots.
+- **Concurrent workers.** The dispatcher respects each worker's available job slots.
 - **Crash recovery.** Workers keep an SQLite journal for in-flight jobs and reconcile it when they restart.
 - **Multi-repository jobs.** A project can provide more than one repository to an implementation run.
 - **Multi-turn runs.** The agent can continue for the configured number of turns and ends through an explicit `finish_run` contract.
@@ -325,7 +325,7 @@ For the control plane:
 - PostgreSQL 15 or newer
 - Redis
 
-For workers, you also need the selected agent backend. Docker execution needs Docker. Kata execution needs Linux, KVM, Docker, and Kata Containers.
+For host workers, both OpenCode and OMP must be installed. Docker execution needs Docker. Kata execution needs Linux, KVM, Docker, and Kata Containers.
 
 The setup CLI configures systemd on Linux and launchd on macOS. Kata setup is Linux-only. Windows setup and release automation are not currently provided.
 
@@ -418,24 +418,13 @@ Model providers, model selection, team defaults, tracker providers, repositories
 
 Generate a registration code from the Workers page, then run setup on the worker host.
 
-OpenCode with Docker:
+Docker workers include both supported agent runtimes. The backend for each run is selected from the team's defaults:
 
 ```bash
 vulcanum worker setup \
   --instance http://<control-plane-host>:8000 \
   --code <registration-code> \
-  --isolation docker \
-  --agent-backend opencode
-```
-
-OMP with Docker:
-
-```bash
-vulcanum worker setup \
-  --instance http://<control-plane-host>:8000 \
-  --code <registration-code> \
-  --isolation docker \
-  --agent-backend omp-rpc
+  --isolation docker
 ```
 
 Kata on Linux:

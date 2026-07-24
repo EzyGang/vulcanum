@@ -9,9 +9,7 @@ use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::service::WorkersService;
 use crate::test_helpers::DEFAULT_TEAM_ID;
 use chrono::{Duration, Utc};
-use vulcanum_shared::api::wire::{
-    AgentBackend, ConnectRequest, RefreshRequest, WorkerCapabilities,
-};
+use vulcanum_shared::api::wire::{ConnectRequest, RefreshRequest, WorkerCapabilities};
 
 fn cfg() -> AppConfig {
     AppConfig {
@@ -111,7 +109,6 @@ async fn connect_persists_worker_capabilities(pool: sqlx::PgPool) {
         .await
         .expect("should generate");
     let capabilities = WorkerCapabilities {
-        agent_backends: vec![AgentBackend::OmpRpc],
         isolation_backends: vec!["host".to_owned(), "docker".to_owned()],
     };
 

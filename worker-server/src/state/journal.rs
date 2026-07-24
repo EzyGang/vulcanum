@@ -55,6 +55,15 @@ impl Journal {
         }
     }
 
+    pub fn remove_job(&self, job_id: Uuid) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "DELETE FROM job_journal WHERE job_id = ?1",
+            [job_id.to_string()],
+        )?;
+        Ok(())
+    }
+
     pub fn update_result(&self, result: JournalResultUpdate<'_>) -> anyhow::Result<()> {
         let now = Utc::now().to_rfc3339();
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());

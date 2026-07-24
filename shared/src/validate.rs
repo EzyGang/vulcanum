@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::api::wire::AgentBackend;
 use crate::config::{IsolationBackend, WorkerConfig};
 #[cfg(target_os = "macos")]
 use crate::constants::MACOS_DOCKER_DESKTOP_CLI_PATH;
@@ -20,11 +19,8 @@ pub struct ValidationIssue {
     pub message: String,
 }
 
-/// Runs all environment checks for a specific isolation backend and agent backend.
-pub fn validate_environment(
-    isolation_backend: &str,
-    agent_backend: AgentBackend,
-) -> Vec<ValidationIssue> {
+/// Runs all environment checks for an isolation backend.
+pub fn validate_environment(isolation_backend: &str) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
 
     match isolation_backend.parse::<IsolationBackend>() {
@@ -46,7 +42,8 @@ pub fn validate_environment(
             check_docker(&mut issues);
         }
         Ok(IsolationBackend::Host) => {
-            check_binary(agent_backend.binary_name(), &mut issues, Severity::Critical);
+            check_binary("opencode", &mut issues, Severity::Critical);
+            check_binary("omp", &mut issues, Severity::Critical);
         }
         Err(err) => {
             issues.push(ValidationIssue {
@@ -61,12 +58,12 @@ pub fn validate_environment(
 
 /// Runs all environment checks for a worker configuration.
 pub fn validate_environment_for_config(config: &WorkerConfig) -> Vec<ValidationIssue> {
-    validate_environment(&config.harness, config.agent_backend)
+    validate_environment(&config.harness)
 }
 
 /// Runs all environment checks for a specific backend and returns a list of issues.
 pub fn validate_environment_for_backend(backend: &str) -> Vec<ValidationIssue> {
-    validate_environment(backend, AgentBackend::OpenCode)
+    validate_environment(backend)
 }
 
 /// Validates the environment for a worker configuration and returns true if no critical issues exist.

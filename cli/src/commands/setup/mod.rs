@@ -1,9 +1,7 @@
-use vulcanum_shared::api::wire::AgentBackend;
 use vulcanum_shared::state::worker as worker_state;
 use vulcanum_shared::validate::Severity;
 
 use crate::console;
-use crate::AgentBackendArg;
 
 use connect::{connect_worker, verify_connection};
 use prompts::resolve_backend;
@@ -28,7 +26,6 @@ pub async fn run(
     instance: Option<String>,
     force: bool,
     isolation: Option<crate::IsolationBackend>,
-    agent_backend: Option<AgentBackendArg>,
 ) -> anyhow::Result<()> {
     let backend = resolve_backend(interaction_mode(&code, &instance), isolation)?;
 
@@ -39,7 +36,6 @@ pub async fn run(
 
     let mut config = vulcanum_shared::config::load_config_if_exists()?.unwrap_or_default();
     config.harness = backend.harness_name().to_owned();
-    config.agent_backend = selected_agent_backend(agent_backend);
 
     match backend {
         Backend::Kata => {
@@ -168,12 +164,5 @@ impl Backend {
             Self::Docker => "docker",
             Self::None => "host",
         }
-    }
-}
-
-fn selected_agent_backend(agent_backend: Option<AgentBackendArg>) -> AgentBackend {
-    match agent_backend {
-        Some(AgentBackendArg::OmpRpc) => AgentBackend::OmpRpc,
-        Some(AgentBackendArg::Opencode) | None => AgentBackend::OpenCode,
     }
 }

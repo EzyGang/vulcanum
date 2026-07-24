@@ -4,7 +4,6 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
-use crate::api::wire::AgentBackend;
 use crate::config::{IsolationBackend, WorkerConfig};
 use crate::validate::{validate_environment, Severity, ValidationIssue};
 
@@ -64,7 +63,7 @@ impl Drop for PathOverride {
 fn docker_backend_requires_missing_docker_as_critical_issue() {
     let _path = PathOverride::empty("docker");
 
-    let issues = validate_environment("docker", AgentBackend::OpenCode);
+    let issues = validate_environment("docker");
 
     assert_has_critical_issue(&issues, "docker not found in PATH");
 }
@@ -75,7 +74,7 @@ fn docker_backend_requires_reachable_daemon_not_just_docker_binary() {
     let path = PathOverride::empty("docker-info-fails");
     path.executable("docker", b"#!/bin/sh\nexit 42\n");
 
-    let issues = validate_environment("docker", AgentBackend::OpenCode);
+    let issues = validate_environment("docker");
 
     assert_has_critical_issue(
         &issues,
@@ -85,7 +84,7 @@ fn docker_backend_requires_reachable_daemon_not_just_docker_binary() {
 
 #[test]
 fn unknown_isolation_backend_is_a_critical_validation_issue() {
-    let issues = validate_environment("firecracker", AgentBackend::OpenCode);
+    let issues = validate_environment("firecracker");
 
     assert_has_critical_issue(
         &issues,
@@ -126,18 +125,13 @@ fn worker_config_isolation_backend_parses_known_harnesses_and_rejects_unknown() 
 }
 
 #[test]
-fn host_backend_requires_missing_selected_agent_binary_as_critical_issue() {
+fn host_backend_requires_all_agent_binaries() {
     let _path = PathOverride::empty("host-agent");
-    let cases = [
-        (AgentBackend::OpenCode, "opencode not found in PATH"),
-        (AgentBackend::OmpRpc, "omp not found in PATH"),
-    ];
 
-    for (agent_backend, expected_message) in cases {
-        let issues = validate_environment("host", agent_backend);
+    let issues = validate_environment("host");
 
-        assert_has_critical_issue(&issues, expected_message);
-    }
+    assert_has_critical_issue(&issues, "opencode not found in PATH");
+    assert_has_critical_issue(&issues, "omp not found in PATH");
 }
 
 #[cfg(unix)]
@@ -152,7 +146,7 @@ fn host_backend_treats_non_executable_matching_agent_binary_as_missing() {
     std::fs::set_permissions(&binary_path, std::fs::Permissions::from_mode(0o644))
         .expect("agent binary placeholder should be made non-executable");
 
-    let issues = validate_environment("host", AgentBackend::OpenCode);
+    let issues = validate_environment("host");
 
     assert_has_critical_issue(&issues, "opencode not found in PATH");
 }

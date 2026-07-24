@@ -161,8 +161,7 @@ vulcanum skills install ticket-template --stdout > ./SKILL.md
 ```bash
 vulcanum worker setup \
   [--instance <URL>] [--code <CODE>] [--force] \
-  [--isolation <kata|docker|none>] \
-  [--agent-backend <opencode|omp-rpc>]
+  [--isolation <kata|docker|none>]
 vulcanum worker daemon
 vulcanum worker self-delete
 ```

@@ -46,7 +46,6 @@ pub async fn connect_worker(code: Option<String>, instance: Option<String>) -> a
     let config = load_config()?;
     let isolation_backend = config.isolation_backend()?;
     let capabilities = WorkerCapabilities {
-        agent_backends: vec![config.agent_backend],
         isolation_backends: vec![isolation_backend.as_str().to_owned()],
     };
     let client = ApiClient::new(&resolved_url);

@@ -23,14 +23,6 @@ impl AgentBackend {
             Self::OmpRpc => "omp_rpc",
         }
     }
-
-    #[must_use]
-    pub fn binary_name(&self) -> &'static str {
-        match self {
-            Self::OpenCode => "opencode",
-            Self::OmpRpc => "omp",
-        }
-    }
 }
 
 impl std::str::FromStr for AgentBackend {
@@ -45,28 +37,10 @@ impl std::str::FromStr for AgentBackend {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WorkerCapabilities {
-    #[serde(default = "default_agent_backends")]
-    pub agent_backends: Vec<AgentBackend>,
     #[serde(default)]
     pub isolation_backends: Vec<String>,
-}
-
-impl Default for WorkerCapabilities {
-    fn default() -> Self {
-        Self {
-            agent_backends: default_agent_backends(),
-            isolation_backends: Vec::new(),
-        }
-    }
-}
-
-impl WorkerCapabilities {
-    #[must_use]
-    pub fn supports_agent_backend(&self, backend: AgentBackend) -> bool {
-        self.agent_backends.contains(&backend)
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -96,10 +70,6 @@ impl AgentConfigPayload {
             Self::OmpRpc { .. } => AgentBackend::OmpRpc,
         }
     }
-}
-
-fn default_agent_backends() -> Vec<AgentBackend> {
-    vec![AgentBackend::OpenCode]
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]

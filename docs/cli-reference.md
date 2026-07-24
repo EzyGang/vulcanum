@@ -303,8 +303,7 @@ vulcanum worker setup \
   [--instance <URL>] \
   [--code <CODE>] \
   [--force] \
-  [--isolation <kata|docker|none>] \
-  [--agent-backend <opencode|omp-rpc>]
+  [--isolation <kata|docker|none>]
 ```
 
 | Option | Purpose |
@@ -313,7 +312,6 @@ vulcanum worker setup \
 | `--code <CODE>` | Use a worker registration code from that instance. |
 | `--force` | Register again even when local worker state already exists. |
 | `--isolation <VALUE>` | Select `kata`, `docker`, or `none`. Non-interactive setup defaults to Docker when instance and code are supplied. |
-| `--agent-backend <VALUE>` | Select `opencode` or `omp-rpc`. |
 
 Without the required non-interactive values, setup prompts for configuration.
 

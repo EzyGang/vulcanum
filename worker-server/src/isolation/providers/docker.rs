@@ -5,7 +5,6 @@ use std::process::Stdio;
 use tokio::fs;
 
 use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, JobRepo, WorkRunType};
-use vulcanum_shared::runtime::docker::retry_docker_pull;
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
 use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
@@ -27,28 +26,6 @@ impl DockerIsolation {
     pub fn with_image(image: String, runtime: Option<&'static str>) -> Self {
         Self { image, runtime }
     }
-
-    pub(crate) async fn ensure_image(&self) -> Result<(), HarnessError> {
-        retry_docker_pull(&self.image, || docker_pull_once(&self.image))
-            .await
-            .map_err(|e| HarnessError::Install(e.to_string()))
-    }
-}
-
-async fn docker_pull_once(image: &str) -> Result<(), String> {
-    let status = tokio::process::Command::new("docker")
-        .args(["pull", image])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .await
-        .map_err(|e| format!("failed to pull agent image: {e}"))?;
-
-    if status.success() {
-        return Ok(());
-    }
-
-    Err(format!("exited with status {status}"))
 }
 
 impl IsolationProvider for DockerIsolation {
@@ -64,8 +41,6 @@ impl IsolationProvider for DockerIsolation {
         agent_config: &AgentConfigPayload,
         repos: &[JobRepo],
     ) -> Result<IsolatedEnvironment, HarnessError> {
-        self.ensure_image().await?;
-
         tokio::fs::create_dir_all(workdir)
             .await
             .map_err(|e| HarnessError::Crash(format!("failed to create workdir: {e}")))?;

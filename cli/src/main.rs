@@ -101,9 +101,6 @@ enum WorkerCommand {
             help = "Isolation backend. Defaults to docker when --instance and --code are supplied."
         )]
         isolation: Option<IsolationBackend>,
-        /// Agent backend to use (opencode or omp-rpc)
-        #[arg(long, value_enum)]
-        agent_backend: Option<AgentBackendArg>,
     },
 }
 
@@ -112,12 +109,6 @@ enum IsolationBackend {
     Kata,
     Docker,
     None,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub(crate) enum AgentBackendArg {
-    Opencode,
-    OmpRpc,
 }
 
 #[tokio::main]
@@ -141,8 +132,7 @@ async fn main() -> anyhow::Result<()> {
                 code,
                 force,
                 isolation,
-                agent_backend,
-            } => commands::setup::run(code, instance, force, isolation, agent_backend).await,
+            } => commands::setup::run(code, instance, force, isolation).await,
         },
         Command::Workers { cmd } => match cmd {
             WorkersCommand::List { team } => commands::app::workers::list(team).await,

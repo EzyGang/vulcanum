@@ -1,11 +1,17 @@
 use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::sync::Arc;
 
 use chrono::Utc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, JobResponse, WorkRunType};
+use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::state::worker::WorkerState;
 
-use crate::recovery::recover_session::recovered_omp_env;
-use crate::state::journal::{JournalEntry, JournalStatus};
+use crate::recovery::recover_session::{mark_lost_and_submit, recovered_omp_env};
+use crate::state::journal::{Journal, JournalEntry, JournalInsert, JournalStatus};
 
 #[tokio::test]
 async fn recovered_omp_env_preserves_model_provider_env_for_docker() {
@@ -58,6 +64,63 @@ async fn recovered_omp_env_preserves_model_provider_env_for_docker() {
     tokio::fs::remove_dir_all(&workdir)
         .await
         .expect("remove workdir");
+}
+
+#[tokio::test]
+async fn rejected_lost_result_removes_stale_journal_entry() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let base_url = format!("http://{}", listener.local_addr().expect("local address"));
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept request");
+        let mut buffer = [0_u8; 4096];
+        let _bytes_read = stream.read(&mut buffer).expect("read request");
+        let body = r#"{"error":"Invalid status transition"}"#;
+        write!(
+            stream,
+            "HTTP/1.1 409 Conflict\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        )
+        .expect("write response");
+    });
+
+    let path = std::env::temp_dir().join(format!("vulcanum-recovery-test-{}", Uuid::new_v4()));
+    let journal = Arc::new(Journal::open(&path).expect("open journal"));
+    let job_id = Uuid::new_v4();
+    journal
+        .insert_job(JournalInsert {
+            job_id,
+            workdir: "/tmp/work",
+            container_name: Some("vulcanum-test"),
+            harness_type: "docker",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+        })
+        .expect("insert job");
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("read journal")
+        .expect("journal entry");
+    let client = Arc::new(ApiClient::new(base_url));
+    let worker_state = Arc::new(RwLock::new(WorkerState {
+        worker_id: Uuid::new_v4(),
+        instance_url: String::new(),
+        access_token: "token".to_owned(),
+        refresh_token: "refresh".to_owned(),
+        expires_at: Utc::now(),
+        max_concurrent_jobs: 1,
+    }));
+
+    mark_lost_and_submit(&journal, &client, &worker_state, &entry).await;
+
+    assert!(
+        journal.find_by_id(job_id).expect("read journal").is_none(),
+        "server-side reset must clear stale local state so redispatch can execute"
+    );
+    server.join().expect("join test server");
+    drop(journal);
+    std::fs::remove_file(path).expect("remove journal");
 }
 
 fn test_job(

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
+use vulcanum_shared::api::error::ApiError;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::isolation::IsolationProvider;
@@ -151,6 +152,23 @@ pub(crate) async fn mark_lost_and_submit(
     })
     .await
     {
+        if matches!(
+            e.downcast_ref::<ApiError>(),
+            Some(api_error) if api_error.status == 409
+        ) {
+            match journal.remove_job(entry.job_id) {
+                Ok(()) => tracing::info!(
+                    job_id = %entry.job_id,
+                    "stale job was reset remotely; removed local recovery record"
+                ),
+                Err(remove_error) => tracing::warn!(
+                    job_id = %entry.job_id,
+                    error = %remove_error,
+                    "failed to remove locally stale recovery record"
+                ),
+            }
+            return;
+        }
         tracing::warn!(
             job_id = %entry.job_id,
             error = %e,
