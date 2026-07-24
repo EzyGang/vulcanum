@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/preact';
-import type { ComponentChildren } from 'preact';
+import type { ComponentChildren, JSX } from 'preact';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   normalizeTaskBoardColumnPreferences,
@@ -95,7 +95,10 @@ vi.mock('../components/shared/ui/Tooltip.view', () => {
 });
 
 import { buildProjectUsageSummary } from '../components/task-board/hooks/projectUsageSummary.support';
-import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
+import {
+  formatPullRequestLabel,
+  formatTaskDisplayId
+} from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
 import type { TaskBoardProjectUsage, TaskBoardTaskAugmentation } from '../types/task-board';
@@ -125,6 +128,7 @@ const makeAugmentation = (
   cacheReadTokens: 80,
   cacheWriteTokens: 12,
   finishedRunsCount: 2,
+  prUrls: [],
   updatedAt: '2026-01-02T00:00:00Z',
   ...overrides
 });
@@ -257,6 +261,10 @@ const makeProps = (
           column,
           visibleTasks: visibleTasks.map((task) => ({
             augmentation: augmentationsByTaskRef[task.id] ?? null,
+            pullRequests: (augmentationsByTaskRef[task.id]?.prUrls ?? []).map((url) => ({
+              label: formatPullRequestLabel(url),
+              url
+            })),
             task,
             displayId: formatTaskDisplayId(task),
             createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
@@ -274,6 +282,14 @@ const makeProps = (
                 onClick: () => actions.onMoveTask(task.id, option.value)
               })),
             onClick: () => actions.onOpenTask(task),
+            onPointerDown: (event: JSX.TargetedPointerEvent<HTMLElement>) => {
+              const target = event.target;
+              event.currentTarget.draggable =
+                !(target instanceof Element) ||
+                target.closest('[data-task-card-interactive]') === null;
+            },
+            onPrLinkClick: (event: JSX.TargetedMouseEvent<HTMLAnchorElement>) =>
+              event.stopPropagation(),
             onOpenMenu: (event: MouseEvent) => actions.onOpenTaskMenu(event, task.id),
             onDragStart: () => actions.onDragStart(task.id, task.status),
             onDragEnd: actions.onDragEnd,
@@ -650,6 +666,63 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByText('Create proxy API'));
 
     expect(props.actions.onOpenTask).toHaveBeenCalledWith(board.columns[0].tasks[0]);
+  });
+
+  it('hides the pull request area when a task has no PR links', () => {
+    const props = makeProps({
+      'task-1': makeAugmentation({ prUrls: [] })
+    });
+    const { queryByRole } = render(<TaskBoardView {...props} />);
+
+    expect(queryByRole('region', { name: 'Pull requests' })).toBeNull();
+  });
+
+  it('renders one PR link without opening or dragging the task card', () => {
+    const prUrl = 'https://github.com/EzyGang/vulcanum/pull/123';
+    const props = makeProps({
+      'task-1': makeAugmentation({ prUrls: [prUrl] })
+    });
+    const { getByRole, getByText } = render(<TaskBoardView {...props} />);
+    const link = getByRole('link', {
+      name: 'Open pull request EzyGang/vulcanum #123'
+    });
+    const card = getByText('Create proxy API').closest('article');
+
+    expect(link.getAttribute('href')).toBe(prUrl);
+    expect(link.getAttribute('target')).toBe('_blank');
+
+    fireEvent.pointerDown(link);
+    fireEvent.click(link);
+
+    expect(card?.getAttribute('draggable')).toBe('false');
+    expect(props.actions.onOpenTask).not.toHaveBeenCalled();
+    expect(props.actions.onDragStart).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(card as Element);
+    fireEvent.dragStart(card as Element);
+
+    expect(card?.getAttribute('draggable')).toBe('true');
+    expect(props.actions.onDragStart).toHaveBeenCalledWith('task-1', 'to-do');
+  });
+
+  it('renders every PR link with an unambiguous repository and number', () => {
+    const prUrls = [
+      'https://github.com/EzyGang/vulcanum/pull/123',
+      'https://github.com/example/long-repository-name/pull/456'
+    ];
+    const props = makeProps({
+      'task-1': makeAugmentation({ prUrls })
+    });
+    const { getAllByRole, getByRole } = render(<TaskBoardView {...props} />);
+    const pullRequests = getByRole('region', { name: 'Pull requests' });
+    const links = getAllByRole('link', { name: /Open pull request/ });
+
+    expect(pullRequests).toBeTruthy();
+    expect(links.map((link) => link.textContent)).toEqual([
+      'EzyGang/vulcanum #123',
+      'example/long-repository-name #456'
+    ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(prUrls);
   });
 
   it('deletes a provider label from the task details dialog', () => {
