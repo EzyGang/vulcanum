@@ -76,23 +76,25 @@ export const useGitHubApp = () => {
     refetch();
   };
   const reviewIdentityLogin = installation?.reviewIdentityLogin;
-  const identityPanelVisible = !!installation && (authMode?.isSingleUser ?? false);
-  const identityStatusText = reviewIdentityLogin
-    ? `@${reviewIdentityLogin} can start reviews from PR comments.`
-    : 'Link the GitHub account allowed to start reviews from PR comments.';
-  const identityActionLabel = linkIdentityMutation.isPending
-    ? 'Opening GitHub...'
-    : reviewIdentityLogin
-      ? 'Change account'
-      : 'Link account';
+  const identityPanel =
+    installation && authMode?.isSingleUser
+      ? {
+          statusText: reviewIdentityLogin
+            ? `@${reviewIdentityLogin} can start reviews from PR comments.`
+            : 'Link the GitHub account allowed to start reviews from PR comments.',
+          actionLabel: linkIdentityMutation.isPending
+            ? 'Opening GitHub...'
+            : reviewIdentityLogin
+              ? 'Change account'
+              : 'Link account'
+        }
+      : null;
 
   return {
     data: {
       installation: installation ?? null,
       repos,
-      identityPanelVisible,
-      identityStatusText,
-      identityActionLabel
+      identityPanel
     },
     status: {
       isLoading: installationLoading,
