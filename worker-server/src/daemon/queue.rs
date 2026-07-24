@@ -20,6 +20,10 @@ impl JobTracker {
     pub(super) async fn release(&self, job_id: Uuid) {
         self.active.lock().await.remove(&job_id);
     }
+
+    pub(super) async fn is_idle(&self) -> bool {
+        self.active.lock().await.is_empty()
+    }
 }
 
 pub(super) async fn try_drain_queue(state: &DaemonState) {

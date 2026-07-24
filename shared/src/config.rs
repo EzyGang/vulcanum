@@ -19,6 +19,10 @@ const fn default_poll_interval() -> u64 {
     30
 }
 
+const fn default_update_check_interval() -> u64 {
+    24 * 60 * 60
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum IsolationBackend {
@@ -92,6 +96,10 @@ pub struct WorkerConfig {
     pub debug: bool,
     #[serde(default = "default_poll_interval")]
     pub poll_interval_secs: u64,
+    #[serde(default)]
+    pub auto_update_enabled: bool,
+    #[serde(default = "default_update_check_interval")]
+    pub update_check_interval_secs: u64,
 }
 
 impl Default for WorkerConfig {
@@ -102,6 +110,8 @@ impl Default for WorkerConfig {
             log_format: None,
             debug: false,
             poll_interval_secs: default_poll_interval(),
+            auto_update_enabled: false,
+            update_check_interval_secs: default_update_check_interval(),
         }
     }
 }

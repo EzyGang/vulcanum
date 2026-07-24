@@ -13,7 +13,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use tokio::signal;
 use tokio::sync::{Mutex, RwLock, Semaphore};
-use tokio::time::sleep;
+use tokio::time::{sleep, Duration, Instant};
 
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::{load_config, WorkerConfig};
@@ -24,6 +24,7 @@ use vulcanum_shared::validate::is_environment_ready_for_config;
 use crate::daemon::queue::JobTracker;
 use crate::recovery;
 use crate::state::journal::Journal;
+use crate::update::AutomaticUpdater;
 
 use tick::tick;
 
@@ -52,6 +53,9 @@ struct DaemonState {
 
 pub async fn run() -> anyhow::Result<()> {
     let config = load_config().context("failed to load worker config")?;
+    if config.auto_update_enabled && run_automatic_update().await {
+        return Ok(());
+    }
 
     if !is_environment_ready_for_config(&config) {
         tracing::error!("environment validation failed — run `vulcanum worker setup` for details");
@@ -103,6 +107,8 @@ pub async fn run() -> anyhow::Result<()> {
     tracing::info!("daemon started, starting poll loop");
 
     let mut backoff_ms = INITIAL_BACKOFF_MS;
+    let update_interval = Duration::from_secs(daemon_state.config.update_check_interval_secs);
+    let mut next_update_check = Instant::now() + update_interval;
 
     loop {
         tokio::select! {
@@ -135,5 +141,33 @@ pub async fn run() -> anyhow::Result<()> {
             tracing::error!("job task failed permanently: {msg}");
             return Err(anyhow::anyhow!("{msg}"));
         }
+
+        if daemon_state.config.auto_update_enabled
+            && Instant::now() >= next_update_check
+            && daemon_state.job_tracker.is_idle().await
+            && daemon_state.pending_queue.lock().await.is_empty()
+        {
+            next_update_check = Instant::now() + update_interval;
+            if run_automatic_update().await {
+                return Ok(());
+            }
+        }
     }
+}
+
+async fn run_automatic_update() -> bool {
+    let updater = match AutomaticUpdater::for_current_install() {
+        Ok(updater) => updater,
+        Err(error) => {
+            tracing::warn!(
+                target_version = "unknown",
+                error = %error,
+                "automatic update failed before release discovery; continuing with the working installation"
+            );
+            return false;
+        }
+    };
+    let outcome = updater.check_and_apply().await;
+    outcome.log();
+    outcome.is_applied()
 }
