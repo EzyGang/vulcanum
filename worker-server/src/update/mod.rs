@@ -6,6 +6,7 @@ mod service;
 mod tests;
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use anyhow::Context;
 
@@ -14,6 +15,7 @@ use crate::update::service::{PlatformServiceRestarter, ServiceRestarter};
 
 pub(crate) const VERSION_FILE: &str = ".vulcanum-version";
 const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/EzyGang/vulcanum/releases/latest";
+const UPDATE_HTTP_TIMEOUT: Duration = Duration::from_secs(60);
 const BUILD_VERSION: &str = match option_env!("VULCANUM_RELEASE_VERSION") {
     Some(version) => version,
     None => env!("CARGO_PKG_VERSION"),
@@ -118,6 +120,7 @@ where
         restarter: R,
     ) -> anyhow::Result<Self> {
         let client = reqwest::Client::builder()
+            .timeout(UPDATE_HTTP_TIMEOUT)
             .user_agent("vulcanum-worker-updater")
             .build()
             .context("failed to create update HTTP client")?;
