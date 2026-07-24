@@ -1,6 +1,7 @@
 mod commit_author;
 #[cfg(test)]
 mod commit_author_tests;
+mod installation_authorization;
 pub(crate) mod pull_requests;
 mod repos;
 mod state_nonce;
@@ -149,12 +150,13 @@ impl GithubAppManager {
             return Ok(None);
         }
 
-        self.discover_single_installation(team_id).await
+        self.discover_single_installation(team_id, None).await
     }
 
     async fn discover_single_installation(
         &self,
         team_id: Uuid,
+        installed_by_user_id: Option<&str>,
     ) -> Result<Option<GithubInstallation>, GithubAppError> {
         let octo = self.app_octocrab()?;
         let page = octo
@@ -177,7 +179,7 @@ impl GithubAppManager {
             }
         };
 
-        self.upsert_remote_installation(team_id, installation)
+        self.upsert_remote_installation(team_id, installed_by_user_id, installation)
             .await
             .map(Some)
     }
@@ -185,6 +187,7 @@ impl GithubAppManager {
     async fn upsert_remote_installation(
         &self,
         team_id: Uuid,
+        installed_by_user_id: Option<&str>,
         installation: Installation,
     ) -> Result<GithubInstallation, GithubAppError> {
         let github_installation_id = i64::try_from(installation.id.into_inner()).map_err(|e| {
@@ -193,7 +196,7 @@ impl GithubAppManager {
 
         self.upsert_installation(
             team_id,
-            None,
+            installed_by_user_id,
             github_installation_id,
             installation.account.login,
         )

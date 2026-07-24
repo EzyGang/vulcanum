@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::models::auth::errors::AuthError;
 use crate::models::auth::model::{GithubCallbackResult, TeamPrincipal};
 use crate::services::auth::service::AuthService;
+use crate::services::github_app::service::{GithubAppManager, GithubInstallState};
 
 const GITHUB_OAUTH_STATE_TTL_MINUTES: i64 = 10;
 const DEFAULT_GITHUB_LOGIN_RETURN_TO: &str = "/login";
@@ -60,6 +61,47 @@ impl AuthService {
             team_id,
             installation_id: installation.id,
         })
+    }
+
+    pub(crate) async fn complete_github_installation_authorization(
+        &self,
+        github: &GithubAppManager,
+        install_state: GithubInstallState,
+        code: &str,
+    ) -> Result<String, AuthError> {
+        let token = self.exchange_github_code(code).await?;
+        let github_user = self.fetch_github_user(&token).await?;
+        let provider_user_id = github_user.id.to_string();
+
+        if let Some(user_id) = install_state.user_id.as_deref() {
+            self.teams
+                .repo
+                .upsert_identity(
+                    &self.teams.db,
+                    user_id,
+                    "github",
+                    &provider_user_id,
+                    &github_user.login,
+                )
+                .await?;
+        }
+
+        let installation = github
+            .connect_single_installation(install_state.team_id, install_state.user_id.as_deref())
+            .await?;
+
+        if self.is_single_user {
+            github
+                .link_review_identity(
+                    install_state.team_id,
+                    installation.id,
+                    &provider_user_id,
+                    &github_user.login,
+                )
+                .await?;
+        }
+
+        Ok(DEFAULT_GITHUB_LINK_RETURN_TO.to_owned())
     }
 
     pub async fn github_callback(

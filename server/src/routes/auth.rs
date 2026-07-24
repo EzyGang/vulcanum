@@ -84,11 +84,15 @@ pub async fn github_callback(
     state: web::Data<AppState>,
     query: web::Query<GithubCallbackQuery>,
 ) -> Result<HttpResponse, AppError> {
-    let location = match state
-        .auth
-        .github_callback(&query.code, &query.state)
-        .await?
-    {
+    complete_github_callback(state.get_ref(), &query.code, &query.state).await
+}
+
+pub(crate) async fn complete_github_callback(
+    state: &AppState,
+    code: &str,
+    oauth_state: &str,
+) -> Result<HttpResponse, AppError> {
+    let location = match state.auth.github_callback(code, oauth_state).await? {
         GithubCallbackResult::Login {
             token_pair,
             return_to,

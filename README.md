@@ -374,13 +374,18 @@ Kaneo credentials are configured in the task-tracker provider settings, not thro
 Repository cloning, pull request tracking, and review triggers use a GitHub App. For local
 development, configure:
 
-- Setup URL: `http://localhost:8000/api/v1/github/callback`
-- User authorization callback URL: `http://localhost:8000/api/v1/auth/github/callback`
+- Callback URL: `http://localhost:8000/api/v1/github/callback`
+- Enable **Request user authorization (OAuth) during installation**
+- The optional Setup URL may use the same callback endpoint
 - Webhook URL: `http://localhost:8000/api/v1/github/webhook`
 - Webhook events: **Pull request** and **Issue comment**
 - **Contents** permission: read and write
 - **Pull requests** permission: read and write
 - **Issues** permission: read and write
+
+The callback accepts both GitHub response shapes. OAuth responses are correlated through a
+single-use state nonce; installation responses are verified against the GitHub App API before
+Vulcanum stores them.
 
 To review any open pull request in a repository connected to an enabled project, an authorized
 team member can comment `@app-slug review`. If the repository belongs to multiple review-enabled
@@ -406,7 +411,7 @@ GitHub App or to a separate OAuth App:
 ```bash
 GITHUB_CLIENT_ID=your-client-id
 GITHUB_CLIENT_SECRET=your-client-secret
-GITHUB_OAUTH_REDIRECT_URL=http://localhost:8000/api/v1/auth/github/callback
+GITHUB_OAUTH_REDIRECT_URL=http://localhost:8000/api/v1/github/callback
 ```
 `GITHUB_OAUTH_REDIRECT_URL` is the public callback that GitHub returns the temporary authorization
 code to. It must exactly match a callback URL configured on the GitHub App or OAuth App.

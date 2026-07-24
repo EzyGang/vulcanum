@@ -3,9 +3,47 @@ use std::sync::Arc;
 use actix_web::{http::StatusCode, test, web, App};
 
 use crate::routes;
+use crate::routes::github::{classify_callback, CallbackKind, CallbackQuery};
 use crate::services::github_app::service::webhooks::GithubWebhookService;
 use crate::services::github_app::webhook_store::GithubWebhookStore;
 use crate::test_helpers;
+
+#[actix_web::test]
+async fn callback_classifier_accepts_oauth_response() {
+    let query = CallbackQuery {
+        code: Some("oauth-code".to_owned()),
+        installation_id: None,
+        setup_action: None,
+        state: Some("oauth-state".to_owned()),
+    };
+
+    assert_eq!(
+        classify_callback(&query),
+        Some(CallbackKind::OAuth {
+            code: "oauth-code",
+            state_nonce: "oauth-state",
+        })
+    );
+}
+
+#[actix_web::test]
+async fn callback_classifier_accepts_installation_response() {
+    let query = CallbackQuery {
+        code: None,
+        installation_id: Some(42),
+        setup_action: Some("install".to_owned()),
+        state: Some("install-state".to_owned()),
+    };
+
+    assert_eq!(
+        classify_callback(&query),
+        Some(CallbackKind::Installation {
+            installation_id: 42,
+            setup_action: "install",
+            state_nonce: "install-state",
+        })
+    );
+}
 
 #[sqlx::test]
 async fn webhook_accepts_valid_delivery(pool: sqlx::PgPool) {

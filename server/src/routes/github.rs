@@ -84,16 +84,62 @@ pub async fn auth_url(
 
 #[derive(Debug, Deserialize)]
 pub struct CallbackQuery {
-    pub installation_id: i64,
-    pub setup_action: String,
-    pub state: String,
+    pub code: Option<String>,
+    pub installation_id: Option<i64>,
+    pub setup_action: Option<String>,
+    pub state: Option<String>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(super) enum CallbackKind<'a> {
+    OAuth {
+        code: &'a str,
+        state_nonce: &'a str,
+    },
+    Installation {
+        installation_id: i64,
+        setup_action: &'a str,
+        state_nonce: &'a str,
+    },
+}
+
+#[must_use]
+pub(super) fn classify_callback(query: &CallbackQuery) -> Option<CallbackKind<'_>> {
+    match (
+        query.code.as_deref(),
+        query.installation_id,
+        query.setup_action.as_deref(),
+        query.state.as_deref(),
+    ) {
+        (Some(code), _, _, Some(state_nonce)) => Some(CallbackKind::OAuth { code, state_nonce }),
+        (None, Some(installation_id), Some(setup_action), Some(state_nonce)) => {
+            Some(CallbackKind::Installation {
+                installation_id,
+                setup_action,
+                state_nonce,
+            })
+        }
+        _ => None,
+    }
 }
 
 pub async fn callback(
     state: web::Data<AppState>,
     query: web::Query<CallbackQuery>,
 ) -> Result<HttpResponse, AppError> {
-    if !matches!(query.setup_action.as_str(), "install" | "update") {
+    let (installation_id, setup_action, state_nonce) = match classify_callback(&query) {
+        Some(CallbackKind::OAuth { code, state_nonce }) => {
+            return oauth_callback(state.get_ref(), code, state_nonce).await;
+        }
+        Some(CallbackKind::Installation {
+            installation_id,
+            setup_action,
+            state_nonce,
+        }) => (installation_id, setup_action, state_nonce),
+        None => return Ok(invalid_callback_response()),
+    };
+
+    if !matches!(setup_action, "install" | "update") {
         return Ok(HttpResponse::Found()
             .append_header(("Location", "/"))
             .finish());
@@ -101,22 +147,18 @@ pub async fn callback(
 
     let install_state = match state
         .github
-        .verify_and_consume_state_nonce(&query.state)
+        .verify_and_consume_state_nonce(state_nonce)
         .await
     {
-        Ok(v) => v,
-        Err(e) => {
-            tracing::warn!(error = %e, state = %query.state, "github state verification failed");
+        Ok(Some(install_state)) => install_state,
+        Ok(None) => {
+            tracing::warn!(state = %state_nonce, "github state nonce not found or expired");
             return Ok(HttpResponse::Found()
                 .append_header(("Location", "/"))
                 .finish());
         }
-    };
-
-    let install_state = match install_state {
-        Some(install_state) => install_state,
-        None => {
-            tracing::warn!(state = %query.state, "github state nonce not found or expired");
+        Err(error) => {
+            tracing::warn!(error = %error, state = %state_nonce, "github state verification failed");
             return Ok(HttpResponse::Found()
                 .append_header(("Location", "/"))
                 .finish());
@@ -128,13 +170,44 @@ pub async fn callback(
         .create_installation(
             install_state.team_id,
             install_state.user_id.as_deref(),
-            query.installation_id,
+            installation_id,
         )
         .await?;
 
     Ok(HttpResponse::Found()
         .append_header(("Location", "/"))
         .finish())
+}
+async fn oauth_callback(
+    state: &AppState,
+    code: &str,
+    state_nonce: &str,
+) -> Result<HttpResponse, AppError> {
+    match state
+        .github
+        .verify_and_consume_state_nonce(state_nonce)
+        .await?
+    {
+        Some(install_state) => {
+            let location = state
+                .auth
+                .complete_github_installation_authorization(&state.github, install_state, code)
+                .await?;
+            Ok(HttpResponse::Found()
+                .append_header(("Location", location))
+                .finish())
+        }
+        None => crate::routes::auth::complete_github_callback(state, code, state_nonce).await,
+    }
+}
+
+fn invalid_callback_response() -> HttpResponse {
+    HttpResponse::BadRequest()
+        .content_type("text/plain; charset=utf-8")
+        .body(
+            "Invalid GitHub callback. Configure the GitHub App Callback URL and \
+             GITHUB_OAUTH_REDIRECT_URL as /api/v1/github/callback.",
+        )
 }
 
 pub async fn list_repos(

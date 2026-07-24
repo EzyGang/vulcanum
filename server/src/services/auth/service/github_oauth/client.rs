@@ -4,10 +4,10 @@ use crate::models::auth::errors::AuthError;
 use crate::services::auth::service::AuthService;
 
 #[derive(Deserialize)]
-pub(super) struct GithubUserResponse {
-    pub id: u64,
-    pub login: String,
-    pub email: Option<String>,
+pub(crate) struct GithubUserResponse {
+    pub(crate) id: u64,
+    pub(crate) login: String,
+    pub(crate) email: Option<String>,
 }
 
 #[derive(Deserialize)]
