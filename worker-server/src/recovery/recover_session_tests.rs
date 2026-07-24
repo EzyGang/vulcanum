@@ -143,6 +143,7 @@ fn test_job(
         max_turns: 3,
         github_token,
         github_token_expires_at: None,
+        github_commit_author: None,
         pr_urls: Vec::new(),
         review_target_pr_url: None,
         review_target_repo_full_name: None,

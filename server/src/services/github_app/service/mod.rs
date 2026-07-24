@@ -1,13 +1,20 @@
+mod commit_author;
+#[cfg(test)]
+mod commit_author_tests;
 pub(crate) mod pull_requests;
 mod repos;
 mod state_nonce;
 pub(crate) mod webhooks;
 
+use std::sync::Arc;
+
 use base64::Engine;
 use octocrab::models::{Installation, InstallationId};
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
+use tokio::sync::OnceCell;
 use uuid::Uuid;
+use vulcanum_shared::api::wire::GitCommitAuthor;
 
 use crate::config::AppConfig;
 use crate::db::github_app::GithubAppRepository;
@@ -21,6 +28,7 @@ pub struct GithubAppManager {
     pub(crate) app_id: Option<u64>,
     pub(crate) app_private_key: Option<String>,
     pub(crate) app_slug: Option<String>,
+    pub(crate) commit_author_cache: Arc<OnceCell<GitCommitAuthor>>,
 }
 
 impl Clone for GithubAppManager {
@@ -32,6 +40,7 @@ impl Clone for GithubAppManager {
             app_id: self.app_id,
             app_private_key: self.app_private_key.clone(),
             app_slug: self.app_slug.clone(),
+            commit_author_cache: self.commit_author_cache.clone(),
         }
     }
 }
@@ -71,6 +80,7 @@ impl GithubAppManager {
             app_id: cfg.github_app_id,
             app_private_key: cfg.github_app_private_key.clone(),
             app_slug: cfg.github_app_slug.clone(),
+            commit_author_cache: Arc::new(OnceCell::new()),
         })
     }
 

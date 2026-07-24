@@ -44,6 +44,10 @@ impl WorkRunsService {
         };
 
         let github_token = self.mint_github_token_for_repos(&run, &repos).await?;
+        let github_commit_author = match github_token.github_token.is_some() {
+            true => Some(self.github.commit_author().await?),
+            false => None,
+        };
 
         let team = self.project_configs.teams.get_team(cfg.team_id).await?;
         let rendered = self
@@ -79,6 +83,7 @@ impl WorkRunsService {
             },
             github_token: github_token.github_token,
             github_token_expires_at: github_token.github_token_expires_at,
+            github_commit_author,
             pr_urls,
             review_target_pr_url: run.review_target_pr_url.clone(),
             review_target_repo_full_name: run.review_target_repo_full_name.clone(),

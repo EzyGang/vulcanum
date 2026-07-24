@@ -11,7 +11,7 @@ use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::github_credentials::{
-    setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
+    commit_identity_env, setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
 };
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
@@ -51,6 +51,7 @@ pub(crate) async fn recovered_omp_env(
             .to_string(),
     };
     let mut env_vars = sanitized_secrets.clone();
+    env_vars.extend(commit_identity_env(job.github_commit_author.as_ref()));
     env_vars.extend(workspace::omp_environment_vars(
         &runtime_home,
         &runtime_tmpdir,
