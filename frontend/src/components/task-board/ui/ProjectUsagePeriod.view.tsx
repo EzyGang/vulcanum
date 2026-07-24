@@ -33,7 +33,7 @@ export const ProjectUsagePeriodView = ({
           class='flex min-w-0 flex-col gap-2 border-t border-border-base pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4'
         >
           <span class='text-xs font-medium uppercase tracking-wider text-text-muted'>Runs</span>
-          <dl class='grid grid-cols-2 gap-x-4 gap-y-2 lg:grid-cols-1 xl:grid-cols-2'>
+          <dl class='grid grid-cols-2 gap-x-4 gap-y-2 lg:grid-cols-1'>
             {data.runCountStats.map((stat) => (
               <div
                 key={stat.label}
