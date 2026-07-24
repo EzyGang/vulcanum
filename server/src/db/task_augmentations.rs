@@ -95,6 +95,16 @@ impl TaskAugmentationsRepository {
                    augmentation.cache_read_tokens,
                    augmentation.cache_write_tokens,
                    augmentation.finished_runs_count,
+                   COALESCE(
+                       ARRAY(
+                           SELECT task_pr.pr_url
+                           FROM task_prs task_pr
+                           WHERE task_pr.project_config_id = $2
+                             AND task_pr.external_task_ref = requested.task_ref
+                           ORDER BY task_pr.created_at
+                       ),
+                       ARRAY[]::TEXT[]
+                   ) AS "pr_urls!",
                    augmentation.updated_at AS "updated_at!"
             FROM requested
             JOIN task_augmentations augmentation

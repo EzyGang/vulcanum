@@ -95,7 +95,7 @@ vi.mock('../components/shared/ui/Tooltip.view', () => {
 });
 
 import { buildProjectUsageSummary } from '../components/task-board/hooks/projectUsageSummary.support';
-import { formatTaskDisplayId } from '../components/task-board/hooks/taskBoardViewModel.support';
+import { buildTaskBoardColumns } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
 import type { TaskBoardProjectUsage, TaskBoardTaskAugmentation } from '../types/task-board';
@@ -125,6 +125,7 @@ const makeAugmentation = (
   cacheReadTokens: 80,
   cacheWriteTokens: 12,
   finishedRunsCount: 2,
+  prUrls: [],
   updatedAt: '2026-01-02T00:00:00Z',
   ...overrides
 });
@@ -164,6 +165,7 @@ const makeProps = (
     { value: 'in-progress', label: 'In Progress' },
     { value: 'done', label: 'Done' }
   ];
+  const augmentationMap = new Map(Object.entries(augmentationsByTaskRef));
   const board = {
     project: { id: 'project-1', name: 'Proxy Board', slug: 'proxy-board' },
     columns: [
@@ -238,80 +240,33 @@ const makeProps = (
       return Math.max(board.columns.length, 1);
     },
     get columns() {
-      return board.columns.map((column) => {
-        const visibleCount = data.visibleTaskCounts[column.slug] ?? 20;
-        const visibleTasks = column.tasks.slice(0, visibleCount);
-        const activeRoles = ['pickup', 'progress', 'review', 'done'] as const;
-        const columnRoles = data.columnRoles;
-        const activeColumnRoles = activeRoles
-          .filter(
-            (role) =>
-              (role === 'pickup' && columnRoles.pickupColumn === column.slug) ||
-              (role === 'progress' && columnRoles.progressColumn === column.slug) ||
-              (role === 'review' && columnRoles.reviewColumn === column.slug) ||
-              (role === 'done' && columnRoles.doneColumn === column.slug)
-          )
-          .map((role) => ({ role }));
-
-        return {
-          column,
-          visibleTasks: visibleTasks.map((task) => ({
-            augmentation: augmentationsByTaskRef[task.id] ?? null,
-            task,
-            displayId: formatTaskDisplayId(task),
-            createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
-            moving: false,
-            menuOpen: data.actionMenuTaskId === task.id,
-            menuStyle:
-              data.actionMenuTaskId === task.id && data.actionMenuPosition
-                ? { left: `${data.actionMenuPosition.x}px`, top: `${data.actionMenuPosition.y}px` }
-                : undefined,
-            moveActions: statusOptions
-              .filter((option) => option.value !== task.status)
-              .map((option) => ({
-                value: option.value,
-                label: option.label,
-                onClick: () => actions.onMoveTask(task.id, option.value)
-              })),
-            onClick: () => actions.onOpenTask(task),
-            onOpenMenu: (event: MouseEvent) => actions.onOpenTaskMenu(event, task.id),
-            onDragStart: () => actions.onDragStart(task.id, task.status),
-            onDragEnd: actions.onDragEnd,
-            onKeyDown: () => actions.onOpenTask(task),
-            onStopMenuClick: vi.fn()
-          })),
-          taskCount: column.tasks.length,
-          activeRoles: activeColumnRoles,
-          hasMoreTasks: visibleTasks.length < column.tasks.length,
-          dropPreviewActive: data.dropPreviewColumn === column.slug,
-          roleMenu: {
-            buttonLabel: `Column role settings for ${column.name}`,
-            menuLabel: `Column roles for ${column.name}`,
-            open: column.slug === 'done',
-            disabled: false,
-            onToggle: vi.fn(),
-            onStopClick: vi.fn(),
-            items: activeRoles.map((role) => ({
-              role,
-              label: `Set ${role === 'progress' ? 'In progress' : role[0].toUpperCase()}${role === 'progress' ? '' : role.slice(1)}`,
-              help: 'Role help',
-              active: false,
-              disabled: false,
-              onClick: () => actions.onSetColumnRole(column.slug, role)
-            }))
-          },
-          viewControls: {
-            canMoveLeft: column.slug !== board.columns[0]?.slug,
-            canMoveRight: column.slug !== board.columns[board.columns.length - 1]?.slug,
-            onHide: () => actions.onHideColumn(column.slug),
-            onMoveLeft: () => actions.onMoveColumnLeft(column.slug),
-            onMoveRight: () => actions.onMoveColumnRight(column.slug)
-          },
-          onDragOver: (event: DragEvent) => actions.onDragOverStatus(event, column.slug),
-          onDrop: (event: DragEvent) => actions.onDropOnStatus(event, column.slug),
-          onScroll: (event: Event) => actions.onColumnScroll(event, column.slug),
-          onLoadMore: () => actions.onLoadMoreColumn(column.slug)
-        };
+      return buildTaskBoardColumns({
+        boardColumns: board.columns,
+        statusOptions,
+        visibleTaskCounts: data.visibleTaskCounts,
+        augmentationsByTaskRef: augmentationMap,
+        columnRoles: data.columnRoles,
+        moving: false,
+        movingTaskId: null,
+        actionMenuTaskId: data.actionMenuTaskId,
+        actionMenuPosition: data.actionMenuPosition,
+        configuringColumns: false,
+        dropPreviewColumn: data.dropPreviewColumn,
+        openRoleMenuColumn: 'done',
+        onRoleMenuColumnChange: vi.fn(),
+        onMoveTask: actions.onMoveTask,
+        onOpenTask: actions.onOpenTask,
+        onOpenTaskMenu: actions.onOpenTaskMenu,
+        onDragStart: actions.onDragStart,
+        onDragOverStatus: actions.onDragOverStatus,
+        onDragEnd: actions.onDragEnd,
+        onDropOnStatus: actions.onDropOnStatus,
+        onLoadMoreColumn: actions.onLoadMoreColumn,
+        onColumnScroll: actions.onColumnScroll,
+        onSetColumnRole: actions.onSetColumnRole,
+        onHideColumn: actions.onHideColumn,
+        onMoveColumnLeft: actions.onMoveColumnLeft,
+        onMoveColumnRight: actions.onMoveColumnRight
       });
     },
     hiddenColumns: [],
@@ -652,6 +607,66 @@ describe('TaskBoard.view', () => {
     expect(props.actions.onOpenTask).toHaveBeenCalledWith(board.columns[0].tasks[0]);
   });
 
+  it('hides the pull request area when a task has no PR links', () => {
+    const props = makeProps({
+      'task-1': makeAugmentation({ prUrls: [] })
+    });
+    const { queryByRole } = render(<TaskBoardView {...props} />);
+
+    expect(queryByRole('region', { name: 'Pull requests' })).toBeNull();
+  });
+
+  it('renders one PR link without opening or dragging the task card', () => {
+    const prUrl = 'https://github.com/EzyGang/vulcanum/pull/123';
+    const props = makeProps({
+      'task-1': makeAugmentation({ prUrls: [prUrl] })
+    });
+    const { getByRole, getByText } = render(<TaskBoardView {...props} />);
+    const link = getByRole('link', {
+      name: 'Open pull request EzyGang/vulcanum #123'
+    });
+    const card = getByText('Create proxy API').closest('article');
+
+    expect(link.getAttribute('href')).toBe(prUrl);
+    expect(link.getAttribute('target')).toBe('_blank');
+
+    expect(fireEvent.keyDown(link, { key: 'Enter' })).toBe(true);
+    expect(props.actions.onOpenTask).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(link);
+    fireEvent.click(link);
+
+    expect(card?.getAttribute('draggable')).toBe('false');
+    expect(props.actions.onOpenTask).not.toHaveBeenCalled();
+    expect(props.actions.onDragStart).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(card as Element);
+    fireEvent.dragStart(card as Element);
+
+    expect(card?.getAttribute('draggable')).toBe('true');
+    expect(props.actions.onDragStart).toHaveBeenCalledWith('task-1', 'to-do');
+  });
+
+  it('renders every PR link with an unambiguous repository and number', () => {
+    const prUrls = [
+      'https://github.com/EzyGang/vulcanum/pull/123',
+      'https://github.com/example/long-repository-name/pull/456'
+    ];
+    const props = makeProps({
+      'task-1': makeAugmentation({ prUrls })
+    });
+    const { getAllByRole, getByRole } = render(<TaskBoardView {...props} />);
+    const pullRequests = getByRole('region', { name: 'Pull requests' });
+    const links = getAllByRole('link', { name: /Open pull request/ });
+
+    expect(pullRequests).toBeTruthy();
+    expect(links.map((link) => link.textContent)).toEqual([
+      'EzyGang/vulcanum #123',
+      'example/long-repository-name #456'
+    ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(prUrls);
+  });
+
   it('deletes a provider label from the task details dialog', () => {
     const props = makeProps();
     const board = requireBoard(props);
@@ -824,6 +839,8 @@ describe('TaskBoard.view', () => {
 
   it('sets Review and Done roles from a column header menu', () => {
     const props = makeProps();
+    props.data.columnRoles.reviewColumn = 'to-do';
+    props.data.columnRoles.doneColumn = 'to-do';
     const { getByLabelText, getByText } = render(<TaskBoardView {...props} />);
 
     fireEvent.click(getByLabelText('Column role settings for Done'));

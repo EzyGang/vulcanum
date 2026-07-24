@@ -81,6 +81,7 @@ pub struct TaskAugmentation {
     pub cache_read_tokens: i64,
     pub cache_write_tokens: i64,
     pub finished_runs_count: i64,
+    pub pr_urls: Vec<String>,
     pub updated_at: String,
 }
 

@@ -163,6 +163,21 @@ export const formatTaskDisplayId = (task: TaskBoardTask): string => {
   return task.id.slice(0, 8);
 };
 
+export const formatPullRequestLabel = (prUrl: string): string => {
+  try {
+    const url = new URL(prUrl);
+    const [owner, repository, resource, number] = url.pathname.split('/').filter(Boolean);
+
+    if (owner && repository && resource === 'pull' && number) {
+      return `${owner}/${repository} #${number}`;
+    }
+  } catch {
+    return prUrl;
+  }
+
+  return prUrl;
+};
+
 export const buildTaskBoardMenuStyle = (
   menuPosition: TaskBoardMenuPosition | null
 ): TaskBoardMenuStyle =>
@@ -227,30 +242,55 @@ export const buildTaskBoardColumns = ({
 
     return {
       column,
-      visibleTasks: visibleTasks.map((task) => ({
-        augmentation: augmentationsByTaskRef.get(task.id) ?? null,
-        task,
-        displayId: formatTaskDisplayId(task),
-        createdAtLabel: formatCreatedAt(task.createdAt),
-        moving: moving && movingTaskId === task.id,
-        menuOpen: actionMenuTaskId === task.id,
-        menuStyle:
-          actionMenuTaskId === task.id ? buildTaskBoardMenuStyle(actionMenuPosition) : undefined,
-        moveActions: buildTaskBoardMoveActions(task, statusOptions, onMoveTask),
-        onClick: () => onOpenTask(task),
-        onOpenMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
-        onDragStart: () => onDragStart(task.id, task.status),
-        onDragEnd,
-        onKeyDown: (event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return;
+      visibleTasks: visibleTasks.map((task) => {
+        const augmentation = augmentationsByTaskRef.get(task.id) ?? null;
 
-          event.preventDefault();
-          onOpenTask(task);
-        },
-        onStopMenuClick: (event) => {
-          event.stopPropagation();
-        }
-      })),
+        return {
+          augmentation,
+          pullRequests: (augmentation?.prUrls ?? []).map((url) => ({
+            label: formatPullRequestLabel(url),
+            url
+          })),
+          task,
+          displayId: formatTaskDisplayId(task),
+          createdAtLabel: formatCreatedAt(task.createdAt),
+          moving: moving && movingTaskId === task.id,
+          menuOpen: actionMenuTaskId === task.id,
+          menuStyle:
+            actionMenuTaskId === task.id ? buildTaskBoardMenuStyle(actionMenuPosition) : undefined,
+          moveActions: buildTaskBoardMoveActions(task, statusOptions, onMoveTask),
+          onClick: () => onOpenTask(task),
+          onPointerDown: (event) => {
+            const target = event.target;
+            event.currentTarget.draggable =
+              !(target instanceof Element) ||
+              target.closest('[data-task-card-interactive]') === null;
+          },
+          onPrLinkClick: (event) => {
+            event.stopPropagation();
+          },
+          onOpenMenu: (event) => onOpenTaskMenu(event as unknown as MouseEvent, task.id),
+          onDragStart: () => onDragStart(task.id, task.status),
+          onDragEnd,
+          onKeyDown: (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest('[data-task-card-interactive]') !== null
+            ) {
+              return;
+            }
+
+            event.preventDefault();
+            onOpenTask(task);
+          },
+          onStopMenuClick: (event) => {
+            event.stopPropagation();
+          }
+        };
+      }),
       taskCount: column.tasks.length,
       activeRoles: activeRoles.map((role) => ({ role })),
       hasMoreTasks: visibleTasks.length < column.tasks.length,
