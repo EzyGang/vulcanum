@@ -4,6 +4,7 @@ mod providers;
 mod recovery;
 mod state;
 mod storage;
+mod update;
 
 use anyhow::Context;
 use vulcanum_shared::config::load_config;

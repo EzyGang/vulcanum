@@ -152,6 +152,7 @@ tar -xzf "${tmp_dir}/${archive_name}" -C "$tmp_dir"
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "${tmp_dir}/vulcanum" "${INSTALL_DIR}/vulcanum"
 install -m 0755 "${tmp_dir}/vulcanum-server" "${INSTALL_DIR}/vulcanum-server"
+printf '%s\n' "$tag" > "${INSTALL_DIR}/.vulcanum-version"
 
 echo "Installed vulcanum and vulcanum-server to ${INSTALL_DIR}"
 case ":${PATH}:" in
