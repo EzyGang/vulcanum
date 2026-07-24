@@ -275,6 +275,14 @@ export const buildTaskBoardColumns = ({
           onKeyDown: (event) => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
 
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest('[data-task-card-interactive]') !== null
+            ) {
+              return;
+            }
+
             event.preventDefault();
             onOpenTask(task);
           },

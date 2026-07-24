@@ -1,5 +1,5 @@
 import { fireEvent, render } from '@testing-library/preact';
-import type { ComponentChildren, JSX } from 'preact';
+import type { ComponentChildren } from 'preact';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   normalizeTaskBoardColumnPreferences,
@@ -95,10 +95,7 @@ vi.mock('../components/shared/ui/Tooltip.view', () => {
 });
 
 import { buildProjectUsageSummary } from '../components/task-board/hooks/projectUsageSummary.support';
-import {
-  formatPullRequestLabel,
-  formatTaskDisplayId
-} from '../components/task-board/hooks/taskBoardViewModel.support';
+import { buildTaskBoardColumns } from '../components/task-board/hooks/taskBoardViewModel.support';
 import type { TaskBoardViewProps } from '../components/task-board/types';
 import { TaskBoardView } from '../components/task-board/ui/TaskBoard.view';
 import type { TaskBoardProjectUsage, TaskBoardTaskAugmentation } from '../types/task-board';
@@ -168,6 +165,7 @@ const makeProps = (
     { value: 'in-progress', label: 'In Progress' },
     { value: 'done', label: 'Done' }
   ];
+  const augmentationMap = new Map(Object.entries(augmentationsByTaskRef));
   const board = {
     project: { id: 'project-1', name: 'Proxy Board', slug: 'proxy-board' },
     columns: [
@@ -242,92 +240,33 @@ const makeProps = (
       return Math.max(board.columns.length, 1);
     },
     get columns() {
-      return board.columns.map((column) => {
-        const visibleCount = data.visibleTaskCounts[column.slug] ?? 20;
-        const visibleTasks = column.tasks.slice(0, visibleCount);
-        const activeRoles = ['pickup', 'progress', 'review', 'done'] as const;
-        const columnRoles = data.columnRoles;
-        const activeColumnRoles = activeRoles
-          .filter(
-            (role) =>
-              (role === 'pickup' && columnRoles.pickupColumn === column.slug) ||
-              (role === 'progress' && columnRoles.progressColumn === column.slug) ||
-              (role === 'review' && columnRoles.reviewColumn === column.slug) ||
-              (role === 'done' && columnRoles.doneColumn === column.slug)
-          )
-          .map((role) => ({ role }));
-
-        return {
-          column,
-          visibleTasks: visibleTasks.map((task) => ({
-            augmentation: augmentationsByTaskRef[task.id] ?? null,
-            pullRequests: (augmentationsByTaskRef[task.id]?.prUrls ?? []).map((url) => ({
-              label: formatPullRequestLabel(url),
-              url
-            })),
-            task,
-            displayId: formatTaskDisplayId(task),
-            createdAtLabel: new Date(task.createdAt).toLocaleDateString(),
-            moving: false,
-            menuOpen: data.actionMenuTaskId === task.id,
-            menuStyle:
-              data.actionMenuTaskId === task.id && data.actionMenuPosition
-                ? { left: `${data.actionMenuPosition.x}px`, top: `${data.actionMenuPosition.y}px` }
-                : undefined,
-            moveActions: statusOptions
-              .filter((option) => option.value !== task.status)
-              .map((option) => ({
-                value: option.value,
-                label: option.label,
-                onClick: () => actions.onMoveTask(task.id, option.value)
-              })),
-            onClick: () => actions.onOpenTask(task),
-            onPointerDown: (event: JSX.TargetedPointerEvent<HTMLElement>) => {
-              const target = event.target;
-              event.currentTarget.draggable =
-                !(target instanceof Element) ||
-                target.closest('[data-task-card-interactive]') === null;
-            },
-            onPrLinkClick: (event: JSX.TargetedMouseEvent<HTMLAnchorElement>) =>
-              event.stopPropagation(),
-            onOpenMenu: (event: MouseEvent) => actions.onOpenTaskMenu(event, task.id),
-            onDragStart: () => actions.onDragStart(task.id, task.status),
-            onDragEnd: actions.onDragEnd,
-            onKeyDown: () => actions.onOpenTask(task),
-            onStopMenuClick: vi.fn()
-          })),
-          taskCount: column.tasks.length,
-          activeRoles: activeColumnRoles,
-          hasMoreTasks: visibleTasks.length < column.tasks.length,
-          dropPreviewActive: data.dropPreviewColumn === column.slug,
-          roleMenu: {
-            buttonLabel: `Column role settings for ${column.name}`,
-            menuLabel: `Column roles for ${column.name}`,
-            open: column.slug === 'done',
-            disabled: false,
-            onToggle: vi.fn(),
-            onStopClick: vi.fn(),
-            items: activeRoles.map((role) => ({
-              role,
-              label: `Set ${role === 'progress' ? 'In progress' : role[0].toUpperCase()}${role === 'progress' ? '' : role.slice(1)}`,
-              help: 'Role help',
-              active: false,
-              disabled: false,
-              onClick: () => actions.onSetColumnRole(column.slug, role)
-            }))
-          },
-          viewControls: {
-            canMoveLeft: column.slug !== board.columns[0]?.slug,
-            canMoveRight: column.slug !== board.columns[board.columns.length - 1]?.slug,
-            onHide: () => actions.onHideColumn(column.slug),
-            onMoveLeft: () => actions.onMoveColumnLeft(column.slug),
-            onMoveRight: () => actions.onMoveColumnRight(column.slug)
-          },
-          onDragOver: (event: DragEvent) => actions.onDragOverStatus(event, column.slug),
-          onDrop: (event: DragEvent) => actions.onDropOnStatus(event, column.slug),
-          onScroll: (event: Event) => actions.onColumnScroll(event, column.slug),
-          onLoadMore: () => actions.onLoadMoreColumn(column.slug)
-        };
+      return buildTaskBoardColumns({
+        boardColumns: board.columns,
+        statusOptions,
+        visibleTaskCounts: data.visibleTaskCounts,
+        augmentationsByTaskRef: augmentationMap,
+        columnRoles: data.columnRoles,
+        moving: false,
+        movingTaskId: null,
+        actionMenuTaskId: data.actionMenuTaskId,
+        actionMenuPosition: data.actionMenuPosition,
+        configuringColumns: false,
+        dropPreviewColumn: data.dropPreviewColumn,
+        openRoleMenuColumn: 'done',
+        onRoleMenuColumnChange: vi.fn(),
+        onMoveTask: actions.onMoveTask,
+        onOpenTask: actions.onOpenTask,
+        onOpenTaskMenu: actions.onOpenTaskMenu,
+        onDragStart: actions.onDragStart,
+        onDragOverStatus: actions.onDragOverStatus,
+        onDragEnd: actions.onDragEnd,
+        onDropOnStatus: actions.onDropOnStatus,
+        onLoadMoreColumn: actions.onLoadMoreColumn,
+        onColumnScroll: actions.onColumnScroll,
+        onSetColumnRole: actions.onSetColumnRole,
+        onHideColumn: actions.onHideColumn,
+        onMoveColumnLeft: actions.onMoveColumnLeft,
+        onMoveColumnRight: actions.onMoveColumnRight
       });
     },
     hiddenColumns: [],
@@ -691,6 +630,9 @@ describe('TaskBoard.view', () => {
     expect(link.getAttribute('href')).toBe(prUrl);
     expect(link.getAttribute('target')).toBe('_blank');
 
+    expect(fireEvent.keyDown(link, { key: 'Enter' })).toBe(true);
+    expect(props.actions.onOpenTask).not.toHaveBeenCalled();
+
     fireEvent.pointerDown(link);
     fireEvent.click(link);
 
@@ -897,6 +839,8 @@ describe('TaskBoard.view', () => {
 
   it('sets Review and Done roles from a column header menu', () => {
     const props = makeProps();
+    props.data.columnRoles.reviewColumn = 'to-do';
+    props.data.columnRoles.doneColumn = 'to-do';
     const { getByLabelText, getByText } = render(<TaskBoardView {...props} />);
 
     fireEvent.click(getByLabelText('Column role settings for Done'));
