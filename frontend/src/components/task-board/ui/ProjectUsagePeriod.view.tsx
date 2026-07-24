@@ -13,35 +13,41 @@ export const ProjectUsagePeriodView = ({
     {data.emptyMessage ? (
       <p class='text-sm text-text-muted'>{data.emptyMessage}</p>
     ) : (
-      <>
-        <div class='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
-          <span class='font-mono text-xl font-semibold tabular-nums text-text-primary'>
-            {data.tokensLabel}
-          </span>
-          <span class='font-mono text-xs tabular-nums text-text-muted'>
-            {data.finishedRunsLabel}
-          </span>
+      <div class='grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(10rem,0.75fr)] lg:items-start'>
+        <div class='flex min-w-0 flex-col gap-2'>
+          <div class='flex flex-wrap items-baseline gap-x-3 gap-y-1'>
+            <span class='font-mono text-xl font-semibold tabular-nums text-text-primary'>
+              {data.tokensLabel}
+            </span>
+            <span class='font-mono text-xs tabular-nums text-text-muted'>
+              {data.finishedRunsLabel}
+            </span>
+          </div>
+          <div role='group' aria-label={data.breakdownLabel}>
+            <RunUsageStats run={data.counters} />
+          </div>
         </div>
-        <div role='group' aria-label={data.breakdownLabel}>
-          <RunUsageStats run={data.counters} />
-        </div>
-        <div class='flex flex-col gap-2'>
+        <div
+          role='group'
+          aria-label={data.runCountsLabel}
+          class='flex min-w-0 flex-col gap-2 border-t border-border-base pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4'
+        >
           <span class='text-xs font-medium uppercase tracking-wider text-text-muted'>Runs</span>
-          <div role='group' aria-label={data.runCountsLabel} class='grid grid-cols-2 gap-2'>
+          <dl class='grid grid-cols-2 gap-x-4 gap-y-2 lg:grid-cols-1 xl:grid-cols-2'>
             {data.runCountStats.map((stat) => (
               <div
                 key={stat.label}
-                class='flex items-center justify-between gap-3 border border-border-base bg-bg-card px-2.5 py-2'
+                class='flex min-w-0 items-baseline justify-between gap-2 border-b border-border-base pb-1.5'
               >
-                <span class='text-xs text-text-muted'>{stat.label}</span>
-                <span class='font-mono text-sm font-medium tabular-nums text-text-primary'>
+                <dt class='text-xs text-text-muted'>{stat.label}</dt>
+                <dd class='shrink-0 font-mono text-sm font-medium tabular-nums text-text-primary'>
                   {stat.valueLabel}
-                </span>
+                </dd>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
-      </>
+      </div>
     )}
   </div>
 );
