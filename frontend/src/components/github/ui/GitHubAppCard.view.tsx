@@ -15,7 +15,9 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 interface GitHubAppCardViewProps {
   data: {
     installation: GithubInstallation | null;
-    isSingleUser: boolean;
+    identityPanelVisible: boolean;
+    identityStatusText: string;
+    identityActionLabel: string;
   };
   status: {
     isLoading: boolean;
@@ -33,7 +35,7 @@ interface GitHubAppCardViewProps {
 }
 
 export const GitHubAppCardView = ({
-  data: { installation, isSingleUser },
+  data: { installation, identityPanelVisible, identityStatusText, identityActionLabel },
   status: { isLoading, isRefreshing, disconnectPending, identityLinkPending, errorMessage },
   actions: { onConnect, onLinkReviewIdentity, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
@@ -100,24 +102,16 @@ export const GitHubAppCardView = ({
           <span class='text-text-primary text-sm font-mono'>{installation.accountLogin}</span>
         </div>
       )}
-      {connected && installation && isSingleUser && (
+      {identityPanelVisible && (
         <div class='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-border-base bg-bg-panel p-4'>
           <div class='flex flex-col gap-1'>
             <span class='text-text-primary text-sm font-medium'>PR review identity</span>
-            <span class='text-text-muted text-xs'>
-              {installation.reviewIdentityLogin
-                ? `@${installation.reviewIdentityLogin} can start reviews from PR comments.`
-                : 'Link the GitHub account allowed to start reviews from PR comments.'}
-            </span>
+            <span class='text-text-muted text-xs'>{identityStatusText}</span>
           </div>
           <Button variant='secondary' onClick={onLinkReviewIdentity} disabled={identityLinkPending}>
             <span class='inline-flex items-center gap-2'>
               <IconUserCheck size={16} stroke={1.75} aria-hidden='true' />
-              {identityLinkPending
-                ? 'Opening GitHub...'
-                : installation.reviewIdentityLogin
-                  ? 'Change account'
-                  : 'Link account'}
+              {identityActionLabel}
             </span>
           </Button>
         </div>

@@ -4,14 +4,45 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use tokio::fs;
+use vulcanum_shared::api::wire::GitCommitAuthor;
 use vulcanum_shared::runtime::errors::HarnessError;
 
 const GITHUB_TOKEN_KEYS: &[&str] = &["GITHUB_TOKEN", "GH_TOKEN"];
+const GIT_IDENTITY_KEYS: &[&str] = &[
+    "GIT_AUTHOR_NAME",
+    "GIT_AUTHOR_EMAIL",
+    "GIT_COMMITTER_NAME",
+    "GIT_COMMITTER_EMAIL",
+];
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct GitHubCredentialBridge {
     pub(crate) host_env: HashMap<String, String>,
     pub(crate) runtime_env: HashMap<String, String>,
+}
+
+#[must_use]
+pub(crate) fn commit_identity_env(author: Option<&GitCommitAuthor>) -> HashMap<String, String> {
+    let Some(author) = author else {
+        return HashMap::new();
+    };
+    HashMap::from([
+        ("GIT_AUTHOR_NAME".to_owned(), author.name.clone()),
+        ("GIT_AUTHOR_EMAIL".to_owned(), author.email.clone()),
+        ("GIT_COMMITTER_NAME".to_owned(), author.name.clone()),
+        ("GIT_COMMITTER_EMAIL".to_owned(), author.email.clone()),
+    ])
+}
+
+pub(crate) fn overlay_commit_identity_env(
+    target: &mut HashMap<String, String>,
+    identity: &HashMap<String, String>,
+) {
+    for key in GIT_IDENTITY_KEYS {
+        if let Some(value) = identity.get(*key) {
+            target.insert((*key).to_owned(), value.clone());
+        }
+    }
 }
 
 pub(crate) async fn setup(

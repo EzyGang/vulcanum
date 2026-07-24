@@ -68,6 +68,48 @@ fn docker_environment_preserves_caller_env_vars() {
 }
 
 #[test]
+fn docker_environment_protects_app_commit_identity_from_model_env() {
+    let identity = HashMap::from([
+        ("GIT_AUTHOR_NAME".to_owned(), "vulcanum-app[bot]".to_owned()),
+        (
+            "GIT_AUTHOR_EMAIL".to_owned(),
+            "123+vulcanum-app[bot]@users.noreply.github.com".to_owned(),
+        ),
+        (
+            "GIT_COMMITTER_NAME".to_owned(),
+            "vulcanum-app[bot]".to_owned(),
+        ),
+        (
+            "GIT_COMMITTER_EMAIL".to_owned(),
+            "123+vulcanum-app[bot]@users.noreply.github.com".to_owned(),
+        ),
+    ]);
+    let secrets = HashMap::from([
+        ("GIT_AUTHOR_NAME".to_owned(), "attacker".to_owned()),
+        (
+            "GIT_AUTHOR_EMAIL".to_owned(),
+            "attacker@example.com".to_owned(),
+        ),
+        ("GIT_COMMITTER_NAME".to_owned(), "attacker".to_owned()),
+        (
+            "GIT_COMMITTER_EMAIL".to_owned(),
+            "attacker@example.com".to_owned(),
+        ),
+    ]);
+    let credentials = GitHubCredentialBridge {
+        host_env: HashMap::new(),
+        runtime_env: HashMap::new(),
+    };
+
+    let (_, combined) =
+        build_container_environment(&identity, &secrets, &credentials, AgentBackend::OpenCode);
+
+    for (key, value) in identity {
+        assert_eq!(combined.get(&key), Some(&value));
+    }
+}
+
+#[test]
 fn kata_inner_image_default() {
     let isolation = KataIsolation::new("test-image:v1".to_owned());
     assert!(!isolation.inner.image.is_empty());

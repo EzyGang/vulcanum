@@ -45,7 +45,7 @@ impl WorkRunsService {
 
         let github_token = self.mint_github_token_for_repos(&run, &repos).await?;
         let github_commit_author = match github_token.github_token.is_some() {
-            true => Some(self.github.commit_author().await?),
+            true => self.github.commit_author().await,
             false => None,
         };
 

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,7 +7,7 @@ use tokio::sync::{watch, RwLock};
 use uuid::Uuid;
 
 use vulcanum_shared::api::error::ApiError;
-use vulcanum_shared::api::wire::{GitCommitAuthor, RefreshGithubTokenResponse};
+use vulcanum_shared::api::wire::RefreshGithubTokenResponse;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::state::worker::WorkerState;
 
@@ -18,19 +17,6 @@ use crate::isolation::github_credentials as isolation_github_credentials;
 const REFRESH_BEFORE_EXPIRY_SECS: i64 = 600;
 const FALLBACK_REFRESH_INTERVAL_SECS: u64 = 3_000;
 const RETRY_INTERVAL_SECS: u64 = 60;
-
-#[must_use]
-pub(crate) fn commit_identity_env(author: Option<&GitCommitAuthor>) -> HashMap<String, String> {
-    let Some(author) = author else {
-        return HashMap::new();
-    };
-    HashMap::from([
-        ("GIT_AUTHOR_NAME".to_owned(), author.name.clone()),
-        ("GIT_AUTHOR_EMAIL".to_owned(), author.email.clone()),
-        ("GIT_COMMITTER_NAME".to_owned(), author.name.clone()),
-        ("GIT_COMMITTER_EMAIL".to_owned(), author.email.clone()),
-    ])
-}
 
 pub(crate) fn spawn_refresh_task(
     client: Arc<ApiClient>,

@@ -6,7 +6,8 @@ use uuid::Uuid;
 use vulcanum_shared::api::error::ApiError;
 use vulcanum_shared::api::wire::GitCommitAuthor;
 
-use crate::daemon::job::github_credentials::{commit_identity_env, is_retryable_refresh_error};
+use crate::daemon::job::github_credentials::is_retryable_refresh_error;
+use crate::isolation::github_credentials::commit_identity_env;
 
 #[test]
 fn client_errors_without_retry_semantics_stop_refresh_loop() {

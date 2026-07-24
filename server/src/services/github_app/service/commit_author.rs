@@ -11,12 +11,22 @@ const GITHUB_API_URL: &str = "https://api.github.com";
 const GITHUB_API_TIMEOUT: Duration = Duration::from_secs(10);
 
 impl GithubAppManager {
-    pub(crate) async fn commit_author(&self) -> Result<GitCommitAuthor, GithubAppError> {
-        let author = self
+    pub(crate) async fn commit_author(&self) -> Option<GitCommitAuthor> {
+        match self
             .commit_author_cache
             .get_or_try_init(|| self.fetch_commit_author())
-            .await?;
-        Ok(author.clone())
+            .await
+        {
+            Ok(author) => Some(author.clone()),
+            Err(error) => {
+                tracing::warn!(
+                    error = %error,
+                    app_slug = self.app_slug.as_deref().unwrap_or("<unset>"),
+                    "GitHub App commit attribution is unavailable",
+                );
+                None
+            }
+        }
     }
 
     async fn fetch_commit_author(&self) -> Result<GitCommitAuthor, GithubAppError> {

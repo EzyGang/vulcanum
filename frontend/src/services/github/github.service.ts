@@ -1,7 +1,7 @@
 import type { GithubInstallation, RepoInfo } from '../../types/github';
 import { del, get } from '../../utils/api/request';
 
-interface GithubAuthUrlResponse {
+export interface GithubAuthUrlResponse {
   url: string;
 }
 

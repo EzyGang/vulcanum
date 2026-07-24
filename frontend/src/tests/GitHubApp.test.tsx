@@ -21,8 +21,8 @@ import { getInstallation, listRepos } from '../services/github/github.service';
 import { queryClient } from '../utils/api/query/client';
 
 const GitHubReposHarness = (): JSX.Element => {
-  const { repos } = useGitHubApp();
-  return <div>{repos.join(',')}</div>;
+  const { data } = useGitHubApp();
+  return <div>{data.repos.join(',')}</div>;
 };
 
 beforeEach(() => {

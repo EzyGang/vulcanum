@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { getAuthMode } from '../../../services/auth/auth.service';
 import {
   disconnectInstallation,
+  type GithubAuthUrlResponse,
   getAuthUrl,
   getInstallation,
   getReviewIdentityAuthUrl,
@@ -10,11 +11,7 @@ import {
 import { queryClient } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
-interface AuthUrlResponse {
-  url: string;
-}
-
-const openGitHubFlow = async (requestUrl: () => Promise<AuthUrlResponse>): Promise<void> => {
+const openGitHubFlow = async (requestUrl: () => Promise<GithubAuthUrlResponse>): Promise<void> => {
   const flowWindow = window.open('', '_blank');
 
   try {
@@ -70,27 +67,51 @@ export const useGitHubApp = () => {
   const onConnect = () => openGitHubFlow(() => connectMutation.mutateAsync(undefined));
   const onLinkReviewIdentity = () =>
     openGitHubFlow(() => linkIdentityMutation.mutateAsync(undefined));
+  const onDisconnect = (): void => {
+    if (installation) {
+      disconnectMutation.mutate(installation.id);
+    }
+  };
+  const onRefresh = (): void => {
+    refetch();
+  };
+  const reviewIdentityLogin = installation?.reviewIdentityLogin;
+  const identityPanelVisible = !!installation && (authMode?.isSingleUser ?? false);
+  const identityStatusText = reviewIdentityLogin
+    ? `@${reviewIdentityLogin} can start reviews from PR comments.`
+    : 'Link the GitHub account allowed to start reviews from PR comments.';
+  const identityActionLabel = linkIdentityMutation.isPending
+    ? 'Opening GitHub...'
+    : reviewIdentityLogin
+      ? 'Change account'
+      : 'Link account';
 
   return {
-    installation,
-    repos,
-    reposLoading,
-    reposError,
-    installationLoading,
-    installationRefreshing,
-    isSingleUser: authMode?.isSingleUser ?? false,
-    installationErrorMessage:
-      installationError?.message ??
-      reposError?.message ??
-      connectMutation.error?.message ??
-      linkIdentityMutation.error?.message ??
-      null,
-    installationError,
-    onConnect,
-    onLinkReviewIdentity,
-    identityLinkPending: linkIdentityMutation.isPending,
-    disconnectInstallation: disconnectMutation.mutateAsync,
-    disconnectPending: disconnectMutation.isPending,
-    refetch
+    data: {
+      installation: installation ?? null,
+      repos,
+      identityPanelVisible,
+      identityStatusText,
+      identityActionLabel
+    },
+    status: {
+      isLoading: installationLoading,
+      isRefreshing: installationRefreshing,
+      reposLoading,
+      disconnectPending: disconnectMutation.isPending,
+      identityLinkPending: linkIdentityMutation.isPending,
+      errorMessage:
+        installationError?.message ??
+        reposError?.message ??
+        connectMutation.error?.message ??
+        linkIdentityMutation.error?.message ??
+        null
+    },
+    actions: {
+      onConnect,
+      onLinkReviewIdentity,
+      onRefresh,
+      onDisconnect
+    }
   };
 };

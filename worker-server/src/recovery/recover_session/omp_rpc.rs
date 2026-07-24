@@ -11,7 +11,7 @@ use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::github_credentials::{
-    commit_identity_env, setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
+    setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
 };
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
@@ -50,8 +50,9 @@ pub(crate) async fn recovered_omp_env(
             .to_string_lossy()
             .to_string(),
     };
+    let commit_identity =
+        isolation_github_credentials::commit_identity_env(job.github_commit_author.as_ref());
     let mut env_vars = sanitized_secrets.clone();
-    env_vars.extend(commit_identity_env(job.github_commit_author.as_ref()));
     env_vars.extend(workspace::omp_environment_vars(
         &runtime_home,
         &runtime_tmpdir,
@@ -61,6 +62,7 @@ pub(crate) async fn recovered_omp_env(
         "docker" | "kata" => github_credentials.runtime_env,
         _ => github_credentials.host_env,
     });
+    isolation_github_credentials::overlay_commit_identity_env(&mut env_vars, &commit_identity);
 
     Ok(IsolatedEnvironment {
         workdir: workdir.clone(),

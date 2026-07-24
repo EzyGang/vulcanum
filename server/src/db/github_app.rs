@@ -89,29 +89,24 @@ impl GithubAppRepository {
         &self,
         db: Q,
         team_id: Uuid,
+        installation_id: i64,
         user_id: &str,
         login: &str,
     ) -> Result<GithubInstallation, GithubAppError>
     where
         Q: Queryer<'c>,
     {
-        sqlx::query_as!(
-            GithubInstallation,
+        sqlx::query_as::<_, GithubInstallation>(
             r#"UPDATE github_installations
-               SET review_identity_user_id = $2, review_identity_login = $3
-               WHERE id = (
-                   SELECT id FROM github_installations
-                   WHERE team_id = $1
-                   ORDER BY created_at DESC
-                   LIMIT 1
-               )
+               SET review_identity_user_id = $3, review_identity_login = $4
+               WHERE team_id = $1 AND id = $2
                RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id,
-                         review_identity_user_id, review_identity_login,
-                         created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
-            team_id,
-            user_id,
-            login,
+                         review_identity_user_id, review_identity_login, created_at"#,
         )
+        .bind(team_id)
+        .bind(installation_id)
+        .bind(user_id)
+        .bind(login)
         .fetch_optional(db)
         .await
         .map_err(GithubAppError::Database)?

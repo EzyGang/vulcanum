@@ -15,8 +15,14 @@ const DEFAULT_GITHUB_LINK_RETURN_TO: &str = "/settings?tab=github";
 #[derive(Deserialize, Serialize)]
 #[serde(tag = "purpose", rename_all = "snake_case")]
 enum GithubOAuthState {
-    Login { return_to: String },
-    LinkReviewIdentity { return_to: String, team_id: Uuid },
+    Login {
+        return_to: String,
+    },
+    LinkReviewIdentity {
+        return_to: String,
+        team_id: Uuid,
+        installation_id: i64,
+    },
 }
 
 impl AuthService {
@@ -41,14 +47,19 @@ impl AuthService {
         }
 
         let team_id = self.teams.resolve_team(principal, true).await?;
-        self.github_repo
+        let installation = self
+            .github_repo
             .get_installation(&self.db, team_id)
             .await?
             .ok_or(crate::models::github_app::errors::GithubAppError::NoInstallation)?;
         let return_to = validate_return_to(return_to)
             .unwrap_or(DEFAULT_GITHUB_LINK_RETURN_TO)
             .to_owned();
-        self.github_oauth_url(GithubOAuthState::LinkReviewIdentity { return_to, team_id })
+        self.github_oauth_url(GithubOAuthState::LinkReviewIdentity {
+            return_to,
+            team_id,
+            installation_id: installation.id,
+        })
     }
 
     pub async fn github_callback(
@@ -67,11 +78,16 @@ impl AuthService {
             GithubOAuthState::Login { return_to } => {
                 self.complete_github_login(github_user, return_to).await
             }
-            GithubOAuthState::LinkReviewIdentity { return_to, team_id } => {
+            GithubOAuthState::LinkReviewIdentity {
+                return_to,
+                team_id,
+                installation_id,
+            } => {
                 self.github_repo
                     .link_review_identity(
                         &self.db,
                         team_id,
+                        installation_id,
                         &github_user.id.to_string(),
                         &github_user.login,
                     )

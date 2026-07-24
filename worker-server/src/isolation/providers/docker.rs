@@ -126,6 +126,7 @@ pub(crate) fn build_container_environment(
         }
     }
     combined_env.extend(github_credentials.runtime_env.clone());
+    github_credentials::overlay_commit_identity_env(&mut combined_env, env_vars);
 
     (sanitized_secrets, combined_env)
 }
