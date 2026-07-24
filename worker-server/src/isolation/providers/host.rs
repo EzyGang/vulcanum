@@ -104,6 +104,7 @@ impl IsolationProvider for HostIsolation {
             }
         }
         combined_env.extend(github_credentials.host_env);
+        github_credentials::overlay_commit_identity_env(&mut combined_env, env_vars);
 
         Ok(IsolatedEnvironment {
             workdir: workdir.to_path_buf(),

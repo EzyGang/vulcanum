@@ -10,5 +10,7 @@ pub struct GithubInstallation {
     pub github_installation_id: i64,
     pub account_login: String,
     pub installed_by_user_id: Option<String>,
+    pub review_identity_user_id: Option<String>,
+    pub review_identity_login: Option<String>,
     pub created_at: DateTime<Utc>,
 }

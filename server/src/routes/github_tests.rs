@@ -13,6 +13,7 @@ async fn webhook_accepts_valid_delivery(pool: sqlx::PgPool) {
     state.github_webhooks = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         Some(Arc::from("vulcanum-app")),
+        state.is_single_user,
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
         Arc::new(state.github.clone()),
@@ -46,6 +47,7 @@ async fn webhook_rejects_invalid_signature(pool: sqlx::PgPool) {
     state.github_webhooks = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         Some(Arc::from("vulcanum-app")),
+        state.is_single_user,
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
         Arc::new(state.github.clone()),
@@ -75,6 +77,7 @@ async fn webhook_requires_delivery_identifier(pool: sqlx::PgPool) {
     state.github_webhooks = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         Some(Arc::from("vulcanum-app")),
+        state.is_single_user,
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
         Arc::new(state.github.clone()),

@@ -50,6 +50,8 @@ pub(crate) async fn recovered_omp_env(
             .to_string_lossy()
             .to_string(),
     };
+    let commit_identity =
+        isolation_github_credentials::commit_identity_env(job.github_commit_author.as_ref());
     let mut env_vars = sanitized_secrets.clone();
     env_vars.extend(workspace::omp_environment_vars(
         &runtime_home,
@@ -60,6 +62,7 @@ pub(crate) async fn recovered_omp_env(
         "docker" | "kata" => github_credentials.runtime_env,
         _ => github_credentials.host_env,
     });
+    isolation_github_credentials::overlay_commit_identity_env(&mut env_vars, &commit_identity);
 
     Ok(IsolatedEnvironment {
         workdir: workdir.clone(),

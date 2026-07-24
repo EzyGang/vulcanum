@@ -13,6 +13,7 @@ pub(crate) struct GithubReviewRequest<'a> {
     pub delivery_id: &'a str,
     pub installation_id: i64,
     pub sender_id: &'a str,
+    pub single_user_mode: bool,
     pub repo_full_name: &'a str,
     pub pr_number: i64,
     pub pr_title: &'a str,
@@ -57,11 +58,24 @@ impl WorkRunsService {
             Some(team_id) => team_id,
             None => return Ok(GithubReviewRequestOutcome::UnknownInstallation),
         };
-        let authorized = self
-            .project_configs
-            .teams
-            .is_provider_identity_member(team_id, "github", request.sender_id)
-            .await?;
+        let linked_identity = match request.single_user_mode {
+            true => {
+                self.github
+                    .repo
+                    .is_linked_review_identity(&self.db, request.installation_id, request.sender_id)
+                    .await?
+            }
+            false => false,
+        };
+        let authorized = match linked_identity {
+            true => true,
+            false => {
+                self.project_configs
+                    .teams
+                    .is_provider_identity_member(team_id, "github", request.sender_id)
+                    .await?
+            }
+        };
         if !authorized {
             return Ok(GithubReviewRequestOutcome::Unauthorized);
         }

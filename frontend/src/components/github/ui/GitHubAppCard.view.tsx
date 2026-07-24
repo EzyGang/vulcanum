@@ -1,5 +1,6 @@
 import { IconBrandGithub, IconPlugConnected, IconRefresh, IconUnlink } from '@tabler/icons-react';
 import type { JSX } from 'preact';
+import type { GithubInstallation } from '../../../types/github';
 import { ActionIconButton } from '../../shared/ui/ActionIconButton.view';
 import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
@@ -7,8 +8,9 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 
 interface GitHubAppCardViewProps {
   data: {
-    installation: { id: number; accountLogin: string } | null;
+    installation: GithubInstallation | null;
   };
+  identityPanel: JSX.Element | null;
   status: {
     isLoading: boolean;
     isRefreshing: boolean;
@@ -24,6 +26,7 @@ interface GitHubAppCardViewProps {
 
 export const GitHubAppCardView = ({
   data: { installation },
+  identityPanel,
   status: { isLoading, isRefreshing, disconnectPending, errorMessage },
   actions: { onConnect, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
@@ -90,6 +93,7 @@ export const GitHubAppCardView = ({
           <span class='text-text-primary text-sm font-mono'>{installation.accountLogin}</span>
         </div>
       )}
+      {identityPanel}
     </Card>
   );
 };

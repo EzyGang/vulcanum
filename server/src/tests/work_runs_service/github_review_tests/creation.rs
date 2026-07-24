@@ -43,6 +43,7 @@ async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
             delivery_id: "delivery-1",
             installation_id: INSTALLATION_ID,
             sender_id: SENDER_ID,
+            single_user_mode: false,
             repo_full_name: "Acme/Widgets",
             pr_number: 42,
             pr_title: "Review me",
