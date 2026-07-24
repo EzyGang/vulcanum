@@ -1,11 +1,12 @@
 use actix_web::{web, HttpResponse};
+use serde::Serialize;
 use vulcanum_shared::api::wire::{AuthExchangeRequest, AuthModeResponse, InstanceLoginRequest};
 
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::{
-    GithubCallbackQuery, GithubStartQuery, LoginRequest, LoginResponse, LogoutRequest,
-    RefreshRequest, TeamPrincipal, VerifyQuery, VerifyResponse,
+    GithubCallbackQuery, GithubCallbackResult, GithubStartQuery, LoginRequest, LoginResponse,
+    LogoutRequest, RefreshRequest, TeamPrincipal, VerifyQuery, VerifyResponse,
 };
 
 pub async fn login(
@@ -61,16 +62,42 @@ pub async fn github_start(
         .finish())
 }
 
+#[derive(Serialize)]
+pub struct GithubLinkUrlResponse {
+    pub url: String,
+}
+
+pub async fn github_link_url(
+    state: web::Data<AppState>,
+    auth: TeamPrincipal,
+    query: web::Query<GithubStartQuery>,
+) -> Result<HttpResponse, AppError> {
+    let url = state
+        .auth
+        .github_link_authorize_url(&auth, query.return_to.as_deref())
+        .await?;
+
+    Ok(HttpResponse::Ok().json(GithubLinkUrlResponse { url }))
+}
+
 pub async fn github_callback(
     state: web::Data<AppState>,
     query: web::Query<GithubCallbackQuery>,
 ) -> Result<HttpResponse, AppError> {
-    let result = state
+    let location = match state
         .auth
         .github_callback(&query.code, &query.state)
-        .await?;
-    let code = state.auth.create_user_callback_code(&result.token_pair)?;
-    let location = append_code_to_return_path(&result.return_to, &code);
+        .await?
+    {
+        GithubCallbackResult::Login {
+            token_pair,
+            return_to,
+        } => {
+            let code = state.auth.create_user_callback_code(&token_pair)?;
+            append_code_to_return_path(&return_to, &code)
+        }
+        GithubCallbackResult::IdentityLinked { return_to } => return_to,
+    };
 
     Ok(HttpResponse::Found()
         .append_header(("Location", location))

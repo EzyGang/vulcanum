@@ -3,6 +3,7 @@ use std::time::Duration;
 use sqlx::PgPool;
 
 use crate::db::auth::AuthRepository;
+use crate::db::github_app::GithubAppRepository;
 use crate::models::auth::errors::AuthError;
 use crate::models::auth::model::{IdentityInfo, MeResponse, TeamInfo, UserInfo};
 use crate::services::auth::token_store::TokenStore;
@@ -20,6 +21,7 @@ const GITHUB_OAUTH_HTTP_TIMEOUT: Duration = Duration::from_secs(15);
 #[derive(Clone)]
 pub struct AuthService {
     repo: AuthRepository,
+    github_repo: GithubAppRepository,
     db: PgPool,
     users: UsersService,
     teams: TeamsService,
@@ -36,11 +38,10 @@ pub struct AuthService {
 impl AuthService {
     pub fn new(
         repo: AuthRepository,
+        github_repo: GithubAppRepository,
         db: PgPool,
         users: UsersService,
         teams: TeamsService,
-        instance_password: String,
-        jwt_secret: String,
         cfg: &crate::config::AppConfig,
     ) -> Result<Self, AuthError> {
         let github_oauth_http = reqwest::Client::builder()
@@ -49,12 +50,13 @@ impl AuthService {
             .map_err(|e| AuthError::GithubOAuth(format!("building http client: {e}")))?;
         Ok(Self {
             repo,
+            github_repo,
             db,
             users,
             teams,
             token_store: TokenStore::new(),
-            instance_password,
-            jwt_secret,
+            instance_password: cfg.instance_password.clone(),
+            jwt_secret: cfg.jwt_secret.clone(),
             is_single_user: cfg.is_single_user,
             github_oauth_client_id: cfg.github_oauth_client_id.clone(),
             github_oauth_client_secret: cfg.github_oauth_client_secret.clone(),

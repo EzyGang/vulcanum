@@ -2,10 +2,11 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 
 use crate::config::AppConfig;
 use crate::db::auth::AuthRepository;
+use crate::db::github_app::GithubAppRepository;
 use crate::db::teams::TeamsRepository;
 use crate::db::users::UsersRepository;
 use crate::models::auth::errors::AuthError;
-use crate::models::auth::model::{LoginRequest, VerifyQuery};
+use crate::models::auth::model::{LoginRequest, TeamPrincipal, VerifyQuery};
 use crate::services::auth::service::github_oauth::validate_return_to;
 use crate::services::auth::service::AuthService;
 use crate::services::teams::service::TeamsService;
@@ -44,6 +45,41 @@ fn rejects_unsafe_oauth_return_paths() {
         validate_return_to(Some("/invites/token\nLocation: //evil.test")),
         None
     );
+}
+#[sqlx::test]
+async fn single_user_can_start_review_identity_link(pool: sqlx::PgPool) {
+    sqlx::query!(
+        "INSERT INTO github_installations (github_installation_id, account_login, team_id) VALUES ($1, $2, $3)",
+        123_i64,
+        "acme",
+        crate::test_helpers::DEFAULT_TEAM_ID,
+    )
+    .execute(&pool)
+    .await
+    .expect("connect GitHub installation");
+    let mut cfg = app_config("test-password");
+    cfg.github_oauth_client_id = Some("github-client".to_owned());
+    cfg.github_oauth_client_secret = Some("github-secret".to_owned());
+    cfg.github_oauth_redirect_url =
+        Some("http://localhost:8000/api/v1/auth/github/callback".to_owned());
+    let service = build_auth_service(pool, &cfg);
+
+    let authorize_url = service
+        .github_link_authorize_url(
+            &TeamPrincipal::Instance { team_id: None },
+            Some("/settings?tab=github"),
+        )
+        .await
+        .expect("build identity link URL");
+    let authorize_url = url::Url::parse(&authorize_url).expect("valid authorize URL");
+
+    assert_eq!(authorize_url.host_str(), Some("github.com"));
+    assert!(authorize_url
+        .query_pairs()
+        .any(|(key, value)| key == "client_id" && value == "github-client"));
+    assert!(authorize_url
+        .query_pairs()
+        .any(|(key, value)| key == "state" && !value.is_empty()));
 }
 
 #[sqlx::test]
@@ -178,7 +214,12 @@ async fn auth_service(pool: sqlx::PgPool) -> AuthService {
 }
 
 async fn auth_service_with_password(pool: sqlx::PgPool, password: &str) -> AuthService {
-    let cfg = AppConfig {
+    let cfg = app_config(password);
+    build_auth_service(pool, &cfg)
+}
+
+fn app_config(password: &str) -> AppConfig {
+    AppConfig {
         db_url: String::new(),
         max_conns: 1,
         poll_period_secs: 30,
@@ -197,16 +238,17 @@ async fn auth_service_with_password(pool: sqlx::PgPool, password: &str) -> AuthS
         github_oauth_client_id: None,
         github_oauth_client_secret: None,
         github_oauth_redirect_url: None,
-    };
+    }
+}
 
+fn build_auth_service(pool: sqlx::PgPool, cfg: &AppConfig) -> AuthService {
     AuthService::new(
         AuthRepository::new(),
+        GithubAppRepository::new(),
         pool.clone(),
         UsersService::new(UsersRepository::new(), pool.clone()),
         TeamsService::new(TeamsRepository::new(), pool),
-        password.to_owned(),
-        "test-secret".to_owned(),
-        &cfg,
+        cfg,
     )
     .expect("build auth service")
 }

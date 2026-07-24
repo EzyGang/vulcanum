@@ -76,6 +76,47 @@ async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) 
 }
 
 #[sqlx::test]
+async fn linked_review_identity_authorizes_request_without_team_membership(pool: sqlx::PgPool) {
+    setup_review_project(&pool).await;
+    let linked_user_id = "789";
+    sqlx::query!(
+        "UPDATE github_installations SET review_identity_user_id = $1, review_identity_login = $2 WHERE github_installation_id = $3",
+        linked_user_id,
+        "single-user-owner",
+        INSTALLATION_ID,
+    )
+    .execute(&pool)
+    .await
+    .expect("link review identity");
+    let mut state = test_helpers::build_state(pool).await;
+    state.jobs = state
+        .jobs
+        .clone()
+        .with_review_ticket_creator(Arc::new(MockReviewTicketCreator::default()));
+
+    let multiuser_outcome = state
+        .jobs
+        .request_github_review(review_request(
+            "multiuser-delivery",
+            linked_user_id,
+            "acme/widgets",
+        ))
+        .await
+        .expect("reject linked identity outside single-user mode");
+    let single_user_outcome = state
+        .jobs
+        .request_github_review(GithubReviewRequest {
+            single_user_mode: true,
+            ..review_request("single-user-delivery", linked_user_id, "acme/widgets")
+        })
+        .await
+        .expect("authorize linked review identity in single-user mode");
+
+    assert_eq!(multiuser_outcome, GithubReviewRequestOutcome::Unauthorized);
+    assert_eq!(single_user_outcome, GithubReviewRequestOutcome::Spawned);
+}
+
+#[sqlx::test]
 async fn stale_reservation_recovers_remote_ticket_without_duplicate(pool: sqlx::PgPool) {
     let project_id = setup_review_project(&pool).await;
     sqlx::query!(
@@ -168,6 +209,7 @@ fn review_request<'a>(
         delivery_id,
         installation_id: INSTALLATION_ID,
         sender_id,
+        single_user_mode: false,
         repo_full_name,
         pr_number: 42,
         pr_title: "Review me",

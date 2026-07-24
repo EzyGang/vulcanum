@@ -3,14 +3,20 @@ import { render, waitFor } from '@testing-library/preact';
 import type { JSX } from 'preact';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../services/auth/auth.service', () => ({
+  getAuthMode: vi.fn()
+}));
+
 vi.mock('../services/github/github.service', () => ({
   disconnectInstallation: vi.fn(),
   getAuthUrl: vi.fn(),
   getInstallation: vi.fn(),
+  getReviewIdentityAuthUrl: vi.fn(),
   listRepos: vi.fn()
 }));
 
 import { useGitHubApp } from '../components/github/hooks/useGitHubApp.hook';
+import { getAuthMode } from '../services/auth/auth.service';
 import { getInstallation, listRepos } from '../services/github/github.service';
 import { queryClient } from '../utils/api/query/client';
 
@@ -22,6 +28,7 @@ const GitHubReposHarness = (): JSX.Element => {
 beforeEach(() => {
   queryClient.clear();
   vi.clearAllMocks();
+  vi.mocked(getAuthMode).mockResolvedValue({ isSingleUser: true });
 });
 
 describe('useGitHubApp', () => {

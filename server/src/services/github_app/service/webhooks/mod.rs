@@ -25,6 +25,7 @@ const POLL_INTERVAL: Duration = Duration::from_secs(5);
 pub struct GithubWebhookService {
     secret: Option<Arc<str>>,
     app_slug: Option<Arc<str>>,
+    single_user_mode: bool,
     store: GithubWebhookStore,
     work_runs: WorkRunsService,
     comment_writer: Arc<dyn PullRequestCommentWriter>,
@@ -55,6 +56,7 @@ impl GithubWebhookService {
     pub(crate) fn new(
         secret: Option<Arc<str>>,
         app_slug: Option<Arc<str>>,
+        single_user_mode: bool,
         store: GithubWebhookStore,
         work_runs: WorkRunsService,
         comment_writer: Arc<dyn PullRequestCommentWriter>,
@@ -62,6 +64,7 @@ impl GithubWebhookService {
         Self {
             secret,
             app_slug,
+            single_user_mode,
             store,
             work_runs,
             comment_writer,

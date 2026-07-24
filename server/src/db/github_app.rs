@@ -25,8 +25,10 @@ impl GithubAppRepository {
     ) -> Result<Option<GithubInstallation>, GithubAppError> {
         let row = sqlx::query_as!(
             GithubInstallation,
-            r#"SELECT id, team_id, github_installation_id, account_login, installed_by_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>"
-             FROM github_installations WHERE team_id = $1 ORDER BY created_at DESC LIMIT 1"#,
+            r#"SELECT id, team_id, github_installation_id, account_login, installed_by_user_id,
+                      review_identity_user_id, review_identity_login,
+                      created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+               FROM github_installations WHERE team_id = $1 ORDER BY created_at DESC LIMIT 1"#,
             team_id,
         )
         .fetch_optional(db)
@@ -69,7 +71,9 @@ impl GithubAppRepository {
                    account_login = EXCLUDED.account_login,
                    created_at = NOW()
                WHERE github_installations.team_id = EXCLUDED.team_id
-               RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+               RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id,
+                         review_identity_user_id, review_identity_login,
+                         created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             team_id,
             installed_by_user_id,
             github_installation_id,
@@ -79,6 +83,63 @@ impl GithubAppRepository {
         .await
         .map_err(GithubAppError::Database)?
         .ok_or(GithubAppError::InstallationAlreadyLinked)
+    }
+
+    pub async fn link_review_identity<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        user_id: &str,
+        login: &str,
+    ) -> Result<GithubInstallation, GithubAppError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            GithubInstallation,
+            r#"UPDATE github_installations
+               SET review_identity_user_id = $2, review_identity_login = $3
+               WHERE id = (
+                   SELECT id FROM github_installations
+                   WHERE team_id = $1
+                   ORDER BY created_at DESC
+                   LIMIT 1
+               )
+               RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id,
+                         review_identity_user_id, review_identity_login,
+                         created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
+            team_id,
+            user_id,
+            login,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(GithubAppError::Database)?
+        .ok_or(GithubAppError::NoInstallation)
+    }
+
+    pub async fn is_linked_review_identity<'c, Q>(
+        &self,
+        db: Q,
+        github_installation_id: i64,
+        user_id: &str,
+    ) -> Result<bool, GithubAppError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM github_installations
+                WHERE github_installation_id = $1
+                  AND review_identity_user_id = $2
+            )"#,
+            github_installation_id,
+            user_id,
+        )
+        .fetch_one(db)
+        .await
+        .map(|value| value.unwrap_or(false))
+        .map_err(GithubAppError::Database)
     }
 
     pub async fn delete_installation<'c, Q: Queryer<'c>>(

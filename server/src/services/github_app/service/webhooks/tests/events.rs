@@ -165,6 +165,7 @@ async fn issue_comment_requires_app_slug(pool: sqlx::PgPool) {
     let service = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         None,
+        state.is_single_user,
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
         Arc::new(state.github.clone()),

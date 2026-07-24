@@ -64,6 +64,7 @@ fn review_request(delivery_id: &str) -> GithubReviewRequest<'_> {
         delivery_id,
         installation_id: INSTALLATION_ID,
         sender_id: SENDER_ID,
+        single_user_mode: false,
         repo_full_name: "acme/widgets",
         pr_number: 42,
         pr_title: "Review me",

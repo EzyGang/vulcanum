@@ -1,5 +1,12 @@
-import { IconBrandGithub, IconPlugConnected, IconRefresh, IconUnlink } from '@tabler/icons-react';
+import {
+  IconBrandGithub,
+  IconPlugConnected,
+  IconRefresh,
+  IconUnlink,
+  IconUserCheck
+} from '@tabler/icons-react';
 import type { JSX } from 'preact';
+import type { GithubInstallation } from '../../../types/github';
 import { ActionIconButton } from '../../shared/ui/ActionIconButton.view';
 import { Button } from '../../shared/ui/Button.view';
 import { Card } from '../../shared/ui/Card.view';
@@ -7,25 +14,28 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 
 interface GitHubAppCardViewProps {
   data: {
-    installation: { id: number; accountLogin: string } | null;
+    installation: GithubInstallation | null;
+    isSingleUser: boolean;
   };
   status: {
     isLoading: boolean;
     isRefreshing: boolean;
     disconnectPending: boolean;
+    identityLinkPending: boolean;
     errorMessage: string | null;
   };
   actions: {
     onConnect: () => void;
+    onLinkReviewIdentity: () => void;
     onRefresh: () => void;
     onDisconnect: () => void;
   };
 }
 
 export const GitHubAppCardView = ({
-  data: { installation },
-  status: { isLoading, isRefreshing, disconnectPending, errorMessage },
-  actions: { onConnect, onRefresh, onDisconnect }
+  data: { installation, isSingleUser },
+  status: { isLoading, isRefreshing, disconnectPending, identityLinkPending, errorMessage },
+  actions: { onConnect, onLinkReviewIdentity, onRefresh, onDisconnect }
 }: GitHubAppCardViewProps): JSX.Element => {
   const connected = !!installation;
 
@@ -88,6 +98,28 @@ export const GitHubAppCardView = ({
         <div class='flex items-center gap-2'>
           <span class='text-text-muted text-xs'>Account:</span>
           <span class='text-text-primary text-sm font-mono'>{installation.accountLogin}</span>
+        </div>
+      )}
+      {connected && installation && isSingleUser && (
+        <div class='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-border-base bg-bg-panel p-4'>
+          <div class='flex flex-col gap-1'>
+            <span class='text-text-primary text-sm font-medium'>PR review identity</span>
+            <span class='text-text-muted text-xs'>
+              {installation.reviewIdentityLogin
+                ? `@${installation.reviewIdentityLogin} can start reviews from PR comments.`
+                : 'Link the GitHub account allowed to start reviews from PR comments.'}
+            </span>
+          </div>
+          <Button variant='secondary' onClick={onLinkReviewIdentity} disabled={identityLinkPending}>
+            <span class='inline-flex items-center gap-2'>
+              <IconUserCheck size={16} stroke={1.75} aria-hidden='true' />
+              {identityLinkPending
+                ? 'Opening GitHub...'
+                : installation.reviewIdentityLogin
+                  ? 'Change account'
+                  : 'Link account'}
+            </span>
+          </Button>
         </div>
       )}
     </Card>

@@ -18,6 +18,7 @@ impl GithubWebhookService {
                 delivery_id: &delivery.delivery_id,
                 installation_id: delivery.installation_id,
                 sender_id,
+                single_user_mode: self.single_user_mode,
                 repo_full_name: &delivery.repo_full_name,
                 pr_number: delivery.pr_number,
                 pr_title,

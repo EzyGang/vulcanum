@@ -51,6 +51,7 @@ fn service_with_writer(
     GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         Some(Arc::from(APP_SLUG)),
+        state.is_single_user,
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
         writer,

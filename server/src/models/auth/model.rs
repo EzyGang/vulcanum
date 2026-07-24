@@ -66,9 +66,14 @@ pub struct GithubCallbackQuery {
     pub state: String,
 }
 
-pub struct GithubCallbackResult {
-    pub token_pair: AuthTokenResponse,
-    pub return_to: String,
+pub enum GithubCallbackResult {
+    Login {
+        token_pair: AuthTokenResponse,
+        return_to: String,
+    },
+    IdentityLinked {
+        return_to: String,
+    },
 }
 
 #[derive(Serialize)]

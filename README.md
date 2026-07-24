@@ -371,9 +371,11 @@ Kaneo credentials are configured in the task-tracker provider settings, not thro
 
 #### GitHub App
 
-Repository cloning and pull request tracking use a GitHub App. For local development, configure:
+Repository cloning, pull request tracking, and review triggers use a GitHub App. For local
+development, configure:
 
-- Callback URL: `http://localhost:8000/api/v1/github/callback`
+- Setup URL: `http://localhost:8000/api/v1/github/callback`
+- User authorization callback URL: `http://localhost:8000/api/v1/auth/github/callback`
 - Webhook URL: `http://localhost:8000/api/v1/github/webhook`
 - Webhook events: **Pull request** and **Issue comment**
 - **Contents** permission: read and write
@@ -396,16 +398,23 @@ GITHUB_APP_SLUG=vulcanum-app
 GITHUB_WEBHOOK_SECRET=replace-with-the-app-webhook-secret
 ```
 
-`GITHUB_APP_PRIVATE_KEY` is the base64 encoding of the complete PEM file. Restart `vulcanum-web`, then connect the app from the GitHub section in Settings.
+`GITHUB_APP_PRIVATE_KEY` is the base64 encoding of the complete PEM file.
 
-GitHub OAuth is separate from the GitHub App. It is only needed for multiuser login:
+GitHub user authorization links PR commenters to Vulcanum. The credentials may belong to the same
+GitHub App or to a separate OAuth App:
 
 ```bash
-IS_SINGLE_USER=false
-GITHUB_OAUTH_CLIENT_ID=your-client-id
-GITHUB_OAUTH_CLIENT_SECRET=your-client-secret
+GITHUB_CLIENT_ID=your-client-id
+GITHUB_CLIENT_SECRET=your-client-secret
 GITHUB_OAUTH_REDIRECT_URL=http://localhost:8000/api/v1/auth/github/callback
 ```
+`GITHUB_OAUTH_REDIRECT_URL` is the public callback that GitHub returns the temporary authorization
+code to. It must exactly match a callback URL configured on the GitHub App or OAuth App.
+
+Restart `vulcanum-web`, then connect the app from the GitHub section in Settings. In single-user
+mode, select **Link account** there and authorize the GitHub account allowed to trigger reviews. In
+multiuser mode, set `IS_SINGLE_USER=false`; each commenter must sign in through GitHub and belong
+to the team that owns the project.
 
 Model providers, model selection, team defaults, tracker providers, repositories, workflow columns, prompts, and review settings are configured in the UI.
 
