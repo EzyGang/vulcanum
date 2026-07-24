@@ -3,6 +3,8 @@ pub(crate) mod auth;
 mod auth_tests;
 pub(crate) mod job;
 mod queue;
+#[cfg(test)]
+mod queue_tests;
 mod tick;
 
 use std::collections::VecDeque;
@@ -19,6 +21,7 @@ use vulcanum_shared::state::paths;
 use vulcanum_shared::state::worker::{load_state, WorkerState};
 use vulcanum_shared::validate::is_environment_ready_for_config;
 
+use crate::daemon::queue::JobTracker;
 use crate::recovery;
 use crate::state::journal::Journal;
 
@@ -43,6 +46,7 @@ struct DaemonState {
     shutdown_rx: tokio::sync::watch::Receiver<Option<String>>,
     shutdown_tx: tokio::sync::watch::Sender<Option<String>>,
     pending_queue: Mutex<VecDeque<uuid::Uuid>>,
+    job_tracker: Arc<JobTracker>,
     config: WorkerConfig,
 }
 
@@ -80,6 +84,7 @@ pub async fn run() -> anyhow::Result<()> {
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(None);
     let pending_queue = Mutex::new(VecDeque::new());
+    let job_tracker = Arc::new(JobTracker::default());
 
     let daemon_state = DaemonState {
         client: client.clone(),
@@ -89,6 +94,7 @@ pub async fn run() -> anyhow::Result<()> {
         shutdown_rx,
         shutdown_tx,
         pending_queue,
+        job_tracker,
         config,
     };
 

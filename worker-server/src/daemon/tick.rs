@@ -30,6 +30,13 @@ pub(super) async fn tick(state: &DaemonState, refresh_buffer_secs: i64) -> TickO
     .await
     {
         Ok(Some(job_id)) => {
+            if !state.job_tracker.reserve(job_id).await {
+                tracing::debug!(
+                    work_run_id = %job_id,
+                    "duplicate polled job ignored while already queued or running"
+                );
+                return TickOutcome::Success;
+            }
             {
                 let mut queue = state.pending_queue.lock().await;
                 queue.push_back(job_id);
