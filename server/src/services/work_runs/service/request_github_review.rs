@@ -114,14 +114,29 @@ impl WorkRunsService {
         };
 
         let normalized_repo = request.repo_full_name.to_ascii_lowercase();
-        let external_task_ref = self
-            .resolve_github_review_ticket(
-                selected,
+        let external_task_ref = match self
+            .work_runs_repo
+            .list_task_pr_targets_for_pull_request(
+                &self.db,
+                request.installation_id,
                 &normalized_repo,
                 request.pr_number,
-                request.pr_title,
             )
-            .await?;
+            .await?
+            .into_iter()
+            .find(|target| target.project_config_id == selected.id)
+        {
+            Some(target) => target.external_task_ref,
+            None => {
+                self.resolve_github_review_ticket(
+                    selected,
+                    &normalized_repo,
+                    request.pr_number,
+                    request.pr_title,
+                )
+                .await?
+            }
+        };
         let ticket_title = review_ticket_title(request.pr_number, request.pr_title);
         let inserted = self
             .work_runs_repo

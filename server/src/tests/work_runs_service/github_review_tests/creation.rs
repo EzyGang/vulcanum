@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
 use crate::services::work_runs::service::request_github_review::{
     GithubReviewRequest, GithubReviewRequestOutcome,
@@ -81,4 +83,72 @@ async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
         Some("Acme/Widgets")
     );
     assert_eq!(run.github_installation_id, Some(INSTALLATION_ID));
+}
+
+#[sqlx::test]
+async fn github_review_request_reuses_ticket_for_matching_pull_request(pool: sqlx::PgPool) {
+    let project_id = setup_review_project(&pool).await;
+    let ticket_creator = Arc::new(MockReviewTicketCreator::default());
+    let mut state = test_helpers::build_state(pool.clone()).await;
+    state.jobs = state
+        .jobs
+        .clone()
+        .with_review_ticket_creator(ticket_creator.clone());
+    let source_run_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"INSERT INTO work_runs
+           (id, external_task_ref, project_config_id, status, team_id, work_type)
+           VALUES ($1, 'existing-ticket', $2, 'completed', $3, 'implementation')"#,
+        source_run_id,
+        project_id,
+        test_helpers::DEFAULT_TEAM_ID,
+    )
+    .execute(&pool)
+    .await
+    .expect("insert source work run");
+    sqlx::query!(
+        r#"INSERT INTO task_prs
+           (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number, source_work_run_id)
+           VALUES ($1, 'existing-ticket', 'https://github.com/acme/widgets/pull/42',
+                   'acme/widgets', 42, $2)"#,
+        project_id,
+        source_run_id,
+    )
+    .execute(&pool)
+    .await
+    .expect("attach pull request to ticket");
+
+    let outcome = state
+        .jobs
+        .request_github_review(GithubReviewRequest {
+            delivery_id: "existing-ticket-delivery",
+            installation_id: INSTALLATION_ID,
+            sender_id: SENDER_ID,
+            single_user_mode: false,
+            repo_full_name: "Acme/Widgets",
+            pr_number: 42,
+            pr_title: "Review me",
+            project_selector: None,
+        })
+        .await
+        .expect("request review");
+
+    assert_eq!(outcome, GithubReviewRequestOutcome::Spawned);
+    let run = sqlx::query!(
+        "SELECT external_task_ref FROM work_runs WHERE github_delivery_id = $1",
+        "existing-ticket-delivery",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("review run");
+    assert_eq!(run.external_task_ref, "existing-ticket");
+    assert_eq!(ticket_creator.created_count(), 0);
+    let reservations = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM github_review_tickets WHERE project_config_id = $1",
+        project_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("count standalone review tickets");
+    assert_eq!(reservations, Some(0));
 }

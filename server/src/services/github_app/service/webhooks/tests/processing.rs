@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
@@ -7,7 +8,7 @@ use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
 use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
 use crate::services::github_app::service::webhooks::tests::{
-    issue_comment_payload, service, RecordingWriter, APP_SLUG,
+    issue_comment_payload, service, service_with_writer, RecordingWriter, APP_SLUG,
 };
 use crate::services::work_runs::service::request_github_review::{
     GithubReviewRequestOutcome, ReviewProjectOption, ReviewResponseOptions,
@@ -18,7 +19,8 @@ use crate::test_helpers;
 async fn signed_review_command_creates_standalone_run(pool: sqlx::PgPool) {
     setup_review_request(&pool).await;
     let state = test_helpers::build_state(pool.clone()).await;
-    let service = service(&state);
+    let writer = Arc::new(RecordingWriter::default());
+    let service = service_with_writer(&state, writer.clone());
     let payload = issue_comment_payload(
         "created",
         "open",
@@ -37,6 +39,10 @@ async fn signed_review_command_creates_standalone_run(pool: sqlx::PgPool) {
         .await
         .expect("process signed review command"));
 
+    assert_eq!(
+        writer.reactions.lock().await.as_slice(),
+        &[("acme/widgets".to_owned(), 789)]
+    );
     let run = sqlx::query!(
         "SELECT parent_work_run_id, github_installation_id, github_delivery_id FROM work_runs WHERE github_delivery_id = $1",
         "smoke-delivery",
