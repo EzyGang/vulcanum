@@ -13,6 +13,7 @@ use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::github_credentials::{
     setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
 };
+use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
 use crate::isolation::github_credentials as isolation_github_credentials;
@@ -92,7 +93,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
 
     let max_turns = entry.max_turns.unwrap_or(1).max(1);
     let current_turn = entry.turn_count.unwrap_or(0);
-    let initial_turn = current_turn + 1;
+    let initial_turn = current_turn.max(1);
     let recovered_job = match with_retry_on_401(&api_client, &worker_state, |token| {
         let client = api_client.clone();
         let job_id = entry.job_id;
@@ -178,12 +179,17 @@ pub(crate) async fn recover_omp_rpc_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
+    let review_checkpoint = ReviewLoopCheckpoint {
+        fix_pass: entry.review_fix_pass,
+        fixing: entry.review_fixing,
+    };
     run_turn_loop(
         &mut running_session,
         &artifact_path,
         work_type,
         max_turns,
         initial_turn,
+        review_checkpoint,
         &ctx,
     )
     .await;

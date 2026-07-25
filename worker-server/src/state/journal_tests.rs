@@ -90,6 +90,25 @@ fn find_by_id_returns_existing_entry() {
 }
 
 #[test]
+fn update_turn_persists_review_checkpoint() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+    insert_running_job(&journal, job_id);
+
+    journal
+        .update_turn(job_id, 2, 1, true)
+        .expect("review checkpoint should update");
+
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("journal should remain readable")
+        .expect("entry should exist");
+    assert_eq!(entry.turn_count, Some(2));
+    assert_eq!(entry.review_fix_pass, 1);
+    assert!(entry.review_fixing);
+}
+
+#[test]
 fn find_by_id_returns_none_for_missing_entry() {
     let journal = open_journal();
 

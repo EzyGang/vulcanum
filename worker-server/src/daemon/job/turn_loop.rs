@@ -14,7 +14,7 @@ use super::execution::artifact::read_finish_artifact;
 use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{submit_failed_result, submit_turn_result, FailedResult};
 use super::prompts::text::continuation_prompt;
-use super::review::review_loop::ReviewLoopState;
+use super::review::review_loop::{ReviewLoopCheckpoint, ReviewLoopState};
 use crate::state::journal::Journal;
 
 pub(crate) struct TurnLoopCtx {
@@ -32,10 +32,11 @@ pub(crate) async fn run_turn_loop(
     work_type: WorkRunType,
     max_turns: i32,
     initial_turn: i32,
+    review_checkpoint: ReviewLoopCheckpoint,
     ctx: &TurnLoopCtx,
 ) -> bool {
     let mut turn = initial_turn;
-    let mut review_loop = ReviewLoopState::new(work_type, max_turns);
+    let mut review_loop = ReviewLoopState::resume(work_type, max_turns, review_checkpoint);
     let mut cancel_rx = ctx.reporter.cancel_receiver();
 
     loop {
@@ -90,7 +91,7 @@ pub(crate) async fn run_turn_loop(
                     return false;
                 }
                 turn += 1;
-                let _ = ctx.journal.update_turn(ctx.job_id, turn);
+                update_turn_progress(ctx, turn, &review_loop);
                 continue;
             }
 
@@ -136,7 +137,7 @@ pub(crate) async fn run_turn_loop(
                 return false;
             }
             turn += 1;
-            let _ = ctx.journal.update_turn(ctx.job_id, turn);
+            update_turn_progress(ctx, turn, &review_loop);
             continue;
         }
 
@@ -181,9 +182,8 @@ pub(crate) async fn run_turn_loop(
         if !continue_session(running_session, &prompt, turn, ctx).await {
             return false;
         }
-
         turn += 1;
-        let _ = ctx.journal.update_turn(ctx.job_id, turn);
+        update_turn_progress(ctx, turn, &review_loop);
     }
 }
 
@@ -330,6 +330,13 @@ async fn submit_provider_failure(ctx: &TurnLoopCtx, turn: i32, session_export: &
         None,
     )
     .await;
+}
+
+fn update_turn_progress(ctx: &TurnLoopCtx, turn: i32, review_loop: &ReviewLoopState) {
+    let checkpoint = review_loop.checkpoint();
+    let _ = ctx
+        .journal
+        .update_turn(ctx.job_id, turn, checkpoint.fix_pass, checkpoint.fixing);
 }
 
 async fn continue_session(

@@ -57,6 +57,8 @@ pub struct JournalEntry {
     pub review_already_exists: bool,
     pub error_message: Option<String>,
     pub turn_count: Option<i32>,
+    pub review_fix_pass: i32,
+    pub review_fixing: bool,
     pub session_id: Option<String>,
     pub max_turns: Option<i32>,
     pub host_pid: Option<i64>,

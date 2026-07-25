@@ -6,11 +6,29 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use vulcanum_shared::client::ApiClient;
+use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::queue::JobTracker;
-use crate::recovery::reconcile_running_jobs;
+use crate::recovery::{reconcile_running_jobs, should_resume_review_artifact};
 use crate::state::journal::{Journal, JournalInsert};
+
+#[test]
+fn actionable_review_artifact_resumes_reconciliation() {
+    let artifact = FinishRunArtifact {
+        status: FinishStatus::Completed,
+        pr_urls: Vec::new(),
+        summary: None,
+        review_url: Some("https://github.com/acme/app/pull/1#pullrequestreview-1".to_owned()),
+        review_body: Some(
+            "## CRITICAL\n- None\n\n## WARNINGS\n- Missing validation\n\n## SUGGESTIONS\n- None"
+                .to_owned(),
+        ),
+        review_already_exists: true,
+    };
+
+    assert!(should_resume_review_artifact(&artifact));
+}
 
 #[tokio::test]
 async fn corrupt_running_state_blocks_reconciliation() {

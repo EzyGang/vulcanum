@@ -10,6 +10,12 @@ enum ReviewLoopPhase {
     Fix,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct ReviewLoopCheckpoint {
+    pub fix_pass: i32,
+    pub fixing: bool,
+}
+
 pub(crate) struct ReviewLoopProgress {
     pub fix_pass: i32,
     pub max_fix_passes: i32,
@@ -21,6 +27,18 @@ pub(crate) struct ReviewLoopState {
     max_turns: i32,
     max_fix_passes: i32,
     completed_fix_passes: i32,
+}
+
+#[must_use]
+pub(crate) fn actionable_review_body(artifact: &FinishRunArtifact) -> Option<&str> {
+    if !matches!(artifact.status, FinishStatus::Completed) {
+        return None;
+    }
+
+    match artifact.review_body.as_deref() {
+        Some(body) if review_requires_implementation(body) => Some(body),
+        Some(_) | None => None,
+    }
 }
 
 impl ReviewLoopState {
@@ -42,6 +60,24 @@ impl ReviewLoopState {
             max_fix_passes,
             completed_fix_passes: 0,
         }
+    }
+    #[must_use]
+    pub(crate) fn resume(
+        work_type: WorkRunType,
+        max_turns: i32,
+        checkpoint: ReviewLoopCheckpoint,
+    ) -> Self {
+        let mut state = Self::new(work_type, max_turns);
+        if !state.enabled {
+            return state;
+        }
+
+        state.completed_fix_passes = checkpoint.fix_pass.clamp(0, state.max_fix_passes);
+        state.phase = match checkpoint.fixing {
+            true => ReviewLoopPhase::Fix,
+            false => ReviewLoopPhase::Review,
+        };
+        state
     }
 
     #[must_use]
@@ -82,15 +118,16 @@ impl ReviewLoopState {
         }
     }
 
-    fn prompt_after_review_artifact(&mut self, artifact: &FinishRunArtifact) -> Option<String> {
-        if !matches!(artifact.status, FinishStatus::Completed) {
-            return None;
+    #[must_use]
+    pub(crate) fn checkpoint(&self) -> ReviewLoopCheckpoint {
+        ReviewLoopCheckpoint {
+            fix_pass: self.completed_fix_passes,
+            fixing: matches!(self.phase, ReviewLoopPhase::Fix),
         }
+    }
 
-        let review_body = artifact.review_body.as_deref()?;
-        if !review_requires_implementation(review_body) {
-            return None;
-        }
+    fn prompt_after_review_artifact(&mut self, artifact: &FinishRunArtifact) -> Option<String> {
+        let review_body = actionable_review_body(artifact)?;
 
         if self.completed_fix_passes >= self.max_fix_passes {
             return None;

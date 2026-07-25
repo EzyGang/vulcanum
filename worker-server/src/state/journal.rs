@@ -43,8 +43,9 @@ impl Journal {
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
                     review_url, review_body, review_already_exists, error_message,
-                    turn_count, session_id, max_turns, host_pid, host_port, agent_backend,
-                    agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
+                    turn_count, review_fix_pass, review_fixing, session_id, max_turns,
+                    host_pid, host_port, agent_backend, agent_session_path, agent_config_dir,
+                    agent_state_dir, agent_transport, agent_pid
              FROM job_journal WHERE job_id = ?1",
         )?;
 
@@ -93,11 +94,23 @@ impl Journal {
         Ok(())
     }
 
-    pub fn update_turn(&self, job_id: Uuid, turn_count: i32) -> anyhow::Result<()> {
+    pub fn update_turn(
+        &self,
+        job_id: Uuid,
+        turn_count: i32,
+        review_fix_pass: i32,
+        review_fixing: bool,
+    ) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
-            "UPDATE job_journal SET turn_count = ?1 WHERE job_id = ?2",
-            rusqlite::params![turn_count, job_id.to_string()],
+            "UPDATE job_journal SET turn_count = ?1, review_fix_pass = ?2, review_fixing = ?3
+             WHERE job_id = ?4",
+            rusqlite::params![
+                turn_count,
+                review_fix_pass,
+                review_fixing,
+                job_id.to_string()
+            ],
         )?;
         Ok(())
     }
@@ -178,8 +191,9 @@ impl Journal {
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
                     review_url, review_body, review_already_exists, error_message,
-                    turn_count, session_id, max_turns, host_pid, host_port, agent_backend,
-                    agent_session_path, agent_config_dir, agent_state_dir, agent_transport, agent_pid
+                    turn_count, review_fix_pass, review_fixing, session_id, max_turns,
+                    host_pid, host_port, agent_backend, agent_session_path, agent_config_dir,
+                    agent_state_dir, agent_transport, agent_pid
              FROM job_journal WHERE status = 'running'",
         )?;
 
