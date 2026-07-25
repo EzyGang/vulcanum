@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::Write;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use flate2::write::GzEncoder;
@@ -14,9 +14,17 @@ use crate::update::service::ServiceRestarter;
 #[derive(Clone, Default)]
 pub(super) struct FakeRestarter {
     calls: Arc<AtomicUsize>,
+    fail: Arc<AtomicBool>,
 }
 
 impl FakeRestarter {
+    pub(super) fn failing() -> Self {
+        Self {
+            calls: Arc::new(AtomicUsize::new(0)),
+            fail: Arc::new(AtomicBool::new(true)),
+        }
+    }
+
     pub(super) fn calls(&self) -> usize {
         self.calls.load(Ordering::SeqCst)
     }
@@ -25,7 +33,10 @@ impl FakeRestarter {
 impl ServiceRestarter for FakeRestarter {
     fn restart(&self) -> anyhow::Result<()> {
         self.calls.fetch_add(1, Ordering::SeqCst);
-        Ok(())
+        match self.fail.load(Ordering::SeqCst) {
+            true => anyhow::bail!("injected restart failure"),
+            false => Ok(()),
+        }
     }
 }
 

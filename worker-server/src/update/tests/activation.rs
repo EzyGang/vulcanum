@@ -1,6 +1,8 @@
 use std::cell::Cell;
 
-use crate::update::activation::{activate_pair, activate_pair_with};
+use crate::update::activation::{
+    activate_pair, activate_pair_with, recover_interrupted_activation,
+};
 use crate::update::VERSION_FILE;
 
 #[test]
@@ -56,6 +58,46 @@ fn restores_existing_pair_when_second_binary_activation_fails() {
     assert_eq!(read(&install_dir, "vulcanum"), b"old-cli");
     assert_eq!(read(&install_dir, "vulcanum-server"), b"old-worker");
     assert_eq!(read(&install_dir, VERSION_FILE), b"v1.0.0");
+}
+#[test]
+fn recovers_pair_after_interruption_between_binary_replacements() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    std::fs::create_dir_all(&install_dir).expect("install directory should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "v1.0.0");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+    let replacements = Cell::new(0_u8);
+
+    let interrupted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = activate_pair_with(
+            &staging_dir,
+            &install_dir,
+            "v1.0.0",
+            |source, destination| {
+                let call = replacements.get() + 1;
+                replacements.set(call);
+                if call == 2 {
+                    panic!("simulated process interruption");
+                }
+                std::fs::rename(source, destination)
+            },
+        );
+    }));
+
+    assert!(interrupted.is_err());
+    assert_eq!(read(&install_dir, "vulcanum"), b"new-cli");
+    let rollback_dir = recover_interrupted_activation(&install_dir)
+        .expect("interrupted activation should recover")
+        .expect("recovery should report its rollback directory");
+    assert!(rollback_dir.starts_with(install_dir.join(".vulcanum-rollback")));
+    assert_eq!(read(&install_dir, "vulcanum"), b"old-cli");
+    assert_eq!(read(&install_dir, "vulcanum-server"), b"old-worker");
+    assert_eq!(read(&install_dir, VERSION_FILE), b"v1.0.0");
+    assert!(recover_interrupted_activation(&install_dir)
+        .expect("second recovery should be a no-op")
+        .is_none());
 }
 
 fn write_pair(directory: &std::path::Path, cli: &[u8], worker: &[u8], version: &str) {

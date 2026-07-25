@@ -89,22 +89,24 @@ service account's `~/.vulcanum/config.json`:
 ```
 
 Existing configuration fields remain in the same object. The interval is measured
-in seconds and defaults to 24 hours. When enabled, the daemon checks at startup and
-again after each interval while no job is active or queued.
+in seconds, defaults to 24 hours, and must be between 60 seconds and one year.
+When enabled, the daemon checks at startup and again after each interval while no
+new or recovered job is active or queued.
 
 Each check queries the latest non-prerelease GitHub release, compares its semantic
 version with the installed `.vulcanum-version` marker, and selects the archive for
 the current Linux or macOS architecture. The daemon downloads the same
 `vulcanum-<target>.tar.gz` archive and `.sha256` asset used by `install.sh`. It
-verifies SHA-256 before extracting either binary, requires both binaries in the
-archive, and stages them beside the installation so replacements stay on the same
-filesystem.
+limits archive downloads to 256 MiB, checksum downloads to 4 KiB, and each
+extracted binary to 128 MiB. It verifies SHA-256 before extracting either binary,
+requires both binaries in the archive, and stages them beside the installation so
+replacements stay on the same filesystem.
 
-Activation backs up the working pair and version marker under
-`<install-dir>/.vulcanum-rollback/`, then replaces both binaries. If replacement of
-either binary or the version marker fails, the updater restores the previous pair.
-Download, checksum, and extraction failures never change the installed binaries.
-Only successful activation requests a service restart:
+Activation durably backs up the working pair and version marker under
+`<install-dir>/.vulcanum-rollback/`, then records an activation transaction before
+replacing either binary. An interrupted activation is restored before the daemon
+continues startup. Download, checksum, extraction, and activation failures never
+leave a mixed installed pair. Only successful activation requests a service restart:
 
 - Linux uses `systemctl --no-block restart vulcanum-worker`
 - macOS uses `launchctl kickstart -k system/com.vulcanum.worker`
@@ -125,15 +127,17 @@ Operational prerequisites:
   narrowly scoped `sudoers` rule for its worker user
 - `vulcanum` and `vulcanum-server` must remain in the same install directory
 
-For a download, verification, extraction, or activation failure, no operator action
-is expected: the existing pair keeps running and the next cadence retries. If the
-pair activates but the service restart command fails, the new files remain installed
-and the log asks for a manual service restart. To roll back, stop the worker service,
-copy `vulcanum`, `vulcanum-server`, and `.vulcanum-version` together from the
-reported rollback directory into the install directory, preserve executable mode on
-both binaries, and start the service again. Alternatively, rerun `install.sh` with a
-pinned `VULCANUM_VERSION`, then restart `vulcanum-worker` with systemd or the
-`com.vulcanum.worker` launchd service. Never restore only one binary.
+For a download, verification, extraction, activation, or service restart failure,
+the updater keeps or restores the existing pair and the next cadence retries. If
+automatic rollback is interrupted, the durable transaction restores the previous
+pair before the next update check. The failure log reports the rollback directory
+for manual recovery if the filesystem itself prevents restoration. To recover
+manually, stop the worker service, copy `vulcanum`, `vulcanum-server`, and
+`.vulcanum-version` together from that directory into the install directory,
+preserve executable mode on both binaries, and start the service again.
+Alternatively, rerun `install.sh` with a pinned `VULCANUM_VERSION`, then restart
+`vulcanum-worker` with systemd or the `com.vulcanum.worker` launchd service. Never
+restore only one binary.
 
 Automatic updates cover only the worker-side release pair. They do not update the
 control-plane server, dispatcher, or frontend.

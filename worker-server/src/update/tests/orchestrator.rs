@@ -33,6 +33,38 @@ async fn applies_one_verified_release_pair_then_restarts_service() {
     assert_eq!(read(temporary.path(), "vulcanum-server"), b"new-worker");
     assert_eq!(read(temporary.path(), VERSION_FILE), b"v2.0.0\n");
 }
+#[tokio::test]
+async fn restart_failure_restores_previous_pair_for_retry() {
+    let archive = release_archive(b"new-cli", b"new-worker");
+    let checksum = checksum(&archive);
+    let server = TestServer::start(3, |base_url| {
+        release_routes(base_url, "v2.0.0", TARGET, archive, checksum)
+    })
+    .await;
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    write_installed_pair(temporary.path());
+    let restarter = FakeRestarter::failing();
+    let updater = updater(&server, temporary.path(), restarter.clone());
+
+    let outcome = updater.check_and_apply().await;
+
+    assert!(matches!(
+        outcome,
+        UpdateOutcome::Failed {
+            current_version,
+            target_version: Some(target),
+            rollback_dir: Some(path),
+            error,
+        } if current_version == "v1.0.0"
+            && target == "v2.0.0"
+            && path.starts_with(temporary.path().join(".vulcanum-rollback"))
+            && error.contains("restored the previous release pair")
+    ));
+    assert_eq!(restarter.calls(), 1);
+    assert_eq!(read(temporary.path(), "vulcanum"), b"old-cli");
+    assert_eq!(read(temporary.path(), "vulcanum-server"), b"old-worker");
+    assert_eq!(read(temporary.path(), VERSION_FILE), b"v1.0.0");
+}
 
 #[tokio::test]
 async fn current_release_is_a_no_op_without_service_restart() {

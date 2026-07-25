@@ -10,11 +10,16 @@ use tokio::io::AsyncWriteExt;
 
 const CLI_BINARY: &str = "vulcanum";
 const WORKER_BINARY: &str = "vulcanum-server";
+pub(super) const MAX_ARCHIVE_BYTES: u64 = 256 * 1024 * 1024;
+pub(super) const MAX_CHECKSUM_BYTES: u64 = 4 * 1024;
+const MAX_BINARY_BYTES: u64 = 128 * 1024 * 1024;
+const MAX_EXTRACTED_BYTES: u64 = 2 * MAX_BINARY_BYTES;
 
 pub(super) async fn download(
     client: &reqwest::Client,
     url: &str,
     destination: &Path,
+    max_bytes: u64,
 ) -> anyhow::Result<()> {
     let response = client
         .get(url)
@@ -23,13 +28,27 @@ pub(super) async fn download(
         .with_context(|| format!("failed to download {url}"))?
         .error_for_status()
         .with_context(|| format!("download returned an error for {url}"))?;
+    match response.content_length() {
+        Some(length) if length > max_bytes => {
+            anyhow::bail!("download from {url} exceeds the {max_bytes}-byte limit");
+        }
+        _ => (),
+    }
     let mut stream = response.bytes_stream();
     let mut file = tokio::fs::File::create(destination)
         .await
         .with_context(|| format!("failed to create {}", destination.display()))?;
-
+    let mut downloaded = 0_u64;
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.with_context(|| format!("failed while downloading {url}"))?;
+        downloaded = downloaded
+            .checked_add(chunk.len() as u64)
+            .ok_or_else(|| anyhow::anyhow!("download size overflow for {url}"))?;
+        if downloaded > max_bytes {
+            drop(file);
+            let _ = tokio::fs::remove_file(destination).await;
+            anyhow::bail!("download from {url} exceeds the {max_bytes}-byte limit");
+        }
         file.write_all(&chunk)
             .await
             .with_context(|| format!("failed to write {}", destination.display()))?;
@@ -37,6 +56,9 @@ pub(super) async fn download(
     file.flush()
         .await
         .with_context(|| format!("failed to flush {}", destination.display()))?;
+    file.sync_all()
+        .await
+        .with_context(|| format!("failed to sync {}", destination.display()))?;
     Ok(())
 }
 
@@ -46,10 +68,42 @@ pub(super) fn verify_and_extract(
     staging_dir: &Path,
 ) -> anyhow::Result<()> {
     verify_checksum(archive_path, checksum_path)?;
-    extract_pair(archive_path, staging_dir)
+    extract_pair(
+        archive_path,
+        staging_dir,
+        MAX_BINARY_BYTES,
+        MAX_EXTRACTED_BYTES,
+    )
+}
+#[cfg(test)]
+pub(super) fn verify_and_extract_with_limits(
+    archive_path: &Path,
+    checksum_path: &Path,
+    staging_dir: &Path,
+    max_binary_bytes: u64,
+    max_extracted_bytes: u64,
+) -> anyhow::Result<()> {
+    verify_checksum(archive_path, checksum_path)?;
+    extract_pair(
+        archive_path,
+        staging_dir,
+        max_binary_bytes,
+        max_extracted_bytes,
+    )
 }
 
 fn verify_checksum(archive_path: &Path, checksum_path: &Path) -> anyhow::Result<()> {
+    let checksum_size = std::fs::metadata(checksum_path)
+        .with_context(|| {
+            format!(
+                "failed to inspect checksum file {}",
+                checksum_path.display()
+            )
+        })?
+        .len();
+    if checksum_size > MAX_CHECKSUM_BYTES {
+        anyhow::bail!("checksum file exceeds the {MAX_CHECKSUM_BYTES}-byte limit");
+    }
     let checksum = std::fs::read_to_string(checksum_path)
         .with_context(|| format!("failed to read checksum file {}", checksum_path.display()))?;
     let expected = checksum
@@ -78,13 +132,19 @@ fn verify_checksum(archive_path: &Path, checksum_path: &Path) -> anyhow::Result<
     Ok(())
 }
 
-fn extract_pair(archive_path: &Path, staging_dir: &Path) -> anyhow::Result<()> {
+fn extract_pair(
+    archive_path: &Path,
+    staging_dir: &Path,
+    max_binary_bytes: u64,
+    max_extracted_bytes: u64,
+) -> anyhow::Result<()> {
     let file = File::open(archive_path)
         .with_context(|| format!("failed to open archive {}", archive_path.display()))?;
     let decoder = GzDecoder::new(file);
     let mut archive = tar::Archive::new(decoder);
     let mut cli_found = false;
     let mut worker_found = false;
+    let mut extracted_bytes = 0_u64;
 
     for entry in archive
         .entries()
@@ -93,6 +153,21 @@ fn extract_pair(archive_path: &Path, staging_dir: &Path) -> anyhow::Result<()> {
         let mut entry = entry.context("failed to read release archive entry")?;
         if !entry.header().entry_type().is_file() {
             anyhow::bail!("release archive contains a non-file entry");
+        }
+        let entry_size = entry
+            .header()
+            .size()
+            .context("release archive entry has invalid size")?;
+        if entry_size > max_binary_bytes {
+            anyhow::bail!("release archive binary exceeds the {max_binary_bytes}-byte limit");
+        }
+        extracted_bytes = extracted_bytes
+            .checked_add(entry_size)
+            .ok_or_else(|| anyhow::anyhow!("release archive size overflow"))?;
+        if extracted_bytes > max_extracted_bytes {
+            anyhow::bail!(
+                "release archive exceeds the {max_extracted_bytes}-byte extraction limit"
+            );
         }
         let path = entry
             .path()

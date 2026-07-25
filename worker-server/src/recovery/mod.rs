@@ -14,6 +14,7 @@ use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::execution::artifact::read_finish_artifact;
 use crate::daemon::job::execution::submit::submit_turn_result;
+use crate::daemon::queue::JobTracker;
 use crate::providers::opencode;
 use crate::providers::opencode::api;
 use crate::providers::opencode::spawn::read_container_port;
@@ -28,6 +29,7 @@ pub async fn reconcile_running_jobs(
     journal: &Arc<Journal>,
     client: &Arc<ApiClient>,
     worker_state: &Arc<RwLock<WorkerState>>,
+    job_tracker: &Arc<JobTracker>,
 ) {
     let running = match journal.list_running() {
         Ok(entries) => entries,
@@ -65,13 +67,19 @@ pub async fn reconcile_running_jobs(
             continue;
         }
         if entry.agent_backend.as_deref() == Some("omp_rpc") {
+            if !job_tracker.reserve(entry.job_id).await {
+                continue;
+            }
             let task_entry = entry.clone();
+            let job_id = entry.job_id;
             let api_client = Arc::clone(client);
             let worker = Arc::clone(worker_state);
             let jrnl = Arc::clone(journal);
-            tokio::spawn(recover_omp_rpc_session_task(
-                task_entry, api_client, worker, jrnl,
-            ));
+            let tracker = Arc::clone(job_tracker);
+            tokio::spawn(async move {
+                recover_omp_rpc_session_task(task_entry, api_client, worker, jrnl).await;
+                tracker.release(job_id).await;
+            });
             continue;
         }
 
@@ -175,15 +183,24 @@ pub async fn reconcile_running_jobs(
                     session_id = session_id,
                     "reconnecting to live session"
                 );
+                if !job_tracker.reserve(entry.job_id).await {
+                    continue;
+                }
                 let task_entry = entry.clone();
+                let job_id = entry.job_id;
                 let api_client = Arc::clone(client);
                 let worker = Arc::clone(worker_state);
                 let jrnl = Arc::clone(journal);
                 let sid = session_id.to_owned();
                 let cname = entry.container_name.clone();
-                tokio::spawn(recover_session_task(
-                    task_entry, api_client, worker, jrnl, oc_client, sid, cname,
-                ));
+                let tracker = Arc::clone(job_tracker);
+                tokio::spawn(async move {
+                    recover_session_task(
+                        task_entry, api_client, worker, jrnl, oc_client, sid, cname,
+                    )
+                    .await;
+                    tracker.release(job_id).await;
+                });
             }
         }
     }

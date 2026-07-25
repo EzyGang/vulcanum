@@ -1,11 +1,12 @@
 mod activation;
 mod archive;
+mod install;
 mod release;
 mod service;
 #[cfg(test)]
 mod tests;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Context;
@@ -16,10 +17,6 @@ use crate::update::service::{PlatformServiceRestarter, ServiceRestarter};
 pub(crate) const VERSION_FILE: &str = ".vulcanum-version";
 const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/EzyGang/vulcanum/releases/latest";
 const UPDATE_HTTP_TIMEOUT: Duration = Duration::from_secs(60);
-const BUILD_VERSION: &str = match option_env!("VULCANUM_RELEASE_VERSION") {
-    Some(version) => version,
-    None => env!("CARGO_PKG_VERSION"),
-};
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum UpdateOutcome {
@@ -34,6 +31,7 @@ pub(crate) enum UpdateOutcome {
     Failed {
         current_version: String,
         target_version: Option<String>,
+        rollback_dir: Option<PathBuf>,
         error: String,
     },
 }
@@ -62,11 +60,16 @@ impl UpdateOutcome {
             Self::Failed {
                 current_version,
                 target_version,
+                rollback_dir,
                 error,
             } => {
                 tracing::warn!(
                     current_version,
                     target_version = target_version.as_deref().unwrap_or("unknown"),
+                    rollback_dir = rollback_dir.as_ref().map_or_else(
+                        || "unavailable".to_owned(),
+                        |path| path.display().to_string()
+                    ),
                     error,
                     "automatic update failed; continuing with the working installation"
                 );
@@ -90,14 +93,21 @@ pub(crate) struct AutomaticUpdater<R = PlatformServiceRestarter> {
 }
 
 impl AutomaticUpdater<PlatformServiceRestarter> {
+    pub(crate) fn recover_current_install() -> anyhow::Result<bool> {
+        let install_dir = install::current_dir()?;
+        if let Some(rollback_dir) = activation::recover_interrupted_activation(&install_dir)? {
+            tracing::warn!(
+                rollback_dir = %rollback_dir.display(),
+                "recovered an interrupted automatic update before startup"
+            );
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
     pub(crate) fn for_current_install() -> anyhow::Result<Self> {
-        let executable =
-            std::env::current_exe().context("failed to locate the worker executable")?;
-        let install_dir = executable
-            .parent()
-            .ok_or_else(|| anyhow::anyhow!("worker executable has no parent directory"))?
-            .to_path_buf();
-        let current_version = read_installed_version(&install_dir)?;
+        let install_dir = install::current_dir()?;
+        let current_version = install::read_version(&install_dir)?;
         Self::new(
             LATEST_RELEASE_URL.to_owned(),
             install_dir,
@@ -172,13 +182,23 @@ where
             .path()
             .join(format!("{}.sha256", package.archive_name));
 
-        if let Err(error) =
-            archive::download(&self.client, &package.archive_url, &archive_path).await
+        if let Err(error) = archive::download(
+            &self.client,
+            &package.archive_url,
+            &archive_path,
+            archive::MAX_ARCHIVE_BYTES,
+        )
+        .await
         {
             return self.failure(Some(target_version), error);
         }
-        if let Err(error) =
-            archive::download(&self.client, &package.checksum_url, &checksum_path).await
+        if let Err(error) = archive::download(
+            &self.client,
+            &package.checksum_url,
+            &checksum_path,
+            archive::MAX_CHECKSUM_BYTES,
+        )
+        .await
         {
             return self.failure(Some(target_version), error);
         }
@@ -218,13 +238,25 @@ where
             Err(error) => return self.failure(Some(target_version), error),
         };
 
-        if let Err(error) = self.restarter.restart() {
-            return UpdateOutcome::Failed {
-                current_version: target_version.clone(),
-                target_version: Some(target_version),
-                error: format!(
-                    "release pair was activated, but the worker service restart failed: {error:#}"
-                ),
+        if let Err(restart_error) = self.restarter.restart() {
+            let rollback_result = activation::rollback_pair(&rollback_dir, &self.install_dir);
+            return match rollback_result {
+                Ok(()) => UpdateOutcome::Failed {
+                    current_version: self.current_version.clone(),
+                    target_version: Some(target_version),
+                    rollback_dir: Some(rollback_dir),
+                    error: format!(
+                        "worker service restart failed: {restart_error:#}; restored the previous release pair"
+                    ),
+                },
+                Err(rollback_error) => UpdateOutcome::Failed {
+                    current_version: target_version.clone(),
+                    target_version: Some(target_version),
+                    rollback_dir: Some(rollback_dir),
+                    error: format!(
+                        "worker service restart failed: {restart_error:#}; rollback is pending recovery after also failing: {rollback_error:#}"
+                    ),
+                },
             };
         }
 
@@ -239,23 +271,8 @@ where
         UpdateOutcome::Failed {
             current_version: self.current_version.clone(),
             target_version,
+            rollback_dir: None,
             error: format!("{error:#}"),
         }
-    }
-}
-
-fn read_installed_version(install_dir: &Path) -> anyhow::Result<String> {
-    let path = install_dir.join(VERSION_FILE);
-    match std::fs::read_to_string(&path) {
-        Ok(version) => {
-            let version = version.trim();
-            if version.is_empty() {
-                anyhow::bail!("installed release marker {} is empty", path.display());
-            }
-            Ok(version.to_owned())
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(BUILD_VERSION.to_owned()),
-        Err(error) => Err(error)
-            .with_context(|| format!("failed to read installed release marker {}", path.display())),
     }
 }

@@ -2,10 +2,12 @@ pub(crate) mod auth;
 #[cfg(test)]
 mod auth_tests;
 pub(crate) mod job;
-mod queue;
+pub(crate) mod queue;
 #[cfg(test)]
 mod queue_tests;
 mod tick;
+#[cfg(test)]
+mod update_tests;
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -31,6 +33,8 @@ use tick::tick;
 const INITIAL_BACKOFF_MS: u64 = 1_000;
 const MAX_BACKOFF_MS: u64 = 60_000;
 const BACKOFF_MULTIPLIER: u64 = 2;
+const MIN_UPDATE_CHECK_INTERVAL_SECS: u64 = 60;
+const MAX_UPDATE_CHECK_INTERVAL_SECS: u64 = 365 * 24 * 60 * 60;
 
 #[derive(Debug, PartialEq)]
 enum TickOutcome {
@@ -52,10 +56,11 @@ struct DaemonState {
 }
 
 pub async fn run() -> anyhow::Result<()> {
-    let config = load_config().context("failed to load worker config")?;
-    if config.auto_update_enabled && run_automatic_update().await {
-        return Ok(());
+    if AutomaticUpdater::recover_current_install()? {
+        anyhow::bail!("recovered an interrupted automatic update; restarting the worker daemon");
     }
+    let config = load_config().context("failed to load worker config")?;
+    let update_interval = automatic_update_interval(&config)?;
 
     if !is_environment_ready_for_config(&config) {
         tracing::error!("environment validation failed — run `vulcanum worker setup` for details");
@@ -98,17 +103,22 @@ pub async fn run() -> anyhow::Result<()> {
         shutdown_rx,
         shutdown_tx,
         pending_queue,
-        job_tracker,
+        job_tracker: Arc::clone(&job_tracker),
         config,
     };
 
-    recovery::reconcile_running_jobs(&journal, &client, &worker_state).await;
+    recovery::reconcile_running_jobs(&journal, &client, &worker_state, &job_tracker).await;
+    if daemon_state.config.auto_update_enabled
+        && daemon_state.job_tracker.is_idle().await
+        && run_automatic_update().await
+    {
+        return Ok(());
+    }
 
     tracing::info!("daemon started, starting poll loop");
 
     let mut backoff_ms = INITIAL_BACKOFF_MS;
-    let update_interval = Duration::from_secs(daemon_state.config.update_check_interval_secs);
-    let mut next_update_check = Instant::now() + update_interval;
+    let mut next_update_check = next_update_at(update_interval)?;
 
     loop {
         tokio::select! {
@@ -147,12 +157,32 @@ pub async fn run() -> anyhow::Result<()> {
             && daemon_state.job_tracker.is_idle().await
             && daemon_state.pending_queue.lock().await.is_empty()
         {
-            next_update_check = Instant::now() + update_interval;
+            next_update_check = next_update_at(update_interval)?;
             if run_automatic_update().await {
                 return Ok(());
             }
         }
     }
+}
+
+fn automatic_update_interval(config: &WorkerConfig) -> anyhow::Result<Duration> {
+    if !config.auto_update_enabled {
+        return Ok(Duration::ZERO);
+    }
+    if !(MIN_UPDATE_CHECK_INTERVAL_SECS..=MAX_UPDATE_CHECK_INTERVAL_SECS)
+        .contains(&config.update_check_interval_secs)
+    {
+        anyhow::bail!(
+            "update_check_interval_secs must be between {MIN_UPDATE_CHECK_INTERVAL_SECS} and {MAX_UPDATE_CHECK_INTERVAL_SECS}"
+        );
+    }
+    Ok(Duration::from_secs(config.update_check_interval_secs))
+}
+
+fn next_update_at(interval: Duration) -> anyhow::Result<Instant> {
+    Instant::now()
+        .checked_add(interval)
+        .ok_or_else(|| anyhow::anyhow!("update check interval cannot be scheduled"))
 }
 
 async fn run_automatic_update() -> bool {
