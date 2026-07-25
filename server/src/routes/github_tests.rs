@@ -21,6 +21,28 @@ async fn callback_classifier_accepts_oauth_response() {
         classify_callback(&query),
         Some(CallbackKind::OAuth {
             code: "oauth-code",
+            installation_id: None,
+            setup_action: None,
+            state_nonce: "oauth-state",
+        })
+    );
+}
+
+#[actix_web::test]
+async fn callback_classifier_preserves_installation_from_oauth_response() {
+    let query = CallbackQuery {
+        code: Some("oauth-code".to_owned()),
+        installation_id: Some(42),
+        setup_action: Some("install".to_owned()),
+        state: Some("oauth-state".to_owned()),
+    };
+
+    assert_eq!(
+        classify_callback(&query),
+        Some(CallbackKind::OAuth {
+            code: "oauth-code",
+            installation_id: Some(42),
+            setup_action: Some("install"),
             state_nonce: "oauth-state",
         })
     );
