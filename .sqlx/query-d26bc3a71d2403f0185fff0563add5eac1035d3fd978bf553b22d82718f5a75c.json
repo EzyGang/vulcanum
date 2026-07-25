@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO task_prs\n           (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number, source_work_run_id)\n           VALUES ($1, 'existing-ticket', 'https://github.com/acme/widgets/pull/42',\n                   'acme/widgets', 42, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d26bc3a71d2403f0185fff0563add5eac1035d3fd978bf553b22d82718f5a75c"
+}

@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use octocrab::models::{InstallationId, IssueState};
+use octocrab::models::{reactions::ReactionContent, InstallationId, IssueState};
 use uuid::Uuid;
 
 use crate::models::github_app::errors::GithubAppError;
@@ -30,6 +30,13 @@ pub(crate) trait PullRequestCommentWriter: Send + Sync {
         pr_number: i64,
         marker: &str,
         body: &str,
+    ) -> Result<(), GithubAppError>;
+
+    async fn react_to_comment(
+        &self,
+        installation_id: i64,
+        repo_full_name: &str,
+        comment_id: i64,
     ) -> Result<(), GithubAppError>;
 }
 
@@ -102,6 +109,29 @@ impl PullRequestCommentWriter for GithubAppManager {
             .await
             .map(|_| ())
             .map_err(|e| GithubAppError::Api(format!("create pull request comment: {e}")))
+    }
+
+    async fn react_to_comment(
+        &self,
+        installation_id: i64,
+        repo_full_name: &str,
+        comment_id: i64,
+    ) -> Result<(), GithubAppError> {
+        let repo = parse_github_repo(repo_full_name)
+            .ok_or_else(|| GithubAppError::InvalidRepoIdentifier(repo_full_name.to_owned()))?;
+        let comment_id = u64::try_from(comment_id)
+            .map_err(|e| GithubAppError::Api(format!("invalid comment ID: {e}")))?;
+        let client = self
+            .app_octocrab()?
+            .installation(InstallationId(installation_id as u64))
+            .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
+
+        client
+            .issues(repo.owner(), repo.name())
+            .create_comment_reaction(comment_id, ReactionContent::Eyes)
+            .await
+            .map(|_| ())
+            .map_err(|e| GithubAppError::Api(format!("react to pull request comment: {e}")))
     }
 }
 

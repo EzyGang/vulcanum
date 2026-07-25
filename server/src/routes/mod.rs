@@ -29,6 +29,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/auth/refresh", web::post().to(auth::refresh))
             .route("/auth/github/start", web::get().to(auth::github_start))
             .route(
+                "/auth/github/link-url",
+                web::get().to(auth::github_link_url),
+            )
+            .route(
                 "/auth/github/callback",
                 web::get().to(auth::github_callback),
             )

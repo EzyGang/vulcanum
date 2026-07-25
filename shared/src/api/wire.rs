@@ -147,6 +147,12 @@ pub struct PollResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AckRequest {}
 
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct GitCommitAuthor {
+    pub name: String,
+    pub email: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JobResponse {
     pub work_type: WorkRunType,
@@ -165,6 +171,7 @@ pub struct JobResponse {
     pub github_token: Option<String>,
     #[serde(default)]
     pub github_token_expires_at: Option<DateTime<Utc>>,
+    pub github_commit_author: Option<GitCommitAuthor>,
     pub pr_urls: Vec<String>,
     pub review_target_pr_url: Option<String>,
     pub review_target_repo_full_name: Option<String>,

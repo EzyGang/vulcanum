@@ -7,5 +7,7 @@ export interface RepoInfo {
 export interface GithubInstallation {
   id: number;
   accountLogin: string;
+  reviewIdentityUserId?: string | null;
+  reviewIdentityLogin?: string | null;
   createdAt: string;
 }

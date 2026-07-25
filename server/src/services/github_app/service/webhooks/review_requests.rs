@@ -12,12 +12,16 @@ impl GithubWebhookService {
     ) -> Result<DeliveryDisposition, GithubAppError> {
         let sender_id = required(&delivery.sender_id, "sender_id")?;
         let pr_title = required(&delivery.pr_title, "pr_title")?;
+        let comment_id = delivery
+            .comment_id
+            .ok_or_else(|| GithubAppError::Redis("review webhook omitted comment_id".to_owned()))?;
         let outcome = match self
             .work_runs
             .request_github_review(GithubReviewRequest {
                 delivery_id: &delivery.delivery_id,
                 installation_id: delivery.installation_id,
                 sender_id,
+                single_user_mode: self.single_user_mode,
                 repo_full_name: &delivery.repo_full_name,
                 pr_number: delivery.pr_number,
                 pr_title,
@@ -32,6 +36,17 @@ impl GithubWebhookService {
             .app_slug
             .as_deref()
             .ok_or(GithubAppError::NotConfigured)?;
+        if let Err(error) = self
+            .comment_writer
+            .react_to_comment(
+                delivery.installation_id,
+                &delivery.repo_full_name,
+                comment_id,
+            )
+            .await
+        {
+            return Ok(DeliveryDisposition::Retry(error.to_string()));
+        }
         match respond_to_outcome(
             self.comment_writer.as_ref(),
             app_slug,

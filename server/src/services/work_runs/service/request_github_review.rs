@@ -13,6 +13,7 @@ pub(crate) struct GithubReviewRequest<'a> {
     pub delivery_id: &'a str,
     pub installation_id: i64,
     pub sender_id: &'a str,
+    pub single_user_mode: bool,
     pub repo_full_name: &'a str,
     pub pr_number: i64,
     pub pr_title: &'a str,
@@ -57,11 +58,24 @@ impl WorkRunsService {
             Some(team_id) => team_id,
             None => return Ok(GithubReviewRequestOutcome::UnknownInstallation),
         };
-        let authorized = self
-            .project_configs
-            .teams
-            .is_provider_identity_member(team_id, "github", request.sender_id)
-            .await?;
+        let linked_identity = match request.single_user_mode {
+            true => {
+                self.github
+                    .repo
+                    .is_linked_review_identity(&self.db, request.installation_id, request.sender_id)
+                    .await?
+            }
+            false => false,
+        };
+        let authorized = match linked_identity {
+            true => true,
+            false => {
+                self.project_configs
+                    .teams
+                    .is_provider_identity_member(team_id, "github", request.sender_id)
+                    .await?
+            }
+        };
         if !authorized {
             return Ok(GithubReviewRequestOutcome::Unauthorized);
         }
@@ -100,14 +114,29 @@ impl WorkRunsService {
         };
 
         let normalized_repo = request.repo_full_name.to_ascii_lowercase();
-        let external_task_ref = self
-            .resolve_github_review_ticket(
-                selected,
+        let external_task_ref = match self
+            .work_runs_repo
+            .list_task_pr_targets_for_pull_request(
+                &self.db,
+                request.installation_id,
                 &normalized_repo,
                 request.pr_number,
-                request.pr_title,
             )
-            .await?;
+            .await?
+            .into_iter()
+            .find(|target| target.project_config_id == selected.id)
+        {
+            Some(target) => target.external_task_ref,
+            None => {
+                self.resolve_github_review_ticket(
+                    selected,
+                    &normalized_repo,
+                    request.pr_number,
+                    request.pr_title,
+                )
+                .await?
+            }
+        };
         let ticket_title = review_ticket_title(request.pr_number, request.pr_title);
         let inserted = self
             .work_runs_repo

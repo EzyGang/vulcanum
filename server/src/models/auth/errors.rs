@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::models::github_app::errors::GithubAppError;
 use crate::models::teams::errors::TeamsError;
 use crate::models::users::errors::UsersError;
 
@@ -15,6 +16,8 @@ pub enum AuthError {
     InstanceLoginDisabled,
     #[error("github oauth failed: {0}")]
     GithubOAuth(String),
+    #[error(transparent)]
+    GithubApp(#[from] GithubAppError),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]

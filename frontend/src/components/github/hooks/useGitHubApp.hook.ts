@@ -1,14 +1,33 @@
 import { useEffect } from 'preact/hooks';
+import { getAuthMode } from '../../../services/auth/auth.service';
 import {
   disconnectInstallation,
+  type GithubAuthUrlResponse,
   getAuthUrl,
   getInstallation,
+  getReviewIdentityAuthUrl,
   listRepos
 } from '../../../services/github/github.service';
 import { queryClient } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 
+const openGitHubFlow = async (requestUrl: () => Promise<GithubAuthUrlResponse>): Promise<void> => {
+  const flowWindow = window.open('', '_blank');
+
+  try {
+    const { url } = await requestUrl();
+    if (flowWindow) {
+      flowWindow.location.href = url;
+      return;
+    }
+    window.location.href = url;
+  } catch {
+    flowWindow?.close();
+  }
+};
+
 export const useGitHubApp = () => {
+  const { data: authMode } = useApiQuery(['auth-mode'], getAuthMode);
   const {
     data: installation,
     isLoading: installationLoading,
@@ -36,6 +55,8 @@ export const useGitHubApp = () => {
     queryClient.invalidateQueries({ queryKey: ['github-repos'], refetchType: 'active' });
   }, [installation?.id]);
 
+  const connectMutation = useApiMutation(getAuthUrl);
+  const linkIdentityMutation = useApiMutation(getReviewIdentityAuthUrl);
   const disconnectMutation = useApiMutation((id: number) => disconnectInstallation(id), {
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ['github-repos'] });
@@ -43,34 +64,56 @@ export const useGitHubApp = () => {
     }
   });
 
-  const onConnect = async () => {
-    const installWindow = window.open('', '_blank');
-
-    try {
-      const { url } = await getAuthUrl();
-      if (installWindow) {
-        installWindow.location.href = url;
-        return;
-      }
-      window.location.href = url;
-    } catch (error) {
-      installWindow?.close();
-      throw error;
+  const onConnect = () => openGitHubFlow(() => connectMutation.mutateAsync(undefined));
+  const onLinkReviewIdentity = () =>
+    openGitHubFlow(() => linkIdentityMutation.mutateAsync(undefined));
+  const onDisconnect = (): void => {
+    if (installation) {
+      disconnectMutation.mutate(installation.id);
     }
   };
+  const onRefresh = (): void => {
+    refetch();
+  };
+  const reviewIdentityLogin = installation?.reviewIdentityLogin;
+  const identityPanel =
+    installation && authMode?.isSingleUser
+      ? {
+          statusText: reviewIdentityLogin
+            ? `@${reviewIdentityLogin} can start reviews from PR comments.`
+            : 'Link the GitHub account allowed to start reviews from PR comments.',
+          actionLabel: linkIdentityMutation.isPending
+            ? 'Opening GitHub...'
+            : reviewIdentityLogin
+              ? 'Change account'
+              : 'Link account'
+        }
+      : null;
 
   return {
-    installation,
-    repos,
-    reposLoading,
-    reposError,
-    installationLoading,
-    installationRefreshing,
-    installationErrorMessage: installationError?.message ?? reposError?.message ?? null,
-    installationError,
-    onConnect,
-    disconnectInstallation: disconnectMutation.mutateAsync,
-    disconnectPending: disconnectMutation.isPending,
-    refetch
+    data: {
+      installation: installation ?? null,
+      repos,
+      identityPanel
+    },
+    status: {
+      isLoading: installationLoading,
+      isRefreshing: installationRefreshing,
+      reposLoading,
+      disconnectPending: disconnectMutation.isPending,
+      identityLinkPending: linkIdentityMutation.isPending,
+      errorMessage:
+        installationError?.message ??
+        reposError?.message ??
+        connectMutation.error?.message ??
+        linkIdentityMutation.error?.message ??
+        null
+    },
+    actions: {
+      onConnect,
+      onLinkReviewIdentity,
+      onRefresh,
+      onDisconnect
+    }
   };
 };

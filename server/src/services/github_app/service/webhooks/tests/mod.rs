@@ -19,6 +19,7 @@ const APP_SLUG: &str = "vulcanum-app";
 #[derive(Default)]
 struct RecordingWriter {
     calls: Mutex<Vec<(String, String)>>,
+    reactions: Mutex<Vec<(String, i64)>>,
 }
 
 #[async_trait]
@@ -38,6 +39,19 @@ impl PullRequestCommentWriter for RecordingWriter {
             .push((marker.to_owned(), body.to_owned()));
         Ok(())
     }
+
+    async fn react_to_comment(
+        &self,
+        _installation_id: i64,
+        repo_full_name: &str,
+        comment_id: i64,
+    ) -> Result<(), GithubAppError> {
+        self.reactions
+            .lock()
+            .await
+            .push((repo_full_name.to_owned(), comment_id));
+        Ok(())
+    }
 }
 
 fn service(state: &crate::app_state::AppState) -> GithubWebhookService {
@@ -51,6 +65,7 @@ fn service_with_writer(
     GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         Some(Arc::from(APP_SLUG)),
+        state.is_single_user,
         GithubWebhookStore::in_memory(),
         state.jobs.clone(),
         writer,
@@ -74,7 +89,7 @@ fn issue_comment_payload(
             "state": state,
             "pull_request": pull_request,
         },
-        "comment": {"body": body},
+        "comment": {"id": 789, "body": body},
         "sender": {"id": 456, "login": login},
     }))
     .expect("serialize issue comment")

@@ -366,11 +366,10 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
 
     let auth = AuthService::new(
         AuthRepository::new(),
+        GithubAppRepository::new(),
         pool.clone(),
         UsersService::new(UsersRepository::new(), pool.clone()),
         teams.clone(),
-        "test-password".to_owned(),
-        "test-secret".to_owned(),
         &cfg,
     )
     .expect("build auth service");
@@ -392,6 +391,7 @@ pub async fn build_state(pool: sqlx::PgPool) -> AppState {
     let github_webhooks = GithubWebhookService::new(
         cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
         cfg.github_app_slug.as_deref().map(Arc::<str>::from),
+        cfg.is_single_user,
         GithubWebhookStore::in_memory(),
         jobs.clone(),
         Arc::new(github.clone()),

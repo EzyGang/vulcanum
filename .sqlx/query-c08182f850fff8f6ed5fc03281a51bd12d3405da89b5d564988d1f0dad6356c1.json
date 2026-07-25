@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO github_installations (team_id, installed_by_user_id, github_installation_id, account_login)\n               VALUES ($1, $2, $3, $4)\n               ON CONFLICT (github_installation_id) DO UPDATE SET\n                   installed_by_user_id = EXCLUDED.installed_by_user_id,\n                   account_login = EXCLUDED.account_login,\n                   created_at = NOW()\n               WHERE github_installations.team_id = EXCLUDED.team_id\n               RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id, created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "UPDATE github_installations\n               SET review_identity_user_id = $3, review_identity_login = $4\n               WHERE team_id = $1 AND id = $2\n               RETURNING id, team_id, github_installation_id, account_login, installed_by_user_id,\n                         review_identity_user_id, review_identity_login,\n                         created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -30,6 +30,16 @@
       },
       {
         "ordinal": 5,
+        "name": "review_identity_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "review_identity_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
@@ -37,8 +47,8 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
         "Int8",
+        "Text",
         "Text"
       ]
     },
@@ -48,8 +58,10 @@
       false,
       false,
       true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "3d7704cbff6d4bb0336dbceb7de328fdc7c469469fe4ce268572413fc75e8471"
+  "hash": "c08182f850fff8f6ed5fc03281a51bd12d3405da89b5d564988d1f0dad6356c1"
 }
