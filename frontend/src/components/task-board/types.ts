@@ -48,9 +48,15 @@ export interface TaskBoardMenuPosition {
 
 export type TaskBoardMenuStyle = Pick<JSX.CSSProperties, 'left' | 'top'> | undefined;
 
+export interface TaskBoardPullRequestLinkData {
+  label: string;
+  url: string;
+}
+
 export interface TaskBoardTaskCardData {
   task: TaskBoardTask;
   augmentation: TaskBoardTaskAugmentation | null;
+  pullRequests: TaskBoardPullRequestLinkData[];
   displayId: string;
   createdAtLabel: string;
   moving: boolean;
@@ -58,6 +64,8 @@ export interface TaskBoardTaskCardData {
   menuStyle: TaskBoardMenuStyle;
   moveActions: TaskBoardMoveAction[];
   onClick: () => void;
+  onPointerDown: JSX.PointerEventHandler<HTMLElement>;
+  onPrLinkClick: JSX.MouseEventHandler<HTMLAnchorElement>;
   onOpenMenu: JSX.MouseEventHandler<HTMLButtonElement>;
   onDragStart: JSX.DragEventHandler<HTMLElement>;
   onDragEnd: () => void;

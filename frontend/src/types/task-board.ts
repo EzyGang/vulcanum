@@ -38,6 +38,7 @@ export interface TaskBoardTaskAugmentation extends TaskBoardTokenUsageCounters {
   externalTaskRef: string;
   finishedRunsCount: number;
   updatedAt: string;
+  prUrls: string[];
 }
 
 export interface TaskBoardTask {
