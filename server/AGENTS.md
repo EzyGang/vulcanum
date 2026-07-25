@@ -171,7 +171,7 @@ src/services/<domain>/
 - `DATABASE_URL`
 - `MAX_CONNS` - max db connections (default: `32`)
 - `IS_SINGLE_USER` - `true` keeps instance-password auth; `false` enables GitHub OAuth user auth
-- `GITHUB_OAUTH_CLIENT_ID`
-- `GITHUB_OAUTH_CLIENT_SECRET`
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
 - `GITHUB_OAUTH_REDIRECT_URL`
 - `GITHUB_WEBHOOK_SECRET` - shared HMAC secret configured on the GitHub App webhook

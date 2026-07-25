@@ -27,10 +27,13 @@ impl ReviewLoopState {
     #[must_use]
     pub(crate) fn new(work_type: WorkRunType, max_turns: i32) -> Self {
         let enabled = matches!(work_type, WorkRunType::PullRequestReview);
-        let max_turns = max_turns.max(1);
-        let max_fix_passes = match enabled {
-            true => ((max_turns - 1) / 2).max(0),
-            false => max_turns,
+        let configured_turns = max_turns.max(1);
+        let (max_turns, max_fix_passes) = match enabled {
+            true => (
+                configured_turns.saturating_mul(2).saturating_add(1),
+                configured_turns,
+            ),
+            false => (configured_turns, configured_turns),
         };
         Self {
             enabled,

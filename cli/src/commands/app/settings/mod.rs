@@ -88,14 +88,14 @@ pub(super) async fn list_with(
     let github_request = async {
         context
             .client
-            .get_github_app_installation(team_id, access_token)
+            .list_github_app_installations(team_id, access_token)
             .await
-            .map_err(|error| handle_authenticated_error("Get GitHub App installation", error))
+            .map_err(|error| handle_authenticated_error("List GitHub App installations", error))
     };
-    let (trackers, providers, installation) =
+    let (trackers, providers, installations) =
         tokio::try_join!(trackers_request, providers_request, github_request)?;
 
-    let output = render_settings(&team, trackers, providers, installation);
+    let output = render_settings(&team, trackers, providers, installations);
     write!(runtime.stdout, "{output}")?;
     Ok(())
 }
@@ -145,7 +145,7 @@ fn render_settings(
     team: &AppTeam,
     trackers: Vec<TaskTracker>,
     providers: Vec<AppModelProvider>,
-    installation: Option<GithubAppInstallation>,
+    installations: Vec<GithubAppInstallation>,
 ) -> String {
     let team_name = escape_terminal(&team.name);
     let primary_provider = provider_label(team.primary_model_provider_key.as_deref(), &providers);
@@ -215,13 +215,15 @@ fn render_settings(
     }
 
     output.push_str("\nGitHub App\n");
-    match installation {
-        Some(installation) => {
-            output.push_str("Status: connected\nAccount: ");
+    if installations.is_empty() {
+        output.push_str("Status: disconnected\n");
+    } else {
+        output.push_str("Status: connected\n");
+        for installation in installations {
+            output.push_str("Account: ");
             output.push_str(&escape_terminal(&installation.account_login));
             output.push('\n');
         }
-        None => output.push_str("Status: disconnected\n"),
     }
     output
 }

@@ -39,7 +39,7 @@ interface DashboardViewProps {
     workers: WorkerSummary[];
     projects: ProjectSummary[];
     providers: ProviderSummary[];
-    githubInstallation: { accountLogin: string } | null;
+    githubInstallations: { id: number; accountLogin: string }[];
     githubLoading: boolean;
   };
   status: {
@@ -68,7 +68,7 @@ const SkeletonStatCard = ({ label }: { label: string }): JSX.Element => (
 );
 
 export const DashboardView = ({
-  data: { stats, workers, projects, providers, githubInstallation, githubLoading },
+  data: { stats, workers, projects, providers, githubInstallations, githubLoading },
   status: { loading, error },
   actions: { goToSettings, goToWorkers, goToRuns }
 }: DashboardViewProps): JSX.Element => (
@@ -200,7 +200,7 @@ export const DashboardView = ({
       <DashboardTableSection
         title='GitHub App'
         emptyMessage='No GitHub App installed.'
-        isEmpty={!githubInstallation && !githubLoading}
+        isEmpty={githubInstallations.length === 0 && !githubLoading}
       >
         <Table>
           <Table.Head>
@@ -208,26 +208,29 @@ export const DashboardView = ({
             <Table.HeadCell>Account</Table.HeadCell>
           </Table.Head>
           <Table.Body>
-            <Table.Row>
-              <Table.Cell>
-                {githubLoading ? (
+            {githubLoading ? (
+              <Table.Row>
+                <Table.Cell>
                   <span class='text-text-muted text-xs animate-pulse'>Loading...</span>
-                ) : githubInstallation ? (
-                  <span class='text-success text-xs uppercase tracking-wider px-2 py-0.5 border border-success-border bg-success-bg'>
-                    Connected
-                  </span>
-                ) : (
-                  <span class='text-text-muted text-xs uppercase tracking-wider px-2 py-0.5 border border-border-base bg-bg-hover'>
-                    Not Connected
-                  </span>
-                )}
-              </Table.Cell>
-              <Table.Cell>
-                <span class='text-text-secondary text-sm font-mono'>
-                  {githubInstallation ? githubInstallation.accountLogin : '—'}
-                </span>
-              </Table.Cell>
-            </Table.Row>
+                </Table.Cell>
+                <Table.Cell>—</Table.Cell>
+              </Table.Row>
+            ) : (
+              githubInstallations.map((installation) => (
+                <Table.Row key={installation.id}>
+                  <Table.Cell>
+                    <span class='text-success text-xs uppercase tracking-wider px-2 py-0.5 border border-success-border bg-success-bg'>
+                      Connected
+                    </span>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <span class='text-text-secondary text-sm font-mono'>
+                      {installation.accountLogin}
+                    </span>
+                  </Table.Cell>
+                </Table.Row>
+              ))
+            )}
           </Table.Body>
         </Table>
       </DashboardTableSection>

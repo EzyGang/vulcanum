@@ -85,14 +85,17 @@ impl WorkRunsRepository {
     {
         sqlx::query_as!(
             TaskPrTarget,
-            r#"SELECT DISTINCT tp.project_config_id, tp.external_task_ref
+            r#"SELECT DISTINCT ON (tp.project_config_id, tp.external_task_ref)
+                 tp.project_config_id, tp.external_task_ref, tp.source_work_run_id,
+                 wr.task_title, wr.task_slug
              FROM task_prs tp
              INNER JOIN project_configs pc ON pc.id = tp.project_config_id
              INNER JOIN github_installations gi ON gi.team_id = pc.team_id
+             LEFT JOIN work_runs wr ON wr.id = tp.source_work_run_id
              WHERE gi.github_installation_id = $1
                AND LOWER(tp.repo_full_name) = LOWER($2)
                AND tp.pr_number = $3
-             ORDER BY tp.project_config_id, tp.external_task_ref"#,
+             ORDER BY tp.project_config_id, tp.external_task_ref, tp.updated_at DESC, tp.id DESC"#,
             installation_id,
             repo_full_name,
             pr_number,

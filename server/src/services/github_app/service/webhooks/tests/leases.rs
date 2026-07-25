@@ -36,6 +36,15 @@ impl PullRequestCommentWriter for SlowWriter {
         self.release.notified().await;
         Ok(())
     }
+
+    async fn react_to_comment(
+        &self,
+        _installation_id: i64,
+        _repo_full_name: &str,
+        _comment_id: i64,
+    ) -> Result<(), GithubAppError> {
+        Ok(())
+    }
 }
 
 #[sqlx::test]
@@ -52,6 +61,7 @@ async fn active_delivery_lease_prevents_duplicate_slow_comment(pool: sqlx::PgPoo
             installation_id: 123,
             repo_full_name: "acme/widgets".to_owned(),
             pr_number: 42,
+            comment_id: Some(789),
             sender_id: Some("456".to_owned()),
             pr_title: Some("Review me".to_owned()),
             project_selector: Some("project:00000000-0000-0000-0000-000000000123".to_owned()),

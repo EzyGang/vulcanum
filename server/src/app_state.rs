@@ -86,11 +86,10 @@ impl AppState {
         let users = UsersService::new(UsersRepository::new(), db_pool.clone());
         let auth = AuthService::new(
             AuthRepository::new(),
+            GithubAppRepository::new(),
             db_pool.clone(),
             users,
             teams.clone(),
-            cfg.instance_password.clone(),
-            cfg.jwt_secret.clone(),
             cfg,
         )?;
         let project_usage_repo = ProjectUsageRepository::new();
@@ -146,6 +145,7 @@ impl AppState {
         let github_webhooks = GithubWebhookService::new(
             cfg.github_webhook_secret.as_deref().map(Arc::<str>::from),
             cfg.github_app_slug.as_deref().map(Arc::<str>::from),
+            cfg.is_single_user,
             GithubWebhookStore::redis(&cfg.redis_url)?,
             jobs.clone(),
             Arc::new(github.clone()),

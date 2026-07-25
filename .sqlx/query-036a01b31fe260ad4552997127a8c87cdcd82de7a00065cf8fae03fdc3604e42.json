@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT external_task_ref, task_title, task_slug, parent_work_run_id FROM work_runs WHERE github_delivery_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "task_slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_work_run_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "036a01b31fe260ad4552997127a8c87cdcd82de7a00065cf8fae03fdc3604e42"
+}

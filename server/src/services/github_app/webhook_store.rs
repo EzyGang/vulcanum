@@ -48,6 +48,7 @@ pub(crate) struct GithubWebhookDelivery {
     pub installation_id: i64,
     pub repo_full_name: String,
     pub pr_number: i64,
+    pub comment_id: Option<i64>,
     pub sender_id: Option<String>,
     pub pr_title: Option<String>,
     pub project_selector: Option<String>,

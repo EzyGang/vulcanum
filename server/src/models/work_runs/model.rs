@@ -112,4 +112,7 @@ pub struct TaskPr {
 pub struct TaskPrTarget {
     pub project_config_id: Uuid,
     pub external_task_ref: String,
+    pub source_work_run_id: Option<Uuid>,
+    pub task_title: Option<String>,
+    pub task_slug: Option<String>,
 }

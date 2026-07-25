@@ -16,6 +16,7 @@ use crate::daemon::job::execution::submit::{submit_failed_result, FailedResult};
 use crate::daemon::job::github_credentials::{spawn_refresh_task, stop_refresh_task};
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
 use crate::isolation::factory::{create_isolation_provider, IsolationKind};
+use crate::isolation::github_credentials::commit_identity_env;
 use crate::state::journal::Journal;
 
 pub(super) struct PreparedEnvironment {
@@ -107,7 +108,7 @@ pub(super) async fn prepare_environment(
 
     let limits = ResourceLimits::default();
     let secrets = job_runtime_secrets(job);
-    let env_vars = std::collections::HashMap::new();
+    let env_vars = commit_identity_env(job.github_commit_author.as_ref());
     let isolated_env = match provider
         .prepare(
             workdir,

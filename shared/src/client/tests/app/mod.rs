@@ -95,31 +95,28 @@ async fn team_scoped_app_reads_send_team_and_bearer_headers() {
         Some("dev@example.com")
     );
 
-    let installation = r#"{"account_login":"octocat","id":9}"#;
-    let (base_url, handle) = serve_once("200 OK", installation);
+    let installations = r#"[{"account_login":"octocat","id":9}]"#;
+    let (base_url, handle) = serve_once("200 OK", installations);
     let github = ApiClient::new(base_url)
-        .get_github_app_installation(TEAM_ID, "app-access")
+        .list_github_app_installations(TEAM_ID, "app-access")
         .await
-        .expect("installation should parse");
+        .expect("installations should parse");
     assert_scoped_request(
         handle.join().expect("server should finish"),
-        "/api/v1/github/installation",
+        "/api/v1/github/installations",
     );
-    assert_eq!(
-        github.expect("installation should exist").account_login,
-        "octocat"
-    );
+    assert_eq!(github[0].account_login, "octocat");
 
-    let (base_url, handle) = serve_once("200 OK", "null");
+    let (base_url, handle) = serve_once("200 OK", "[]");
     let github = ApiClient::new(base_url)
-        .get_github_app_installation(TEAM_ID, "app-access")
+        .list_github_app_installations(TEAM_ID, "app-access")
         .await
-        .expect("null installation should parse");
+        .expect("empty installations should parse");
     assert_scoped_request(
         handle.join().expect("server should finish"),
-        "/api/v1/github/installation",
+        "/api/v1/github/installations",
     );
-    assert_eq!(github, None);
+    assert!(github.is_empty());
 }
 
 fn assert_scoped_request(request: String, target: &str) {
