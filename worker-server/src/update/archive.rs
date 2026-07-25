@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
 use std::path::Path;
 
 use anyhow::Context;
@@ -14,6 +14,40 @@ pub(super) const MAX_ARCHIVE_BYTES: u64 = 256 * 1024 * 1024;
 pub(super) const MAX_CHECKSUM_BYTES: u64 = 4 * 1024;
 const MAX_BINARY_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_EXTRACTED_BYTES: u64 = 2 * MAX_BINARY_BYTES;
+const MAX_ARCHIVE_METADATA_BYTES: u64 = 1024 * 1024;
+const MAX_DECOMPRESSED_BYTES: u64 = MAX_EXTRACTED_BYTES + MAX_ARCHIVE_METADATA_BYTES;
+
+struct LimitedReader<R> {
+    inner: R,
+    remaining: u64,
+    limit: u64,
+}
+
+impl<R> Read for LimitedReader<R>
+where
+    R: Read,
+{
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        if buffer.is_empty() {
+            return Ok(0);
+        }
+        if self.remaining == 0 {
+            let mut probe = [0_u8; 1];
+            return match self.inner.read(&mut probe)? {
+                0 => Ok(0),
+                _ => Err(io::Error::other(format!(
+                    "release archive exceeds the {}-byte decompressed limit",
+                    self.limit
+                ))),
+            };
+        }
+
+        let allowed = self.remaining.min(buffer.len() as u64) as usize;
+        let read = self.inner.read(&mut buffer[..allowed])?;
+        self.remaining -= read as u64;
+        Ok(read)
+    }
+}
 
 pub(super) async fn download(
     client: &reqwest::Client,
@@ -73,6 +107,7 @@ pub(super) fn verify_and_extract(
         staging_dir,
         MAX_BINARY_BYTES,
         MAX_EXTRACTED_BYTES,
+        MAX_DECOMPRESSED_BYTES,
     )
 }
 #[cfg(test)]
@@ -82,6 +117,7 @@ pub(super) fn verify_and_extract_with_limits(
     staging_dir: &Path,
     max_binary_bytes: u64,
     max_extracted_bytes: u64,
+    max_decompressed_bytes: u64,
 ) -> anyhow::Result<()> {
     verify_checksum(archive_path, checksum_path)?;
     extract_pair(
@@ -89,6 +125,7 @@ pub(super) fn verify_and_extract_with_limits(
         staging_dir,
         max_binary_bytes,
         max_extracted_bytes,
+        max_decompressed_bytes,
     )
 }
 
@@ -137,11 +174,17 @@ fn extract_pair(
     staging_dir: &Path,
     max_binary_bytes: u64,
     max_extracted_bytes: u64,
+    max_decompressed_bytes: u64,
 ) -> anyhow::Result<()> {
     let file = File::open(archive_path)
         .with_context(|| format!("failed to open archive {}", archive_path.display()))?;
     let decoder = GzDecoder::new(file);
-    let mut archive = tar::Archive::new(decoder);
+    let limited = LimitedReader {
+        inner: decoder,
+        remaining: max_decompressed_bytes,
+        limit: max_decompressed_bytes,
+    };
+    let mut archive = tar::Archive::new(limited);
     let mut cli_found = false;
     let mut worker_found = false;
     let mut extracted_bytes = 0_u64;
@@ -154,10 +197,7 @@ fn extract_pair(
         if !entry.header().entry_type().is_file() {
             anyhow::bail!("release archive contains a non-file entry");
         }
-        let entry_size = entry
-            .header()
-            .size()
-            .context("release archive entry has invalid size")?;
+        let entry_size = entry.size();
         if entry_size > max_binary_bytes {
             anyhow::bail!("release archive binary exceeds the {max_binary_bytes}-byte limit");
         }

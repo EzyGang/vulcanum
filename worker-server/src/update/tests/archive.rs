@@ -1,5 +1,7 @@
 use crate::update::archive::{download, verify_and_extract_with_limits, MAX_CHECKSUM_BYTES};
-use crate::update::tests::support::{checksum, release_archive, TestServer};
+use crate::update::tests::support::{
+    checksum, release_archive, release_archive_with_cli_pax, TestServer,
+};
 
 #[tokio::test]
 async fn rejects_download_larger_than_configured_limit() {
@@ -33,9 +35,15 @@ fn rejects_oversized_checksum_before_loading_it() {
     std::fs::write(&checksum_path, vec![b'0'; MAX_CHECKSUM_BYTES as usize + 1])
         .expect("checksum should be written");
 
-    let error =
-        verify_and_extract_with_limits(&archive_path, &checksum_path, temporary.path(), 16, 32)
-            .expect_err("oversized checksum should be rejected");
+    let error = verify_and_extract_with_limits(
+        &archive_path,
+        &checksum_path,
+        temporary.path(),
+        16,
+        32,
+        64 * 1024,
+    )
+    .expect_err("oversized checksum should be rejected");
 
     assert!(error.to_string().contains("checksum file exceeds"));
 }
@@ -49,9 +57,60 @@ fn rejects_archive_entry_larger_than_binary_limit() {
     std::fs::write(&archive_path, &archive).expect("archive should be written");
     std::fs::write(&checksum_path, checksum(&archive)).expect("checksum should be written");
 
-    let error =
-        verify_and_extract_with_limits(&archive_path, &checksum_path, temporary.path(), 8, 16)
-            .expect_err("oversized binary should be rejected");
+    let error = verify_and_extract_with_limits(
+        &archive_path,
+        &checksum_path,
+        temporary.path(),
+        8,
+        16,
+        64 * 1024,
+    )
+    .expect_err("oversized binary should be rejected");
 
     assert!(error.to_string().contains("binary exceeds"));
+}
+
+#[test]
+fn rejects_pax_size_override_larger_than_binary_limit() {
+    let archive = release_archive_with_cli_pax("size", b"9", b"x", b"worker");
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let archive_path = temporary.path().join("release.tar.gz");
+    let checksum_path = temporary.path().join("release.tar.gz.sha256");
+    std::fs::write(&archive_path, &archive).expect("archive should be written");
+    std::fs::write(&checksum_path, checksum(&archive)).expect("checksum should be written");
+
+    let error = verify_and_extract_with_limits(
+        &archive_path,
+        &checksum_path,
+        temporary.path(),
+        8,
+        16,
+        64 * 1024,
+    )
+    .expect_err("effective PAX size should be rejected");
+
+    assert!(error.to_string().contains("binary exceeds"));
+}
+
+#[test]
+fn rejects_decompressed_metadata_larger_than_limit() {
+    let metadata = vec![b'x'; 4 * 1024];
+    let archive = release_archive_with_cli_pax("comment", &metadata, b"cli", b"worker");
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let archive_path = temporary.path().join("release.tar.gz");
+    let checksum_path = temporary.path().join("release.tar.gz.sha256");
+    std::fs::write(&archive_path, &archive).expect("archive should be written");
+    std::fs::write(&checksum_path, checksum(&archive)).expect("checksum should be written");
+
+    let error = verify_and_extract_with_limits(
+        &archive_path,
+        &checksum_path,
+        temporary.path(),
+        8,
+        16,
+        1024,
+    )
+    .expect_err("oversized decompressed metadata should be rejected");
+
+    assert!(format!("{error:#}").contains("decompressed limit"));
 }

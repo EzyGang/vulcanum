@@ -182,6 +182,26 @@ fn recovers_pair_after_interruption_between_binary_replacements() {
         .is_none());
 }
 
+#[test]
+fn rollback_keeps_recovery_aware_worker_when_metadata_restore_fails() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    std::fs::create_dir_all(&install_dir).expect("install directory should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "v1.0.0");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+    let rollback_dir =
+        activate_pair(&staging_dir, &install_dir, "v1.0.0").expect("release pair should activate");
+    std::fs::remove_file(rollback_dir.join("vulcanum"))
+        .expect("CLI rollback file should be removed");
+
+    recover_interrupted_activation(&install_dir)
+        .expect_err("incomplete rollback metadata should fail recovery");
+
+    assert_eq!(read(&install_dir, "vulcanum-server"), b"new-worker");
+}
+
 fn write_pair(directory: &std::path::Path, cli: &[u8], worker: &[u8], version: &str) {
     std::fs::write(directory.join("vulcanum"), cli).expect("CLI should be written");
     std::fs::write(directory.join("vulcanum-server"), worker).expect("worker should be written");

@@ -29,10 +29,11 @@ pub(super) fn backup(source: &Path, destination: &Path) -> anyhow::Result<()> {
 
 pub(super) fn restore_pair(rollback_dir: &Path, install_dir: &Path) -> anyhow::Result<()> {
     let mut errors: Vec<String> = Vec::new();
-    for name in [CLI_BINARY, WORKER_BINARY] {
-        if let Err(error) = restore(&rollback_dir.join(name), &install_dir.join(name)) {
-            errors.push(error.to_string());
-        }
+    if let Err(error) = restore(
+        &rollback_dir.join(CLI_BINARY),
+        &install_dir.join(CLI_BINARY),
+    ) {
+        errors.push(error.to_string());
     }
 
     let backup_version = rollback_dir.join(VERSION_FILE);
@@ -50,6 +51,19 @@ pub(super) fn restore_pair(rollback_dir: &Path, install_dir: &Path) -> anyhow::R
         errors.push(error.to_string());
     }
 
+    if errors.is_empty() {
+        if let Err(error) = sync_dir(install_dir) {
+            errors.push(error.to_string());
+        }
+    }
+    if errors.is_empty() {
+        if let Err(error) = restore(
+            &rollback_dir.join(WORKER_BINARY),
+            &install_dir.join(WORKER_BINARY),
+        ) {
+            errors.push(error.to_string());
+        }
+    }
     if !errors.is_empty() {
         anyhow::bail!(errors.join("; "));
     }

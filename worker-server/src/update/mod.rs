@@ -225,7 +225,7 @@ where
             Err(error) => return self.failure(Some(target_version), error),
         };
 
-        if let Err(restart_error) = self.restarter.restart() {
+        if let Err(restart_error) = self.restarter.restart().await {
             let rollback_result = activation::rollback_pair(&rollback_dir, &self.install_dir);
             return match rollback_result {
                 Ok(()) => UpdateOutcome::Failed {

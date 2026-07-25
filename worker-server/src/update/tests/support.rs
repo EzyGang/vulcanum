@@ -31,7 +31,7 @@ impl FakeRestarter {
 }
 
 impl ServiceRestarter for FakeRestarter {
-    fn restart(&self) -> anyhow::Result<()> {
+    async fn restart(&self) -> anyhow::Result<()> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         match self.fail.load(Ordering::SeqCst) {
             true => anyhow::bail!("injected restart failure"),
@@ -133,18 +133,40 @@ pub(super) fn release_routes(
 }
 
 pub(super) fn release_archive(cli: &[u8], worker: &[u8]) -> Vec<u8> {
-    let encoder = GzEncoder::new(Vec::new(), Compression::default());
-    let mut archive = tar::Builder::new(encoder);
+    let mut archive = new_archive();
     append_file(&mut archive, "vulcanum", cli);
     append_file(&mut archive, "vulcanum-server", worker);
-    let encoder = archive
-        .into_inner()
-        .expect("test archive should finish writing");
-    encoder.finish().expect("test gzip stream should finish")
+    finish_archive(archive)
+}
+
+pub(super) fn release_archive_with_cli_pax(
+    key: &str,
+    value: &[u8],
+    cli: &[u8],
+    worker: &[u8],
+) -> Vec<u8> {
+    let mut archive = new_archive();
+    archive
+        .append_pax_extensions([(key, value)])
+        .expect("PAX extension should be added to archive");
+    append_file(&mut archive, "vulcanum", cli);
+    append_file(&mut archive, "vulcanum-server", worker);
+    finish_archive(archive)
 }
 
 pub(super) fn checksum(archive: &[u8]) -> Vec<u8> {
     format!("{:x}  archive.tar.gz\n", Sha256::digest(archive)).into_bytes()
+}
+
+fn new_archive() -> tar::Builder<GzEncoder<Vec<u8>>> {
+    tar::Builder::new(GzEncoder::new(Vec::new(), Compression::default()))
+}
+
+fn finish_archive(archive: tar::Builder<GzEncoder<Vec<u8>>>) -> Vec<u8> {
+    let encoder = archive
+        .into_inner()
+        .expect("test archive should finish writing");
+    encoder.finish().expect("test gzip stream should finish")
 }
 
 fn append_file<W>(archive: &mut tar::Builder<W>, name: &str, body: &[u8])

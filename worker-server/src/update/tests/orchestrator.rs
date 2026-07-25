@@ -5,6 +5,7 @@ use crate::update::{AutomaticUpdater, UpdateOutcome, VERSION_FILE};
 
 const TARGET: &str = "x86_64-unknown-linux-gnu";
 const WORKER_SCRIPT: &[u8] = b"#!/bin/sh\n[ \"$1\" = \"--vulcanum-update-preflight\" ]\n";
+const FAILING_WORKER_SCRIPT: &[u8] = b"#!/bin/sh\nexit 1\n";
 
 #[tokio::test]
 async fn applies_one_verified_release_pair_then_restarts_service() {
@@ -68,8 +69,8 @@ async fn restart_failure_restores_previous_pair_for_retry() {
 }
 
 #[tokio::test]
-async fn staged_worker_must_execute_before_activation() {
-    let archive = release_archive(b"new-cli", b"not-an-executable");
+async fn staged_worker_must_pass_preflight_before_activation() {
+    let archive = release_archive(b"new-cli", FAILING_WORKER_SCRIPT);
     let checksum = checksum(&archive);
     let server = TestServer::start(3, |base_url| {
         release_routes(base_url, "v2.0.0", TARGET, archive, checksum)
@@ -88,7 +89,7 @@ async fn staged_worker_must_execute_before_activation() {
             target_version: Some(target),
             error,
             ..
-        } if target == "v2.0.0" && error.contains("failed to execute staged worker")
+        } if target == "v2.0.0" && error.contains("staged worker preflight failed")
     ));
     assert_eq!(restarter.calls(), 0);
     assert_eq!(read(temporary.path(), "vulcanum"), b"old-cli");

@@ -1,9 +1,12 @@
+use std::time::Duration;
+
 use vulcanum_shared::runtime::errors::HarnessError;
 use vulcanum_shared::runtime::types::IsolatedEnvironment;
 
 use crate::providers::logging::redact_provider_output;
 
 const OPENCODE_DEFAULT_PORT: u16 = 4096;
+const DOCKER_COMMAND_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(crate) const HOST_ENV_ALLOWLIST: &[&str] = &[
     "PATH",
@@ -212,12 +215,15 @@ where
 }
 
 pub(crate) async fn read_container_port(name: &str) -> Result<u16, HarnessError> {
-    let output = tokio::process::Command::new("docker")
+    let mut command = tokio::process::Command::new("docker");
+    command
         .args(["port", name, &OPENCODE_DEFAULT_PORT.to_string()])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
-        .output()
+        .kill_on_drop(true);
+    let output = tokio::time::timeout(DOCKER_COMMAND_TIMEOUT, command.output())
         .await
+        .map_err(|_| HarnessError::Timeout(DOCKER_COMMAND_TIMEOUT.as_secs()))?
         .map_err(|e| HarnessError::ServerLaunch(format!("failed to read container port: {e}")))?;
 
     let port_line = String::from_utf8_lossy(&output.stdout).trim().to_owned();

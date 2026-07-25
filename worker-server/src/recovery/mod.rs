@@ -1,5 +1,6 @@
 pub(crate) mod checks;
 pub(crate) mod cleanup;
+mod command;
 #[cfg(test)]
 mod reconciliation_tests;
 pub(crate) mod recover_session;
@@ -63,7 +64,7 @@ pub async fn reconcile_running_jobs(
                 Some(&artifact),
             )
             .await;
-            cleanup_stale_job(entry);
+            cleanup_stale_job(entry).await;
             continue;
         }
         if entry.agent_backend.as_deref() == Some("omp_rpc") {
@@ -85,13 +86,13 @@ pub async fn reconcile_running_jobs(
 
         let is_host = entry.harness_type == "host";
         let alive = if is_host {
-            check_host_alive(entry)
+            check_host_alive(entry).await
         } else {
-            check_container_alive(entry)
+            check_container_alive(entry).await
         };
 
         if !alive {
-            cleanup_stale_job(entry);
+            cleanup_stale_job(entry).await;
             mark_lost_and_submit(journal, client, worker_state, entry).await;
             continue;
         }
@@ -104,7 +105,7 @@ pub async fn reconcile_running_jobs(
                         job_id = %entry.job_id,
                         "no host_port in journal, killing orphan"
                     );
-                    cleanup_stale_job(entry);
+                    cleanup_stale_job(entry).await;
                     mark_lost_and_submit(journal, client, worker_state, entry).await;
                     continue;
                 }
@@ -123,7 +124,7 @@ pub async fn reconcile_running_jobs(
                         error = %e,
                         "failed to read container port"
                     );
-                    crate::providers::opencode::cleanup::remove_container(Some(container_name));
+                    cleanup::remove_container(Some(container_name)).await;
                     mark_lost_and_submit(journal, client, worker_state, entry).await;
                     continue;
                 }
@@ -141,7 +142,7 @@ pub async fn reconcile_running_jobs(
                     error = %e,
                     "failed to query session status"
                 );
-                cleanup_stale_job(entry);
+                cleanup_stale_job(entry).await;
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -154,7 +155,7 @@ pub async fn reconcile_running_jobs(
                     job_id = %entry.job_id,
                     "no session_id in journal"
                 );
-                cleanup_stale_job(entry);
+                cleanup_stale_job(entry).await;
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -168,7 +169,7 @@ pub async fn reconcile_running_jobs(
                     session_id = session_id,
                     "session not found in status map"
                 );
-                cleanup_stale_job(entry);
+                cleanup_stale_job(entry).await;
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }

@@ -38,7 +38,7 @@ pub(crate) async fn recover_session_task(
                 error = %e,
                 "failed to reconnect event stream during recovery"
             );
-            cleanup_recovery(&entry);
+            cleanup_recovery(&entry).await;
             mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
             return;
         }
@@ -159,6 +159,6 @@ pub(crate) async fn recover_session_task(
         }
     }
 
-    cleanup_recovery(&entry);
+    cleanup_recovery(&entry).await;
     tracing::info!(job_id = %entry.job_id, "recovery session completed");
 }
