@@ -1,7 +1,8 @@
 use std::cell::Cell;
 
 use crate::update::activation::{
-    activate_pair, activate_pair_with, recover_interrupted_activation,
+    activate_pair, activate_pair_with, confirm_pending_activation, prepare_startup,
+    recover_interrupted_activation, rollback_pending_activation, StartupActivation,
 };
 use crate::update::VERSION_FILE;
 
@@ -24,6 +25,87 @@ fn activates_both_binaries_and_retains_previous_pair() {
     assert_eq!(read(&rollback_dir, "vulcanum"), b"old-cli");
     assert_eq!(read(&rollback_dir, "vulcanum-server"), b"old-worker");
     assert_eq!(read(&rollback_dir, VERSION_FILE), b"v1.0.0");
+}
+
+#[test]
+fn commits_only_after_replacement_startup_is_confirmed() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    std::fs::create_dir_all(&install_dir).expect("install directory should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "v1.0.0");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+
+    let rollback_dir =
+        activate_pair(&staging_dir, &install_dir, "v1.0.0").expect("release pair should activate");
+    assert_eq!(
+        prepare_startup(&install_dir).expect("pending startup should prepare"),
+        StartupActivation::Pending(rollback_dir.clone())
+    );
+    assert_eq!(read(&install_dir, "vulcanum"), b"new-cli");
+
+    confirm_pending_activation(&install_dir, &rollback_dir)
+        .expect("healthy startup should commit activation");
+
+    assert_eq!(
+        prepare_startup(&install_dir).expect("committed startup should be clean"),
+        StartupActivation::Clean
+    );
+    assert_eq!(read(&install_dir, "vulcanum"), b"new-cli");
+    assert_eq!(read(&install_dir, "vulcanum-server"), b"new-worker");
+}
+
+#[test]
+fn restores_previous_pair_when_replacement_crashes_during_startup() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    std::fs::create_dir_all(&install_dir).expect("install directory should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "v1.0.0");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+
+    let rollback_dir =
+        activate_pair(&staging_dir, &install_dir, "v1.0.0").expect("release pair should activate");
+    assert_eq!(
+        prepare_startup(&install_dir).expect("replacement startup should begin verification"),
+        StartupActivation::Pending(rollback_dir.clone())
+    );
+
+    assert_eq!(
+        prepare_startup(&install_dir).expect("next startup should recover failed verification"),
+        StartupActivation::Recovered(rollback_dir)
+    );
+    assert_eq!(read(&install_dir, "vulcanum"), b"old-cli");
+    assert_eq!(read(&install_dir, "vulcanum-server"), b"old-worker");
+    assert_eq!(read(&install_dir, VERSION_FILE), b"v1.0.0");
+}
+
+#[test]
+fn startup_error_rolls_back_pending_activation() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    std::fs::create_dir_all(&install_dir).expect("install directory should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "v1.0.0");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+
+    let rollback_dir =
+        activate_pair(&staging_dir, &install_dir, "v1.0.0").expect("release pair should activate");
+    assert!(matches!(
+        prepare_startup(&install_dir).expect("replacement startup should begin verification"),
+        StartupActivation::Pending(_)
+    ));
+
+    assert_eq!(
+        rollback_pending_activation(&install_dir).expect("startup failure should roll back"),
+        Some(rollback_dir)
+    );
+    assert_eq!(read(&install_dir, "vulcanum"), b"old-cli");
+    assert_eq!(read(&install_dir, "vulcanum-server"), b"old-worker");
+    assert_eq!(read(&install_dir, VERSION_FILE), b"v1.0.0");
 }
 
 #[test]

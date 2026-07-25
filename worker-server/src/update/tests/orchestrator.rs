@@ -4,10 +4,11 @@ use crate::update::tests::support::{
 use crate::update::{AutomaticUpdater, UpdateOutcome, VERSION_FILE};
 
 const TARGET: &str = "x86_64-unknown-linux-gnu";
+const WORKER_SCRIPT: &[u8] = b"#!/bin/sh\n[ \"$1\" = \"--vulcanum-update-preflight\" ]\n";
 
 #[tokio::test]
 async fn applies_one_verified_release_pair_then_restarts_service() {
-    let archive = release_archive(b"new-cli", b"new-worker");
+    let archive = release_archive(b"new-cli", WORKER_SCRIPT);
     let checksum = checksum(&archive);
     let server = TestServer::start(3, |base_url| {
         release_routes(base_url, "v2.0.0", TARGET, archive, checksum)
@@ -30,12 +31,12 @@ async fn applies_one_verified_release_pair_then_restarts_service() {
     ));
     assert_eq!(restarter.calls(), 1);
     assert_eq!(read(temporary.path(), "vulcanum"), b"new-cli");
-    assert_eq!(read(temporary.path(), "vulcanum-server"), b"new-worker");
+    assert_eq!(read(temporary.path(), "vulcanum-server"), WORKER_SCRIPT);
     assert_eq!(read(temporary.path(), VERSION_FILE), b"v2.0.0\n");
 }
 #[tokio::test]
 async fn restart_failure_restores_previous_pair_for_retry() {
-    let archive = release_archive(b"new-cli", b"new-worker");
+    let archive = release_archive(b"new-cli", WORKER_SCRIPT);
     let checksum = checksum(&archive);
     let server = TestServer::start(3, |base_url| {
         release_routes(base_url, "v2.0.0", TARGET, archive, checksum)
@@ -61,6 +62,35 @@ async fn restart_failure_restores_previous_pair_for_retry() {
             && error.contains("restored the previous release pair")
     ));
     assert_eq!(restarter.calls(), 1);
+    assert_eq!(read(temporary.path(), "vulcanum"), b"old-cli");
+    assert_eq!(read(temporary.path(), "vulcanum-server"), b"old-worker");
+    assert_eq!(read(temporary.path(), VERSION_FILE), b"v1.0.0");
+}
+
+#[tokio::test]
+async fn staged_worker_must_execute_before_activation() {
+    let archive = release_archive(b"new-cli", b"not-an-executable");
+    let checksum = checksum(&archive);
+    let server = TestServer::start(3, |base_url| {
+        release_routes(base_url, "v2.0.0", TARGET, archive, checksum)
+    })
+    .await;
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    write_installed_pair(temporary.path());
+    let restarter = FakeRestarter::default();
+    let updater = updater(&server, temporary.path(), restarter.clone());
+
+    let outcome = updater.check_and_apply().await;
+
+    assert!(matches!(
+        outcome,
+        UpdateOutcome::Failed {
+            target_version: Some(target),
+            error,
+            ..
+        } if target == "v2.0.0" && error.contains("failed to execute staged worker")
+    ));
+    assert_eq!(restarter.calls(), 0);
     assert_eq!(read(temporary.path(), "vulcanum"), b"old-cli");
     assert_eq!(read(temporary.path(), "vulcanum-server"), b"old-worker");
     assert_eq!(read(temporary.path(), VERSION_FILE), b"v1.0.0");

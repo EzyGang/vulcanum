@@ -102,11 +102,15 @@ extracted binary to 128 MiB. It verifies SHA-256 before extracting either binary
 requires both binaries in the archive, and stages them beside the installation so
 replacements stay on the same filesystem.
 
-Activation durably backs up the working pair and version marker under
-`<install-dir>/.vulcanum-rollback/`, then records an activation transaction before
-replacing either binary. An interrupted activation is restored before the daemon
-continues startup. Download, checksum, extraction, and activation failures never
-leave a mixed installed pair. Only successful activation requests a service restart:
+Activation first executes the staged daemon in preflight mode, then durably backs
+up the working pair and version marker under `<install-dir>/.vulcanum-rollback/`.
+It records an activation transaction before replacing either binary and keeps that
+transaction through the service restart. The replacement daemon commits the update
+only after configuration, server connectivity, the journal, and running-job
+recovery initialize successfully. An interrupted activation or failed replacement
+startup restores the previous pair before work is accepted. Download, checksum,
+extraction, and activation failures never leave a mixed installed pair. Only
+successful activation requests a service restart:
 
 - Linux uses `systemctl --no-block restart vulcanum-worker`
 - macOS uses `launchctl kickstart -k system/com.vulcanum.worker`
@@ -127,17 +131,19 @@ Operational prerequisites:
   narrowly scoped `sudoers` rule for its worker user
 - `vulcanum` and `vulcanum-server` must remain in the same install directory
 
-For a download, verification, extraction, activation, or service restart failure,
-the updater keeps or restores the existing pair and the next cadence retries. If
-automatic rollback is interrupted, the durable transaction restores the previous
-pair before the next update check. The failure log reports the rollback directory
-for manual recovery if the filesystem itself prevents restoration. To recover
-manually, stop the worker service, copy `vulcanum`, `vulcanum-server`, and
-`.vulcanum-version` together from that directory into the install directory,
-preserve executable mode on both binaries, and start the service again.
-Alternatively, rerun `install.sh` with a pinned `VULCANUM_VERSION`, then restart
-`vulcanum-worker` with systemd or the `com.vulcanum.worker` launchd service. Never
-restore only one binary.
+For a download, verification, extraction, activation, service restart, or
+replacement startup failure, the updater keeps or restores the existing pair and
+the next cadence retries. If automatic rollback is interrupted, the durable
+transaction restores the previous pair before the next update check. The failure
+log reports the rollback directory for manual recovery if the filesystem itself
+prevents restoration. To recover manually, stop the worker service, copy
+`vulcanum`, `vulcanum-server`, and `.vulcanum-version` together from that directory
+into the install directory, remove `.vulcanum-update-state`, preserve executable
+mode on both binaries, and start the service again. Alternatively, rerun
+`install.sh` with a pinned `VULCANUM_VERSION`; after the full pair and marker are
+installed, the installer clears stale update state. Then restart `vulcanum-worker`
+with systemd or the `com.vulcanum.worker` launchd service. Never restore only one
+binary.
 
 Automatic updates cover only the worker-side release pair. They do not update the
 control-plane server, dispatcher, or frontend.

@@ -1,5 +1,3 @@
-use tokio::time::sleep;
-
 use vulcanum_shared::api::error::is_fatal_api_error;
 
 use super::auth::{ensure_token_valid, with_retry_on_401};
@@ -45,10 +43,8 @@ pub(super) async fn tick(state: &DaemonState, refresh_buffer_secs: i64) -> TickO
             TickOutcome::Success
         }
         Ok(None) => {
-            let interval = state.config.poll_interval_secs;
-            tracing::info!("no jobs available, sleeping {interval}s");
-            sleep(std::time::Duration::from_secs(interval)).await;
-            TickOutcome::Success
+            tracing::info!("no jobs available");
+            TickOutcome::Idle
         }
         Err(e) => {
             if is_fatal_api_error(&e) {

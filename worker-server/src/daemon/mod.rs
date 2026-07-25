@@ -10,12 +10,13 @@ mod tick;
 mod update_tests;
 
 use std::collections::VecDeque;
+use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Context;
 use tokio::signal;
 use tokio::sync::{Mutex, RwLock, Semaphore};
-use tokio::time::{sleep, Duration, Instant};
+use tokio::time::{sleep_until, Duration, Instant};
 
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::config::{load_config, WorkerConfig};
@@ -35,10 +36,12 @@ const MAX_BACKOFF_MS: u64 = 60_000;
 const BACKOFF_MULTIPLIER: u64 = 2;
 const MIN_UPDATE_CHECK_INTERVAL_SECS: u64 = 60;
 const MAX_UPDATE_CHECK_INTERVAL_SECS: u64 = 365 * 24 * 60 * 60;
+const UPDATE_IDLE_RETRY_SECS: u64 = 1;
 
 #[derive(Debug, PartialEq)]
 enum TickOutcome {
     Success,
+    Idle,
     Fatal(String),
     Transient(String),
 }
@@ -55,10 +58,7 @@ struct DaemonState {
     config: WorkerConfig,
 }
 
-pub async fn run() -> anyhow::Result<()> {
-    if AutomaticUpdater::recover_current_install()? {
-        anyhow::bail!("recovered an interrupted automatic update; restarting the worker daemon");
-    }
+pub async fn run(pending_rollback: Option<&Path>) -> anyhow::Result<()> {
     let config = load_config().context("failed to load worker config")?;
     let update_interval = automatic_update_interval(&config)?;
 
@@ -107,10 +107,20 @@ pub async fn run() -> anyhow::Result<()> {
         config,
     };
 
-    recovery::reconcile_running_jobs(&journal, &client, &worker_state, &job_tracker).await;
+    recovery::reconcile_running_jobs(&journal, &client, &worker_state, &job_tracker)
+        .await
+        .context("failed to reconcile running jobs")?;
+    if let Some(rollback_dir) = pending_rollback {
+        AutomaticUpdater::confirm_current_install(rollback_dir)
+            .context("failed to confirm updated worker startup")?;
+        tracing::info!(
+            rollback_dir = %rollback_dir.display(),
+            "confirmed updated worker startup"
+        );
+    }
     if daemon_state.config.auto_update_enabled
         && daemon_state.job_tracker.is_idle().await
-        && run_automatic_update().await
+        && run_automatic_update().await?
     {
         return Ok(());
     }
@@ -118,7 +128,8 @@ pub async fn run() -> anyhow::Result<()> {
     tracing::info!("daemon started, starting poll loop");
 
     let mut backoff_ms = INITIAL_BACKOFF_MS;
-    let mut next_update_check = next_update_at(update_interval)?;
+    let mut next_poll = Instant::now();
+    let mut next_update_check = schedule_after(update_interval)?;
 
     loop {
         tokio::select! {
@@ -126,10 +137,30 @@ pub async fn run() -> anyhow::Result<()> {
                 tracing::info!("received SIGINT, shutting down");
                 return Ok(());
             }
-            result = tick(&daemon_state, refresh_buffer_secs) => {
-                match result {
+            _ = sleep_until(next_update_check), if daemon_state.config.auto_update_enabled => {
+                if daemon_state.job_tracker.is_idle().await
+                    && daemon_state.pending_queue.lock().await.is_empty()
+                {
+                    next_update_check = schedule_after(update_interval)?;
+                    if run_automatic_update().await? {
+                        return Ok(());
+                    }
+                } else {
+                    next_update_check =
+                        schedule_after(Duration::from_secs(UPDATE_IDLE_RETRY_SECS))?;
+                }
+            }
+            _ = sleep_until(next_poll) => {
+                match tick(&daemon_state, refresh_buffer_secs).await {
                     TickOutcome::Success => {
                         backoff_ms = INITIAL_BACKOFF_MS;
+                        next_poll = Instant::now();
+                    }
+                    TickOutcome::Idle => {
+                        backoff_ms = INITIAL_BACKOFF_MS;
+                        next_poll = schedule_after(Duration::from_secs(
+                            daemon_state.config.poll_interval_secs
+                        ))?;
                     }
                     TickOutcome::Fatal(msg) => {
                         tracing::error!("{msg}");
@@ -139,27 +170,17 @@ pub async fn run() -> anyhow::Result<()> {
                         tracing::warn!(
                             "tick failed: {msg}, retrying in {backoff_ms}ms"
                         );
-                        sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                        next_poll =
+                            schedule_after(Duration::from_millis(backoff_ms))?;
                         backoff_ms =
                             (backoff_ms * BACKOFF_MULTIPLIER).min(MAX_BACKOFF_MS);
                     }
                 }
-            }
-        }
 
-        if let Some(ref msg) = *daemon_state.shutdown_rx.borrow() {
-            tracing::error!("job task failed permanently: {msg}");
-            return Err(anyhow::anyhow!("{msg}"));
-        }
-
-        if daemon_state.config.auto_update_enabled
-            && Instant::now() >= next_update_check
-            && daemon_state.job_tracker.is_idle().await
-            && daemon_state.pending_queue.lock().await.is_empty()
-        {
-            next_update_check = next_update_at(update_interval)?;
-            if run_automatic_update().await {
-                return Ok(());
+                if let Some(msg) = &*daemon_state.shutdown_rx.borrow() {
+                    tracing::error!("job task failed permanently: {msg}");
+                    return Err(anyhow::anyhow!("{msg}"));
+                }
             }
         }
     }
@@ -179,13 +200,13 @@ fn automatic_update_interval(config: &WorkerConfig) -> anyhow::Result<Duration> 
     Ok(Duration::from_secs(config.update_check_interval_secs))
 }
 
-fn next_update_at(interval: Duration) -> anyhow::Result<Instant> {
+fn schedule_after(interval: Duration) -> anyhow::Result<Instant> {
     Instant::now()
         .checked_add(interval)
-        .ok_or_else(|| anyhow::anyhow!("update check interval cannot be scheduled"))
+        .ok_or_else(|| anyhow::anyhow!("daemon deadline cannot be scheduled"))
 }
 
-async fn run_automatic_update() -> bool {
+async fn run_automatic_update() -> anyhow::Result<bool> {
     let updater = match AutomaticUpdater::for_current_install() {
         Ok(updater) => updater,
         Err(error) => {
@@ -194,10 +215,16 @@ async fn run_automatic_update() -> bool {
                 error = %error,
                 "automatic update failed before release discovery; continuing with the working installation"
             );
-            return false;
+            return Ok(false);
         }
     };
     let outcome = updater.check_and_apply().await;
     outcome.log();
-    outcome.is_applied()
+    if outcome.is_applied() {
+        return Ok(true);
+    }
+    if AutomaticUpdater::current_install_has_transaction()? {
+        anyhow::bail!("automatic update recovery is pending; restarting the worker daemon");
+    }
+    Ok(false)
 }

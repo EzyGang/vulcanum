@@ -1,10 +1,14 @@
 pub(crate) mod checks;
 pub(crate) mod cleanup;
+#[cfg(test)]
+mod reconciliation_tests;
 pub(crate) mod recover_session;
 #[cfg(test)]
 mod recover_session_tests;
 
 use std::sync::Arc;
+
+use anyhow::Context;
 
 use tokio::sync::RwLock;
 
@@ -30,17 +34,13 @@ pub async fn reconcile_running_jobs(
     client: &Arc<ApiClient>,
     worker_state: &Arc<RwLock<WorkerState>>,
     job_tracker: &Arc<JobTracker>,
-) {
-    let running = match journal.list_running() {
-        Ok(entries) => entries,
-        Err(e) => {
-            tracing::error!(error = %e, "failed to list running jobs for recovery");
-            return;
-        }
-    };
+) -> anyhow::Result<()> {
+    let running = journal
+        .list_running()
+        .context("failed to list running jobs for recovery")?;
 
     if running.is_empty() {
-        return;
+        return Ok(());
     }
 
     tracing::info!(count = running.len(), "reconciling stale running jobs");
@@ -204,6 +204,7 @@ pub async fn reconcile_running_jobs(
             }
         }
     }
+    Ok(())
 }
 
 fn recovered_artifact_export() -> SessionExport {

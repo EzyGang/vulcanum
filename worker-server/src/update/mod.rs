@@ -3,6 +3,7 @@ mod archive;
 mod install;
 mod release;
 mod service;
+mod startup;
 #[cfg(test)]
 mod tests;
 
@@ -11,7 +12,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 
-use crate::update::release::{current_target, fetch_latest_release, is_newer, select_package};
+use crate::update::release::{fetch_latest_release, is_newer, select_package};
 use crate::update::service::{PlatformServiceRestarter, ServiceRestarter};
 
 pub(crate) const VERSION_FILE: &str = ".vulcanum-version";
@@ -34,6 +35,13 @@ pub(crate) enum UpdateOutcome {
         rollback_dir: Option<PathBuf>,
         error: String,
     },
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum StartupUpdate {
+    Clean,
+    Recovered(PathBuf),
+    Pending(PathBuf),
 }
 
 impl UpdateOutcome {
@@ -71,7 +79,7 @@ impl UpdateOutcome {
                         |path| path.display().to_string()
                     ),
                     error,
-                    "automatic update failed; continuing with the working installation"
+                    "automatic update failed; existing installation retained or recovery required"
                 );
             }
         }
@@ -90,32 +98,6 @@ pub(crate) struct AutomaticUpdater<R = PlatformServiceRestarter> {
     current_version: String,
     target: String,
     restarter: R,
-}
-
-impl AutomaticUpdater<PlatformServiceRestarter> {
-    pub(crate) fn recover_current_install() -> anyhow::Result<bool> {
-        let install_dir = install::current_dir()?;
-        if let Some(rollback_dir) = activation::recover_interrupted_activation(&install_dir)? {
-            tracing::warn!(
-                rollback_dir = %rollback_dir.display(),
-                "recovered an interrupted automatic update before startup"
-            );
-            return Ok(true);
-        }
-        Ok(false)
-    }
-
-    pub(crate) fn for_current_install() -> anyhow::Result<Self> {
-        let install_dir = install::current_dir()?;
-        let current_version = install::read_version(&install_dir)?;
-        Self::new(
-            LATEST_RELEASE_URL.to_owned(),
-            install_dir,
-            current_version,
-            current_target()?.to_owned(),
-            PlatformServiceRestarter,
-        )
-    }
 }
 
 impl<R> AutomaticUpdater<R>
@@ -227,6 +209,11 @@ where
                 Some(target_version),
                 anyhow::anyhow!("failed to stage release version marker: {error}"),
             );
+        }
+
+        if let Err(error) = install::preflight_worker(&staging.path().join("vulcanum-server")).await
+        {
+            return self.failure(Some(target_version), error);
         }
 
         let rollback_dir = match activation::activate_pair(
