@@ -154,6 +154,7 @@ version_tmp=$(mktemp "${INSTALL_DIR}/.vulcanum-version.XXXXXX")
 install -m 0755 "${tmp_dir}/vulcanum" "${INSTALL_DIR}/vulcanum"
 install -m 0755 "${tmp_dir}/vulcanum-server" "${INSTALL_DIR}/vulcanum-server"
 printf '%s\n' "$tag" > "$version_tmp"
+chmod 0644 "$version_tmp"
 mv "$version_tmp" "${INSTALL_DIR}/.vulcanum-version"
 version_tmp=
 rm -f "${INSTALL_DIR}/.vulcanum-update-state"

@@ -101,9 +101,11 @@ where
     let rollback_dir = create_rollback_dir(install_dir, current_version)?;
     files::backup(&installed_cli, &rollback_dir.join(CLI_BINARY))?;
     files::backup(&installed_worker, &rollback_dir.join(WORKER_BINARY))?;
-    if installed_version.is_file() {
-        files::backup(&installed_version, &rollback_dir.join(VERSION_FILE))?;
-    }
+    files::backup_version(
+        &installed_version,
+        &rollback_dir.join(VERSION_FILE),
+        current_version,
+    )?;
     files::sync_dir(&rollback_dir)?;
     state::write(install_dir, &rollback_dir, Phase::Activating)?;
 

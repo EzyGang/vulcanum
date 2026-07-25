@@ -7,6 +7,8 @@ use uuid::Uuid;
 use crate::update::activation::{CLI_BINARY, WORKER_BINARY};
 use crate::update::VERSION_FILE;
 
+const RESTORE_TEMP_PREFIX: &str = ".vulcanum-restore-";
+
 pub(super) fn ensure_pair_exists(cli_path: &Path, worker_path: &Path) -> anyhow::Result<()> {
     if !cli_path.is_file() || !worker_path.is_file() {
         anyhow::bail!(
@@ -27,7 +29,27 @@ pub(super) fn backup(source: &Path, destination: &Path) -> anyhow::Result<()> {
     sync_file(destination)
 }
 
+pub(super) fn backup_version(
+    source: &Path,
+    destination: &Path,
+    fallback: &str,
+) -> anyhow::Result<()> {
+    match source.is_file() {
+        true => backup(source, destination),
+        false => {
+            std::fs::write(destination, fallback).with_context(|| {
+                format!(
+                    "failed to write fallback version to {}",
+                    destination.display()
+                )
+            })?;
+            sync_file(destination)
+        }
+    }
+}
+
 pub(super) fn restore_pair(rollback_dir: &Path, install_dir: &Path) -> anyhow::Result<()> {
+    remove_abandoned_restore_files(install_dir)?;
     let mut errors: Vec<String> = Vec::new();
     if let Err(error) = restore(
         &rollback_dir.join(CLI_BINARY),
@@ -71,22 +93,75 @@ pub(super) fn restore_pair(rollback_dir: &Path, install_dir: &Path) -> anyhow::R
 }
 
 fn restore(source: &Path, destination: &Path) -> anyhow::Result<()> {
-    let temporary: PathBuf = destination.with_extension(format!("restore-{}", Uuid::new_v4()));
-    std::fs::copy(source, &temporary).with_context(|| {
+    let parent = destination.parent().with_context(|| {
         format!(
-            "failed to copy rollback file {} to {}",
-            source.display(),
-            temporary.display()
+            "restore destination {} has no parent directory",
+            destination.display()
         )
     })?;
-    sync_file(&temporary)?;
-    std::fs::rename(&temporary, destination).with_context(|| {
+    let temporary: PathBuf = parent.join(format!("{RESTORE_TEMP_PREFIX}{}", Uuid::new_v4()));
+    let result: anyhow::Result<()> = (|| {
+        std::fs::copy(source, &temporary).with_context(|| {
+            format!(
+                "failed to copy rollback file {} to {}",
+                source.display(),
+                temporary.display()
+            )
+        })?;
+        sync_file(&temporary)?;
+        std::fs::rename(&temporary, destination).with_context(|| {
+            format!(
+                "failed to restore {} from {}",
+                destination.display(),
+                source.display()
+            )
+        })?;
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => Ok(()),
+        Err(error) => match std::fs::remove_file(&temporary) {
+            Ok(()) => Err(error),
+            Err(cleanup_error) if cleanup_error.kind() == std::io::ErrorKind::NotFound => {
+                Err(error)
+            }
+            Err(cleanup_error) => Err(anyhow::anyhow!(
+                "failed to remove restore temporary file {}: {cleanup_error}; \
+                 original restore error: {error:#}",
+                temporary.display()
+            )),
+        },
+    }
+}
+
+fn remove_abandoned_restore_files(install_dir: &Path) -> anyhow::Result<()> {
+    let entries = std::fs::read_dir(install_dir).with_context(|| {
         format!(
-            "failed to restore {} from {}",
-            destination.display(),
-            source.display()
+            "failed to inspect install directory {} for restore temporary files",
+            install_dir.display()
         )
     })?;
+    for entry in entries {
+        let entry = entry.with_context(|| {
+            format!(
+                "failed to inspect restore temporary files in {}",
+                install_dir.display()
+            )
+        })?;
+        let file_name = entry.file_name();
+        if !file_name.to_string_lossy().starts_with(RESTORE_TEMP_PREFIX)
+            || !entry.file_type()?.is_file()
+        {
+            continue;
+        }
+        std::fs::remove_file(entry.path()).with_context(|| {
+            format!(
+                "failed to remove abandoned restore temporary file {}",
+                entry.path().display()
+            )
+        })?;
+    }
     Ok(())
 }
 

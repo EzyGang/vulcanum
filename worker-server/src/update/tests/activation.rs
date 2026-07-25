@@ -28,6 +28,29 @@ fn activates_both_binaries_and_retains_previous_pair() {
 }
 
 #[test]
+fn creates_rollback_marker_for_legacy_markerless_installation() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    std::fs::create_dir_all(&install_dir).expect("install directory should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "unused");
+    std::fs::remove_file(install_dir.join(VERSION_FILE))
+        .expect("legacy version marker should be removed");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+
+    let rollback_dir =
+        activate_pair(&staging_dir, &install_dir, "v1.0.0").expect("release pair should activate");
+
+    assert_eq!(read(&rollback_dir, VERSION_FILE), b"v1.0.0");
+    assert_eq!(
+        rollback_pending_activation(&install_dir).expect("release pair should roll back"),
+        Some(rollback_dir)
+    );
+    assert_eq!(read(&install_dir, VERSION_FILE), b"v1.0.0");
+}
+
+#[test]
 fn commits_only_after_replacement_startup_is_confirmed() {
     let temporary = tempfile::tempdir().expect("temporary directory should be created");
     let install_dir = temporary.path().join("install");
@@ -170,6 +193,8 @@ fn recovers_pair_after_interruption_between_binary_replacements() {
 
     assert!(interrupted.is_err());
     assert_eq!(read(&install_dir, "vulcanum"), b"new-cli");
+    let abandoned_restore = install_dir.join(".vulcanum-restore-interrupted");
+    std::fs::write(&abandoned_restore, b"partial").expect("restore temporary should be written");
     let rollback_dir = recover_interrupted_activation(&install_dir)
         .expect("interrupted activation should recover")
         .expect("recovery should report its rollback directory");
@@ -177,6 +202,7 @@ fn recovers_pair_after_interruption_between_binary_replacements() {
     assert_eq!(read(&install_dir, "vulcanum"), b"old-cli");
     assert_eq!(read(&install_dir, "vulcanum-server"), b"old-worker");
     assert_eq!(read(&install_dir, VERSION_FILE), b"v1.0.0");
+    assert!(!abandoned_restore.exists());
     assert!(recover_interrupted_activation(&install_dir)
         .expect("second recovery should be a no-op")
         .is_none());
