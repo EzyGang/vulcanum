@@ -49,13 +49,13 @@ pub(super) async fn list_with(
 ) -> anyhow::Result<()> {
     let context = authenticated_context(runtime).await?;
     let team = resolve_team(&context, team_override).await?;
-    let installation = context
+    let installations = context
         .client
-        .get_github_app_installation(team.id, &context.session.access_token)
+        .list_github_app_installations(team.id, &context.session.access_token)
         .await
-        .map_err(|error| handle_authenticated_error("Get GitHub App installation", error))?;
+        .map_err(|error| handle_authenticated_error("List GitHub App installations", error))?;
     let team_name = escape_terminal(&team.name);
-    if installation.is_none() {
+    if installations.is_empty() {
         writeln!(
             runtime.stdout,
             "No GitHub App installation connected for team {team_name} ({}).",

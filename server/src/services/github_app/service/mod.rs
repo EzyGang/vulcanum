@@ -1,13 +1,21 @@
+mod commit_author;
+#[cfg(test)]
+mod commit_author_tests;
+mod installation_authorization;
 pub(crate) mod pull_requests;
 mod repos;
 mod state_nonce;
 pub(crate) mod webhooks;
 
+use std::sync::Arc;
+
 use base64::Engine;
 use octocrab::models::{Installation, InstallationId};
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
+use tokio::sync::OnceCell;
 use uuid::Uuid;
+use vulcanum_shared::api::wire::GitCommitAuthor;
 
 use crate::config::AppConfig;
 use crate::db::github_app::GithubAppRepository;
@@ -21,6 +29,7 @@ pub struct GithubAppManager {
     pub(crate) app_id: Option<u64>,
     pub(crate) app_private_key: Option<String>,
     pub(crate) app_slug: Option<String>,
+    pub(crate) commit_author_cache: Arc<OnceCell<GitCommitAuthor>>,
 }
 
 impl Clone for GithubAppManager {
@@ -32,6 +41,7 @@ impl Clone for GithubAppManager {
             app_id: self.app_id,
             app_private_key: self.app_private_key.clone(),
             app_slug: self.app_slug.clone(),
+            commit_author_cache: self.commit_author_cache.clone(),
         }
     }
 }
@@ -47,6 +57,8 @@ pub struct RepoInfo {
     pub owner: String,
     pub name: String,
     pub full_name: String,
+    pub installation_id: i64,
+    pub account_login: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -71,6 +83,7 @@ impl GithubAppManager {
             app_id: cfg.github_app_id,
             app_private_key: cfg.github_app_private_key.clone(),
             app_slug: cfg.github_app_slug.clone(),
+            commit_author_cache: Arc::new(OnceCell::new()),
         })
     }
 
@@ -126,25 +139,54 @@ impl GithubAppManager {
         self.repo.delete_installation(&self.db, id, team_id).await
     }
 
-    pub async fn get_installation(
+    pub async fn list_installations(
         &self,
         team_id: Uuid,
         discover_remote: bool,
-    ) -> Result<Option<GithubInstallation>, GithubAppError> {
-        if let Some(inst) = self.repo.get_installation(&self.db, team_id).await? {
-            return Ok(Some(inst));
+    ) -> Result<Vec<GithubInstallation>, GithubAppError> {
+        let installations = self.repo.list_installations(&self.db, team_id).await?;
+        if !installations.is_empty() {
+            return Ok(installations);
         }
 
         if !discover_remote || self.app_id.is_none() || self.app_private_key.is_none() {
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
-        self.discover_single_installation(team_id).await
+        self.discover_installations(team_id).await
+    }
+
+    async fn discover_installations(
+        &self,
+        team_id: Uuid,
+    ) -> Result<Vec<GithubInstallation>, GithubAppError> {
+        let octo = self.app_octocrab()?;
+        let page = octo
+            .apps()
+            .installations()
+            .per_page(100u8)
+            .send()
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list_installations from GitHub: {e}")))?;
+        let remote_installations = octo
+            .all_pages(page)
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list_installations pagination: {e}")))?;
+        let mut installations = Vec::with_capacity(remote_installations.len());
+        for installation in remote_installations {
+            installations.push(
+                self.upsert_remote_installation(team_id, None, installation)
+                    .await?,
+            );
+        }
+        installations.sort_unstable_by(|left, right| left.account_login.cmp(&right.account_login));
+        Ok(installations)
     }
 
     async fn discover_single_installation(
         &self,
         team_id: Uuid,
+        installed_by_user_id: Option<&str>,
     ) -> Result<Option<GithubInstallation>, GithubAppError> {
         let octo = self.app_octocrab()?;
         let page = octo
@@ -167,7 +209,7 @@ impl GithubAppManager {
             }
         };
 
-        self.upsert_remote_installation(team_id, installation)
+        self.upsert_remote_installation(team_id, installed_by_user_id, installation)
             .await
             .map(Some)
     }
@@ -175,6 +217,7 @@ impl GithubAppManager {
     async fn upsert_remote_installation(
         &self,
         team_id: Uuid,
+        installed_by_user_id: Option<&str>,
         installation: Installation,
     ) -> Result<GithubInstallation, GithubAppError> {
         let github_installation_id = i64::try_from(installation.id.into_inner()).map_err(|e| {
@@ -183,7 +226,7 @@ impl GithubAppManager {
 
         self.upsert_installation(
             team_id,
-            None,
+            installed_by_user_id,
             github_installation_id,
             installation.account.login,
         )

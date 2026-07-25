@@ -14,6 +14,7 @@ type ClaimedDelivery = (
     i64,
     String,
     i64,
+    Option<i64>,
     Option<String>,
     Option<String>,
     Option<String>,
@@ -38,13 +39,14 @@ pub(super) async fn enqueue(
                'installation_id', ARGV[2],
                'repo_full_name', ARGV[3],
                'pr_number', ARGV[4],
-               'sender_id', ARGV[5],
-               'pr_title', ARGV[6],
-               'project_selector', ARGV[7],
+               'comment_id', ARGV[5],
+               'sender_id', ARGV[6],
+               'pr_title', ARGV[7],
+               'project_selector', ARGV[8],
                'attempts', 0,
                'completed', 0)
-           redis.call('EXPIRE', KEYS[1], ARGV[9])
-           redis.call('ZADD', KEYS[2], ARGV[8], ARGV[10])
+           redis.call('EXPIRE', KEYS[1], ARGV[10])
+           redis.call('ZADD', KEYS[2], ARGV[9], ARGV[11])
            return 1"#,
     )
     .key(delivery_key(&delivery.delivery_id))
@@ -53,6 +55,7 @@ pub(super) async fn enqueue(
     .arg(delivery.installation_id)
     .arg(&delivery.repo_full_name)
     .arg(delivery.pr_number)
+    .arg(delivery.comment_id)
     .arg(delivery.sender_id.as_deref().unwrap_or(""))
     .arg(delivery.pr_title.as_deref().unwrap_or(""))
     .arg(delivery.project_selector.as_deref().unwrap_or(""))
@@ -88,8 +91,8 @@ pub(super) async fn claim_pending(
            redis.call('HSET', key, 'claim_token', ARGV[5])
            redis.call('EXPIRE', key, ARGV[4])
            redis.call('ZADD', KEYS[1], ARGV[3], id)
-           local values = redis.call('HMGET', key, 'kind', 'installation_id', 'repo_full_name', 'pr_number', 'sender_id', 'pr_title', 'project_selector')
-           return {id, values[1], values[2], values[3], values[4], values[5], values[6], values[7], attempts}"#,
+           local values = redis.call('HMGET', key, 'kind', 'installation_id', 'repo_full_name', 'pr_number', 'comment_id', 'sender_id', 'pr_title', 'project_selector')
+           return {id, values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], attempts}"#,
     )
     .key(PENDING_KEY)
     .arg(now)
@@ -108,6 +111,7 @@ pub(super) async fn claim_pending(
             installation_id,
             repo_full_name,
             pr_number,
+            comment_id,
             sender_id,
             pr_title,
             project_selector,
@@ -119,6 +123,7 @@ pub(super) async fn claim_pending(
                 installation_id,
                 repo_full_name,
                 pr_number,
+                comment_id,
                 sender_id: non_empty(sender_id),
                 pr_title: non_empty(pr_title),
                 project_selector: non_empty(project_selector),

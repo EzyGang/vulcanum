@@ -19,6 +19,7 @@ impl From<AuthError> for AppError {
                 tracing::warn!(error = %e, operation = "github_oauth", "oauth flow failed");
                 Self::InvalidToken
             }
+            AuthError::GithubApp(e) => e.into(),
             AuthError::Database(e) => {
                 tracing::error!(error = %e, operation = "auth", "database error");
                 Self::Internal

@@ -136,12 +136,12 @@ pub(super) async fn resolve_repos(
     if !interactive {
         return Ok(Vec::new());
     }
-    let installation = context
+    let installations = context
         .client
-        .get_github_app_installation(team_id, &context.session.access_token)
+        .list_github_app_installations(team_id, &context.session.access_token)
         .await
-        .map_err(|error| handle_authenticated_error("Get GitHub App installation", error))?;
-    if installation.is_none() {
+        .map_err(|error| handle_authenticated_error("List GitHub App installations", error))?;
+    if installations.is_empty() {
         if require_installation {
             anyhow::bail!("No GitHub App installation is connected for this team");
         }

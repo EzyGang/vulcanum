@@ -7,38 +7,38 @@ use crate::util::github::parse_github_repo;
 
 impl GithubAppManager {
     pub async fn list_repos(&self, team_id: Uuid) -> Result<Vec<RepoInfo>, GithubAppError> {
-        let installation = self
-            .repo
-            .get_installation(&self.db, team_id)
-            .await?
-            .ok_or(GithubAppError::NoInstallation)?;
+        let installations = self.repo.list_installations(&self.db, team_id).await?;
+        if installations.is_empty() {
+            return Err(GithubAppError::NoInstallation);
+        }
 
         let octo = self.app_octocrab()?;
-        let installation_client = octo
-            .installation(InstallationId(installation.github_installation_id as u64))
-            .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
-
-        let repos = installation_client
-            .get::<octocrab::Page<octocrab::models::Repository>, _, ()>(
-                "/installation/repositories",
-                None::<&()>,
-            )
-            .await
-            .map_err(|e| GithubAppError::Api(format!("list_repos: {e}")))?;
-
-        let all_repos = installation_client
-            .all_pages(repos)
-            .await
-            .map_err(|e| GithubAppError::Api(format!("list_repos pagination: {e}")))?;
-
-        let infos = all_repos
-            .into_iter()
-            .map(|r| RepoInfo {
-                owner: r.owner.map(|o| o.login).unwrap_or_default(),
-                name: r.name,
-                full_name: r.full_name.unwrap_or_default(),
-            })
-            .collect();
+        let mut infos = Vec::new();
+        for installation in installations {
+            let installation_client = octo
+                .installation(InstallationId(installation.github_installation_id as u64))
+                .map_err(|e| GithubAppError::Api(format!("installation client: {e}")))?;
+            let repos = installation_client
+                .get::<octocrab::Page<octocrab::models::Repository>, _, ()>(
+                    "/installation/repositories",
+                    None::<&()>,
+                )
+                .await
+                .map_err(|e| GithubAppError::Api(format!("list_repos: {e}")))?;
+            let all_repos = installation_client
+                .all_pages(repos)
+                .await
+                .map_err(|e| GithubAppError::Api(format!("list_repos pagination: {e}")))?;
+            infos.reserve(all_repos.len());
+            infos.extend(all_repos.into_iter().map(|repo| RepoInfo {
+                owner: repo.owner.map(|owner| owner.login).unwrap_or_default(),
+                name: repo.name,
+                full_name: repo.full_name.unwrap_or_default(),
+                installation_id: installation.github_installation_id,
+                account_login: installation.account_login.clone(),
+            }));
+        }
+        infos.sort_unstable_by(|left, right| left.full_name.cmp(&right.full_name));
 
         Ok(infos)
     }
@@ -48,9 +48,22 @@ impl GithubAppManager {
         team_id: Uuid,
         repo_full_names: &[String],
     ) -> Result<InstallationToken, GithubAppError> {
+        let mut owner: Option<String> = None;
+        for full_name in repo_full_names {
+            let repo = parse_github_repo(full_name)
+                .ok_or_else(|| GithubAppError::InvalidRepoIdentifier(full_name.clone()))?;
+            match owner.as_deref() {
+                Some(existing) if !repo.owner().eq_ignore_ascii_case(existing) => {
+                    return Err(GithubAppError::RepositoriesSpanInstallations);
+                }
+                Some(_) => (),
+                None => owner = Some(repo.owner().to_owned()),
+            }
+        }
+        let owner = owner.ok_or(GithubAppError::NoInstallation)?;
         let installation = self
             .repo
-            .get_installation(&self.db, team_id)
+            .find_installation_by_account_login(&self.db, team_id, &owner)
             .await?
             .ok_or(GithubAppError::NoInstallation)?;
         self.mint_installation_token(installation.github_installation_id, repo_full_names)

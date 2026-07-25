@@ -45,7 +45,10 @@ export const useTaskBoard = () => {
   const selectedRepoNames = projectConfig?.repoFullNames ?? [];
   const columnRoles = columnRolesForProject(projectConfig, columns);
   const statusOptions = columns.map((column) => ({ value: column.slug, label: column.name }));
-  const repoItems = repos.map((repo) => ({ value: repo.fullName, label: repo.fullName }));
+  const repoItems = repos.map((repo) => ({
+    value: repo.fullName,
+    label: `${repo.fullName} · ${repo.accountLogin}`
+  }));
   const augmentationsByTaskRef = useMemo(
     () =>
       new Map(
@@ -56,7 +59,13 @@ export const useTaskBoard = () => {
 
   const create = useTaskBoardCreate(selection, columns);
   const movement = useTaskBoardMovement(selection, columns, board?.labels ?? []);
-  const settings = useTaskBoardSettings(selection, columns, projectConfig, selectedRepoNames);
+  const settings = useTaskBoardSettings(
+    selection,
+    columns,
+    projectConfig,
+    selectedRepoNames,
+    repos
+  );
   const viewModel = useTaskBoardViewModel({
     selectedProjectKey: selectedTaskProjectKey.value,
     board,

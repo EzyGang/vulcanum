@@ -62,8 +62,8 @@ export const useDashboard = () => {
       workers: formattedWorkers,
       projects: projects ?? [],
       providers: providers ?? [],
-      githubInstallation: github.installation ?? null,
-      githubLoading: github.installationLoading
+      githubInstallations: github.data.installationItems.map(({ installation }) => installation),
+      githubLoading: github.status.isLoading
     },
     status: {
       loading,

@@ -69,32 +69,31 @@ pub(super) async fn disconnect_with(
 ) -> anyhow::Result<()> {
     let context = authenticated_context(app).await?;
     let team = resolve_team(&context, team_override).await?;
-    let installation = context
+    let installations = context
         .client
-        .get_github_app_installation(team.id, &context.session.access_token)
+        .list_github_app_installations(team.id, &context.session.access_token)
         .await
-        .map_err(|error| handle_authenticated_error("Get GitHub App installation", error))?;
-    let installation = match installation {
-        Some(installation) => installation,
-        None => {
-            writeln!(
-                app.stdout,
-                "GitHub App is already disconnected for team {}.",
-                team.id
-            )?;
-            return Ok(());
-        }
-    };
-    context
-        .client
-        .delete_github_app_installation(team.id, installation.id, &context.session.access_token)
-        .await
-        .map_err(|error| handle_authenticated_error("Disconnect GitHub App", error))?;
-    writeln!(
-        app.stdout,
-        "Disconnected GitHub account {} from team {}.",
-        escape_terminal(&installation.account_login),
-        team.id
-    )?;
+        .map_err(|error| handle_authenticated_error("List GitHub App installations", error))?;
+    if installations.is_empty() {
+        writeln!(
+            app.stdout,
+            "GitHub App is already disconnected for team {}.",
+            team.id
+        )?;
+        return Ok(());
+    }
+    for installation in installations {
+        context
+            .client
+            .delete_github_app_installation(team.id, installation.id, &context.session.access_token)
+            .await
+            .map_err(|error| handle_authenticated_error("Disconnect GitHub App", error))?;
+        writeln!(
+            app.stdout,
+            "Disconnected GitHub account {} from team {}.",
+            escape_terminal(&installation.account_login),
+            team.id
+        )?;
+    }
     Ok(())
 }

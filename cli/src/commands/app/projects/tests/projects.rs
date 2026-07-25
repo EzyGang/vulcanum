@@ -75,8 +75,8 @@ async fn interactive_project_add_selects_catalog_project_and_repository() {
         ),
         Response::ok(
             "GET",
-            "/api/v1/github/installation",
-            r#"{"id":9,"account_login":"acme"}"#,
+            "/api/v1/github/installations",
+            r#"[{"id":9,"account_login":"acme"}]"#,
         ),
         Response::ok(
             "GET",
@@ -143,8 +143,8 @@ async fn repository_list_pulls_and_sorts_available_github_repositories() {
         Response::ok("GET", &team_target(), team_response()),
         Response::ok(
             "GET",
-            "/api/v1/github/installation",
-            r#"{"id":9,"account_login":"acme"}"#,
+            "/api/v1/github/installations",
+            r#"[{"id":9,"account_login":"acme"}]"#,
         ),
         Response::ok(
             "GET",
@@ -199,8 +199,8 @@ async fn interactive_repository_edit_pulls_available_repos_and_preselects_attach
         Response::ok("GET", &project_target, current),
         Response::ok(
             "GET",
-            "/api/v1/github/installation",
-            r#"{"id":9,"account_login":"acme"}"#,
+            "/api/v1/github/installations",
+            r#"[{"id":9,"account_login":"acme"}]"#,
         ),
         Response::ok(
             "GET",

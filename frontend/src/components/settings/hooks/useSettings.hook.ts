@@ -30,7 +30,8 @@ export const useSettings = () => {
 };
 
 const getTabFromLocation = (location: string): string => {
-  const [, query = ''] = location.split('?');
+  const locationQuery = location.split('?')[1];
+  const query = locationQuery ?? window.location.search.slice(1);
   const tab = new URLSearchParams(query).get('tab');
 
   if (tab && TABS.some((item) => item.value === tab)) {

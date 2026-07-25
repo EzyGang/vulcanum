@@ -31,6 +31,7 @@ fn closed_pull_request(
         installation_id: payload.installation.id,
         repo_full_name: payload.repository.full_name,
         pr_number: payload.number,
+        comment_id: None,
         sender_id: None,
         pr_title: None,
         project_selector: None,
@@ -61,6 +62,7 @@ fn review_request(
         installation_id: payload.installation.id,
         repo_full_name: payload.repository.full_name,
         pr_number: payload.issue.number,
+        comment_id: Some(payload.comment.id),
         sender_id: Some(payload.sender.id.to_string()),
         pr_title: Some(payload.issue.title),
         project_selector: command.flatten(),
@@ -186,6 +188,7 @@ struct Issue {
 
 #[derive(Deserialize)]
 struct Comment {
+    id: i64,
     body: String,
 }
 
