@@ -4,27 +4,26 @@ use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 use crate::daemon::job::review::review_loop::ReviewLoopState;
 
 #[test]
-fn review_loop_continues_for_actionable_review_then_stops_at_cap() {
+fn review_loop_continues_for_each_configured_follow_up_pass() {
     let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 3);
 
-    let prompt = state
-        .prompt_after_artifact(&review_artifact(
-            "## CRITICAL\n- None\n\n## WARNINGS\n- Missing validation\n\n## SUGGESTIONS\n- None",
-        ))
-        .expect("actionable review should start fix pass");
-    assert!(prompt.contains("Fix phase for the existing pull request"));
+    for pass in 1..=3 {
+        let prompt = state
+            .prompt_after_artifact(&actionable_review_artifact())
+            .expect("actionable review should start a configured fix pass");
+        assert!(prompt.contains("Fix phase for the existing pull request"));
+        assert_eq!(state.progress().fix_pass, pass);
 
-    let prompt = state
-        .prompt_after_fix_turn()
-        .expect("fix turn should continue into re-review");
-    assert!(prompt.contains("[Review follow-up 1/1]"));
+        let prompt = state
+            .prompt_after_fix_turn()
+            .expect("fix turn should continue into re-review");
+        assert!(prompt.contains(&format!("[Review follow-up {pass}/3]")));
+    }
 
-    let prompt = state.prompt_after_artifact(&review_artifact(
-        "## CRITICAL\n- None\n\n## WARNINGS\n- Still missing validation\n\n## SUGGESTIONS\n- None",
-    ));
+    let prompt = state.prompt_after_artifact(&actionable_review_artifact());
     assert!(
         prompt.is_none(),
-        "review loop should stop at configured cap"
+        "review loop should stop after every configured follow-up pass"
     );
 }
 
@@ -47,24 +46,30 @@ fn implementation_loop_uses_plain_max_turns() {
 }
 
 #[test]
-fn review_loop_treats_max_turns_as_total_turn_cap() {
+fn review_loop_treats_max_turns_as_follow_up_pass_cap() {
     let state = ReviewLoopState::new(WorkRunType::PullRequestReview, 3);
 
-    assert_eq!(state.effective_max_turns(), 3);
-    assert_eq!(state.progress().max_fix_passes, 1);
+    assert_eq!(state.effective_max_turns(), 7);
+    assert_eq!(state.progress().max_fix_passes, 3);
 }
 
 #[test]
-fn review_loop_with_two_total_turns_does_not_start_fix_pass() {
-    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 2);
+fn review_loop_one_configured_turn_allows_one_fix_pass() {
+    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 1);
 
-    let prompt = state.prompt_after_artifact(&review_artifact(
-        "## CRITICAL\n- Blocking defect\n\n## WARNINGS\n- None\n\n## SUGGESTIONS\n- None",
-    ));
+    let prompt = state.prompt_after_artifact(&actionable_review_artifact());
 
-    assert!(prompt.is_none());
-    assert_eq!(state.progress().fix_pass, 0);
-    assert_eq!(state.progress().max_fix_passes, 0);
+    assert!(prompt.is_some());
+    assert_eq!(state.effective_max_turns(), 3);
+    assert_eq!(state.progress().fix_pass, 1);
+    assert_eq!(state.progress().max_fix_passes, 1);
+}
+
+#[must_use]
+fn actionable_review_artifact() -> FinishRunArtifact {
+    review_artifact(
+        "## CRITICAL\n- None\n\n## WARNINGS\n- Missing validation\n\n## SUGGESTIONS\n- None",
+    )
 }
 
 #[must_use]
