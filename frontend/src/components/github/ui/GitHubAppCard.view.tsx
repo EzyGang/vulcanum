@@ -8,29 +8,31 @@ import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 
 interface GitHubAppCardViewProps {
   data: {
-    installation: GithubInstallation | null;
+    installationItems: {
+      installation: GithubInstallation;
+      disconnectPending: boolean;
+      onDisconnect: () => void;
+    }[];
   };
   identityPanel: JSX.Element | null;
   status: {
     isLoading: boolean;
     isRefreshing: boolean;
-    disconnectPending: boolean;
     errorMessage: string | null;
   };
   actions: {
     onConnect: () => void;
     onRefresh: () => void;
-    onDisconnect: () => void;
   };
 }
 
 export const GitHubAppCardView = ({
-  data: { installation },
+  data: { installationItems },
   identityPanel,
-  status: { isLoading, isRefreshing, disconnectPending, errorMessage },
-  actions: { onConnect, onRefresh, onDisconnect }
+  status: { isLoading, isRefreshing, errorMessage },
+  actions: { onConnect, onRefresh }
 }: GitHubAppCardViewProps): JSX.Element => {
-  const connected = !!installation;
+  const connected = installationItems.length > 0;
 
   return (
     <Card class='flex flex-col gap-4'>
@@ -65,32 +67,38 @@ export const GitHubAppCardView = ({
             <IconRefresh size={16} stroke={1.75} aria-hidden='true' />
           </ActionIconButton>
 
-          {connected ? (
-            <ActionIconButton
-              label='Disconnect GitHub app'
-              variant='danger'
-              onClick={onDisconnect}
-              disabled={disconnectPending}
-            >
-              <IconUnlink size={16} stroke={1.75} aria-hidden='true' />
-            </ActionIconButton>
-          ) : (
-            <Button variant='secondary' onClick={onConnect}>
-              <span class='inline-flex items-center gap-2'>
-                <IconPlugConnected size={16} stroke={1.75} aria-hidden='true' />
-                Connect
-              </span>
-            </Button>
-          )}
+          <Button variant='secondary' onClick={onConnect}>
+            <span class='inline-flex items-center gap-2'>
+              <IconPlugConnected size={16} stroke={1.75} aria-hidden='true' />
+              {connected ? 'Connect another account' : 'Connect'}
+            </span>
+          </Button>
         </div>
       </div>
 
       {errorMessage && <ErrorBanner message={errorMessage} />}
 
-      {connected && installation && (
-        <div class='flex items-center gap-2'>
-          <span class='text-text-muted text-xs'>Account:</span>
-          <span class='text-text-primary text-sm font-mono'>{installation.accountLogin}</span>
+      {connected && (
+        <div class='flex flex-col border border-border-base bg-bg-input'>
+          {installationItems.map(({ installation, disconnectPending, onDisconnect }) => (
+            <div
+              key={installation.id}
+              class='flex items-center justify-between gap-3 border-b border-border-base px-3 py-2 last:border-b-0'
+            >
+              <div class='flex items-center gap-2'>
+                <span class='text-text-muted text-xs'>Account:</span>
+                <span class='text-text-primary text-sm font-mono'>{installation.accountLogin}</span>
+              </div>
+              <ActionIconButton
+                label={`Disconnect ${installation.accountLogin}`}
+                variant='danger'
+                onClick={onDisconnect}
+                disabled={disconnectPending}
+              >
+                <IconUnlink size={16} stroke={1.75} aria-hidden='true' />
+              </ActionIconButton>
+            </div>
+          ))}
         </div>
       )}
       {identityPanel}

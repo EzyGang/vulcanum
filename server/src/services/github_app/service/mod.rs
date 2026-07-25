@@ -57,6 +57,8 @@ pub struct RepoInfo {
     pub owner: String,
     pub name: String,
     pub full_name: String,
+    pub installation_id: i64,
+    pub account_login: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -137,20 +139,48 @@ impl GithubAppManager {
         self.repo.delete_installation(&self.db, id, team_id).await
     }
 
-    pub async fn get_installation(
+    pub async fn list_installations(
         &self,
         team_id: Uuid,
         discover_remote: bool,
-    ) -> Result<Option<GithubInstallation>, GithubAppError> {
-        if let Some(inst) = self.repo.get_installation(&self.db, team_id).await? {
-            return Ok(Some(inst));
+    ) -> Result<Vec<GithubInstallation>, GithubAppError> {
+        let installations = self.repo.list_installations(&self.db, team_id).await?;
+        if !installations.is_empty() {
+            return Ok(installations);
         }
 
         if !discover_remote || self.app_id.is_none() || self.app_private_key.is_none() {
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
-        self.discover_single_installation(team_id, None).await
+        self.discover_installations(team_id).await
+    }
+
+    async fn discover_installations(
+        &self,
+        team_id: Uuid,
+    ) -> Result<Vec<GithubInstallation>, GithubAppError> {
+        let octo = self.app_octocrab()?;
+        let page = octo
+            .apps()
+            .installations()
+            .per_page(100u8)
+            .send()
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list_installations from GitHub: {e}")))?;
+        let remote_installations = octo
+            .all_pages(page)
+            .await
+            .map_err(|e| GithubAppError::Api(format!("list_installations pagination: {e}")))?;
+        let mut installations = Vec::with_capacity(remote_installations.len());
+        for installation in remote_installations {
+            installations.push(
+                self.upsert_remote_installation(team_id, None, installation)
+                    .await?,
+            );
+        }
+        installations.sort_unstable_by(|left, right| left.account_login.cmp(&right.account_login));
+        Ok(installations)
     }
 
     async fn discover_single_installation(

@@ -37,6 +37,55 @@ impl GithubAppRepository {
 
         Ok(row)
     }
+    pub async fn list_installations<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+    ) -> Result<Vec<GithubInstallation>, GithubAppError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            GithubInstallation,
+            r#"SELECT id, team_id, github_installation_id, account_login, installed_by_user_id,
+                      review_identity_user_id, review_identity_login,
+                      created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+               FROM github_installations
+               WHERE team_id = $1
+               ORDER BY LOWER(account_login), github_installation_id"#,
+            team_id,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(GithubAppError::Database)
+    }
+
+    pub async fn find_installation_by_account_login<'c, Q>(
+        &self,
+        db: Q,
+        team_id: Uuid,
+        account_login: &str,
+    ) -> Result<Option<GithubInstallation>, GithubAppError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            GithubInstallation,
+            r#"SELECT id, team_id, github_installation_id, account_login, installed_by_user_id,
+                      review_identity_user_id, review_identity_login,
+                      created_at as "created_at!: chrono::DateTime<chrono::Utc>"
+               FROM github_installations
+               WHERE team_id = $1 AND LOWER(account_login) = LOWER($2)
+               ORDER BY created_at DESC
+               LIMIT 1"#,
+            team_id,
+            account_login,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(GithubAppError::Database)
+    }
+
     pub async fn find_team_id_by_github_installation<'c, Q>(
         &self,
         db: Q,

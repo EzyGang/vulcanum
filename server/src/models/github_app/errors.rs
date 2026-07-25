@@ -12,6 +12,8 @@ pub enum GithubAppError {
     InvalidRepoUrl(String),
     #[error("invalid github repository identifier: {0}")]
     InvalidRepoIdentifier(String),
+    #[error("repositories belong to multiple github installations")]
+    RepositoriesSpanInstallations,
     #[error("github api error: {0}")]
     Api(String),
     #[error("invalid base64 private key: {0}")]

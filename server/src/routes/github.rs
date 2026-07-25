@@ -94,6 +94,8 @@ pub struct CallbackQuery {
 pub(super) enum CallbackKind<'a> {
     OAuth {
         code: &'a str,
+        installation_id: Option<i64>,
+        setup_action: Option<&'a str>,
         state_nonce: &'a str,
     },
     Installation {
@@ -111,7 +113,20 @@ pub(super) fn classify_callback(query: &CallbackQuery) -> Option<CallbackKind<'_
         query.setup_action.as_deref(),
         query.state.as_deref(),
     ) {
-        (Some(code), _, _, Some(state_nonce)) => Some(CallbackKind::OAuth { code, state_nonce }),
+        (Some(code), Some(installation_id), Some(setup_action), Some(state_nonce)) => {
+            Some(CallbackKind::OAuth {
+                code,
+                installation_id: Some(installation_id),
+                setup_action: Some(setup_action),
+                state_nonce,
+            })
+        }
+        (Some(code), None, None, Some(state_nonce)) => Some(CallbackKind::OAuth {
+            code,
+            installation_id: None,
+            setup_action: None,
+            state_nonce,
+        }),
         (None, Some(installation_id), Some(setup_action), Some(state_nonce)) => {
             Some(CallbackKind::Installation {
                 installation_id,
@@ -128,8 +143,18 @@ pub async fn callback(
     query: web::Query<CallbackQuery>,
 ) -> Result<HttpResponse, AppError> {
     let (installation_id, setup_action, state_nonce) = match classify_callback(&query) {
-        Some(CallbackKind::OAuth { code, state_nonce }) => {
-            return oauth_callback(state.get_ref(), code, state_nonce).await;
+        Some(CallbackKind::OAuth {
+            code,
+            installation_id,
+            setup_action,
+            state_nonce,
+        }) => {
+            if setup_action.is_some_and(|action| !matches!(action, "install" | "update")) {
+                return Ok(HttpResponse::Found()
+                    .append_header(("Location", "/"))
+                    .finish());
+            }
+            return oauth_callback(state.get_ref(), code, state_nonce, installation_id).await;
         }
         Some(CallbackKind::Installation {
             installation_id,
@@ -182,6 +207,7 @@ async fn oauth_callback(
     state: &AppState,
     code: &str,
     state_nonce: &str,
+    installation_id: Option<i64>,
 ) -> Result<HttpResponse, AppError> {
     match state
         .github
@@ -191,7 +217,12 @@ async fn oauth_callback(
         Some(install_state) => {
             let location = state
                 .auth
-                .complete_github_installation_authorization(&state.github, install_state, code)
+                .complete_github_installation_authorization(
+                    &state.github,
+                    install_state,
+                    code,
+                    installation_id,
+                )
                 .await?;
             Ok(HttpResponse::Found()
                 .append_header(("Location", location))
@@ -226,7 +257,7 @@ pub async fn list_repos(
     Ok(HttpResponse::Ok().json(repos))
 }
 
-pub async fn get_installation(
+pub async fn list_installations(
     state: web::Data<AppState>,
     auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
@@ -234,16 +265,16 @@ pub async fn get_installation(
         .teams
         .resolve_team(&auth, state.is_single_user)
         .await?;
-    let inst = state
+    let installations = state
         .github
-        .get_installation(team_id, state.is_single_user)
+        .list_installations(team_id, state.is_single_user)
         .await
         .map_err(|e| {
-            tracing::warn!(error = %e, "get_installation failed");
+            tracing::warn!(error = %e, "list_installations failed");
             AppError::Internal
         })?;
 
-    Ok(HttpResponse::Ok().json(inst))
+    Ok(HttpResponse::Ok().json(installations))
 }
 
 pub async fn delete_installation(

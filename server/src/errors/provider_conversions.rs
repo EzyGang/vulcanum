@@ -127,6 +127,9 @@ impl From<GithubAppError> for AppError {
             GithubAppError::InvalidRepoIdentifier(identifier) => Self::BadRequest(format!(
                 "Invalid GitHub repository identifier: {identifier}"
             )),
+            GithubAppError::RepositoriesSpanInstallations => Self::BadRequest(
+                "A work run cannot use repositories from multiple GitHub installations".to_owned(),
+            ),
             GithubAppError::Api(msg) => {
                 tracing::error!(error = %msg, operation = "github_app", "github api error");
                 Self::Internal

@@ -61,6 +61,20 @@ async fn link_review_identity_updates_only_selected_installation(pool: sqlx::PgP
         .await
         .expect("insert second installation");
 
+    let installations = repo
+        .list_installations(&pool, test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("list team installations");
+    assert_eq!(installations.len(), 2);
+    assert_eq!(installations[0].account_login, "first-owner");
+    assert_eq!(installations[1].account_login, "second-owner");
+    let matched = repo
+        .find_installation_by_account_login(&pool, test_helpers::DEFAULT_TEAM_ID, "SECOND-OWNER")
+        .await
+        .expect("find installation by account")
+        .expect("installation should exist");
+    assert_eq!(matched.id, second.id);
+
     repo.link_review_identity(
         &pool,
         test_helpers::DEFAULT_TEAM_ID,

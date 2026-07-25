@@ -68,6 +68,7 @@ impl AuthService {
         github: &GithubAppManager,
         install_state: GithubInstallState,
         code: &str,
+        installation_id: Option<i64>,
     ) -> Result<String, AuthError> {
         let token = self.exchange_github_code(code).await?;
         let github_user = self.fetch_github_user(&token).await?;
@@ -86,9 +87,25 @@ impl AuthService {
                 .await?;
         }
 
-        let installation = github
-            .connect_single_installation(install_state.team_id, install_state.user_id.as_deref())
-            .await?;
+        let installation = match installation_id {
+            Some(installation_id) => {
+                github
+                    .create_installation(
+                        install_state.team_id,
+                        install_state.user_id.as_deref(),
+                        installation_id,
+                    )
+                    .await?
+            }
+            None => {
+                github
+                    .connect_single_installation(
+                        install_state.team_id,
+                        install_state.user_id.as_deref(),
+                    )
+                    .await?
+            }
+        };
 
         if self.is_single_user {
             github

@@ -138,6 +138,9 @@ async fn webhook_target_lookup_is_scoped_to_installation_and_pr(pool: sqlx::PgPo
     assert_eq!(targets.len(), 1);
     assert_eq!(targets[0].project_config_id, project_config_id);
     assert_eq!(targets[0].external_task_ref, "task-1");
+    assert_eq!(targets[0].source_work_run_id, None);
+    assert_eq!(targets[0].task_title, None);
+    assert_eq!(targets[0].task_slug, None);
     assert!(wrong_installation.is_empty());
 }
 

@@ -61,7 +61,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/auth-url", web::get().to(github::auth_url))
                     .route("/callback", web::get().to(github::callback))
                     .route("/repos", web::get().to(github::list_repos))
-                    .route("/installation", web::get().to(github::get_installation))
+                    .route("/installations", web::get().to(github::list_installations))
                     .route(
                         "/installation/{id}",
                         web::delete().to(github::delete_installation),
