@@ -1,4 +1,4 @@
-import { IconDots } from '@tabler/icons-react';
+import { IconDots, IconGitPullRequest } from '@tabler/icons-react';
 import type { JSX } from 'preact';
 import { Button } from '../../shared/ui/Button.view';
 import type { TaskBoardMoveAction, TaskBoardTaskCardData } from '../types';
@@ -29,6 +29,7 @@ export const TaskCard = ({ data }: TaskCardProps): JSX.Element => (
   <article
     draggable
     onClick={data.onClick}
+    onPointerDown={data.onPointerDown}
     onDragStart={data.onDragStart}
     onDragEnd={data.onDragEnd}
     onKeyDown={data.onKeyDown}
@@ -40,6 +41,7 @@ export const TaskCard = ({ data }: TaskCardProps): JSX.Element => (
       </span>
       <Button
         type='button'
+        data-task-card-interactive
         variant='ghost'
         disabled={data.moving}
         aria-label={`Actions for ${data.task.title}`}
@@ -64,6 +66,27 @@ export const TaskCard = ({ data }: TaskCardProps): JSX.Element => (
         </span>
       ))}
     </div>
+    {data.pullRequests.length > 0 && (
+      <section aria-label='Pull requests' class='flex min-w-0 flex-wrap gap-1.5'>
+        {data.pullRequests.map((pullRequest) => (
+          <a
+            key={pullRequest.url}
+            href={pullRequest.url}
+            target='_blank'
+            rel='noopener noreferrer'
+            title={pullRequest.label}
+            aria-label={`Open pull request ${pullRequest.label}`}
+            draggable={false}
+            data-task-card-interactive
+            onClick={data.onPrLinkClick}
+            class='inline-flex min-h-8 min-w-0 max-w-full items-center gap-1.5 overflow-hidden border border-border-base bg-bg-card px-2 py-1 text-[11px] font-medium text-text-secondary transition-colors hover:border-border-focus hover:text-text-primary focus-visible:border-border-focus focus-visible:outline-none'
+          >
+            <IconGitPullRequest aria-hidden='true' class='shrink-0' size={14} />
+            <span class='min-w-0 truncate'>{pullRequest.label}</span>
+          </a>
+        ))}
+      </section>
+    )}
     <TaskUsageSummary augmentation={data.augmentation} variant='card' />
     <div class='flex items-center justify-between gap-3 text-[11px] text-text-muted'>
       <span>{data.createdAtLabel}</span>
