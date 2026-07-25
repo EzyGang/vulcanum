@@ -21,8 +21,6 @@ pub enum WorkRunsError {
     DeleteRunning,
     #[error("invalid pagination: {0}")]
     InvalidPagination(String),
-    #[error("failed to update task lifecycle label")]
-    LifecycleLabelUpdate,
     #[error("review ticket creation is already in progress")]
     ReviewTicketCreationPending,
     #[error("database error: {0}")]

@@ -109,6 +109,15 @@ impl WorkRunsService {
             .await
             .map_err(|_| ProjectConfigsError::NoProvider)?;
         let client = IntegrationClient::from_provider(&provider);
+        self.sync_task_to_done(config, task_ref, &client).await
+    }
+
+    pub(crate) async fn sync_task_to_done(
+        &self,
+        config: &ProjectConfig,
+        task_ref: &str,
+        client: &IntegrationClient,
+    ) -> Result<bool, WorkRunsError> {
         let current = client.fetch_task(task_ref).await?;
 
         if current.status != config.review_column {
@@ -121,23 +130,25 @@ impl WorkRunsService {
             return Ok(false);
         }
 
+        client
+            .update_task_status(task_ref, &config.done_column)
+            .await?;
+
         if !self
             .set_lifecycle_label_for_task(
                 config,
-                &client,
+                client,
                 task_ref,
                 LifecycleLabelState::Done,
                 Some(&current.labels),
             )
             .await
         {
-            tracing::warn!(task_ref, "failed to apply Done lifecycle label");
-            return Err(WorkRunsError::LifecycleLabelUpdate);
+            tracing::warn!(
+                task_ref,
+                "task moved to Done without updating its lifecycle label"
+            );
         }
-
-        client
-            .update_task_status(task_ref, &config.done_column)
-            .await?;
         Ok(true)
     }
 }

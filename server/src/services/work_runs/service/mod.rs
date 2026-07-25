@@ -10,6 +10,8 @@ pub(crate) mod lifecycle_labels;
 pub mod list;
 pub mod poll;
 pub(crate) mod reconcile_pr_completion;
+#[cfg(test)]
+mod reconcile_pr_completion_tests;
 pub(crate) mod record_review;
 pub mod refresh_github_token;
 pub(crate) mod request_github_review;
