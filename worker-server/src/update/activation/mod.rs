@@ -1,9 +1,9 @@
 mod files;
+mod preparation;
 mod state;
 
 use std::path::{Path, PathBuf};
 
-use anyhow::Context;
 use uuid::Uuid;
 
 use crate::update::activation::state::{Phase, Transaction};
@@ -98,16 +98,15 @@ where
     }
     files::sync_dir(staging_dir)?;
 
-    let rollback_dir = create_rollback_dir(install_dir, current_version)?;
-    files::backup(&installed_cli, &rollback_dir.join(CLI_BINARY))?;
-    files::backup(&installed_worker, &rollback_dir.join(WORKER_BINARY))?;
-    files::backup_version(
-        &installed_version,
-        &rollback_dir.join(VERSION_FILE),
+    let rollback_dir = prepare_rollback_dir(
+        install_dir,
         current_version,
+        &installed_cli,
+        &installed_worker,
+        &installed_version,
     )?;
-    files::sync_dir(&rollback_dir)?;
     state::write(install_dir, &rollback_dir, Phase::Activating)?;
+    preparation::finish(&rollback_dir)?;
 
     let replacements = [
         (staged_cli, installed_cli),
@@ -143,7 +142,13 @@ pub(super) fn rollback_pair(rollback_dir: &Path, install_dir: &Path) -> anyhow::
     recover_interrupted_activation(install_dir).map(|_| ())
 }
 
-fn create_rollback_dir(install_dir: &Path, current_version: &str) -> anyhow::Result<PathBuf> {
+fn prepare_rollback_dir(
+    install_dir: &Path,
+    current_version: &str,
+    installed_cli: &Path,
+    installed_worker: &Path,
+    installed_version: &Path,
+) -> anyhow::Result<PathBuf> {
     let safe_version: String = current_version
         .chars()
         .map(|character| {
@@ -154,17 +159,15 @@ fn create_rollback_dir(install_dir: &Path, current_version: &str) -> anyhow::Res
         })
         .collect();
     let rollback_root = install_dir.join(ROLLBACK_DIR);
-    let rollback_dir = rollback_root.join(format!("{safe_version}-{}", Uuid::new_v4()));
-    std::fs::create_dir_all(&rollback_dir).with_context(|| {
-        format!(
-            "failed to create rollback directory {}",
-            rollback_dir.display()
-        )
-    })?;
-    files::sync_dir(&rollback_dir)?;
-    files::sync_dir(&rollback_root)?;
-    files::sync_dir(install_dir)?;
-    Ok(rollback_dir)
+    let rollback_name = format!("{safe_version}-{}", Uuid::new_v4());
+    preparation::prepare(
+        &rollback_root,
+        &rollback_name,
+        installed_cli,
+        installed_worker,
+        installed_version,
+        current_version,
+    )
 }
 
 fn recover_transaction(install_dir: &Path, transaction: Transaction) -> anyhow::Result<PathBuf> {

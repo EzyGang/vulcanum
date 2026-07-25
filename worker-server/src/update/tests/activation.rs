@@ -51,6 +51,32 @@ fn creates_rollback_marker_for_legacy_markerless_installation() {
 }
 
 #[test]
+fn cleans_abandoned_rollback_preparations_before_retry() {
+    let temporary = tempfile::tempdir().expect("temporary directory should be created");
+    let install_dir = temporary.path().join("install");
+    let staging_dir = temporary.path().join("staging");
+    let rollback_root = install_dir.join(".vulcanum-rollback");
+    let unfinished = rollback_root.join(".vulcanum-rollback-preparing-stale");
+    let unpublished = rollback_root.join("v0.9.0-stale");
+    std::fs::create_dir_all(&unfinished).expect("unfinished preparation should be created");
+    std::fs::create_dir_all(&unpublished).expect("unpublished rollback should be created");
+    std::fs::create_dir_all(&staging_dir).expect("staging directory should be created");
+    std::fs::write(unfinished.join("vulcanum"), b"partial")
+        .expect("partial backup should be written");
+    std::fs::write(unpublished.join(".vulcanum-rollback-preparing"), b"")
+        .expect("preparation marker should be written");
+    write_pair(&install_dir, b"old-cli", b"old-worker", "v1.0.0");
+    write_pair(&staging_dir, b"new-cli", b"new-worker", "v2.0.0");
+
+    let rollback_dir =
+        activate_pair(&staging_dir, &install_dir, "v1.0.0").expect("release pair should activate");
+
+    assert!(!unfinished.exists());
+    assert!(!unpublished.exists());
+    assert!(!rollback_dir.join(".vulcanum-rollback-preparing").exists());
+}
+
+#[test]
 fn commits_only_after_replacement_startup_is_confirmed() {
     let temporary = tempfile::tempdir().expect("temporary directory should be created");
     let install_dir = temporary.path().join("install");
