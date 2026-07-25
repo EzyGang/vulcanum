@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, team_id, github_installation_id, account_login, installed_by_user_id,\n                      review_identity_user_id, review_identity_login,\n                      created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n               FROM github_installations\n               WHERE team_id = $1\n               ORDER BY LOWER(account_login), github_installation_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "account_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "installed_by_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "review_identity_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "review_identity_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "482a8469c4a494c7303c47eb8bb11c9db278a50b896e1b44d5990d60eaed8f9b"
+}

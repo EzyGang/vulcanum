@@ -2,6 +2,8 @@ export interface RepoInfo {
   owner: string;
   name: string;
   fullName: string;
+  installationId: number;
+  accountLogin: string;
 }
 
 export interface GithubInstallation {

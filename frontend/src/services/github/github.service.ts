@@ -9,7 +9,7 @@ export const getAuthUrl = () => get<GithubAuthUrlResponse>('/github/auth-url');
 export const getReviewIdentityAuthUrl = () =>
   get<GithubAuthUrlResponse>('/auth/github/link-url?return_to=/settings%3Ftab%3Dgithub');
 
-export const getInstallation = () => get<GithubInstallation | null>('/github/installation');
+export const listInstallations = () => get<GithubInstallation[]>('/github/installations');
 
 export const listRepos = () => get<RepoInfo[]>('/github/repos');
 

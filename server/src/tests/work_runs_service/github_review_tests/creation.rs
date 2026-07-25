@@ -97,8 +97,8 @@ async fn github_review_request_reuses_ticket_for_matching_pull_request(pool: sql
     let source_run_id = Uuid::new_v4();
     sqlx::query!(
         r#"INSERT INTO work_runs
-           (id, external_task_ref, project_config_id, status, team_id, work_type)
-           VALUES ($1, 'existing-ticket', $2, 'completed', $3, 'implementation')"#,
+           (id, external_task_ref, task_title, task_slug, project_config_id, status, team_id, work_type)
+           VALUES ($1, 'existing-ticket', 'Existing ticket', 'VLC-57', $2, 'completed', $3, 'implementation')"#,
         source_run_id,
         project_id,
         test_helpers::DEFAULT_TEAM_ID,
@@ -135,13 +135,16 @@ async fn github_review_request_reuses_ticket_for_matching_pull_request(pool: sql
 
     assert_eq!(outcome, GithubReviewRequestOutcome::Spawned);
     let run = sqlx::query!(
-        "SELECT external_task_ref FROM work_runs WHERE github_delivery_id = $1",
+        "SELECT external_task_ref, task_title, task_slug, parent_work_run_id FROM work_runs WHERE github_delivery_id = $1",
         "existing-ticket-delivery",
     )
     .fetch_one(&pool)
     .await
     .expect("review run");
     assert_eq!(run.external_task_ref, "existing-ticket");
+    assert_eq!(run.parent_work_run_id, Some(source_run_id));
+    assert_eq!(run.task_title.as_deref(), Some("Existing ticket"));
+    assert_eq!(run.task_slug.as_deref(), Some("VLC-57"));
     assert_eq!(ticket_creator.created_count(), 0);
     let reservations = sqlx::query_scalar!(
         "SELECT COUNT(*) FROM github_review_tickets WHERE project_config_id = $1",

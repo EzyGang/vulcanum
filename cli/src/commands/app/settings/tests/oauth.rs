@@ -102,7 +102,7 @@ async fn github_disconnect_is_idempotent_or_deletes_exact_installation() {
     let absent = FakeServer::start(vec![
         refresh(),
         team(),
-        Response::ok("GET", "/api/v1/github/installation", "null"),
+        Response::ok("GET", "/api/v1/github/installations", "[]"),
     ]);
     let mut harness = Harness::new(&absent.url);
     harness
@@ -117,8 +117,8 @@ async fn github_disconnect_is_idempotent_or_deletes_exact_installation() {
         team(),
         Response::ok(
             "GET",
-            "/api/v1/github/installation",
-            r#"{"id":9,"account_login":"octocat"}"#,
+            "/api/v1/github/installations",
+            r#"[{"id":9,"account_login":"octocat"}]"#,
         ),
         Response::status(
             "DELETE",

@@ -5,6 +5,7 @@ import {
   DEFAULT_REVIEW_MAX_TURNS
 } from '../../../constants/reviewAutomation';
 import { updateProject } from '../../../services/projects/projects.service';
+import type { RepoInfo } from '../../../types/github';
 import type { ProjectConfig, UpdateProjectRequest } from '../../../types/projects';
 import type { TaskBoardColumn } from '../../../types/task-board';
 import { invalidate, queryClient } from '../../../utils/api/query/client';
@@ -29,7 +30,8 @@ export const useTaskBoardSettings = (
   selection: TaskBoardSelection | null,
   columns: TaskBoardColumn[],
   projectConfig: ProjectConfig | null,
-  selectedRepoNames: string[]
+  selectedRepoNames: string[],
+  repos: RepoInfo[]
 ) => {
   const formError = useSignal<string | null>(null);
   const settingsDialogOpen = useSignal(false);
@@ -213,7 +215,22 @@ export const useTaskBoardSettings = (
         return;
       }
 
-      const nextRepoNames = selectedRepoNames.includes(repoFullName)
+      const selected = selectedRepoNames.includes(repoFullName);
+      if (!selected) {
+        const targetInstallationId = repos.find(
+          (repo) => repo.fullName === repoFullName
+        )?.installationId;
+        const spansInstallations = selectedRepoNames.some(
+          (name) =>
+            repos.find((repo) => repo.fullName === name)?.installationId !== targetInstallationId
+        );
+        if (spansInstallations) {
+          formError.value =
+            'A project can only use repositories from one GitHub account installation';
+          return;
+        }
+      }
+      const nextRepoNames = selected
         ? selectedRepoNames.filter((name) => name !== repoFullName)
         : [...selectedRepoNames, repoFullName];
       repoMutation.mutate(nextRepoNames, {
@@ -222,7 +239,7 @@ export const useTaskBoardSettings = (
         }
       });
     },
-    [selection, columns, selectedRepoNames, repoMutation, formError]
+    [selection, columns, selectedRepoNames, repos, repoMutation, formError]
   );
 
   const settingsForm = {

@@ -226,7 +226,7 @@ pub async fn list_repos(
     Ok(HttpResponse::Ok().json(repos))
 }
 
-pub async fn get_installation(
+pub async fn list_installations(
     state: web::Data<AppState>,
     auth: TeamPrincipal,
 ) -> Result<HttpResponse, AppError> {
@@ -234,16 +234,16 @@ pub async fn get_installation(
         .teams
         .resolve_team(&auth, state.is_single_user)
         .await?;
-    let inst = state
+    let installations = state
         .github
-        .get_installation(team_id, state.is_single_user)
+        .list_installations(team_id, state.is_single_user)
         .await
         .map_err(|e| {
-            tracing::warn!(error = %e, "get_installation failed");
+            tracing::warn!(error = %e, "list_installations failed");
             AppError::Internal
         })?;
 
-    Ok(HttpResponse::Ok().json(inst))
+    Ok(HttpResponse::Ok().json(installations))
 }
 
 pub async fn delete_installation(

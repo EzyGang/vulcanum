@@ -13,12 +13,12 @@ impl ApiClient {
             .await
     }
 
-    pub async fn get_github_app_installation(
+    pub async fn list_github_app_installations(
         &self,
         team_id: Uuid,
         access_token: &str,
-    ) -> anyhow::Result<Option<GithubAppInstallation>> {
-        self.team_get("github/installation", team_id, access_token)
+    ) -> anyhow::Result<Vec<GithubAppInstallation>> {
+        self.team_get("github/installations", team_id, access_token)
             .await
     }
 

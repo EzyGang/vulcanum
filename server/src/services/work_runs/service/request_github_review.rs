@@ -114,7 +114,9 @@ impl WorkRunsService {
         };
 
         let normalized_repo = request.repo_full_name.to_ascii_lowercase();
-        let external_task_ref = match self
+        let standalone_title = review_ticket_title(request.pr_number, request.pr_title);
+        let standalone_slug = format!("{}#{}", request.repo_full_name, request.pr_number);
+        let (external_task_ref, parent_work_run_id, task_title, task_slug) = match self
             .work_runs_repo
             .list_task_pr_targets_for_pull_request(
                 &self.db,
@@ -126,18 +128,25 @@ impl WorkRunsService {
             .into_iter()
             .find(|target| target.project_config_id == selected.id)
         {
-            Some(target) => target.external_task_ref,
-            None => {
+            Some(target) => (
+                target.external_task_ref,
+                target.source_work_run_id,
+                target.task_title.or(Some(standalone_title)),
+                target.task_slug.or(Some(standalone_slug)),
+            ),
+            None => (
                 self.resolve_github_review_ticket(
                     selected,
                     &normalized_repo,
                     request.pr_number,
                     request.pr_title,
                 )
-                .await?
-            }
+                .await?,
+                None,
+                Some(standalone_title),
+                Some(standalone_slug),
+            ),
         };
-        let ticket_title = review_ticket_title(request.pr_number, request.pr_title);
         let inserted = self
             .work_runs_repo
             .insert_work_run_if_not_active(
@@ -145,13 +154,13 @@ impl WorkRunsService {
                 InsertWorkRunParams {
                     team_id,
                     external_task_ref,
-                    task_title: Some(ticket_title),
-                    task_slug: Some(format!("{}#{}", request.repo_full_name, request.pr_number)),
+                    task_title,
+                    task_slug,
                     project_config_id: selected.id,
                     repo_full_names: vec![request.repo_full_name.to_owned()],
                     status: WorkRunStatus::Pending,
                     work_type: WorkRunType::PullRequestReview,
-                    parent_work_run_id: None,
+                    parent_work_run_id,
                     review_target_pr_url: Some(github_pr_url(&normalized_repo, request.pr_number)),
                     review_target_repo_full_name: Some(request.repo_full_name.to_owned()),
                     github_installation_id: Some(request.installation_id),
