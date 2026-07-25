@@ -39,6 +39,18 @@ fn review_loop_submits_clean_review_immediately() {
 }
 
 #[test]
+fn existing_actionable_review_still_starts_fix_pass() {
+    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 1);
+    let mut artifact = actionable_review_artifact();
+    artifact.review_already_exists = true;
+
+    let prompt = state.prompt_after_artifact(&artifact);
+
+    assert!(prompt.is_some());
+    assert_eq!(state.progress().fix_pass, 1);
+}
+
+#[test]
 fn implementation_loop_uses_plain_max_turns() {
     let state = ReviewLoopState::new(WorkRunType::Implementation, 4);
 

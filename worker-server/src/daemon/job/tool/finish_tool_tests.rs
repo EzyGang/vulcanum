@@ -45,8 +45,8 @@ fn review_finish_tool_uses_review_fields_only() {
     assert!(tool.contains("review_already_exists: tool.schema.boolean"));
     assert!(tool.contains("missing or failing formatter"));
     assert!(tool.contains("pr_urls: []"));
-    assert!(tool.contains("current PR head commit"));
-    assert!(tool.contains("new commits after the existing review"));
+    assert!(tool.contains("same work run"));
+    assert!(tool.contains("earlier run does not satisfy"));
     assert!(!tool.contains("pr_urls: tool.schema.array"));
     assert!(!tool.contains("args.pr_urls"));
 }

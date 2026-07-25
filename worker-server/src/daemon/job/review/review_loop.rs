@@ -83,7 +83,7 @@ impl ReviewLoopState {
     }
 
     fn prompt_after_review_artifact(&mut self, artifact: &FinishRunArtifact) -> Option<String> {
-        if !matches!(artifact.status, FinishStatus::Completed) || artifact.review_already_exists {
+        if !matches!(artifact.status, FinishStatus::Completed) {
             return None;
         }
 

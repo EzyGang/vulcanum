@@ -67,4 +67,6 @@ fn review_github_instruction_is_read_only_and_head_specific() {
     assert!(REVIEW_GITHUB_INSTRUCTION.contains("Do not create branches"));
     assert!(REVIEW_GITHUB_INSTRUCTION.contains("Do not approve or request changes"));
     assert!(!REVIEW_GITHUB_INSTRUCTION.contains("gh pr create"));
+    assert!(REVIEW_GITHUB_INSTRUCTION.contains("fresh review request"));
+    assert!(REVIEW_GITHUB_INSTRUCTION.contains("earlier run does not satisfy"));
 }
