@@ -85,7 +85,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
     journal: Arc<Journal>,
 ) {
     let Some(session_path) = entry.agent_session_path.as_deref() else {
-        cleanup_recovery(&entry);
+        cleanup_recovery(&entry).await;
         mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
         return;
     };
@@ -107,7 +107,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
                 error = %e,
                 "failed to load OMP job during recovery"
             );
-            cleanup_recovery(&entry);
+            cleanup_recovery(&entry).await;
             mark_lost_and_submit(&journal, &api_client, &worker_state, &entry).await;
             return;
         }
@@ -115,7 +115,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
     let work_type = recovered_job.work_type;
     let workdir = std::path::PathBuf::from(&entry.workdir);
 
-    cleanup_stale_job(&entry);
+    cleanup_stale_job(&entry).await;
     let env = match recovered_omp_env(&entry, &recovered_job).await {
         Ok(env) => env,
         Err(e) => {
@@ -202,6 +202,6 @@ pub(crate) async fn recover_omp_rpc_session_task(
         }
     }
 
-    cleanup_recovery(&entry);
+    cleanup_recovery(&entry).await;
     tracing::info!(job_id = %entry.job_id, "OMP RPC recovery session completed");
 }

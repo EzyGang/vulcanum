@@ -1,10 +1,15 @@
 pub(crate) mod checks;
 pub(crate) mod cleanup;
+mod command;
+#[cfg(test)]
+mod reconciliation_tests;
 pub(crate) mod recover_session;
 #[cfg(test)]
 mod recover_session_tests;
 
 use std::sync::Arc;
+
+use anyhow::Context;
 
 use tokio::sync::RwLock;
 
@@ -14,6 +19,7 @@ use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::execution::artifact::read_finish_artifact;
 use crate::daemon::job::execution::submit::submit_turn_result;
+use crate::daemon::queue::JobTracker;
 use crate::providers::opencode;
 use crate::providers::opencode::api;
 use crate::providers::opencode::spawn::read_container_port;
@@ -28,17 +34,14 @@ pub async fn reconcile_running_jobs(
     journal: &Arc<Journal>,
     client: &Arc<ApiClient>,
     worker_state: &Arc<RwLock<WorkerState>>,
-) {
-    let running = match journal.list_running() {
-        Ok(entries) => entries,
-        Err(e) => {
-            tracing::error!(error = %e, "failed to list running jobs for recovery");
-            return;
-        }
-    };
+    job_tracker: &Arc<JobTracker>,
+) -> anyhow::Result<()> {
+    let running = journal
+        .list_running()
+        .context("failed to list running jobs for recovery")?;
 
     if running.is_empty() {
-        return;
+        return Ok(());
     }
 
     tracing::info!(count = running.len(), "reconciling stale running jobs");
@@ -61,29 +64,35 @@ pub async fn reconcile_running_jobs(
                 Some(&artifact),
             )
             .await;
-            cleanup_stale_job(entry);
+            cleanup_stale_job(entry).await;
             continue;
         }
         if entry.agent_backend.as_deref() == Some("omp_rpc") {
+            if !job_tracker.reserve(entry.job_id).await {
+                continue;
+            }
             let task_entry = entry.clone();
+            let job_id = entry.job_id;
             let api_client = Arc::clone(client);
             let worker = Arc::clone(worker_state);
             let jrnl = Arc::clone(journal);
-            tokio::spawn(recover_omp_rpc_session_task(
-                task_entry, api_client, worker, jrnl,
-            ));
+            let tracker = Arc::clone(job_tracker);
+            tokio::spawn(async move {
+                recover_omp_rpc_session_task(task_entry, api_client, worker, jrnl).await;
+                tracker.release(job_id).await;
+            });
             continue;
         }
 
         let is_host = entry.harness_type == "host";
         let alive = if is_host {
-            check_host_alive(entry)
+            check_host_alive(entry).await
         } else {
-            check_container_alive(entry)
+            check_container_alive(entry).await
         };
 
         if !alive {
-            cleanup_stale_job(entry);
+            cleanup_stale_job(entry).await;
             mark_lost_and_submit(journal, client, worker_state, entry).await;
             continue;
         }
@@ -96,7 +105,7 @@ pub async fn reconcile_running_jobs(
                         job_id = %entry.job_id,
                         "no host_port in journal, killing orphan"
                     );
-                    cleanup_stale_job(entry);
+                    cleanup_stale_job(entry).await;
                     mark_lost_and_submit(journal, client, worker_state, entry).await;
                     continue;
                 }
@@ -115,7 +124,7 @@ pub async fn reconcile_running_jobs(
                         error = %e,
                         "failed to read container port"
                     );
-                    crate::providers::opencode::cleanup::remove_container(Some(container_name));
+                    cleanup::remove_container(Some(container_name)).await;
                     mark_lost_and_submit(journal, client, worker_state, entry).await;
                     continue;
                 }
@@ -133,7 +142,7 @@ pub async fn reconcile_running_jobs(
                     error = %e,
                     "failed to query session status"
                 );
-                cleanup_stale_job(entry);
+                cleanup_stale_job(entry).await;
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -146,7 +155,7 @@ pub async fn reconcile_running_jobs(
                     job_id = %entry.job_id,
                     "no session_id in journal"
                 );
-                cleanup_stale_job(entry);
+                cleanup_stale_job(entry).await;
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -160,7 +169,7 @@ pub async fn reconcile_running_jobs(
                     session_id = session_id,
                     "session not found in status map"
                 );
-                cleanup_stale_job(entry);
+                cleanup_stale_job(entry).await;
                 mark_lost_and_submit(journal, client, worker_state, entry).await;
                 continue;
             }
@@ -175,18 +184,28 @@ pub async fn reconcile_running_jobs(
                     session_id = session_id,
                     "reconnecting to live session"
                 );
+                if !job_tracker.reserve(entry.job_id).await {
+                    continue;
+                }
                 let task_entry = entry.clone();
+                let job_id = entry.job_id;
                 let api_client = Arc::clone(client);
                 let worker = Arc::clone(worker_state);
                 let jrnl = Arc::clone(journal);
                 let sid = session_id.to_owned();
                 let cname = entry.container_name.clone();
-                tokio::spawn(recover_session_task(
-                    task_entry, api_client, worker, jrnl, oc_client, sid, cname,
-                ));
+                let tracker = Arc::clone(job_tracker);
+                tokio::spawn(async move {
+                    recover_session_task(
+                        task_entry, api_client, worker, jrnl, oc_client, sid, cname,
+                    )
+                    .await;
+                    tracker.release(job_id).await;
+                });
             }
         }
     }
+    Ok(())
 }
 
 fn recovered_artifact_export() -> SessionExport {

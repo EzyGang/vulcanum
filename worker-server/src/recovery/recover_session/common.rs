@@ -61,7 +61,7 @@ pub(super) fn save_recovered_messages(
     }
 }
 
-pub(super) fn cleanup_recovery(entry: &JournalEntry) {
+pub(super) async fn cleanup_recovery(entry: &JournalEntry) {
     let env = IsolatedEnvironment {
         workdir: std::path::PathBuf::from(&entry.workdir),
         workspace_dir: std::path::PathBuf::from(&entry.workdir).join("workspace"),
@@ -77,7 +77,7 @@ pub(super) fn cleanup_recovery(entry: &JournalEntry) {
 
     match entry.harness_type.as_str() {
         "host" => {
-            kill_host_process_group(entry);
+            kill_host_process_group(entry).await;
             tokio::spawn(async move {
                 HostIsolation::new().cleanup(&env).await;
             });

@@ -8,17 +8,21 @@ use super::job::handle_job;
 use super::DaemonState;
 
 #[derive(Default)]
-pub(super) struct JobTracker {
+pub(crate) struct JobTracker {
     active: Mutex<HashSet<Uuid>>,
 }
 
 impl JobTracker {
-    pub(super) async fn reserve(&self, job_id: Uuid) -> bool {
+    pub(crate) async fn reserve(&self, job_id: Uuid) -> bool {
         self.active.lock().await.insert(job_id)
     }
 
-    pub(super) async fn release(&self, job_id: Uuid) {
+    pub(crate) async fn release(&self, job_id: Uuid) {
         self.active.lock().await.remove(&job_id);
+    }
+
+    pub(crate) async fn is_idle(&self) -> bool {
+        self.active.lock().await.is_empty()
     }
 }
 

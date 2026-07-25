@@ -127,7 +127,7 @@ require_command awk
 require_command sed
 
 tmp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t vulcanum)
-trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+trap 'rm -rf "$tmp_dir"; if [ -n "${version_tmp:-}" ]; then rm -f "$version_tmp"; fi' EXIT HUP INT TERM
 
 target=$(resolve_target)
 archive_name="vulcanum-${target}.tar.gz"
@@ -150,8 +150,14 @@ verify_checksum "${tmp_dir}/${archive_name}" "${tmp_dir}/${archive_name}.sha256"
 tar -xzf "${tmp_dir}/${archive_name}" -C "$tmp_dir"
 
 mkdir -p "$INSTALL_DIR"
+version_tmp=$(mktemp "${INSTALL_DIR}/.vulcanum-version.XXXXXX")
 install -m 0755 "${tmp_dir}/vulcanum" "${INSTALL_DIR}/vulcanum"
 install -m 0755 "${tmp_dir}/vulcanum-server" "${INSTALL_DIR}/vulcanum-server"
+printf '%s\n' "$tag" > "$version_tmp"
+chmod 0644 "$version_tmp"
+mv "$version_tmp" "${INSTALL_DIR}/.vulcanum-version"
+version_tmp=
+rm -f "${INSTALL_DIR}/.vulcanum-update-state"
 
 echo "Installed vulcanum and vulcanum-server to ${INSTALL_DIR}"
 case ":${PATH}:" in
