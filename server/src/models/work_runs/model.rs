@@ -116,3 +116,29 @@ pub struct TaskPrTarget {
     pub task_title: Option<String>,
     pub task_slug: Option<String>,
 }
+
+#[derive(Debug, Clone, Eq, FromRow, PartialEq)]
+pub struct GithubImplementationFollowupRequest {
+    pub delivery_id: String,
+    pub github_installation_id: i64,
+    pub repo_full_name: String,
+    pub pr_number: i64,
+    pub comment_id: i64,
+    pub sender_id: String,
+    pub project_config_id: Uuid,
+    pub ticket_selector: Option<String>,
+    pub external_task_ref: Option<String>,
+    pub work_run_id: Option<Uuid>,
+    pub request_body: String,
+    pub ticket_created: bool,
+    pub outcome: String,
+    pub ambiguous_task_refs: Vec<String>,
+}
+
+#[derive(Debug, Clone, Eq, FromRow, PartialEq)]
+pub struct GithubImplementationFollowupContext {
+    pub delivery_id: String,
+    pub repo_full_name: String,
+    pub pr_number: i64,
+    pub request_body: String,
+}

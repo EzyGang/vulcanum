@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO users (id, email) VALUES ('github-followup-user', 'followup@example.com')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1e704b7a5992a878ca4a12fe98bd373497b7da2fe593af91cbd9a4b1021fbe46"
+}

@@ -1,9 +1,12 @@
 use uuid::Uuid;
 
 use crate::db::work_runs::queries::InsertWorkRunParams;
-use crate::models::project_configs::model::ProjectConfig;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRunStatus, WorkRunType};
+use crate::services::work_runs::service::github_commands::{
+    response_options, select_project, GithubCommandAuthorization,
+    GithubCommandAuthorizationRequest, GithubCommandResponseOptions, ProjectSelection,
+};
 use crate::services::work_runs::service::review_ticket::review_ticket_title;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_pr_url;
@@ -21,27 +24,15 @@ pub(crate) struct GithubReviewRequest<'a> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct ReviewProjectOption {
-    pub project_config_id: Uuid,
-    pub display_name: String,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct ReviewResponseOptions {
-    pub team_id: Uuid,
-    pub projects: Vec<ReviewProjectOption>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum GithubReviewRequestOutcome {
     Spawned,
     AlreadyActive,
     Unauthorized,
     UnknownInstallation,
     NoMatchingProject { team_id: Uuid },
-    ReviewDisabled(ReviewResponseOptions),
-    ProjectSelectionRequired(ReviewResponseOptions),
-    InvalidProjectSelection(ReviewResponseOptions),
+    ReviewDisabled(GithubCommandResponseOptions),
+    ProjectSelectionRequired(GithubCommandResponseOptions),
+    InvalidProjectSelection(GithubCommandResponseOptions),
 }
 
 impl WorkRunsService {
@@ -49,44 +40,26 @@ impl WorkRunsService {
         &self,
         request: GithubReviewRequest<'_>,
     ) -> Result<GithubReviewRequestOutcome, WorkRunsError> {
-        let team_id = match self
-            .github
-            .repo
-            .find_team_id_by_github_installation(&self.db, request.installation_id)
+        let (team_id, configs) = match self
+            .authorize_github_command(GithubCommandAuthorizationRequest {
+                installation_id: request.installation_id,
+                sender_id: request.sender_id,
+                single_user_mode: request.single_user_mode,
+                repo_full_name: request.repo_full_name,
+            })
             .await?
         {
-            Some(team_id) => team_id,
-            None => return Ok(GithubReviewRequestOutcome::UnknownInstallation),
-        };
-        let linked_identity = match request.single_user_mode {
-            true => {
-                self.github
-                    .repo
-                    .is_linked_review_identity(&self.db, request.installation_id, request.sender_id)
-                    .await?
+            GithubCommandAuthorization::Authorized { team_id, projects } => (team_id, projects),
+            GithubCommandAuthorization::Unauthorized { .. } => {
+                return Ok(GithubReviewRequestOutcome::Unauthorized);
             }
-            false => false,
-        };
-        let authorized = match linked_identity {
-            true => true,
-            false => {
-                self.project_configs
-                    .teams
-                    .is_provider_identity_member(team_id, "github", request.sender_id)
-                    .await?
+            GithubCommandAuthorization::UnknownInstallation => {
+                return Ok(GithubReviewRequestOutcome::UnknownInstallation);
+            }
+            GithubCommandAuthorization::NoMatchingProject { team_id } => {
+                return Ok(GithubReviewRequestOutcome::NoMatchingProject { team_id });
             }
         };
-        if !authorized {
-            return Ok(GithubReviewRequestOutcome::Unauthorized);
-        }
-
-        let configs = self
-            .project_configs
-            .list_enabled_for_github_repo(request.installation_id, request.repo_full_name)
-            .await?;
-        if configs.is_empty() {
-            return Ok(GithubReviewRequestOutcome::NoMatchingProject { team_id });
-        }
 
         let mut enabled = Vec::new();
         let mut disabled = Vec::new();
@@ -173,57 +146,5 @@ impl WorkRunsService {
             true => Ok(GithubReviewRequestOutcome::Spawned),
             false => Ok(GithubReviewRequestOutcome::AlreadyActive),
         }
-    }
-}
-
-enum ProjectSelection<'a> {
-    Selected(&'a ProjectConfig),
-    Disabled,
-    Required,
-    Invalid,
-}
-
-fn select_project<'a>(
-    selector: Option<&str>,
-    enabled: &'a [ProjectConfig],
-    disabled: &[ProjectConfig],
-) -> ProjectSelection<'a> {
-    match selector {
-        Some(selector) => {
-            let id = match selector
-                .get(..8)
-                .filter(|prefix| prefix.eq_ignore_ascii_case("project:"))
-                .and_then(|_| Uuid::parse_str(&selector[8..]).ok())
-            {
-                Some(id) => id,
-                None => return ProjectSelection::Invalid,
-            };
-            match enabled.iter().find(|config| config.id == id) {
-                Some(config) => ProjectSelection::Selected(config),
-                None if disabled.iter().any(|config| config.id == id) => ProjectSelection::Disabled,
-                None => ProjectSelection::Invalid,
-            }
-        }
-        None => match enabled {
-            [config] => ProjectSelection::Selected(config),
-            [] => ProjectSelection::Disabled,
-            _ => ProjectSelection::Required,
-        },
-    }
-}
-
-fn response_options(team_id: Uuid, configs: &[ProjectConfig]) -> ReviewResponseOptions {
-    ReviewResponseOptions {
-        team_id,
-        projects: configs
-            .iter()
-            .map(|config| ReviewProjectOption {
-                project_config_id: config.id,
-                display_name: match config.name.trim() {
-                    "" => config.external_project_id.clone(),
-                    _ => config.name.clone(),
-                },
-            })
-            .collect(),
     }
 }

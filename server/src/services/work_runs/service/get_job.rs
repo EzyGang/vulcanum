@@ -1,19 +1,14 @@
 use uuid::Uuid;
-use vulcanum_shared::api::wire::{JobRepo, JobResponse};
+use vulcanum_shared::api::wire::JobResponse;
 
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::providers::model::IntegrationTask;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{WorkRun, WorkRunType};
 use crate::services::model_providers::renderer::ModelSelection;
-use crate::services::poller::prompts::{
-    ENVIRONMENT_INSTRUCTION, GITHUB_INSTRUCTION, REVIEW_GITHUB_INSTRUCTION,
-};
-use crate::services::poller::service::repo_layout;
-use crate::services::poller::template::{render_template, TemplateVars};
 use crate::services::providers::client::IntegrationClient;
+use crate::services::work_runs::service::job_prompts::render_prompt_text;
 use crate::services::work_runs::service::WorkRunsService;
-use crate::util::github::github_repo_url;
 
 impl WorkRunsService {
     pub async fn get_job(&self, id: Uuid, worker_id: Uuid) -> Result<JobResponse, WorkRunsError> {
@@ -26,6 +21,10 @@ impl WorkRunsService {
         let task = self.fetch_task_for_run(&run, &cfg).await?;
         let repos = self.github_repos_for_work_run(&run).await?;
         let pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
+        let implementation_followup = self
+            .work_runs_repo
+            .find_github_implementation_followup_context(&self.db, id)
+            .await?;
 
         let (provider_instance_url, provider_api_key) = if run.is_standalone_review() {
             (String::new(), String::new())
@@ -66,7 +65,13 @@ impl WorkRunsService {
 
         Ok(JobResponse {
             work_type: shared_work_type(run.work_type),
-            prompt_text: render_prompt_text(&run, &cfg, &task, &repos),
+            prompt_text: render_prompt_text(
+                &run,
+                &cfg,
+                &task,
+                &repos,
+                implementation_followup.as_ref(),
+            ),
             repos,
             agents_md: cfg.agents_md.clone(),
             agent_backend: cfg.agent_backend,
@@ -149,95 +154,6 @@ impl WorkRunsService {
             .await
             .map_err(WorkRunsError::from)
     }
-}
-
-#[must_use]
-fn render_prompt_text(
-    run: &WorkRun,
-    cfg: &JobConfigFields,
-    task: &IntegrationTask,
-    repos: &[JobRepo],
-) -> String {
-    match run.work_type {
-        WorkRunType::Implementation => render_implementation_prompt(cfg, task, repos),
-        WorkRunType::PullRequestReview => render_review_prompt(run, cfg, task),
-    }
-}
-
-#[must_use]
-pub(crate) fn render_implementation_prompt(
-    cfg: &JobConfigFields,
-    task: &IntegrationTask,
-    repos: &[JobRepo],
-) -> String {
-    let repo_urls = repos
-        .iter()
-        .map(|repo| repo.url.as_str())
-        .collect::<Vec<&str>>()
-        .join("\n");
-    let repo_full_names = repos
-        .iter()
-        .map(|repo| repo.full_name.clone())
-        .collect::<Vec<String>>();
-    let repo_names = repo_full_names.join("\n");
-    let repo_layout = repo_layout(&repo_full_names);
-    let repo_url = repos.first().map(|repo| repo.url.as_str()).unwrap_or("");
-    let mut prompt_text = render_template(
-        &cfg.prompt_template,
-        &TemplateVars {
-            task_title: &task.title,
-            task_body: task.description.as_deref().unwrap_or(""),
-            repo_url,
-            repo_urls: &repo_urls,
-            repo_names: &repo_names,
-            repo_layout: &repo_layout,
-            review_target_pr_url: "",
-        },
-    );
-
-    prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
-
-    if !repos.is_empty() {
-        prompt_text.push_str(GITHUB_INSTRUCTION);
-    }
-
-    prompt_text
-}
-
-#[must_use]
-fn render_review_prompt(run: &WorkRun, cfg: &JobConfigFields, task: &IntegrationTask) -> String {
-    let repo_names = match run.review_target_repo_full_name.as_deref() {
-        Some(repo) => repo.to_owned(),
-        None => cfg.repo_full_names.join("\n"),
-    };
-    let repo_urls = match run.review_target_repo_full_name.as_deref() {
-        Some(repo) => github_repo_url(repo),
-        None => cfg.repo_urls.join("\n"),
-    };
-    let repo_full_names = match run.review_target_repo_full_name.as_ref() {
-        Some(repo) => vec![repo.clone()],
-        None => cfg.repo_full_names.clone(),
-    };
-    let repo_layout = repo_layout(&repo_full_names);
-
-    let mut prompt_text = render_template(
-        &cfg.review_prompt_template,
-        &TemplateVars {
-            task_title: &task.title,
-            task_body: task.description.as_deref().unwrap_or(""),
-            repo_url: &repo_urls,
-            repo_urls: &repo_urls,
-            repo_names: &repo_names,
-            repo_layout: &repo_layout,
-            review_target_pr_url: run.review_target_pr_url.as_deref().unwrap_or(""),
-        },
-    );
-    prompt_text.push_str(ENVIRONMENT_INSTRUCTION);
-    if !repo_full_names.is_empty() {
-        prompt_text.push_str(REVIEW_GITHUB_INSTRUCTION);
-    }
-
-    prompt_text
 }
 
 #[must_use]
