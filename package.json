@@ -13,8 +13,8 @@
     "migrate-server-down": "cargo sqlx migrate revert --source server/migrations",
     "dev": "turbo dev",
     "ver:patch": "pnpm version patch --no-git-tag-version",
-	"ver:minor": "pnpm version minor --no-git-tag-version",
-	"ver:major": "pnpm version major --no-git-tag-version"
+  	"ver:minor": "pnpm version minor --no-git-tag-version",
+  	"ver:major": "pnpm version major --no-git-tag-version"
   },
   "devDependencies": {
     "turbo": "^2.9.14"
