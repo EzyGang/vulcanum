@@ -1,10 +1,12 @@
 use chrono::{Duration, Utc};
+use vulcanum_shared::{
+    api::wire::{RefreshRequest, RefreshResponse},
+    constants::WORKER_REFRESH_TOKEN_TTL_DAYS,
+};
 
 use crate::models::workers::errors::WorkersError;
-use crate::models::workers::model;
 use crate::services::workers::service::token::{build_jwt, generate_random_token, hash_token};
 use crate::services::workers::service::WorkersService;
-use vulcanum_shared::api::wire::{RefreshRequest, RefreshResponse};
 
 impl WorkersService {
     pub async fn refresh(&self, req: RefreshRequest) -> Result<RefreshResponse, WorkersError> {
@@ -12,7 +14,7 @@ impl WorkersService {
 
         let new_refresh_token = generate_random_token();
         let new_hash = hash_token(&new_refresh_token);
-        let new_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
+        let new_expires_at = Utc::now() + Duration::days(WORKER_REFRESH_TOKEN_TTL_DAYS);
 
         let updated = match self
             .repo

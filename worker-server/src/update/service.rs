@@ -1,8 +1,12 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::time::Duration;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use anyhow::Context;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use tokio::process::Command;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const SERVICE_RESTART_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(crate) trait ServiceRestarter: Send + Sync {

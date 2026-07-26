@@ -1,6 +1,7 @@
 use chrono::{Duration, Utc};
 use rand::Rng;
 use uuid::Uuid;
+use vulcanum_shared::constants::WORKER_REGISTRATION_CODE_TTL_MINUTES;
 
 use crate::models::workers::errors::WorkersError;
 use crate::models::workers::model;
@@ -15,7 +16,7 @@ impl WorkersService {
             .map(char::from)
             .collect();
 
-        let expires_at = Utc::now() + Duration::minutes(model::CODE_TTL_MINUTES);
+        let expires_at = Utc::now() + Duration::minutes(WORKER_REGISTRATION_CODE_TTL_MINUTES);
         self.code_store.save(&code, expires_at, team_id).await?;
 
         Ok(CodeResponse { code, expires_at })

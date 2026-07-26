@@ -3,6 +3,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 use sha2::Digest;
 use uuid::Uuid;
+use vulcanum_shared::constants::WORKER_ACCESS_TOKEN_TTL_MINUTES;
 
 use crate::models::workers::model;
 
@@ -27,7 +28,7 @@ pub(super) fn build_jwt(
     worker_id: Uuid,
     secret: &str,
 ) -> Result<(String, DateTime<Utc>), jsonwebtoken::errors::Error> {
-    let exp = Utc::now() + Duration::minutes(model::ACCESS_TOKEN_TTL_MINUTES);
+    let exp = Utc::now() + Duration::minutes(WORKER_ACCESS_TOKEN_TTL_MINUTES);
     let claims = WorkerClaims {
         sub: worker_id.to_string(),
         typ: "worker".to_owned(),

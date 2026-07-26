@@ -2,9 +2,12 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 use sha2::Digest;
-use vulcanum_shared::api::wire::AuthTokenResponse;
+use vulcanum_shared::{
+    api::wire::AuthTokenResponse,
+    constants::{APP_ACCESS_TOKEN_TTL_MINUTES, APP_REFRESH_TOKEN_TTL_DAYS},
+};
 
-use crate::models::auth::{errors::AuthError, model};
+use crate::models::auth::errors::AuthError;
 use crate::services::auth::service::instance_login::INSTANCE_REFRESH_TOKEN_PREFIX;
 use crate::services::auth::service::AuthService;
 
@@ -28,7 +31,7 @@ impl AuthService {
         let access_token = self.build_user_jwt(user_id)?;
         let refresh_token = generate_random_token(USER_REFRESH_TOKEN_LENGTH);
         let refresh_token_hash = hash_token(&refresh_token);
-        let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
+        let refresh_expires_at = Utc::now() + Duration::days(APP_REFRESH_TOKEN_TTL_DAYS);
 
         self.repo
             .create_refresh_token(&self.db, user_id, &refresh_token_hash, refresh_expires_at)
@@ -58,7 +61,7 @@ impl AuthService {
         let refresh_token_hash = hash_token(refresh_token);
         let new_refresh_token = generate_random_token(USER_REFRESH_TOKEN_LENGTH);
         let new_refresh_token_hash = hash_token(&new_refresh_token);
-        let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
+        let refresh_expires_at = Utc::now() + Duration::days(APP_REFRESH_TOKEN_TTL_DAYS);
         let user_id = self
             .repo
             .rotate_refresh_token(
@@ -118,7 +121,7 @@ impl AuthService {
             sub: user_id.to_owned(),
             typ: "user".to_owned(),
             iat: now.timestamp() as usize,
-            exp: (now + Duration::minutes(model::ACCESS_TOKEN_TTL_MINUTES)).timestamp() as usize,
+            exp: (now + Duration::minutes(APP_ACCESS_TOKEN_TTL_MINUTES)).timestamp() as usize,
         };
 
         encode(

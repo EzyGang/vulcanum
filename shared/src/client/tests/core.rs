@@ -64,8 +64,7 @@ async fn probe_url_with_scheme_fallback_trims_whitespace_before_falling_back_to_
 
         let (mut http_stream, _) = listener.accept().expect("http fallback should connect");
         let request = read_http_request(&mut http_stream);
-        let body =
-            r#"{"access_token_ttl_minutes":15,"code_ttl_minutes":10,"refresh_token_ttl_days":30}"#;
+        let body = r#"{"app_access_token_ttl_minutes":15,"app_refresh_token_ttl_days":30,"worker_access_token_ttl_minutes":15,"worker_refresh_token_ttl_days":30,"worker_registration_code_ttl_minutes":10}"#;
         write!(
             http_stream,
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -94,9 +93,11 @@ async fn probe_url_with_scheme_fallback_trims_whitespace_before_falling_back_to_
         request.starts_with("GET /api/v1/status "),
         "status probe should request the status endpoint:\n{request}"
     );
-    assert_eq!(status.access_token_ttl_minutes, 15);
-    assert_eq!(status.code_ttl_minutes, 10);
-    assert_eq!(status.refresh_token_ttl_days, 30);
+    assert_eq!(status.app_access_token_ttl_minutes, 15);
+    assert_eq!(status.app_refresh_token_ttl_days, 30);
+    assert_eq!(status.worker_access_token_ttl_minutes, 15);
+    assert_eq!(status.worker_refresh_token_ttl_days, 30);
+    assert_eq!(status.worker_registration_code_ttl_minutes, 10);
 }
 
 #[tokio::test]

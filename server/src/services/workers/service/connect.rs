@@ -1,10 +1,14 @@
+use chrono::{Duration, Utc};
+use vulcanum_shared::{
+    api::wire::{ConnectRequest, ConnectResponse},
+    constants::WORKER_REFRESH_TOKEN_TTL_DAYS,
+};
+
 use crate::db::workers::queries::CreateWorkerParams;
 use crate::models::workers::errors::WorkersError;
 use crate::models::workers::model;
 use crate::services::workers::service::token::{build_jwt, generate_random_token, hash_token};
 use crate::services::workers::service::WorkersService;
-use chrono::{Duration, Utc};
-use vulcanum_shared::api::wire::{ConnectRequest, ConnectResponse};
 
 impl WorkersService {
     pub async fn connect(&self, req: ConnectRequest) -> Result<ConnectResponse, WorkersError> {
@@ -20,7 +24,7 @@ impl WorkersService {
 
         let refresh_token = generate_random_token();
         let refresh_hash = hash_token(&refresh_token);
-        let refresh_expires_at = Utc::now() + Duration::days(model::REFRESH_TOKEN_TTL_DAYS);
+        let refresh_expires_at = Utc::now() + Duration::days(WORKER_REFRESH_TOKEN_TTL_DAYS);
         let max_concurrent_jobs = validate_max_concurrent_jobs(req.max_concurrent_jobs)?;
         let capabilities = serde_json::to_value(&req.capabilities).map_err(|e| {
             WorkersError::RegistrationFailed(format!("invalid worker capabilities: {e}"))
