@@ -1,3 +1,4 @@
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use crate::db::queryer::Queryer;
@@ -74,6 +75,50 @@ impl WorkRunsRepository {
         .map_err(WorkRunsError::from)
     }
 
+    pub async fn lock_implementation_task(
+        &self,
+        db: &mut PgConnection,
+        project_config_id: Uuid,
+        external_task_ref: &str,
+    ) -> Result<(), WorkRunsError> {
+        sqlx::query(
+            r#"SELECT pg_advisory_xact_lock(hashtextextended(
+                   'implementation-task:' || $1::TEXT || ':' || $2,
+                   0
+               ))"#,
+        )
+        .bind(project_config_id)
+        .bind(external_task_ref)
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn has_active_implementation<'c, Q>(
+        &self,
+        db: Q,
+        project_config_id: Uuid,
+        external_task_ref: &str,
+    ) -> Result<bool, WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                   SELECT 1 FROM work_runs
+                   WHERE project_config_id = $1 AND external_task_ref = $2
+                     AND status IN ('pending', 'dispatched', 'running')
+                     AND work_type = 'implementation'
+               ) AS "active!""#,
+            project_config_id,
+            external_task_ref,
+        )
+        .fetch_one(db)
+        .await
+        .map_err(WorkRunsError::from)
+    }
+
     pub async fn insert_work_run_if_not_active<'c, Q>(
         &self,
         db: Q,
@@ -86,11 +131,18 @@ impl WorkRunsRepository {
         let (repo_urls, positions) = repo_insert_arrays(&params.repo_full_names);
 
         let result = sqlx::query!(
-            r#"WITH inserted AS (
+            r#"WITH locked AS MATERIALIZED (
+                SELECT pg_advisory_xact_lock(hashtextextended(
+                    'implementation-task:' || $4::UUID::TEXT || ':' || $3,
+                    0
+                ))
+            ),
+            inserted AS (
                 INSERT INTO work_runs (id, team_id, external_task_ref, project_config_id, task_title, task_slug, status,
                  work_type, parent_work_run_id, review_target_pr_url, review_target_repo_full_name,
                  github_installation_id, github_delivery_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                SELECT $1, $2, $3, $4::UUID, $5, $6, $7, $8, $9, $10, $11, $12, $13
+                FROM locked
                 ON CONFLICT DO NOTHING
                 RETURNING id
             ),

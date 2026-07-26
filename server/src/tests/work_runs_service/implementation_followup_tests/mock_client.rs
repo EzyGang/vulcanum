@@ -21,8 +21,17 @@ pub(crate) struct MockFollowupTicketClient {
 
 impl MockFollowupTicketClient {
     pub fn with_task(task: IntegrationTask) -> Self {
+        Self::with_tasks(vec![task])
+    }
+
+    pub fn with_tasks(tasks: Vec<IntegrationTask>) -> Self {
         Self {
-            tasks: Mutex::new(HashMap::from([(task.id.clone(), task)])),
+            tasks: Mutex::new(
+                tasks
+                    .into_iter()
+                    .map(|task| (task.id.clone(), task))
+                    .collect(),
+            ),
             ..Self::default()
         }
     }

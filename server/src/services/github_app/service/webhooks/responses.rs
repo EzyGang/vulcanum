@@ -5,13 +5,18 @@ use crate::services::github_app::service::pull_requests::PullRequestCommentWrite
 use crate::services::work_runs::service::github_commands::GithubProjectOption;
 use crate::services::work_runs::service::request_github_review::GithubReviewRequestOutcome;
 
+#[derive(Clone, Copy)]
+pub(super) struct GithubResponseTarget<'a> {
+    pub delivery_id: &'a str,
+    pub installation_id: i64,
+    pub repo_full_name: &'a str,
+    pub pr_number: i64,
+}
+
 pub(super) async fn respond_to_outcome(
     writer: &dyn PullRequestCommentWriter,
     app_slug: &str,
-    delivery_id: &str,
-    installation_id: i64,
-    repo_full_name: &str,
-    pr_number: i64,
+    target: GithubResponseTarget<'_>,
     outcome: &GithubReviewRequestOutcome,
 ) -> Result<(), GithubAppError> {
     let response = match outcome {
@@ -46,19 +51,7 @@ pub(super) async fn respond_to_outcome(
     };
 
     match response {
-        Some((team_id, body)) => {
-            ensure_response(
-                writer,
-                Some(team_id),
-                delivery_id,
-                installation_id,
-                repo_full_name,
-                pr_number,
-                &body,
-                "",
-            )
-            .await
-        }
+        Some((team_id, body)) => ensure_response(writer, Some(team_id), target, &body, "").await,
         None => Ok(()),
     }
 }
@@ -82,26 +75,25 @@ fn project_choices(heading: &str, app_slug: &str, projects: &[GithubProjectOptio
     format!("{heading}\n\n{choices}")
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) async fn ensure_response(
     writer: &dyn PullRequestCommentWriter,
     team_id: Option<Uuid>,
-    delivery_id: &str,
-    installation_id: i64,
-    repo_full_name: &str,
-    pr_number: i64,
+    target: GithubResponseTarget<'_>,
     body: &str,
     marker_suffix: &str,
 ) -> Result<(), GithubAppError> {
-    let marker = format!("<!-- vulcanum:github-delivery:{delivery_id}{marker_suffix} -->");
+    let marker = format!(
+        "<!-- vulcanum:github-delivery:{}{marker_suffix} -->",
+        target.delivery_id
+    );
     match team_id {
         Some(team_id) => {
             writer
                 .ensure_pull_request_comment(
                     team_id,
-                    installation_id,
-                    repo_full_name,
-                    pr_number,
+                    target.installation_id,
+                    target.repo_full_name,
+                    target.pr_number,
                     &marker,
                     body,
                 )
@@ -110,9 +102,9 @@ pub(super) async fn ensure_response(
         None => {
             writer
                 .ensure_pull_request_comment_for_installation(
-                    installation_id,
-                    repo_full_name,
-                    pr_number,
+                    target.installation_id,
+                    target.repo_full_name,
+                    target.pr_number,
                     &marker,
                     body,
                 )

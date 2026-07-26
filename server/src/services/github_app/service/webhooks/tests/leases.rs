@@ -79,6 +79,7 @@ async fn active_delivery_lease_prevents_duplicate_slow_comment(pool: sqlx::PgPoo
             sender_id: Some("456".to_owned()),
             pr_title: Some("Review me".to_owned()),
             project_selector: Some("project:00000000-0000-0000-0000-000000000123".to_owned()),
+            ticket_selector: None,
             request_body: None,
             command_error: None,
             attempts: 0,

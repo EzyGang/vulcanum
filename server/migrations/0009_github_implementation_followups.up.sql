@@ -24,12 +24,14 @@ CREATE TABLE github_implementation_followup_requests (
     comment_id BIGINT NOT NULL,
     sender_id TEXT NOT NULL,
     project_config_id UUID NOT NULL REFERENCES project_configs(id) ON DELETE CASCADE,
+    ticket_selector TEXT,
     external_task_ref TEXT,
-    work_run_id UUID UNIQUE REFERENCES work_runs(id) ON DELETE SET NULL,
+    work_run_id UUID UNIQUE,
     request_body TEXT NOT NULL CHECK (LENGTH(BTRIM(request_body)) > 0),
     ticket_created BOOLEAN NOT NULL DEFAULT FALSE,
+    ambiguous_task_refs TEXT[] NOT NULL DEFAULT '{}',
     outcome TEXT NOT NULL DEFAULT 'pending'
-        CHECK (outcome IN ('pending', 'spawned', 'active_run', 'ambiguous_ticket')),
+        CHECK (outcome IN ('pending', 'spawned', 'active_run', 'ambiguous_ticket', 'invalid_ticket')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

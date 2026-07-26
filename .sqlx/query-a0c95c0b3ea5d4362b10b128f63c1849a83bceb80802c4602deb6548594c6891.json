@@ -1,0 +1,75 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH locked AS MATERIALIZED (\n                 SELECT pg_advisory_xact_lock(hashtextextended(\n                     'github-task-pr:' || $1::UUID::TEXT || ':' || LOWER($4) || '#' || $5::BIGINT::TEXT,\n                     0\n                 ))\n             ),\n             upserted AS (\n                 INSERT INTO task_prs\n                     (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number,\n                      source_work_run_id)\n                 SELECT $1::UUID, $2, $3, $4, $5::BIGINT, $6 FROM locked\n                 ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET\n                     repo_full_name = EXCLUDED.repo_full_name,\n                     pr_number = EXCLUDED.pr_number,\n                     source_work_run_id = EXCLUDED.source_work_run_id\n                 RETURNING id, project_config_id, external_task_ref, pr_url, repo_full_name,\n                     pr_number, source_work_run_id, created_at, updated_at\n             )\n             SELECT id, project_config_id, external_task_ref, pr_url, repo_full_name, pr_number,\n                 source_work_run_id,\n                 created_at as \"created_at!: chrono::DateTime<chrono::Utc>\",\n                 updated_at as \"updated_at!: chrono::DateTime<chrono::Utc>\"\n             FROM upserted",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "pr_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "source_work_run_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a0c95c0b3ea5d4362b10b128f63c1849a83bceb80802c4602deb6548594c6891"
+}

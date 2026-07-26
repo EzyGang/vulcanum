@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use crate::models::work_runs::errors::WorkRunsError;
 use crate::services::work_runs::service::request_github_implementation::GithubImplementationRequestOutcome;
 use crate::test_helpers;
 use crate::tests::work_runs_service::implementation_followup_tests::mock_client::MockFollowupTicketClient;
 use crate::tests::work_runs_service::implementation_followup_tests::support::{
-    request, service, setup_project,
+    map_task, request, service, setup_project,
 };
 
 #[sqlx::test]
@@ -109,4 +110,23 @@ async fn malformed_command_is_rejected_before_ticket_persistence(pool: sqlx::PgP
         .await
         .expect("count persisted requests");
     assert_eq!(count, Some(0));
+}
+
+#[sqlx::test]
+async fn delivery_replay_rejects_changed_ticket_selector(pool: sqlx::PgPool) {
+    let project_id = setup_project(&pool).await;
+    map_task(&pool, project_id, "ticket-a").await;
+    map_task(&pool, project_id, "ticket-b").await;
+    let work_runs = service(pool, Arc::new(MockFollowupTicketClient::default())).await;
+    work_runs
+        .request_github_implementation(request("delivery-selector-conflict", "Handle retries."))
+        .await
+        .expect("persist ambiguous delivery");
+    let mut conflicting = request("delivery-selector-conflict", "Handle retries.");
+    conflicting.ticket_selector = Some("ticket-a");
+
+    assert!(matches!(
+        work_runs.request_github_implementation(conflicting).await,
+        Err(WorkRunsError::GithubDeliveryConflict)
+    ));
 }

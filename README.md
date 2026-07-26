@@ -465,13 +465,13 @@ Authorized team members can issue two commands on newly created comments in an o
 
 ```text
 @app-slug review [project:<project-config-uuid>]
-@app-slug implement [project:<project-config-uuid>] <request>
+@app-slug implement [project:<project-config-uuid>] [ticket:<external-task-ref>] <request>
 ```
 
 The app ignores edited or deleted comments, non-PR issue comments, and its own comments. Commands
 and app mentions are case-insensitive. When a repository belongs to multiple eligible projects,
-the `project:<uuid>` selector must be the first token after the command; Vulcanum replies with exact
-project-specific commands when the selector is missing or invalid.
+the `project:<uuid>` selector must be the first selector after the command; Vulcanum replies with
+exact project-specific commands when the selector is missing or invalid.
 
 `review` keeps its review-only ticket and run lifecycle. `implement` instead starts implementation
 work against the current PR. Its request is required, may span multiple lines, and is stored
@@ -479,8 +479,10 @@ verbatim as durable run context. Vulcanum reuses the one implementation ticket m
 the selected project and appends a source-marked request block without replacing the existing title
 or description. If no ticket is mapped, Vulcanum creates one in the implementation workflow with
 the PR URL, request, and a durable marker. If multiple tickets remain mapped after project
-selection, Vulcanum does not guess: remove obsolete PR-to-ticket mappings until one remains, then
-rerun the command. A ticket with an active implementation run rejects another follow-up run.
+selection, Vulcanum does not guess: its reply lists exact commands with a
+`ticket:<external-task-ref>` selector. The ticket selector follows the optional project selector
+and chooses only a ticket already mapped to that PR and project. A ticket with an active
+implementation run rejects another follow-up before its tracker description is changed.
 
 Examples:
 
@@ -490,6 +492,7 @@ Examples:
 @vulcanum-app implement handle the retry case
 @vulcanum-app implement project:0d915a91-f314-4c1e-a2b6-dae140ca16d2 also add migration coverage
 and verify the rollback path
+@vulcanum-app implement project:0d915a91-f314-4c1e-a2b6-dae140ca16d2 ticket:task-123 handle the mapped ticket
 ```
 
 GitHub models pull request timeline comments as issue comments, so the app needs **Issues: read** to

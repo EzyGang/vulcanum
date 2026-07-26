@@ -11,91 +11,62 @@ use crate::services::work_runs::service::implementation_followup_ticket::{
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_pr_url;
 
-pub(crate) struct ResolvedFollowupTicket {
-    pub task: IntegrationTask,
-    pub ticket_created: bool,
+pub(crate) struct FollowupTicketRequest<'a> {
+    pub project: &'a ProjectConfig,
+    pub normalized_repo: &'a str,
+    pub pr_number: i64,
+    pub pr_title: &'a str,
+    pub delivery_id: &'a str,
+    pub request_body: &'a str,
+    pub token: Uuid,
+    pub external_task_ref: Option<&'a str>,
 }
 
 impl WorkRunsService {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn resolve_github_implementation_followup_ticket(
         &self,
-        project: &ProjectConfig,
-        normalized_repo: &str,
-        pr_number: i64,
-        pr_title: &str,
-        delivery_id: &str,
-        request_body: &str,
-        token: Uuid,
-        external_task_ref: Option<&str>,
-    ) -> Result<ResolvedFollowupTicket, WorkRunsError> {
-        let operation = self.apply_github_implementation_followup(
-            project,
-            normalized_repo,
-            pr_number,
-            pr_title,
-            delivery_id,
-            request_body,
-            external_task_ref,
-        );
-        let task = match self
+        request: FollowupTicketRequest<'_>,
+    ) -> Result<IntegrationTask, WorkRunsError> {
+        let operation = self.apply_github_implementation_followup(&request);
+        match self
             .run_with_implementation_followup_heartbeat(
-                project.id,
-                normalized_repo,
-                pr_number,
-                token,
+                request.project.id,
+                request.normalized_repo,
+                request.pr_number,
+                request.token,
                 operation,
             )
             .await
         {
-            Ok(task) => task,
+            Ok(task) => Ok(task),
             Err(error) => {
                 self.work_runs_repo
                     .release_github_implementation_followup_ticket(
                         &self.db,
-                        project.id,
-                        normalized_repo,
-                        pr_number,
-                        token,
+                        request.project.id,
+                        request.normalized_repo,
+                        request.pr_number,
+                        request.token,
                     )
                     .await?;
-                return Err(error);
+                Err(error)
             }
-        };
-        let (completed, created_by_delivery_id) = self
-            .work_runs_repo
-            .complete_github_implementation_followup_ticket(
-                &self.db,
-                project.id,
-                normalized_repo,
-                pr_number,
-                token,
-                &task.id,
-            )
-            .await?;
-        if !completed {
-            return Err(WorkRunsError::ImplementationFollowupPending);
         }
-        Ok(ResolvedFollowupTicket {
-            ticket_created: created_by_delivery_id.as_deref() == Some(delivery_id),
-            task,
-        })
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn apply_github_implementation_followup(
         &self,
-        project: &ProjectConfig,
-        normalized_repo: &str,
-        pr_number: i64,
-        pr_title: &str,
-        delivery_id: &str,
-        request_body: &str,
-        external_task_ref: Option<&str>,
+        request: &FollowupTicketRequest<'_>,
     ) -> Result<IntegrationTask, WorkRunsError> {
-        let provider = self.implementation_followup_provider(project).await?;
-        let ticket_marker = followup_ticket_marker(project.id, normalized_repo, pr_number);
-        let mut task = match external_task_ref {
+        let provider = self
+            .implementation_followup_provider(request.project)
+            .await?;
+        let ticket_marker = followup_ticket_marker(
+            request.project.id,
+            request.normalized_repo,
+            request.pr_number,
+        );
+        let mut task = match request.external_task_ref {
             Some(external_task_ref) => {
                 self.implementation_followup_ticket_client
                     .fetch(&provider, external_task_ref)
@@ -103,7 +74,7 @@ impl WorkRunsService {
             }
             None => match self
                 .implementation_followup_ticket_client
-                .find_existing(&provider, project, &ticket_marker)
+                .find_existing(&provider, request.project, &ticket_marker)
                 .await?
             {
                 Some(task) => task,
@@ -112,28 +83,28 @@ impl WorkRunsService {
                         .create(
                             &provider,
                             followup_ticket_input(
-                                project,
-                                normalized_repo,
-                                pr_number,
-                                pr_title,
-                                delivery_id,
-                                request_body,
+                                request.project,
+                                request.normalized_repo,
+                                request.pr_number,
+                                request.pr_title,
+                                request.delivery_id,
+                                request.request_body,
                             ),
                         )
                         .await?
                 }
             },
         };
-        let request_marker = followup_request_marker(delivery_id);
+        let request_marker = followup_request_marker(request.delivery_id);
         if !task
             .description
             .as_deref()
             .is_some_and(|description| description.contains(&request_marker))
         {
             let request_block = followup_request_block(
-                delivery_id,
-                &github_pr_url(normalized_repo, pr_number),
-                request_body,
+                request.delivery_id,
+                &github_pr_url(request.normalized_repo, request.pr_number),
+                request.request_body,
             );
             let description = match task.description.as_deref() {
                 Some(description) if !description.is_empty() => {
@@ -146,16 +117,6 @@ impl WorkRunsService {
                 .await?;
             task.description = Some(description);
         }
-        self.work_runs_repo
-            .upsert_github_followup_task_pr(
-                &self.db,
-                project.id,
-                &task.id,
-                &github_pr_url(normalized_repo, pr_number),
-                normalized_repo,
-                pr_number,
-            )
-            .await?;
 
         Ok(task)
     }

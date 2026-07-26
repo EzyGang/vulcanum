@@ -4,7 +4,9 @@ use uuid::Uuid;
 
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
-use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
+use crate::services::github_app::service::webhooks::responses::{
+    respond_to_outcome, GithubResponseTarget,
+};
 use crate::services::github_app::service::webhooks::tests::{
     issue_comment_payload, service_with_writer, RecordingWriter, APP_SLUG,
 };
@@ -93,10 +95,12 @@ async fn selection_reply_contains_marker_and_exact_commands() {
     respond_to_outcome(
         &writer,
         APP_SLUG,
-        "delivery-choice",
-        123,
-        "acme/widgets",
-        42,
+        GithubResponseTarget {
+            delivery_id: "delivery-choice",
+            installation_id: 123,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+        },
         &outcome,
     )
     .await

@@ -126,11 +126,13 @@ pub struct GithubImplementationFollowupRequest {
     pub comment_id: i64,
     pub sender_id: String,
     pub project_config_id: Uuid,
+    pub ticket_selector: Option<String>,
     pub external_task_ref: Option<String>,
     pub work_run_id: Option<Uuid>,
     pub request_body: String,
     pub ticket_created: bool,
     pub outcome: String,
+    pub ambiguous_task_refs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Eq, FromRow, PartialEq)]

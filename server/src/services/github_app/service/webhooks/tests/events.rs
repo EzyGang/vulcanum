@@ -93,7 +93,7 @@ async fn issue_comment_command_is_queued_with_review_fields(pool: sqlx::PgPool) 
 }
 
 #[test]
-fn implement_command_preserves_multiline_request_and_optional_selector() {
+fn implement_command_preserves_multiline_request_and_optional_selectors() {
     let request = "Handle the retry case.\n\nAlso preserve this `exact` section.";
     let without_selector = parse_issue_comment(&format!("@VULCANUM-APP ImPlEmEnT {request}"));
     assert_eq!(
@@ -101,18 +101,20 @@ fn implement_command_preserves_multiline_request_and_optional_selector() {
         GithubWebhookKind::ImplementationFollowupRequested
     );
     assert_eq!(without_selector.project_selector, None);
+    assert_eq!(without_selector.ticket_selector, None);
     assert_eq!(without_selector.request_body.as_deref(), Some(request));
     assert_eq!(without_selector.command_error, None);
 
     let project_id = "00000000-0000-0000-0000-000000000123";
-    let with_selector = parse_issue_comment(&format!(
-        "@vulcanum-app implement project:{project_id} {request}"
+    let with_selectors = parse_issue_comment(&format!(
+        "@vulcanum-app implement project:{project_id} ticket:task-123 {request}"
     ));
     assert_eq!(
-        with_selector.project_selector.as_deref(),
+        with_selectors.project_selector.as_deref(),
         Some("project:00000000-0000-0000-0000-000000000123")
     );
-    assert_eq!(with_selector.request_body.as_deref(), Some(request));
+    assert_eq!(with_selectors.ticket_selector.as_deref(), Some("task-123"));
+    assert_eq!(with_selectors.request_body.as_deref(), Some(request));
 }
 
 #[test]
@@ -120,6 +122,7 @@ fn malformed_and_ambiguous_implement_commands_are_queued_for_feedback() {
     for command in [
         "@vulcanum-app implement",
         "@vulcanum-app implement project:00000000-0000-0000-0000-000000000123",
+        "@vulcanum-app implement ticket:task-123",
     ] {
         let delivery = parse_issue_comment(command);
         assert_eq!(

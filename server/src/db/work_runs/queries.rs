@@ -2,10 +2,12 @@ mod blocked;
 pub(crate) mod implementation_followups;
 mod insert;
 mod limits;
+mod pr_locks;
 pub(crate) mod prs;
 mod reset;
 mod result;
 pub(crate) mod review_tickets;
+pub(crate) mod reviews;
 
 use uuid::Uuid;
 

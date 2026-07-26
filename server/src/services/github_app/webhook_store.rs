@@ -81,6 +81,7 @@ pub(crate) struct GithubWebhookDelivery {
     pub sender_id: Option<String>,
     pub pr_title: Option<String>,
     pub project_selector: Option<String>,
+    pub ticket_selector: Option<String>,
     pub request_body: Option<String>,
     pub command_error: Option<GithubWebhookCommandError>,
     pub attempts: i32,

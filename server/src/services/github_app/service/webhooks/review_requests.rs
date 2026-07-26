@@ -1,6 +1,8 @@
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::webhooks::processing::DeliveryDisposition;
-use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
+use crate::services::github_app::service::webhooks::responses::{
+    respond_to_outcome, GithubResponseTarget,
+};
 use crate::services::github_app::service::webhooks::{
     required_delivery_field, GithubWebhookService,
 };
@@ -52,10 +54,12 @@ impl GithubWebhookService {
         match respond_to_outcome(
             self.comment_writer.as_ref(),
             app_slug,
-            &delivery.delivery_id,
-            delivery.installation_id,
-            &delivery.repo_full_name,
-            delivery.pr_number,
+            GithubResponseTarget {
+                delivery_id: &delivery.delivery_id,
+                installation_id: delivery.installation_id,
+                repo_full_name: &delivery.repo_full_name,
+                pr_number: delivery.pr_number,
+            },
             &outcome,
         )
         .await

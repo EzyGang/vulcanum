@@ -1,8 +1,10 @@
 use uuid::Uuid;
 
+use crate::services::github_app::service::webhooks::implementation_response_messages::ImplementationResponseContext;
 use crate::services::github_app::service::webhooks::implementation_responses::{
     respond_to_implementation_outcome, respond_to_provider_failure,
 };
+use crate::services::github_app::service::webhooks::responses::GithubResponseTarget;
 use crate::services::github_app::service::webhooks::tests::{RecordingWriter, APP_SLUG};
 use crate::services::work_runs::service::github_commands::{
     GithubCommandResponseOptions, GithubProjectOption,
@@ -28,12 +30,17 @@ async fn project_selection_reply_preserves_multiline_request_in_exact_commands()
 
     respond_to_implementation_outcome(
         &writer,
-        APP_SLUG,
-        "delivery-choice",
-        123,
-        "acme/widgets",
-        42,
-        Some(request),
+        ImplementationResponseContext {
+            app_slug: APP_SLUG,
+            target: GithubResponseTarget {
+                delivery_id: "delivery-choice",
+                installation_id: 123,
+                repo_full_name: "acme/widgets",
+                pr_number: 42,
+            },
+            request_body: Some(request),
+            ticket_selector: Some("task-123"),
+        },
         &outcome,
     )
     .await
@@ -46,7 +53,7 @@ async fn project_selection_reply_preserves_multiline_request_in_exact_commands()
         "<!-- vulcanum:github-delivery:delivery-choice:implementation -->"
     );
     assert!(calls[0].1.contains(&format!(
-        "@{APP_SLUG} implement project:{project_id} Handle retries.\n    Also add migration coverage."
+        "@{APP_SLUG} implement project:{project_id} ticket:task-123 Handle retries.\n    Also add migration coverage."
     )));
 }
 
@@ -54,6 +61,7 @@ async fn project_selection_reply_preserves_multiline_request_in_exact_commands()
 async fn rejection_and_provider_outcomes_return_secret_free_actionable_feedback() {
     let writer = RecordingWriter::default();
     let team_id = Uuid::new_v4();
+    let project_id = Uuid::new_v4();
     let outcomes = [
         GithubImplementationRequestOutcome::MalformedCommand {
             team_id,
@@ -68,18 +76,25 @@ async fn rejection_and_provider_outcomes_return_secret_free_actionable_feedback(
         },
         GithubImplementationRequestOutcome::AmbiguousTickets {
             team_id,
+            project_config_id: project_id,
             external_task_refs: vec!["task-1".to_owned(), "task-2".to_owned()],
         },
     ];
     for (index, outcome) in outcomes.iter().enumerate() {
+        let delivery_id = format!("delivery-{index}");
         respond_to_implementation_outcome(
             &writer,
-            APP_SLUG,
-            &format!("delivery-{index}"),
-            123,
-            "acme/widgets",
-            42,
-            Some("Handle retries."),
+            ImplementationResponseContext {
+                app_slug: APP_SLUG,
+                target: GithubResponseTarget {
+                    delivery_id: &delivery_id,
+                    installation_id: 123,
+                    repo_full_name: "acme/widgets",
+                    pr_number: 42,
+                },
+                request_body: Some("Handle retries."),
+                ticket_selector: None,
+            },
             outcome,
         )
         .await
@@ -88,10 +103,12 @@ async fn rejection_and_provider_outcomes_return_secret_free_actionable_feedback(
     respond_to_provider_failure(
         &writer,
         team_id,
-        "delivery-provider",
-        123,
-        "acme/widgets",
-        42,
+        GithubResponseTarget {
+            delivery_id: "delivery-provider",
+            installation_id: 123,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+        },
     )
     .await
     .expect("write provider failure response");
@@ -115,4 +132,7 @@ async fn rejection_and_provider_outcomes_return_secret_free_actionable_feedback(
         .iter()
         .any(|(_, body)| body.contains("task-tracker connection")));
     assert!(!calls.iter().any(|(_, body)| body.contains("test-key")));
+    assert!(calls
+        .iter()
+        .any(|(_, body)| body.contains("ticket:task-1 Handle retries.")));
 }

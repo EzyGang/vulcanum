@@ -2,6 +2,7 @@ pub(super) enum CommentCommand {
     Review(Option<String>),
     Implement {
         project_selector: Option<String>,
+        ticket_selector: Option<String>,
         request_body: String,
     },
     MalformedImplementation,
@@ -84,30 +85,30 @@ fn parse_implementation_command(remainder: &str) -> CommentCommand {
         return CommentCommand::MalformedImplementation;
     }
 
-    let token_end = remainder
-        .find(char::is_whitespace)
-        .unwrap_or(remainder.len());
-    let first_token = &remainder[..token_end];
-    let selector = trim_selector(first_token);
-    if !selector
-        .get(..8)
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("project:"))
-    {
-        return CommentCommand::Implement {
-            project_selector: None,
-            request_body: remainder.to_owned(),
-        };
-    }
-
-    let request_body = remainder[token_end..].trim_start();
+    let (project_selector, remainder) = take_selector(remainder, "project:");
+    let (ticket_selector, request_body) = take_selector(remainder, "ticket:");
     if request_body.is_empty() {
         return CommentCommand::MalformedImplementation;
     }
 
     CommentCommand::Implement {
-        project_selector: Some(selector.to_owned()),
+        project_selector,
+        ticket_selector: ticket_selector.map(|selector| selector[7..].to_owned()),
         request_body: request_body.to_owned(),
     }
+}
+
+fn take_selector<'a>(value: &'a str, prefix: &str) -> (Option<String>, &'a str) {
+    let token_end = value.find(char::is_whitespace).unwrap_or(value.len());
+    let token = trim_selector(&value[..token_end]);
+    if !token
+        .get(..prefix.len())
+        .is_some_and(|candidate| candidate.eq_ignore_ascii_case(prefix))
+    {
+        return (None, value);
+    }
+
+    (Some(token.to_owned()), value[token_end..].trim_start())
 }
 
 fn keyword(value: &str, expected: &str) -> bool {

@@ -64,9 +64,10 @@ async fn mapped_ticket_is_appended_replayed_and_active_run_rejected(pool: sqlx::
     let description = client
         .task("existing-ticket")
         .description
-        .expect("description with both requests");
+        .expect("unchanged description");
     assert!(description.contains("Handle the retry case."));
-    assert!(description.contains("Also add migration coverage."));
+    assert!(!description.contains("Also add migration coverage."));
+    assert_eq!(client.update_count(), 1);
 
     let persisted = sqlx::query!(
         r#"SELECT github_installation_id, repo_full_name, pr_number, project_config_id,

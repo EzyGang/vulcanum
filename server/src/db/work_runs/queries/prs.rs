@@ -5,15 +5,6 @@ use crate::db::work_runs::WorkRunsRepository;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::{TaskPr, TaskPrTarget};
 
-pub struct InsertReviewResultParams<'a> {
-    pub work_run_id: Uuid,
-    pub pr_url: &'a str,
-    pub repo_full_name: &'a str,
-    pub review_url: Option<&'a str>,
-    pub review_body: Option<&'a str>,
-    pub review_already_exists: bool,
-}
-
 pub struct UpsertTaskPrParams<'a> {
     pub project_config_id: Uuid,
     pub external_task_ref: &'a str,
@@ -115,14 +106,29 @@ impl WorkRunsRepository {
     {
         sqlx::query_as!(
             TaskPr,
-            r#"INSERT INTO task_prs (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number, source_work_run_id)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET
-                 repo_full_name = EXCLUDED.repo_full_name,
-                 pr_number = EXCLUDED.pr_number,
-                 source_work_run_id = EXCLUDED.source_work_run_id
-             RETURNING id, project_config_id, external_task_ref, pr_url, repo_full_name, pr_number,
-              source_work_run_id, created_at as "created_at!: chrono::DateTime<chrono::Utc>", updated_at as "updated_at!: chrono::DateTime<chrono::Utc>""#,
+            r#"WITH locked AS MATERIALIZED (
+                 SELECT pg_advisory_xact_lock(hashtextextended(
+                     'github-task-pr:' || $1::UUID::TEXT || ':' || LOWER($4) || '#' || $5::BIGINT::TEXT,
+                     0
+                 ))
+             ),
+             upserted AS (
+                 INSERT INTO task_prs
+                     (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number,
+                      source_work_run_id)
+                 SELECT $1::UUID, $2, $3, $4, $5::BIGINT, $6 FROM locked
+                 ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET
+                     repo_full_name = EXCLUDED.repo_full_name,
+                     pr_number = EXCLUDED.pr_number,
+                     source_work_run_id = EXCLUDED.source_work_run_id
+                 RETURNING id, project_config_id, external_task_ref, pr_url, repo_full_name,
+                     pr_number, source_work_run_id, created_at, updated_at
+             )
+             SELECT id, project_config_id, external_task_ref, pr_url, repo_full_name, pr_number,
+                 source_work_run_id,
+                 created_at as "created_at!: chrono::DateTime<chrono::Utc>",
+                 updated_at as "updated_at!: chrono::DateTime<chrono::Utc>"
+             FROM upserted"#,
             params.project_config_id,
             params.external_task_ref,
             params.pr_url,
@@ -148,9 +154,15 @@ impl WorkRunsRepository {
         Q: Queryer<'c>,
     {
         sqlx::query!(
-            r#"INSERT INTO task_prs
+            r#"WITH locked AS MATERIALIZED (
+                   SELECT pg_advisory_xact_lock(hashtextextended(
+                       'github-task-pr:' || $1::UUID::TEXT || ':' || LOWER($4) || '#' || $5::BIGINT::TEXT,
+                       0
+                   ))
+               )
+               INSERT INTO task_prs
                    (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number)
-               VALUES ($1, $2, $3, $4, $5)
+               SELECT $1::UUID, $2, $3, $4, $5::BIGINT FROM locked
                ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET
                    repo_full_name = EXCLUDED.repo_full_name,
                    pr_number = EXCLUDED.pr_number"#,
@@ -162,35 +174,6 @@ impl WorkRunsRepository {
         )
         .execute(db)
         .await?;
-
-        Ok(())
-    }
-
-    pub async fn insert_review_result<'c, Q>(
-        &self,
-        db: Q,
-        params: InsertReviewResultParams<'_>,
-    ) -> Result<(), WorkRunsError>
-    where
-        Q: Queryer<'c>,
-    {
-        sqlx::query!(
-            r#"INSERT INTO work_run_reviews (work_run_id, pr_url, repo_full_name, review_url, review_body, review_already_exists)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (work_run_id, pr_url) DO UPDATE SET
-                 review_url = EXCLUDED.review_url,
-                 review_body = EXCLUDED.review_body,
-                 review_already_exists = EXCLUDED.review_already_exists"#,
-            params.work_run_id,
-            params.pr_url,
-            params.repo_full_name,
-            params.review_url,
-            params.review_body,
-            params.review_already_exists,
-        )
-        .execute(db)
-        .await
-        .map_err(WorkRunsError::from)?;
 
         Ok(())
     }

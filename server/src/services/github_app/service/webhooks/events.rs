@@ -38,6 +38,7 @@ fn closed_pull_request(
         sender_id: None,
         pr_title: None,
         project_selector: None,
+        ticket_selector: None,
         request_body: None,
         command_error: None,
         attempts: 0,
@@ -63,19 +64,22 @@ fn issue_comment_command(
         Some(command) => command,
         None => return Ok(None),
     };
-    let (kind, project_selector, request_body, command_error) = match command {
+    let (kind, project_selector, ticket_selector, request_body, command_error) = match command {
         CommentCommand::Review(project_selector) => (
             GithubWebhookKind::ReviewRequested,
             project_selector,
             None,
             None,
+            None,
         ),
         CommentCommand::Implement {
             project_selector,
+            ticket_selector,
             request_body,
         } => (
             GithubWebhookKind::ImplementationFollowupRequested,
             project_selector,
+            ticket_selector,
             Some(request_body),
             None,
         ),
@@ -83,10 +87,12 @@ fn issue_comment_command(
             GithubWebhookKind::ImplementationFollowupRequested,
             None,
             None,
+            None,
             Some(GithubWebhookCommandError::Malformed),
         ),
         CommentCommand::AmbiguousImplementation => (
             GithubWebhookKind::ImplementationFollowupRequested,
+            None,
             None,
             None,
             Some(GithubWebhookCommandError::Ambiguous),
@@ -103,6 +109,7 @@ fn issue_comment_command(
         sender_id: Some(payload.sender.id.to_string()),
         pr_title: Some(payload.issue.title),
         project_selector,
+        ticket_selector,
         request_body,
         command_error,
         attempts: 0,

@@ -94,6 +94,7 @@ pub(super) fn request<'a>(
         pr_number: 42,
         pr_title: "Improve retries",
         project_selector: None,
+        ticket_selector: None,
         request_body: Some(request_body),
         command_error: None,
     }

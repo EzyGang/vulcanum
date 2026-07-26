@@ -1,9 +1,11 @@
 use crate::models::github_app::errors::GithubAppError;
 use crate::models::work_runs::errors::WorkRunsError;
+use crate::services::github_app::service::webhooks::implementation_response_messages::ImplementationResponseContext;
 use crate::services::github_app::service::webhooks::implementation_responses::{
     respond_to_implementation_outcome, respond_to_provider_failure,
 };
 use crate::services::github_app::service::webhooks::processing::DeliveryDisposition;
+use crate::services::github_app::service::webhooks::responses::GithubResponseTarget;
 use crate::services::github_app::service::webhooks::{
     required_delivery_field, GithubWebhookService,
 };
@@ -24,6 +26,12 @@ impl GithubWebhookService {
         let comment_id = delivery.comment_id.ok_or_else(|| {
             GithubAppError::Redis("implementation webhook omitted comment_id".to_owned())
         })?;
+        let response_target = GithubResponseTarget {
+            delivery_id: &delivery.delivery_id,
+            installation_id: delivery.installation_id,
+            repo_full_name: &delivery.repo_full_name,
+            pr_number: delivery.pr_number,
+        };
         let outcome = match self
             .work_runs
             .request_github_implementation(GithubImplementationRequest {
@@ -36,6 +44,7 @@ impl GithubWebhookService {
                 pr_number: delivery.pr_number,
                 pr_title,
                 project_selector: delivery.project_selector.as_deref(),
+                ticket_selector: delivery.ticket_selector.as_deref(),
                 request_body: delivery.request_body.as_deref(),
                 command_error: delivery.command_error.map(command_error),
             })
@@ -57,10 +66,7 @@ impl GithubWebhookService {
                         respond_to_provider_failure(
                             self.comment_writer.as_ref(),
                             team_id,
-                            &delivery.delivery_id,
-                            delivery.installation_id,
-                            &delivery.repo_full_name,
-                            delivery.pr_number,
+                            response_target,
                         )
                         .await?;
                     }
@@ -85,12 +91,12 @@ impl GithubWebhookService {
         }
         match respond_to_implementation_outcome(
             self.comment_writer.as_ref(),
-            app_slug,
-            &delivery.delivery_id,
-            delivery.installation_id,
-            &delivery.repo_full_name,
-            delivery.pr_number,
-            delivery.request_body.as_deref(),
+            ImplementationResponseContext {
+                app_slug,
+                target: response_target,
+                request_body: delivery.request_body.as_deref(),
+                ticket_selector: delivery.ticket_selector.as_deref(),
+            },
             &outcome,
         )
         .await
