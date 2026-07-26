@@ -15,13 +15,14 @@ use crate::daemon::job::github_credentials::{
 };
 use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
-use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::daemon::job::turn_loop::{run_turn_loop, RecoveryTurn, TurnLoopCtx, TurnLoopStart};
 use crate::isolation::github_credentials as isolation_github_credentials;
 use crate::isolation::workspace;
 use crate::providers::omp_rpc::runtime::OmpRpcRuntime;
 use crate::recovery::cleanup::cleanup_stale_job;
 use crate::recovery::recover_session::common::{
-    cleanup_recovery, mark_lost_and_submit, recovery_continuation_prompt, save_recovered_messages,
+    cleanup_recovery, mark_lost_and_submit, pending_turn, recovery_continuation_prompt,
+    save_recovered_messages,
 };
 use crate::state::journal::{Journal, JournalEntry};
 
@@ -139,10 +140,13 @@ pub(crate) async fn recover_omp_rpc_session_task(
         )
     });
 
-    let prompt = recovery_continuation_prompt(current_turn, max_turns);
+    let recovery_turn = RecoveryTurn {
+        prompt: recovery_continuation_prompt(current_turn, max_turns),
+        turn: current_turn + 1,
+    };
     let runtime = OmpRpcRuntime::new();
     let mut running_session = match runtime
-        .resume(&prompt, &env, std::path::Path::new(session_path))
+        .resume(&env, std::path::Path::new(session_path))
         .await
     {
         Ok(session) => session,
@@ -179,20 +183,18 @@ pub(crate) async fn recover_omp_rpc_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
-    let review_checkpoint = ReviewLoopCheckpoint {
-        fix_pass: entry.review_fix_pass,
-        fixing: entry.review_fixing,
-    };
-    run_turn_loop(
-        &mut running_session,
-        &artifact_path,
+    let start = TurnLoopStart {
         work_type,
         max_turns,
-        initial_turn,
-        review_checkpoint,
-        &ctx,
-    )
-    .await;
+        turn: initial_turn,
+        review_checkpoint: ReviewLoopCheckpoint {
+            fix_pass: entry.review_fix_pass,
+            fixing: entry.review_fixing,
+        },
+        pending_turn: pending_turn(&entry),
+        recovery_turn: Some(recovery_turn),
+    };
+    run_turn_loop(&mut running_session, &artifact_path, start, &ctx).await;
     stop_refresh_task(github_refresh_stop);
     if let Some(session_id) = running_session.session_id().map(str::to_owned) {
         match running_session.export_messages().await {

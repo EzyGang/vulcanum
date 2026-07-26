@@ -43,9 +43,10 @@ impl Journal {
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
                     review_url, review_body, review_already_exists, error_message,
-                    turn_count, review_fix_pass, review_fixing, session_id, max_turns,
-                    host_pid, host_port, agent_backend, agent_session_path, agent_config_dir,
-                    agent_state_dir, agent_transport, agent_pid
+                    turn_count, review_fix_pass, review_fixing, pending_prompt,
+                    pending_artifact_cleanup, session_id, max_turns, host_pid, host_port,
+                    agent_backend, agent_session_path, agent_config_dir, agent_state_dir,
+                    agent_transport, agent_pid
              FROM job_journal WHERE job_id = ?1",
         )?;
 
@@ -72,7 +73,7 @@ impl Journal {
             "UPDATE job_journal SET status = ?1, finished_at = ?2, exit_code = ?3, tokens_used = ?4,
              input_tokens = ?5, output_tokens = ?6, cache_read_tokens = ?7, cache_write_tokens = ?8,
              pr_url = ?9, duration_ms = ?10, review_url = ?11, review_body = ?12,
-             review_already_exists = ?13
+             review_already_exists = ?13, pending_prompt = NULL, pending_artifact_cleanup = 0
              WHERE job_id = ?14",
             rusqlite::params![
                 result.status.as_str(),
@@ -94,23 +95,37 @@ impl Journal {
         Ok(())
     }
 
-    pub fn update_turn(
+    pub fn stage_turn(
         &self,
         job_id: Uuid,
         turn_count: i32,
         review_fix_pass: i32,
         review_fixing: bool,
+        pending_prompt: &str,
+        pending_artifact_cleanup: bool,
     ) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
-            "UPDATE job_journal SET turn_count = ?1, review_fix_pass = ?2, review_fixing = ?3
-             WHERE job_id = ?4",
+            "UPDATE job_journal SET turn_count = ?1, review_fix_pass = ?2, review_fixing = ?3,
+             pending_prompt = ?4, pending_artifact_cleanup = ?5 WHERE job_id = ?6",
             rusqlite::params![
                 turn_count,
                 review_fix_pass,
                 review_fixing,
+                pending_prompt,
+                pending_artifact_cleanup,
                 job_id.to_string()
             ],
+        )?;
+        Ok(())
+    }
+
+    pub fn clear_pending_turn(&self, job_id: Uuid) -> anyhow::Result<()> {
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
+        conn.execute(
+            "UPDATE job_journal SET pending_prompt = NULL, pending_artifact_cleanup = 0
+             WHERE job_id = ?1",
+            [job_id.to_string()],
         )?;
         Ok(())
     }
@@ -191,9 +206,10 @@ impl Journal {
                     finished_at, exit_code, tokens_used, input_tokens, output_tokens,
                     cache_read_tokens, cache_write_tokens, pr_url, duration_ms,
                     review_url, review_body, review_already_exists, error_message,
-                    turn_count, review_fix_pass, review_fixing, session_id, max_turns,
-                    host_pid, host_port, agent_backend, agent_session_path, agent_config_dir,
-                    agent_state_dir, agent_transport, agent_pid
+                    turn_count, review_fix_pass, review_fixing, pending_prompt,
+                    pending_artifact_cleanup, session_id, max_turns, host_pid, host_port,
+                    agent_backend, agent_session_path, agent_config_dir, agent_state_dir,
+                    agent_transport, agent_pid
              FROM job_journal WHERE status = 'running'",
         )?;
 

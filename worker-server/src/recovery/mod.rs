@@ -13,13 +13,14 @@ use anyhow::Context;
 
 use tokio::sync::RwLock;
 
+use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, SessionExport};
 use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::execution::artifact::read_finish_artifact;
 use crate::daemon::job::execution::submit::submit_turn_result;
-use crate::daemon::job::review::review_loop::actionable_review_body;
+use crate::daemon::job::review::review_loop::{ReviewLoopCheckpoint, ReviewLoopState};
 use crate::daemon::queue::JobTracker;
 use crate::providers::opencode;
 use crate::providers::opencode::api;
@@ -32,8 +33,13 @@ use crate::recovery::recover_session::{
 use crate::state::journal::Journal;
 
 #[must_use]
-fn should_resume_review_artifact(artifact: &FinishRunArtifact) -> bool {
-    actionable_review_body(artifact).is_some()
+fn should_resume_review_artifact(
+    artifact: &FinishRunArtifact,
+    max_turns: i32,
+    checkpoint: ReviewLoopCheckpoint,
+) -> bool {
+    let mut state = ReviewLoopState::resume(WorkRunType::PullRequestReview, max_turns, checkpoint);
+    state.prompt_after_artifact(artifact).is_some()
 }
 
 pub async fn reconcile_running_jobs(
@@ -57,7 +63,16 @@ pub async fn reconcile_running_jobs(
             .join("home")
             .join("finish_artifact.json");
         match read_finish_artifact(&artifact_path) {
-            Some(artifact) if should_resume_review_artifact(&artifact) => {
+            Some(artifact)
+                if should_resume_review_artifact(
+                    &artifact,
+                    entry.max_turns.unwrap_or(1),
+                    ReviewLoopCheckpoint {
+                        fix_pass: entry.review_fix_pass,
+                        fixing: entry.review_fixing,
+                    },
+                ) =>
+            {
                 tracing::info!(
                     job_id = %entry.job_id,
                     "resuming session to address recovered review findings"

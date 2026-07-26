@@ -13,12 +13,12 @@ use crate::daemon::job::github_credentials::{
     setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
 };
 use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
-use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx, TurnLoopStart};
 use crate::providers::opencode::events;
 use crate::providers::opencode::runner::{OpenCodeRunningSession, SessionConfig};
 use crate::providers::opencode::OpenCodeClient;
 use crate::recovery::recover_session::common::{
-    cleanup_recovery, mark_lost_and_submit, save_recovered_messages,
+    cleanup_recovery, mark_lost_and_submit, pending_turn, save_recovered_messages,
 };
 use crate::state::journal::{Journal, JournalEntry};
 
@@ -136,20 +136,18 @@ pub(crate) async fn recover_session_task(
             )
         })
     });
-    let review_checkpoint = ReviewLoopCheckpoint {
-        fix_pass: entry.review_fix_pass,
-        fixing: entry.review_fixing,
-    };
-    run_turn_loop(
-        &mut boxed,
-        &artifact_path,
+    let start = TurnLoopStart {
         work_type,
         max_turns,
-        initial_turn,
-        review_checkpoint,
-        &ctx,
-    )
-    .await;
+        turn: initial_turn,
+        review_checkpoint: ReviewLoopCheckpoint {
+            fix_pass: entry.review_fix_pass,
+            fixing: entry.review_fixing,
+        },
+        pending_turn: pending_turn(&entry),
+        recovery_turn: None,
+    };
+    run_turn_loop(&mut boxed, &artifact_path, start, &ctx).await;
     stop_refresh_task(github_refresh_stop);
     if let Some(session_id) = boxed.session_id().map(str::to_owned) {
         match boxed.export_messages().await {

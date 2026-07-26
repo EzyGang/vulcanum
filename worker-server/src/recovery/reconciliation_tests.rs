@@ -9,6 +9,7 @@ use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 use vulcanum_shared::state::worker::WorkerState;
 
+use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
 use crate::daemon::queue::JobTracker;
 use crate::recovery::{reconcile_running_jobs, should_resume_review_artifact};
 use crate::state::journal::{Journal, JournalInsert};
@@ -27,7 +28,19 @@ fn actionable_review_artifact_resumes_reconciliation() {
         review_already_exists: true,
     };
 
-    assert!(should_resume_review_artifact(&artifact));
+    assert!(should_resume_review_artifact(
+        &artifact,
+        1,
+        ReviewLoopCheckpoint::default(),
+    ));
+    assert!(!should_resume_review_artifact(
+        &artifact,
+        1,
+        ReviewLoopCheckpoint {
+            fix_pass: 1,
+            fixing: false,
+        },
+    ));
 }
 
 #[tokio::test]

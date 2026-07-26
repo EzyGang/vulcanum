@@ -82,6 +82,8 @@ fn submit_result_from_journal_replays_stored_result() {
         turn_count: Some(1),
         review_fix_pass: 0,
         review_fixing: false,
+        pending_prompt: None,
+        pending_artifact_cleanup: false,
         session_id: Some("ses_1".to_owned()),
         max_turns: Some(3),
         host_pid: None,

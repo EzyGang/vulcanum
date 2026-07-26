@@ -20,16 +20,15 @@ impl OmpRpcRuntime {
 
     pub async fn resume(
         &self,
-        prompt: &str,
         env: &IsolatedEnvironment,
         session_path: &Path,
     ) -> Result<Box<dyn RunningSession>, HarnessError> {
-        self.start(prompt, env, Some(session_path)).await
+        self.start(None, env, Some(session_path)).await
     }
 
     async fn start(
         &self,
-        prompt: &str,
+        prompt: Option<&str>,
         env: &IsolatedEnvironment,
         resume_path: Option<&Path>,
     ) -> Result<Box<dyn RunningSession>, HarnessError> {
@@ -60,14 +59,16 @@ impl OmpRpcRuntime {
         );
         running.wait_ready().await?;
         running.refresh_state(env).await?;
-        running
-            .send_command(serde_json::json!({
-                "id": "prompt-1",
-                "type": "prompt",
-                "message": prompt,
-            }))
-            .await?;
-        running.wait_for_response("prompt-1", "prompt").await?;
+        if let Some(prompt) = prompt {
+            running
+                .send_command(serde_json::json!({
+                    "id": "prompt-1",
+                    "type": "prompt",
+                    "message": prompt,
+                }))
+                .await?;
+            running.wait_for_response("prompt-1", "prompt").await?;
+        }
 
         Ok(Box::new(running))
     }
@@ -79,6 +80,6 @@ impl AgentRuntime for OmpRpcRuntime {
         prompt: &str,
         env: &IsolatedEnvironment,
     ) -> Result<Box<dyn RunningSession>, HarnessError> {
-        self.start(prompt, env, None).await
+        self.start(Some(prompt), env, None).await
     }
 }

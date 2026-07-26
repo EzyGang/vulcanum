@@ -59,6 +59,8 @@ pub struct JournalEntry {
     pub turn_count: Option<i32>,
     pub review_fix_pass: i32,
     pub review_fixing: bool,
+    pub pending_prompt: Option<String>,
+    pub pending_artifact_cleanup: bool,
     pub session_id: Option<String>,
     pub max_turns: Option<i32>,
     pub host_pid: Option<i64>,
