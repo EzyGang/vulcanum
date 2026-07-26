@@ -5,6 +5,9 @@ use vulcanum_shared::api::wire::AuthTokenResponse;
 use crate::models::teams::model::{ProviderIdentity, Team};
 use crate::models::users::model::User;
 
+pub const ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
+pub const REFRESH_TOKEN_TTL_DAYS: i64 = 30;
+
 #[derive(Clone)]
 pub enum TeamPrincipal {
     User {
