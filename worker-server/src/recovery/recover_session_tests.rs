@@ -10,8 +10,38 @@ use vulcanum_shared::api::wire::{AgentBackend, AgentConfigPayload, JobResponse, 
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::state::worker::WorkerState;
 
-use crate::recovery::recover_session::{mark_lost_and_submit, recovered_omp_env};
+use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
+use crate::recovery::recover_session::{
+    mark_lost_and_submit, recovered_omp_env, recovery_turn_exhausted,
+};
 use crate::state::journal::{Journal, JournalEntry, JournalInsert, JournalStatus};
+
+#[test]
+fn omp_recovery_respects_turn_caps_and_staged_transitions() {
+    let cases = [
+        (WorkRunType::Implementation, 1, 1, false, false, true),
+        (WorkRunType::PullRequestReview, 2, 5, false, false, true),
+        (WorkRunType::Implementation, 1, 0, false, false, false),
+        (WorkRunType::PullRequestReview, 2, 4, false, false, false),
+        (WorkRunType::Implementation, 1, 1, true, false, false),
+        (WorkRunType::Implementation, 1, 1, false, true, false),
+    ];
+
+    for (work_type, max_turns, current_turn, has_pending, has_artifact, expected) in cases {
+        assert_eq!(
+            recovery_turn_exhausted(
+                work_type,
+                max_turns,
+                current_turn,
+                ReviewLoopCheckpoint::default(),
+                has_pending,
+                has_artifact,
+            ),
+            expected,
+            "{work_type:?} turn {current_turn}",
+        );
+    }
+}
 
 #[tokio::test]
 async fn recovered_omp_env_preserves_model_provider_env_for_docker() {
@@ -172,6 +202,10 @@ fn test_entry(workdir: &std::path::Path, harness_type: &str) -> JournalEntry {
         review_already_exists: false,
         error_message: None,
         turn_count: Some(1),
+        review_fix_pass: 0,
+        review_fixing: false,
+        pending_prompt: None,
+        pending_artifact_cleanup: false,
         session_id: Some("session".to_owned()),
         max_turns: Some(3),
         host_pid: None,

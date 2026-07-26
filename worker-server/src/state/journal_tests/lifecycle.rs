@@ -180,3 +180,34 @@ fn list_running_returns_empty_when_no_running_jobs() {
     let running = journal.list_running().expect("should list");
     assert!(running.is_empty());
 }
+
+#[test]
+fn staged_turn_persists_and_clears_pending_transition() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+    insert_running_job(&journal, job_id);
+
+    journal
+        .stage_turn(job_id, 2, 1, true, "fix the review", true)
+        .expect("pending transition should be staged");
+
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("journal should remain readable")
+        .expect("entry should exist");
+    assert_eq!(entry.turn_count, Some(2));
+    assert_eq!(entry.review_fix_pass, 1);
+    assert!(entry.review_fixing);
+    assert_eq!(entry.pending_prompt.as_deref(), Some("fix the review"));
+    assert!(entry.pending_artifact_cleanup);
+
+    journal
+        .clear_pending_turn(job_id)
+        .expect("pending transition should clear");
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("journal should remain readable")
+        .expect("entry should exist");
+    assert!(entry.pending_prompt.is_none());
+    assert!(!entry.pending_artifact_cleanup);
+}

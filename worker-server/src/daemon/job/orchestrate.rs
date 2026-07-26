@@ -19,7 +19,8 @@ use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{submit_failed_result, FailedResult};
 use super::github_credentials::stop_refresh_task;
 use super::prompts::text::initial_prompt;
-use super::turn_loop::{run_turn_loop, TurnLoopCtx};
+use super::review::review_loop::ReviewLoopCheckpoint;
+use super::turn_loop::{run_turn_loop, TurnLoopCtx, TurnLoopStart};
 use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::orchestrate::duplicates::reconcile_terminal_duplicate;
 use crate::daemon::job::orchestrate::heartbeat::spawn_heartbeat;
@@ -270,15 +271,15 @@ pub(crate) async fn handle_job(
         reporter,
     };
 
-    run_turn_loop(
-        &mut running_session,
-        &artifact_path,
-        job.work_type,
+    let start = TurnLoopStart {
+        work_type: job.work_type,
         max_turns,
-        1,
-        &ctx,
-    )
-    .await;
+        turn: 1,
+        review_checkpoint: ReviewLoopCheckpoint::default(),
+        pending_turn: None,
+        recovery_turn: None,
+    };
+    run_turn_loop(&mut running_session, &artifact_path, start, &ctx).await;
     stop_refresh_task(github_refresh_stop);
     let _ = heartbeat_stop.send(true);
     ctx.reporter.shutdown().await;

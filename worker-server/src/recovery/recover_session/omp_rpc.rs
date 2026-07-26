@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use vulcanum_shared::api::wire::JobResponse;
+use vulcanum_shared::api::wire::{JobResponse, WorkRunType};
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::constants::DEFAULT_IMAGE;
 use vulcanum_shared::runtime::errors::HarnessError;
@@ -10,17 +10,21 @@ use vulcanum_shared::runtime::types::{IsolatedEnvironment, ResourceLimits};
 use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::auth::with_retry_on_401;
+use crate::daemon::job::execution::artifact::read_finish_artifact;
+use crate::daemon::job::execution::submit::{submit_failed_result, FailedResult};
 use crate::daemon::job::github_credentials::{
     setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
 };
+use crate::daemon::job::review::review_loop::{ReviewLoopCheckpoint, ReviewLoopState};
 use crate::daemon::job::runtime_secrets::job_runtime_secrets;
-use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::daemon::job::turn_loop::{run_turn_loop, RecoveryTurn, TurnLoopCtx, TurnLoopStart};
 use crate::isolation::github_credentials as isolation_github_credentials;
 use crate::isolation::workspace;
 use crate::providers::omp_rpc::runtime::OmpRpcRuntime;
 use crate::recovery::cleanup::cleanup_stale_job;
 use crate::recovery::recover_session::common::{
-    cleanup_recovery, mark_lost_and_submit, recovery_continuation_prompt, save_recovered_messages,
+    cleanup_recovery, mark_lost_and_submit, pending_turn, recovery_continuation_prompt,
+    save_recovered_messages,
 };
 use crate::state::journal::{Journal, JournalEntry};
 
@@ -77,6 +81,22 @@ pub(crate) async fn recovered_omp_env(
         limits: ResourceLimits::default(),
     })
 }
+#[must_use]
+pub(crate) fn recovery_turn_exhausted(
+    work_type: WorkRunType,
+    max_turns: i32,
+    current_turn: i32,
+    checkpoint: ReviewLoopCheckpoint,
+    has_pending_turn: bool,
+    has_finish_artifact: bool,
+) -> bool {
+    if current_turn <= 0 || has_pending_turn || has_finish_artifact {
+        return false;
+    }
+
+    let review_loop = ReviewLoopState::resume(work_type, max_turns, checkpoint);
+    current_turn >= review_loop.effective_max_turns()
+}
 
 pub(crate) async fn recover_omp_rpc_session_task(
     entry: JournalEntry,
@@ -92,7 +112,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
 
     let max_turns = entry.max_turns.unwrap_or(1).max(1);
     let current_turn = entry.turn_count.unwrap_or(0);
-    let initial_turn = current_turn + 1;
+    let initial_turn = current_turn.max(1);
     let recovered_job = match with_retry_on_401(&api_client, &worker_state, |token| {
         let client = api_client.clone();
         let job_id = entry.job_id;
@@ -114,6 +134,35 @@ pub(crate) async fn recover_omp_rpc_session_task(
     };
     let work_type = recovered_job.work_type;
     let workdir = std::path::PathBuf::from(&entry.workdir);
+    let artifact_path = workdir.join("home").join("finish_artifact.json");
+    let review_checkpoint = ReviewLoopCheckpoint {
+        fix_pass: entry.review_fix_pass,
+        fixing: entry.review_fixing,
+    };
+    if recovery_turn_exhausted(
+        work_type,
+        max_turns,
+        current_turn,
+        review_checkpoint,
+        entry.pending_prompt.is_some(),
+        read_finish_artifact(&artifact_path).is_some(),
+    ) {
+        tracing::info!(
+            job_id = %entry.job_id,
+            current_turn,
+            "OMP recovery reached the effective turn limit"
+        );
+        cleanup_stale_job(&entry).await;
+        submit_failed_result(
+            api_client,
+            worker_state,
+            journal,
+            entry.job_id,
+            &FailedResult::empty(),
+        )
+        .await;
+        return;
+    }
 
     cleanup_stale_job(&entry).await;
     let env = match recovered_omp_env(&entry, &recovered_job).await {
@@ -138,10 +187,13 @@ pub(crate) async fn recover_omp_rpc_session_task(
         )
     });
 
-    let prompt = recovery_continuation_prompt(current_turn, max_turns);
+    let recovery_turn = RecoveryTurn {
+        prompt: recovery_continuation_prompt(current_turn, max_turns),
+        turn: current_turn + 1,
+    };
     let runtime = OmpRpcRuntime::new();
     let mut running_session = match runtime
-        .resume(&prompt, &env, std::path::Path::new(session_path))
+        .resume(&env, std::path::Path::new(session_path))
         .await
     {
         Ok(session) => session,
@@ -156,7 +208,6 @@ pub(crate) async fn recover_omp_rpc_session_task(
             return;
         }
     };
-    let artifact_path = workdir.join("home").join("finish_artifact.json");
     let reporter = Arc::new(
         crate::daemon::job::execution::event_reporter::EventReporter::new(
             api_client.clone(),
@@ -178,15 +229,15 @@ pub(crate) async fn recover_omp_rpc_session_task(
         worker_id: uuid::Uuid::nil(),
         reporter,
     };
-    run_turn_loop(
-        &mut running_session,
-        &artifact_path,
+    let start = TurnLoopStart {
         work_type,
         max_turns,
-        initial_turn,
-        &ctx,
-    )
-    .await;
+        turn: initial_turn,
+        review_checkpoint,
+        pending_turn: pending_turn(&entry),
+        recovery_turn: Some(recovery_turn),
+    };
+    run_turn_loop(&mut running_session, &artifact_path, start, &ctx).await;
     stop_refresh_task(github_refresh_stop);
     if let Some(session_id) = running_session.session_id().map(str::to_owned) {
         match running_session.export_messages().await {

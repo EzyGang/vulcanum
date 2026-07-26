@@ -33,6 +33,10 @@ impl Journal {
                 review_already_exists INTEGER NOT NULL DEFAULT 0,
                 error_message TEXT,
                 turn_count INTEGER NOT NULL DEFAULT 0,
+                review_fix_pass INTEGER NOT NULL DEFAULT 0,
+                review_fixing INTEGER NOT NULL DEFAULT 0,
+                pending_prompt TEXT,
+                pending_artifact_cleanup INTEGER NOT NULL DEFAULT 0,
                 session_id TEXT,
                 max_turns INTEGER NOT NULL DEFAULT 1,
                 agent_backend TEXT NOT NULL DEFAULT 'opencode',
@@ -47,6 +51,22 @@ impl Journal {
         apply_column_migration(
             &conn,
             "ALTER TABLE job_journal ADD COLUMN turn_count INTEGER NOT NULL DEFAULT 0",
+        )?;
+        apply_column_migration(
+            &conn,
+            "ALTER TABLE job_journal ADD COLUMN review_fix_pass INTEGER NOT NULL DEFAULT 0",
+        )?;
+        apply_column_migration(
+            &conn,
+            "ALTER TABLE job_journal ADD COLUMN review_fixing INTEGER NOT NULL DEFAULT 0",
+        )?;
+        apply_column_migration(
+            &conn,
+            "ALTER TABLE job_journal ADD COLUMN pending_prompt TEXT",
+        )?;
+        apply_column_migration(
+            &conn,
+            "ALTER TABLE job_journal ADD COLUMN pending_artifact_cleanup INTEGER NOT NULL DEFAULT 0",
         )?;
         apply_column_migration(&conn, "ALTER TABLE job_journal ADD COLUMN session_id TEXT")?;
         apply_column_migration(

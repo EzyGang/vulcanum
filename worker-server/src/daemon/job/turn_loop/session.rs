@@ -53,7 +53,7 @@ pub(super) async fn wait_for_session(
     }
 }
 
-pub(super) async fn cancel_running_session(
+async fn cancel_running_session(
     running_session: &mut Box<dyn RunningSession>,
     turn: i32,
     ctx: &TurnLoopCtx,
@@ -147,40 +147,6 @@ pub(super) async fn submit_provider_failure(
         None,
     )
     .await;
-}
-
-pub(super) async fn continue_session(
-    running_session: &mut Box<dyn RunningSession>,
-    prompt: &str,
-    turn: i32,
-    ctx: &TurnLoopCtx,
-) -> bool {
-    if let Err(e) = running_session.continue_with(prompt).await {
-        tracing::error!(
-            worker_id = %ctx.worker_id,
-            work_run_id = %ctx.job_id,
-            turn = turn,
-            error = %e,
-            "continuation prompt failed",
-        );
-        ctx.reporter
-            .emit(
-                "session.failed",
-                serde_json::json!({"reason": "continuation_failed", "turn": turn}),
-            )
-            .await;
-        submit_failed_result(
-            ctx.client.clone(),
-            ctx.worker_state.clone(),
-            ctx.journal.clone(),
-            ctx.job_id,
-            &FailedResult::empty(),
-        )
-        .await;
-        return false;
-    }
-
-    true
 }
 
 pub(super) fn remove_finish_artifact(path: &Path) {
