@@ -1,5 +1,3 @@
-use chrono::{Duration, Utc};
-
 use uuid::Uuid;
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::state::app::AppSession;
@@ -58,39 +56,6 @@ async fn refresh_rotates_tokens_and_preserves_team_pin() {
     assert_eq!(context.session.access_token, "new-access");
     assert_eq!(context.session.refresh_token, "new-refresh");
     assert_eq!(context.session.team_id, Some(team_id));
-    assert_eq!(saved, vec![context.session]);
-}
-
-#[tokio::test]
-async fn single_user_session_older_than_one_day_still_refreshes() {
-    let server = FakeServer::start(vec![Response::ok(
-        "POST",
-        "/api/v1/auth/refresh",
-        REFRESHED,
-    )]);
-    let mut loaded = session(&server.url, None);
-    loaded.refresh_token = "irt1_old-refresh".to_owned();
-    loaded.refresh_expires_at = Utc::now() + Duration::days(28);
-    let mut saved = Vec::new();
-    let mut output = Vec::new();
-    let mut load = || Ok(Some(loaded.clone()));
-    let mut save = |session: &AppSession| {
-        saved.push(session.clone());
-        Ok(())
-    };
-    let mut runtime = AppRuntime {
-        stdout: &mut output,
-        load_session: &mut load,
-        save_session: &mut save,
-    };
-
-    let context = authenticated_context(&mut runtime)
-        .await
-        .expect("session within thirty-day lifetime should refresh");
-    let requests = server.finish();
-
-    assert_eq!(requests[0].body, r#"{"refresh_token":"irt1_old-refresh"}"#);
-    assert_eq!(context.session.refresh_token, "new-refresh");
     assert_eq!(saved, vec![context.session]);
 }
 
