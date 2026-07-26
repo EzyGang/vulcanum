@@ -5,7 +5,28 @@ description: Use whenever an agent needs to use the Vulcanum CLI for any reason.
 
 # Vulcanum CLI
 
-Use the repository's `vulcanum` binary rather than calling control-plane APIs directly. The generated command help and `docs/cli-reference.md` are authoritative; consult them before composing an unfamiliar command or when the source may have changed.
+Use the `vulcanum` binary rather than calling control-plane APIs directly. This skill is self-contained and may be installed without a Vulcanum source checkout.
+
+## Install or locate the CLI
+
+First check whether the CLI is already available:
+
+```bash
+vulcanum --help
+```
+
+If the command is missing, install the latest release on Linux or macOS:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh | sh
+```
+
+The installer verifies the downloaded release archive and installs `vulcanum` and the worker daemon to `~/.local/bin` by default. Follow any `PATH` instructions it prints, then run `vulcanum --help` again. Set `VULCANUM_INSTALL_DIR` to choose another directory.
+
+Published binaries and checksums are also available at <https://github.com/EzyGang/vulcanum/releases>. Native Windows installation is not currently provided; use Linux or macOS, including WSL on Windows.
+
+Do not run app-facing commands until `vulcanum --help` succeeds. If installation is not possible in the current environment, report that the CLI is unavailable instead of substituting direct API calls.
 
 ## Grounding commands
 
@@ -15,13 +36,7 @@ vulcanum <COMMAND> --help
 vulcanum <COMMAND> <SUBCOMMAND> --help
 ```
 
-From this repository, run an uninstalled development build with:
-
-```bash
-cargo run -p vulcanum-cli --bin vulcanum -- <ARGS>
-```
-
-Do not guess flags or positional argument order. Check help or `docs/cli-reference.md` when uncertain.
+Do not guess flags or positional argument order. Use the generated help before composing an unfamiliar command.
 
 ## Authentication and team selection
 

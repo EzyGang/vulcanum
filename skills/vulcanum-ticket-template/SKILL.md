@@ -7,7 +7,34 @@ description: Use when a user asks to create, add, file, or draft a ticket, issue
 
 Create self-contained task-tracker tickets through the Vulcanum CLI. The ticket body is the contract for an implementation agent that may have no conversation history, so include enough project and product context to execute the work correctly.
 
-Load the `vulcanum-cli` skill as well when login, team selection, project discovery, or command behavior is relevant.
+This skill is self-contained; do not assume the separate `vulcanum-cli` skill or a Vulcanum source checkout is available.
+
+## Install or locate the CLI
+
+First check whether the CLI is available:
+
+```bash
+vulcanum --help
+```
+
+If the command is missing, install the latest release on Linux or macOS:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh | sh
+```
+
+The installer verifies the release archive and installs to `~/.local/bin` by default. Follow any `PATH` instructions it prints, then run `vulcanum --help` again. Published binaries and checksums are available at <https://github.com/EzyGang/vulcanum/releases>. Native Windows installation is not currently provided; use Linux or macOS, including WSL on Windows.
+
+Do not create a ticket until `vulcanum --help` succeeds. If installation is not possible, report that the CLI is unavailable rather than substituting direct API calls.
+
+App-facing commands require a saved login session. When needed, log in with:
+
+```bash
+vulcanum login [--instance <URL>] [--password-stdin] [--auth-code <CODE>] [--no-browser]
+```
+
+Do not guess the instance, credentials, or team. Use `--password-stdin` for a supplied single-user password and `--no-browser` in a headless environment.
 
 ## Required ticket structure
 

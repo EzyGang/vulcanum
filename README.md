@@ -188,7 +188,7 @@ Vulcanum puts one boundary in the middle of three sides:
 2. **Execution backends**, where implementation and review agents actually run.
 3. **Higher-level harnesses**, such as OpenClaw, Hermes, or a personal agent that wants to delegate software work.
 
-That separation is the main idea. Task trackers connect through provider interfaces. OpenCode, OMP, and future implementation agents connect through worker runtime interfaces. Higher-level harnesses will use a shared `SKILL.md` and the Vulcanum CLI rather than getting a custom integration for every harness.
+That separation is the main idea. Task trackers connect through provider interfaces. OpenCode, OMP, and future implementation agents connect through worker runtime interfaces. Higher-level harnesses can use the bundled `SKILL.md` and the Vulcanum CLI rather than getting a custom integration for every harness.
 
 The distributed worker setup follows from that design. Workers can be on the same network or spread across different machines. You might keep one on a home machine that would otherwise sit idle, run another on a Mac, and add VPS workers for always-on capacity. They all connect to the same control plane and advertise what they can run.
 
@@ -212,11 +212,9 @@ OpenCode and OMP are the current agent backends. Host, Docker, and Kata are the 
 
 ### Higher-level harness side
 
-OpenClaw, Hermes, or another personal agent should not need a dedicated Vulcanum adapter.
+OpenClaw, Hermes, or another personal agent does not need a dedicated Vulcanum adapter.
 
-The planned connection is a shareable `SKILL.md` plus an installed Vulcanum CLI. The skill explains how to use Vulcanum and the CLI provides the commands. Anything that can install the skill and call the CLI can use the same interface.
-
-The CLI supports worker lifecycle management plus authenticated worker and settings inspection. Higher-level run-control commands are still planned.
+Vulcanum ships a shareable CLI skill that explains the available commands and a ticket-template skill for creating consistently structured work. `vulcanum skills install` installs both into supported coding agents. A harness can then use the authenticated CLI to inspect workers and runs; configure projects, repositories, workflow columns, models, providers, and GitHub; and browse, create, edit, search, or move tasks.
 
 ## A Typical Run
 
@@ -241,6 +239,7 @@ The current implementation supports:
 - **Kaneo projects and task boards.** Vulcanum can read projects, watch configured columns, create and update tasks, move tasks, post comments, and manage labels.
 - **OpenCode and OMP.** Team defaults select the agent backend for each run, and every worker can execute either backend.
 - **GitHub repositories and pull requests.** A GitHub App provides repository access, short-lived clone credentials, pull request tracking, and close/merge webhooks.
+- **Pull request mention commands.** On an open pull request, an authorized team member can comment `@app-slug review` to start an agent review or `@app-slug implement <request>` to start implementation work against that pull request. Project and ticket selectors disambiguate repositories connected to multiple Vulcanum projects or tickets; see [GitHub App](#github-app) for syntax and authorization details.
 - **Host, Docker, and Kata execution.** Each worker is configured with one execution mode.
 - **Concurrent workers.** The dispatcher respects each worker's available job slots.
 - **Crash recovery.** Workers keep an SQLite journal for in-flight jobs and reconcile it when they restart.
@@ -252,13 +251,14 @@ The current implementation supports:
 - **Model-provider credentials.** Credentials are encrypted in PostgreSQL and turned into backend-specific job configuration when a run starts.
 - **Single-user and team modes.** A deployment can use an instance password or GitHub OAuth with teams and invite links.
 - **A web UI.** The frontend includes the task board, dashboard, runs, workers, teams, and settings for tracker providers, model providers, models, GitHub, and defaults.
+- **Agent and harness integration.** The bundled `vulcanum-cli` and `vulcanum-ticket-template` skills provide shared instructions for using the authenticated CLI without a harness-specific adapter.
+- **App-facing CLI management.** The CLI can inspect workers and runs, manage projects and task boards, configure integrations and model settings, and install the bundled agent skills.
 
 A few boundaries are worth being clear about:
 
 - Kaneo is the only task-tracker backend right now.
 - GitHub is the only repository and pull request backend right now.
 - OpenCode and OMP are the only implementation-agent backends right now.
-- Higher-level harness control through `SKILL.md` and the CLI is planned, not finished.
 - Run records and events are stored centrally. Exported backend message history is currently saved on the worker under `~/.vulcanum/sessions/`; there is no server-side artifact bundle yet.
 - Model credentials are encrypted at rest, but the server must decrypt the credentials needed by a job and send them to the worker. The credential-vault work described below is not implemented yet.
 
@@ -266,8 +266,6 @@ A few boundaries are worth being clear about:
 
 The main pieces still ahead are:
 
-- A shareable Vulcanum `SKILL.md` for higher-level harnesses.
-- More CLI commands so an agent or harness can inspect work, start or manage runs, and use Vulcanum without going through the web UI.
 - A credential vault/broker so jobs can use credentials without handing reusable plaintext secrets directly to the agent process.
 - More task-tracker backends.
 - More implementation-agent backends.
@@ -292,8 +290,9 @@ flowchart LR
   user[User] --> ui[Web UI]
   ui --> server
 
-  harness[OpenClaw / Hermes / another agent] -. planned .-> skill[Shared SKILL.md + Vulcanum CLI]
-  skill -. planned CLI control commands .-> server
+  harness[OpenClaw / Hermes / another agent] -->|follows| skill[Bundled SKILL.md]
+  harness -->|runs| cli[Vulcanum CLI]
+  cli <--> server
 
   server <--> postgres[(PostgreSQL)]
   server <--> redis[(Redis)]
@@ -318,7 +317,7 @@ There are three extension boundaries that matter:
 2. **Agent backends** live on the worker side and implement the shared runtime/session contract.
 3. **Execution environments** prepare the workspace independently of the selected agent backend.
 
-The planned higher-level harness path is deliberately different. It uses shared instructions and CLI commands rather than an adapter for each harness.
+The higher-level harness path is deliberately different. It uses shared instructions and CLI commands rather than an adapter for each harness.
 
 ### Processes and Storage
 
@@ -345,7 +344,7 @@ Despite the binary name, this is the worker daemon. It polls the control plane, 
 
 #### `vulcanum`
 
-This is the CLI. It provisions, registers, starts, and removes workers, and exposes authenticated worker and settings inspection commands. See the [CLI reference](docs/cli-reference.md) for command syntax, authentication, and team-selection behavior.
+This is the CLI. It provisions, registers, starts, and removes workers; installs the bundled agent skills; and provides authenticated commands for workers, runs, projects, task boards, integrations, and model settings. See the [CLI reference](docs/cli-reference.md) for command syntax, authentication, and team-selection behavior.
 
 #### Frontend
 
