@@ -23,6 +23,10 @@ pub enum WorkRunsError {
     InvalidPagination(String),
     #[error("review ticket creation is already in progress")]
     ReviewTicketCreationPending,
+    #[error("implementation follow-up ticket operation is already in progress")]
+    ImplementationFollowupPending,
+    #[error("GitHub delivery was replayed with different command data")]
+    GithubDeliveryConflict,
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("dispatch error: {0}")]

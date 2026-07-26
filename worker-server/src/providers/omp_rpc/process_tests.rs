@@ -10,23 +10,25 @@ use crate::providers::omp_rpc::{
 };
 
 #[test]
-fn host_omp_command_uses_yolo_flag() {
+fn host_omp_command_uses_vulcanum_defaults() {
     let env = test_env(None);
     let command = host_omp_command(&env, None);
     let args = command_args(&command);
 
     assert!(args.contains(&OsString::from("--yolo")));
     assert!(!args.contains(&OsString::from("--auto-approve")));
+    assert_arg_pair(&args, "--thinking", "medium");
 }
 
 #[test]
-fn docker_omp_command_uses_yolo_flag() -> Result<(), Box<dyn std::error::Error>> {
+fn docker_omp_command_uses_vulcanum_defaults() -> Result<(), Box<dyn std::error::Error>> {
     let env = test_env(Some("ghcr.io/ezygang/vulcanum/agent:latest".to_owned()));
     let command = docker_omp_command(&env, "vulcanum-test", None)?;
     let args = command_args(&command);
 
     assert!(args.contains(&OsString::from("--yolo")));
     assert!(!args.contains(&OsString::from("--auto-approve")));
+    assert_arg_pair(&args, "--thinking", "medium");
     Ok(())
 }
 

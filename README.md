@@ -461,12 +461,43 @@ The callback accepts both GitHub response shapes. OAuth responses are correlated
 single-use state nonce; installation responses are verified against the GitHub App API before
 Vulcanum stores them.
 
-To review any open pull request in a repository connected to an enabled project, an authorized
-team member can comment `@app-slug review`. If the repository belongs to multiple review-enabled
-projects, Vulcanum replies with project-specific commands; use
-`@app-slug review project:<project-config-uuid>` to select one. GitHub models pull request timeline
-comments as issue comments, so the app needs **Issues: read** to receive commands and **Issues:
-write** to post project-selection guidance.
+Authorized team members can issue two commands on newly created comments in an open pull request:
+
+```text
+@app-slug review [project:<project-config-uuid>]
+@app-slug implement [project:<project-config-uuid>] [ticket:<external-task-ref>] <request>
+```
+
+The app ignores edited or deleted comments, non-PR issue comments, and its own comments. Commands
+and app mentions are case-insensitive. When a repository belongs to multiple eligible projects,
+the `project:<uuid>` selector must be the first selector after the command; Vulcanum replies with
+exact project-specific commands when the selector is missing or invalid.
+
+`review` keeps its review-only ticket and run lifecycle. `implement` instead starts implementation
+work against the current PR. Its request is required, may span multiple lines, and is stored
+verbatim as durable run context. Vulcanum reuses the one implementation ticket mapped to the PR in
+the selected project and appends a source-marked request block without replacing the existing title
+or description. If no ticket is mapped, Vulcanum creates one in the implementation workflow with
+the PR URL, request, and a durable marker. If multiple tickets remain mapped after project
+selection, Vulcanum does not guess: its reply lists exact commands with a
+`ticket:<external-task-ref>` selector. The ticket selector follows the optional project selector
+and chooses only a ticket already mapped to that PR and project. A ticket with an active
+implementation run rejects another follow-up before its tracker description is changed.
+
+Examples:
+
+```text
+@vulcanum-app review
+@vulcanum-app review project:0d915a91-f314-4c1e-a2b6-dae140ca16d2
+@vulcanum-app implement handle the retry case
+@vulcanum-app implement project:0d915a91-f314-4c1e-a2b6-dae140ca16d2 also add migration coverage
+and verify the rollback path
+@vulcanum-app implement project:0d915a91-f314-4c1e-a2b6-dae140ca16d2 ticket:task-123 handle the mapped ticket
+```
+
+GitHub models pull request timeline comments as issue comments, so the app needs **Issues: read** to
+receive commands and **Issues: write** to acknowledge accepted commands and post actionable
+authorization, selection, ambiguity, active-run, and provider-failure feedback.
 
 Add the app values to `.env`:
 

@@ -17,6 +17,13 @@ pub const GITHUB_INSTRUCTION: &str = "\n\nGitHub workflow:\n\
     4. Push the branch and create a pull request using `gh pr create`. Target the repository default branch, usually main or master, unless the task body says otherwise or blocker resolution requires the PR base to be the branch where the blocking ticket is implemented.\n\
     5. Call the `finish_run` tool with PR URLs in the `pr_urls` field";
 
+pub const IMPLEMENTATION_FOLLOWUP_GITHUB_INSTRUCTION: &str = "\n\nGitHub follow-up workflow:\n\
+    1. Read the repository instructions, inspect the current pull request and its head branch, and confirm the requested change against the current diff before editing.\n\
+    2. Make only the requested follow-up changes on the existing pull request branch. Preserve the pull request, its base branch, and the surrounding implementation workflow; do not open a replacement pull request.\n\
+    3. Run the repository's required formatter, validation, and tests for the files changed.\n\
+    4. Commit and push the follow-up changes to the existing pull request branch.\n\
+    5. Call the `finish_run` tool with the existing pull request URL in the `pr_urls` field";
+
 pub const REVIEW_GITHUB_INSTRUCTION: &str = "\n\nGitHub review workflow:\n\
     1. Confirm the focus pull request and record its current head commit before reviewing.\n\
     2. Use `gh pr view`, `gh pr diff`, and the repository's validation commands to inspect the change and its checks without modifying the worktree.\n\

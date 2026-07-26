@@ -3,9 +3,15 @@ pub mod cancel;
 pub mod clear_cancel_flag;
 pub mod delete;
 pub mod fail;
+pub(crate) mod finalize_implementation_followup;
 pub mod get_job;
 #[cfg(test)]
 mod get_job_tests;
+pub(crate) mod github_commands;
+pub(crate) mod implementation_followup_heartbeat;
+pub(crate) mod implementation_followup_request_state;
+pub(crate) mod implementation_followup_ticket;
+pub(crate) mod job_prompts;
 pub(crate) mod lifecycle_labels;
 pub mod list;
 pub mod poll;
@@ -14,9 +20,12 @@ pub(crate) mod reconcile_pr_completion;
 mod reconcile_pr_completion_tests;
 pub(crate) mod record_review;
 pub mod refresh_github_token;
+pub(crate) mod request_github_implementation;
 pub(crate) mod request_github_review;
+pub(crate) mod resolve_implementation_followup;
 pub(crate) mod resolve_review_ticket;
 pub(crate) mod review_ticket;
+pub(crate) mod spawn_github_implementation_followup;
 pub mod spawn_review;
 pub mod submit_result;
 pub(crate) mod sync_task_tracker;
@@ -38,6 +47,9 @@ use crate::services::github_app::service::GithubAppManager;
 use crate::services::model_providers::service::ModelProvidersService;
 use crate::services::project_configs::service::ProjectConfigsService;
 use crate::services::providers::client::TaskFetcher;
+use crate::services::work_runs::service::implementation_followup_ticket::{
+    ImplementationFollowupTicketClient, IntegrationImplementationFollowupTicketClient,
+};
 use crate::services::work_runs::service::review_ticket::{
     IntegrationReviewTicketCreator, ReviewTicketCreator,
 };
@@ -52,6 +64,7 @@ pub struct WorkRunsService {
     pub db: PgPool,
     pub(crate) pr_state_reader: Arc<dyn PullRequestStateReader>,
     review_ticket_creator: Arc<dyn ReviewTicketCreator>,
+    implementation_followup_ticket_client: Arc<dyn ImplementationFollowupTicketClient>,
     dispatch_store: Arc<dyn DispatchStore>,
     cancel_store: Arc<dyn CancelStore>,
     pub providers_repo: IntegrationProvidersRepository,
@@ -71,6 +84,9 @@ impl Clone for WorkRunsService {
             github: self.github.clone(),
             pr_state_reader: self.pr_state_reader.clone(),
             review_ticket_creator: self.review_ticket_creator.clone(),
+            implementation_followup_ticket_client: self
+                .implementation_followup_ticket_client
+                .clone(),
             db: self.db.clone(),
             dispatch_store: self.dispatch_store.clone(),
             cancel_store: self.cancel_store.clone(),
@@ -101,6 +117,8 @@ impl WorkRunsService {
         let pr_state_reader: Arc<dyn PullRequestStateReader> = Arc::new(github.clone());
         let review_ticket_creator: Arc<dyn ReviewTicketCreator> =
             Arc::new(IntegrationReviewTicketCreator);
+        let implementation_followup_ticket_client: Arc<dyn ImplementationFollowupTicketClient> =
+            Arc::new(IntegrationImplementationFollowupTicketClient);
 
         Self {
             work_runs_repo,
@@ -112,6 +130,7 @@ impl WorkRunsService {
             db,
             pr_state_reader,
             review_ticket_creator,
+            implementation_followup_ticket_client,
             dispatch_store,
             cancel_store,
             providers_repo,
@@ -157,6 +176,15 @@ impl WorkRunsService {
         review_ticket_creator: Arc<dyn ReviewTicketCreator>,
     ) -> Self {
         self.review_ticket_creator = review_ticket_creator;
+        self
+    }
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn with_implementation_followup_ticket_client(
+        mut self,
+        client: Arc<dyn ImplementationFollowupTicketClient>,
+    ) -> Self {
+        self.implementation_followup_ticket_client = client;
         self
     }
 }

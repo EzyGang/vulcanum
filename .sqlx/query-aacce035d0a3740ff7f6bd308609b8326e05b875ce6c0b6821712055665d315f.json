@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT delivery_id, repo_full_name, pr_number, request_body\n               FROM github_implementation_followup_requests\n               WHERE work_run_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "delivery_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "pr_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "request_body",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "aacce035d0a3740ff7f6bd308609b8326e05b875ce6c0b6821712055665d315f"
+}

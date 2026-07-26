@@ -1,4 +1,8 @@
+mod commands;
 mod events;
+mod implementation_requests;
+mod implementation_response_messages;
+mod implementation_responses;
 mod processing;
 mod responses;
 mod review_requests;
@@ -128,4 +132,13 @@ pub(super) fn verify_signature(
     mac.update(body);
     mac.verify_slice(&expected)
         .map_err(|_| GithubWebhookError::InvalidSignature)
+}
+
+fn required_delivery_field<'a>(
+    value: &'a Option<String>,
+    field: &str,
+) -> Result<&'a str, GithubAppError> {
+    value
+        .as_deref()
+        .ok_or_else(|| GithubAppError::Redis(format!("GitHub webhook omitted {field}")))
 }

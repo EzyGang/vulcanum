@@ -1,11 +1,14 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::services::github_app::service::webhooks::events::parse_event;
 use crate::services::github_app::service::webhooks::tests::{issue_comment_payload, service};
 use crate::services::github_app::service::webhooks::{
     verify_signature, GithubWebhookError, GithubWebhookOutcome, GithubWebhookService,
 };
-use crate::services::github_app::webhook_store::{GithubWebhookKind, GithubWebhookStore};
+use crate::services::github_app::webhook_store::{
+    GithubWebhookCommandError, GithubWebhookKind, GithubWebhookStore,
+};
 use crate::test_helpers;
 
 #[test]
@@ -85,6 +88,64 @@ async fn issue_comment_command_is_queued_with_review_fields(pool: sqlx::PgPool) 
         queued.delivery.project_selector.as_deref(),
         Some("project:00000000-0000-0000-0000-000000000123")
     );
+    assert_eq!(queued.delivery.request_body, None);
+    assert_eq!(queued.delivery.command_error, None);
+}
+
+#[test]
+fn implement_command_preserves_multiline_request_and_optional_selectors() {
+    let request = "Handle the retry case.\n\nAlso preserve this `exact` section.";
+    let without_selector = parse_issue_comment(&format!("@VULCANUM-APP ImPlEmEnT {request}"));
+    assert_eq!(
+        without_selector.kind,
+        GithubWebhookKind::ImplementationFollowupRequested
+    );
+    assert_eq!(without_selector.project_selector, None);
+    assert_eq!(without_selector.ticket_selector, None);
+    assert_eq!(without_selector.request_body.as_deref(), Some(request));
+    assert_eq!(without_selector.command_error, None);
+
+    let project_id = "00000000-0000-0000-0000-000000000123";
+    let with_selectors = parse_issue_comment(&format!(
+        "@vulcanum-app implement project:{project_id} ticket:task-123 {request}"
+    ));
+    assert_eq!(
+        with_selectors.project_selector.as_deref(),
+        Some("project:00000000-0000-0000-0000-000000000123")
+    );
+    assert_eq!(with_selectors.ticket_selector.as_deref(), Some("task-123"));
+    assert_eq!(with_selectors.request_body.as_deref(), Some(request));
+}
+
+#[test]
+fn malformed_and_ambiguous_implement_commands_are_queued_for_feedback() {
+    for command in [
+        "@vulcanum-app implement",
+        "@vulcanum-app implement project:00000000-0000-0000-0000-000000000123",
+        "@vulcanum-app implement ticket:task-123",
+    ] {
+        let delivery = parse_issue_comment(command);
+        assert_eq!(
+            delivery.kind,
+            GithubWebhookKind::ImplementationFollowupRequested
+        );
+        assert_eq!(
+            delivery.command_error,
+            Some(GithubWebhookCommandError::Malformed)
+        );
+        assert_eq!(delivery.request_body, None);
+    }
+
+    let delivery =
+        parse_issue_comment("@vulcanum-app review\n@vulcanum-app implement handle retries");
+    assert_eq!(
+        delivery.command_error,
+        Some(GithubWebhookCommandError::Ambiguous)
+    );
+    assert_eq!(
+        delivery.kind,
+        GithubWebhookKind::ImplementationFollowupRequested
+    );
 }
 
 #[sqlx::test]
@@ -97,6 +158,13 @@ async fn invalid_issue_comment_shapes_are_ignored(pool: sqlx::PgPool) {
             "open",
             Some(serde_json::json!({})),
             "@vulcanum-app review",
+            "octocat",
+        ),
+        issue_comment_payload(
+            "deleted",
+            "open",
+            Some(serde_json::json!({})),
+            "@vulcanum-app implement handle retries",
             "octocat",
         ),
         issue_comment_payload(
@@ -158,6 +226,26 @@ async fn invalid_issue_comment_shapes_are_ignored(pool: sqlx::PgPool) {
             GithubWebhookOutcome::Ignored,
         );
     }
+}
+
+fn parse_issue_comment(
+    command: &str,
+) -> crate::services::github_app::webhook_store::GithubWebhookDelivery {
+    let payload = issue_comment_payload(
+        "created",
+        "open",
+        Some(serde_json::json!({})),
+        command,
+        "octocat",
+    );
+    parse_event(
+        "issue_comment",
+        "parser-delivery",
+        Some("vulcanum-app"),
+        &payload,
+    )
+    .expect("parse issue comment")
+    .expect("queue command")
 }
 
 #[sqlx::test]

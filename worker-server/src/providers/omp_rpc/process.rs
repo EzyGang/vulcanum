@@ -18,6 +18,7 @@ use crate::providers::omp_rpc::{
 
 const STDERR_LINE_LIMIT: usize = 40;
 const OMP_APPROVAL_FLAG: &str = "--yolo";
+const OMP_THINKING_LEVEL: &str = "medium";
 const HOST_ENV_ALLOWLIST: &[&str] = &["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG"];
 const DIRECT_GITHUB_TOKEN_ENVS: &[&str] = &["GITHUB_TOKEN", "GH_TOKEN"];
 
@@ -77,6 +78,7 @@ pub(super) fn host_omp_command(env: &IsolatedEnvironment, resume_path: Option<&P
     }
     command.arg("--mode").arg("rpc");
     command.arg(OMP_APPROVAL_FLAG);
+    command.arg("--thinking").arg(OMP_THINKING_LEVEL);
     if let Some(session_dir) = env.env_vars.get("PI_SESSION_DIR") {
         command.arg("--session-dir").arg(session_dir);
     }
@@ -125,6 +127,7 @@ pub(super) fn docker_omp_command(
         .unwrap_or("/workdir/home/.omp/sessions");
     command.args(["omp", "--mode", "rpc", OMP_APPROVAL_FLAG, "--session-dir"]);
     command.arg(session_dir);
+    command.args(["--thinking", OMP_THINKING_LEVEL]);
     append_omp_model_args(&mut command, env);
     if let Some(path) = resume_path {
         command

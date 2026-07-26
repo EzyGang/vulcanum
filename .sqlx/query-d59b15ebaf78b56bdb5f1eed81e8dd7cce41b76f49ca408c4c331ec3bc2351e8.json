@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE instance_refresh_tokens\n           SET created_at = NOW() - INTERVAL '2 days',\n               expires_at = NOW() + INTERVAL '28 days'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d59b15ebaf78b56bdb5f1eed81e8dd7cce41b76f49ca408c4c331ec3bc2351e8"
+}

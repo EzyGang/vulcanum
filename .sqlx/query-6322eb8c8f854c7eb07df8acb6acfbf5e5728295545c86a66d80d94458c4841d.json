@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(\n                   SELECT 1 FROM work_runs\n                   WHERE project_config_id = $1 AND external_task_ref = $2\n                     AND status IN ('pending', 'dispatched', 'running')\n                     AND work_type = 'implementation'\n               ) AS \"active!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "active!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6322eb8c8f854c7eb07df8acb6acfbf5e5728295545c86a66d80d94458c4841d"
+}

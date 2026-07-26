@@ -1,10 +1,13 @@
 mod blocked;
+pub(crate) mod implementation_followups;
 mod insert;
 mod limits;
+mod pr_locks;
 pub(crate) mod prs;
 mod reset;
 mod result;
 pub(crate) mod review_tickets;
+pub(crate) mod reviews;
 
 use uuid::Uuid;
 
@@ -144,6 +147,24 @@ impl WorkRunsRepository {
         .await
         .map_err(WorkRunsError::from)?
         .ok_or(WorkRunsError::NotFound)
+    }
+
+    pub async fn find_id_by_github_delivery<'c, Q>(
+        &self,
+        db: Q,
+        delivery_id: &str,
+    ) -> Result<Option<Uuid>, WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        let row = sqlx::query!(
+            "SELECT id FROM work_runs WHERE github_delivery_id = $1",
+            delivery_id,
+        )
+        .fetch_optional(db)
+        .await?;
+
+        Ok(row.map(|row| row.id))
     }
 
     pub async fn list_all<'c, Q: Queryer<'c>>(

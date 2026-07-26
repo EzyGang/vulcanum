@@ -4,14 +4,15 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::Serialize;
 use sha2::Sha256;
 use uuid::Uuid;
-use vulcanum_shared::api::wire::AuthTokenResponse;
+use vulcanum_shared::{
+    api::wire::AuthTokenResponse,
+    constants::{APP_ACCESS_TOKEN_TTL_MINUTES, APP_REFRESH_TOKEN_TTL_DAYS},
+};
 
 use crate::models::auth::errors::AuthError;
 use crate::services::auth::service::refresh::{generate_random_token, hash_token};
 use crate::services::auth::service::AuthService;
 
-const INSTANCE_ACCESS_TOKEN_TTL_MINUTES: i64 = 15;
-const INSTANCE_REFRESH_TOKEN_TTL_DAYS: i64 = 1;
 const INSTANCE_REFRESH_TOKEN_LENGTH: usize = 64;
 pub(super) const INSTANCE_REFRESH_TOKEN_PREFIX: &str = "irt1_";
 const PASSWORD_FINGERPRINT_DOMAIN: &[u8] = b"vulcanum:instance-refresh-password:v1\0";
@@ -53,7 +54,7 @@ impl AuthService {
         let access_token = self.build_instance_jwt()?;
         let new_refresh_token = create_instance_refresh_token();
         let new_refresh_token_hash = hash_token(&new_refresh_token);
-        let refresh_expires_at = Utc::now() + Duration::days(INSTANCE_REFRESH_TOKEN_TTL_DAYS);
+        let refresh_expires_at = Utc::now() + Duration::days(APP_REFRESH_TOKEN_TTL_DAYS);
 
         self.repo
             .rotate_instance_refresh_token(
@@ -84,7 +85,7 @@ impl AuthService {
     async fn issue_instance_token_pair(&self) -> Result<AuthTokenResponse, AuthError> {
         let access_token = self.build_instance_jwt()?;
         let refresh_token = create_instance_refresh_token();
-        let refresh_expires_at = Utc::now() + Duration::days(INSTANCE_REFRESH_TOKEN_TTL_DAYS);
+        let refresh_expires_at = Utc::now() + Duration::days(APP_REFRESH_TOKEN_TTL_DAYS);
 
         self.repo
             .create_instance_refresh_token(
@@ -108,7 +109,7 @@ impl AuthService {
             sub: "instance".to_owned(),
             typ: "instance".to_owned(),
             iat: now.timestamp() as usize,
-            exp: (now + Duration::minutes(INSTANCE_ACCESS_TOKEN_TTL_MINUTES)).timestamp() as usize,
+            exp: (now + Duration::minutes(APP_ACCESS_TOKEN_TTL_MINUTES)).timestamp() as usize,
             jti: Uuid::new_v4().to_string(),
         };
 

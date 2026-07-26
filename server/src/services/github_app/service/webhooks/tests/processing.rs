@@ -6,13 +6,16 @@ use uuid::Uuid;
 
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
-use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
+use crate::services::github_app::service::webhooks::responses::{
+    respond_to_outcome, GithubResponseTarget,
+};
 use crate::services::github_app::service::webhooks::tests::{
     issue_comment_payload, service, service_with_writer, RecordingWriter, APP_SLUG,
 };
-use crate::services::work_runs::service::request_github_review::{
-    GithubReviewRequestOutcome, ReviewProjectOption, ReviewResponseOptions,
+use crate::services::work_runs::service::github_commands::{
+    GithubCommandResponseOptions, GithubProjectOption,
 };
+use crate::services::work_runs::service::request_github_review::GithubReviewRequestOutcome;
 use crate::test_helpers;
 
 #[sqlx::test]
@@ -111,26 +114,29 @@ async fn selection_reply_contains_marker_and_exact_commands() {
     let writer = RecordingWriter::default();
     let first_id = Uuid::new_v4();
     let second_id = Uuid::new_v4();
-    let outcome = GithubReviewRequestOutcome::ProjectSelectionRequired(ReviewResponseOptions {
-        team_id: Uuid::new_v4(),
-        projects: vec![
-            ReviewProjectOption {
-                project_config_id: first_id,
-                display_name: "First project".to_owned(),
-            },
-            ReviewProjectOption {
-                project_config_id: second_id,
-                display_name: "Second project".to_owned(),
-            },
-        ],
-    });
+    let outcome =
+        GithubReviewRequestOutcome::ProjectSelectionRequired(GithubCommandResponseOptions {
+            team_id: Uuid::new_v4(),
+            projects: vec![
+                GithubProjectOption {
+                    project_config_id: first_id,
+                    display_name: "First project".to_owned(),
+                },
+                GithubProjectOption {
+                    project_config_id: second_id,
+                    display_name: "Second project".to_owned(),
+                },
+            ],
+        });
     respond_to_outcome(
         &writer,
         APP_SLUG,
-        "delivery-choice",
-        123,
-        "acme/widgets",
-        42,
+        GithubResponseTarget {
+            delivery_id: "delivery-choice",
+            installation_id: 123,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+        },
         &outcome,
     )
     .await

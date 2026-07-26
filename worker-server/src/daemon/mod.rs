@@ -182,7 +182,7 @@ async fn initialize_daemon(pending_rollback: Option<&Path>) -> anyhow::Result<Da
         .status()
         .await
         .context("failed to fetch server status")?;
-    let refresh_buffer_secs = status.access_token_ttl_minutes * 60 / 3;
+    let refresh_buffer_secs = status.worker_access_token_ttl_minutes * 60 / 3;
     let journal_path = paths::db_path()?;
     let journal = Arc::new(Journal::open(&journal_path).context("failed to open job journal")?);
     let semaphore = Arc::new(Semaphore::new(state.max_concurrent_jobs as usize));

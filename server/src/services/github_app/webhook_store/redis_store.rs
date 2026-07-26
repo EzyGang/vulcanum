@@ -4,12 +4,12 @@ use uuid::Uuid;
 
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::webhook_store::{
-    duration_millis, GithubWebhookClaim, GithubWebhookDelivery, GithubWebhookKind,
+    duration_millis, GithubWebhookClaim, GithubWebhookCommandError, GithubWebhookDelivery,
+    GithubWebhookKind,
 };
 
 const KEY_PREFIX: &str = "vulcanum:github:webhook:";
-type ClaimedDelivery = (
-    String,
+type StoredDelivery = (
     Option<String>,
     i64,
     String,
@@ -18,8 +18,11 @@ type ClaimedDelivery = (
     Option<String>,
     Option<String>,
     Option<String>,
-    i32,
+    Option<String>,
+    Option<String>,
+    Option<String>,
 );
+type ClaimedDelivery = (String, StoredDelivery, i32);
 
 const PENDING_KEY: &str = "vulcanum:github:webhooks:pending";
 const DEDUPE_TTL_SECONDS: u64 = 7 * 24 * 60 * 60;
@@ -43,10 +46,13 @@ pub(super) async fn enqueue(
                'sender_id', ARGV[6],
                'pr_title', ARGV[7],
                'project_selector', ARGV[8],
+               'ticket_selector', ARGV[9],
+               'request_body', ARGV[10],
+               'command_error', ARGV[11],
                'attempts', 0,
                'completed', 0)
-           redis.call('EXPIRE', KEYS[1], ARGV[10])
-           redis.call('ZADD', KEYS[2], ARGV[9], ARGV[11])
+           redis.call('EXPIRE', KEYS[1], ARGV[13])
+           redis.call('ZADD', KEYS[2], ARGV[12], ARGV[14])
            return 1"#,
     )
     .key(delivery_key(&delivery.delivery_id))
@@ -59,6 +65,9 @@ pub(super) async fn enqueue(
     .arg(delivery.sender_id.as_deref().unwrap_or(""))
     .arg(delivery.pr_title.as_deref().unwrap_or(""))
     .arg(delivery.project_selector.as_deref().unwrap_or(""))
+    .arg(delivery.ticket_selector.as_deref().unwrap_or(""))
+    .arg(delivery.request_body.as_deref().unwrap_or(""))
+    .arg(delivery.command_error.map_or("", |error| error.as_str()))
     .arg(now)
     .arg(DEDUPE_TTL_SECONDS)
     .arg(&delivery.delivery_id)
@@ -91,8 +100,8 @@ pub(super) async fn claim_pending(
            redis.call('HSET', key, 'claim_token', ARGV[5])
            redis.call('EXPIRE', key, ARGV[4])
            redis.call('ZADD', KEYS[1], ARGV[3], id)
-           local values = redis.call('HMGET', key, 'kind', 'installation_id', 'repo_full_name', 'pr_number', 'comment_id', 'sender_id', 'pr_title', 'project_selector')
-           return {id, values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], attempts}"#,
+           local values = redis.call('HMGET', key, 'kind', 'installation_id', 'repo_full_name', 'pr_number', 'comment_id', 'sender_id', 'pr_title', 'project_selector', 'ticket_selector', 'request_body', 'command_error')
+           return {id, values, attempts}"#,
     )
     .key(PENDING_KEY)
     .arg(now)
@@ -107,14 +116,19 @@ pub(super) async fn claim_pending(
     match claimed {
         Some((
             delivery_id,
-            kind,
-            installation_id,
-            repo_full_name,
-            pr_number,
-            comment_id,
-            sender_id,
-            pr_title,
-            project_selector,
+            (
+                kind,
+                installation_id,
+                repo_full_name,
+                pr_number,
+                comment_id,
+                sender_id,
+                pr_title,
+                project_selector,
+                ticket_selector,
+                request_body,
+                command_error,
+            ),
             attempts,
         )) => Ok(Some(GithubWebhookClaim {
             delivery: GithubWebhookDelivery {
@@ -127,6 +141,9 @@ pub(super) async fn claim_pending(
                 sender_id: non_empty(sender_id),
                 pr_title: non_empty(pr_title),
                 project_selector: non_empty(project_selector),
+                ticket_selector: non_empty(ticket_selector),
+                request_body: non_empty(request_body),
+                command_error: GithubWebhookCommandError::from_stored(command_error.as_deref())?,
                 attempts,
             },
             token,
