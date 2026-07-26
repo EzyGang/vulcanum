@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE github_implementation_followup_tickets\n               SET operation_started_at = NOW()\n               WHERE project_config_id = $1 AND repo_full_name = $2 AND pr_number = $3\n                 AND operation_token = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ba328bba20d55d394aeee650b11448387d3057cbd6a85a973643426289acf680"
+}

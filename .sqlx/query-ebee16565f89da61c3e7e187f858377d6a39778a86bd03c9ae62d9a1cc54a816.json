@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT repo_full_name, pr_number, request_body, external_task_ref, work_run_id\n           FROM github_implementation_followup_requests\n           WHERE delivery_id = 'implement-smoke-delivery'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "pr_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "request_body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "work_run_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "ebee16565f89da61c3e7e187f858377d6a39778a86bd03c9ae62d9a1cc54a816"
+}

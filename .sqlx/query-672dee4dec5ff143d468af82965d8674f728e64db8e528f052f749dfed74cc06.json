@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE project_configs SET enabled = false",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "672dee4dec5ff143d468af82965d8674f728e64db8e528f052f749dfed74cc06"
+}

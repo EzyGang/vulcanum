@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH inserted AS (\n                INSERT INTO github_implementation_followup_tickets\n                    (project_config_id, repo_full_name, pr_number, external_task_ref,\n                     created_by_delivery_id, operation_token, operation_delivery_id,\n                     operation_started_at)\n                VALUES ($1, $2, $3, $4,\n                    CASE WHEN $4::TEXT IS NULL THEN $5 ELSE NULL END, $6, $5, NOW())\n                ON CONFLICT DO NOTHING\n                RETURNING external_task_ref, created_by_delivery_id, operation_token,\n                    TRUE AS acquired\n            ),\n            acquired AS (\n                UPDATE github_implementation_followup_tickets AS ticket\n                SET external_task_ref = COALESCE(ticket.external_task_ref, $4),\n                    created_by_delivery_id = CASE\n                        WHEN ticket.external_task_ref IS NULL THEN $5\n                        ELSE ticket.created_by_delivery_id\n                    END,\n                    operation_token = $6,\n                    operation_delivery_id = $5,\n                    operation_started_at = NOW()\n                WHERE ticket.project_config_id = $1\n                  AND ticket.repo_full_name = $2\n                  AND ticket.pr_number = $3\n                  AND (ticket.operation_token IS NULL\n                       OR ticket.operation_started_at <= NOW() - INTERVAL '5 minutes')\n                  AND NOT EXISTS (SELECT 1 FROM inserted)\n                RETURNING ticket.external_task_ref, ticket.created_by_delivery_id,\n                    ticket.operation_token, TRUE AS acquired\n            ),\n            current AS (\n                SELECT external_task_ref, created_by_delivery_id, operation_token,\n                    FALSE AS acquired\n                FROM github_implementation_followup_tickets\n                WHERE project_config_id = $1\n                  AND repo_full_name = $2\n                  AND pr_number = $3\n                  AND NOT EXISTS (SELECT 1 FROM inserted)\n                  AND NOT EXISTS (SELECT 1 FROM acquired)\n            )\n            SELECT external_task_ref, created_by_delivery_id,\n                operation_token AS \"operation_token?\", acquired AS \"acquired!\"\n            FROM inserted\n            UNION ALL\n            SELECT external_task_ref, created_by_delivery_id, operation_token, acquired FROM acquired\n            UNION ALL\n            SELECT external_task_ref, created_by_delivery_id, operation_token, acquired FROM current\n            LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_by_delivery_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "operation_token?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "acquired!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "e80dab204d03d53833ec61c4a414784197d6b06283991848e5854bca1168b7b6"
+}

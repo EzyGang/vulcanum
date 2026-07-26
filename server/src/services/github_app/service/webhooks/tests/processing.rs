@@ -1,18 +1,19 @@
 use std::sync::Arc;
-use std::time::Duration;
 
-use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
-use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
+use crate::services::github_app::service::webhooks::responses::{
+    respond_to_outcome, GithubResponseTarget,
+};
 use crate::services::github_app::service::webhooks::tests::{
-    issue_comment_payload, service, service_with_writer, RecordingWriter, APP_SLUG,
+    issue_comment_payload, service_with_writer, RecordingWriter, APP_SLUG,
 };
-use crate::services::work_runs::service::request_github_review::{
-    GithubReviewRequestOutcome, ReviewProjectOption, ReviewResponseOptions,
+use crate::services::work_runs::service::github_commands::{
+    GithubCommandResponseOptions, GithubProjectOption,
 };
+use crate::services::work_runs::service::request_github_review::GithubReviewRequestOutcome;
 use crate::test_helpers;
 
 #[sqlx::test]
@@ -55,40 +56,6 @@ async fn signed_review_command_creates_standalone_run(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
-async fn unmatched_close_delivery_remains_retryable(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
-    let service = service(&state);
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
-    service
-        .handle(&signature, "pull_request", "delivery-race", &payload)
-        .await
-        .expect("queue delivery");
-    assert!(service
-        .process_pending_once()
-        .await
-        .expect("process unmatched delivery"));
-    tokio::time::sleep(Duration::from_millis(2_100)).await;
-    assert!(service
-        .process_pending_once()
-        .await
-        .expect("retry unmatched delivery"));
-}
-
-#[sqlx::test]
-async fn worker_stops_when_cancelled(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
-    let service = service(&state);
-    let cancellation = CancellationToken::new();
-    let worker = tokio::spawn(service.run(cancellation.child_token()));
-    cancellation.cancel();
-    tokio::time::timeout(Duration::from_secs(1), worker)
-        .await
-        .expect("worker observes cancellation")
-        .expect("worker exits cleanly");
-}
-
-#[sqlx::test]
 async fn comment_writer_rejects_disconnected_installation_before_github_call(pool: sqlx::PgPool) {
     let state = test_helpers::build_state(pool).await;
     let error = state
@@ -111,26 +78,29 @@ async fn selection_reply_contains_marker_and_exact_commands() {
     let writer = RecordingWriter::default();
     let first_id = Uuid::new_v4();
     let second_id = Uuid::new_v4();
-    let outcome = GithubReviewRequestOutcome::ProjectSelectionRequired(ReviewResponseOptions {
-        team_id: Uuid::new_v4(),
-        projects: vec![
-            ReviewProjectOption {
-                project_config_id: first_id,
-                display_name: "First project".to_owned(),
-            },
-            ReviewProjectOption {
-                project_config_id: second_id,
-                display_name: "Second project".to_owned(),
-            },
-        ],
-    });
+    let outcome =
+        GithubReviewRequestOutcome::ProjectSelectionRequired(GithubCommandResponseOptions {
+            team_id: Uuid::new_v4(),
+            projects: vec![
+                GithubProjectOption {
+                    project_config_id: first_id,
+                    display_name: "First project".to_owned(),
+                },
+                GithubProjectOption {
+                    project_config_id: second_id,
+                    display_name: "Second project".to_owned(),
+                },
+            ],
+        });
     respond_to_outcome(
         &writer,
         APP_SLUG,
-        "delivery-choice",
-        123,
-        "acme/widgets",
-        42,
+        GithubResponseTarget {
+            delivery_id: "delivery-choice",
+            installation_id: 123,
+            repo_full_name: "acme/widgets",
+            pr_number: 42,
+        },
         &outcome,
     )
     .await

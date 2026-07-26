@@ -18,6 +18,7 @@ use crate::models::github_app::errors::GithubAppError;
 pub(crate) enum GithubWebhookKind {
     PullRequestClosed,
     ReviewRequested,
+    ImplementationFollowupRequested,
 }
 
 impl GithubWebhookKind {
@@ -26,6 +27,7 @@ impl GithubWebhookKind {
         match self {
             Self::PullRequestClosed => "pull_request_closed",
             Self::ReviewRequested => "review_requested",
+            Self::ImplementationFollowupRequested => "implementation_followup_requested",
         }
     }
 
@@ -34,6 +36,7 @@ impl GithubWebhookKind {
             None | Some("") => Ok(Self::PullRequestClosed),
             Some("pull_request_closed") => Ok(Self::PullRequestClosed),
             Some("review_requested") => Ok(Self::ReviewRequested),
+            Some("implementation_followup_requested") => Ok(Self::ImplementationFollowupRequested),
             Some(value) => Err(GithubAppError::Redis(format!(
                 "unknown GitHub webhook delivery kind: {value}"
             ))),
@@ -41,6 +44,32 @@ impl GithubWebhookKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum GithubWebhookCommandError {
+    Malformed,
+    Ambiguous,
+}
+
+impl GithubWebhookCommandError {
+    #[must_use]
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Malformed => "malformed",
+            Self::Ambiguous => "ambiguous",
+        }
+    }
+
+    fn from_stored(value: Option<&str>) -> Result<Option<Self>, GithubAppError> {
+        match value {
+            None | Some("") => Ok(None),
+            Some("malformed") => Ok(Some(Self::Malformed)),
+            Some("ambiguous") => Ok(Some(Self::Ambiguous)),
+            Some(value) => Err(GithubAppError::Redis(format!(
+                "unknown GitHub webhook command error: {value}"
+            ))),
+        }
+    }
+}
 #[derive(Debug, Clone)]
 pub(crate) struct GithubWebhookDelivery {
     pub delivery_id: String,
@@ -52,6 +81,9 @@ pub(crate) struct GithubWebhookDelivery {
     pub sender_id: Option<String>,
     pub pr_title: Option<String>,
     pub project_selector: Option<String>,
+    pub ticket_selector: Option<String>,
+    pub request_body: Option<String>,
+    pub command_error: Option<GithubWebhookCommandError>,
     pub attempts: i32,
 }
 

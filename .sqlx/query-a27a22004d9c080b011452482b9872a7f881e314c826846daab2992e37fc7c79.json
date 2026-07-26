@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT external_task_ref, source_work_run_id FROM task_prs WHERE project_config_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "source_work_run_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "a27a22004d9c080b011452482b9872a7f881e314c826846daab2992e37fc7c79"
+}

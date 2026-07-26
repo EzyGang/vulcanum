@@ -1,0 +1,2 @@
+DROP TABLE github_implementation_followup_requests;
+DROP TABLE github_implementation_followup_tickets;

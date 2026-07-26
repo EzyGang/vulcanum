@@ -31,6 +31,14 @@ pub(crate) trait PullRequestCommentWriter: Send + Sync {
         marker: &str,
         body: &str,
     ) -> Result<(), GithubAppError>;
+    async fn ensure_pull_request_comment_for_installation(
+        &self,
+        installation_id: i64,
+        repo_full_name: &str,
+        pr_number: i64,
+        marker: &str,
+        body: &str,
+    ) -> Result<(), GithubAppError>;
 
     async fn react_to_comment(
         &self,
@@ -68,6 +76,24 @@ impl PullRequestCommentWriter for GithubAppManager {
         if current_team != Some(team_id) {
             return Err(GithubAppError::NoInstallation);
         }
+        self.ensure_pull_request_comment_for_installation(
+            installation_id,
+            repo_full_name,
+            pr_number,
+            marker,
+            body,
+        )
+        .await
+    }
+
+    async fn ensure_pull_request_comment_for_installation(
+        &self,
+        installation_id: i64,
+        repo_full_name: &str,
+        pr_number: i64,
+        marker: &str,
+        body: &str,
+    ) -> Result<(), GithubAppError> {
         let repo = parse_github_repo(repo_full_name)
             .ok_or_else(|| GithubAppError::InvalidRepoIdentifier(repo_full_name.to_owned()))?;
         let number = u64::try_from(pr_number)

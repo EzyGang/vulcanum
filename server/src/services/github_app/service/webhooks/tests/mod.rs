@@ -1,6 +1,9 @@
 mod events;
+mod implementation_processing;
+mod implementation_responses;
 mod leases;
 mod processing;
+mod worker;
 
 use std::sync::Arc;
 
@@ -27,6 +30,21 @@ impl PullRequestCommentWriter for RecordingWriter {
     async fn ensure_pull_request_comment(
         &self,
         _team_id: Uuid,
+        _installation_id: i64,
+        _repo_full_name: &str,
+        _pr_number: i64,
+        marker: &str,
+        body: &str,
+    ) -> Result<(), GithubAppError> {
+        self.calls
+            .lock()
+            .await
+            .push((marker.to_owned(), body.to_owned()));
+        Ok(())
+    }
+
+    async fn ensure_pull_request_comment_for_installation(
+        &self,
         _installation_id: i64,
         _repo_full_name: &str,
         _pr_number: i64,

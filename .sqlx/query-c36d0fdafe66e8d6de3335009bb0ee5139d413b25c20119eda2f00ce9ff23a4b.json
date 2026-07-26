@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO task_prs\n           (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number)\n           VALUES ($1, $2, 'https://github.com/acme/widgets/pull/42', 'acme/widgets', 42)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c36d0fdafe66e8d6de3335009bb0ee5139d413b25c20119eda2f00ce9ff23a4b"
+}

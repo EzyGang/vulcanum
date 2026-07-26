@@ -1,6 +1,6 @@
 use vulcanum_shared::api::wire::SubmitResultRequest;
 
-use crate::db::work_runs::queries::prs::InsertReviewResultParams;
+use crate::db::work_runs::queries::reviews::InsertReviewResultParams;
 use crate::models::work_runs::model::WorkRun;
 use crate::services::work_runs::service::WorkRunsService;
 
