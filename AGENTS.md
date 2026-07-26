@@ -1,259 +1,221 @@
-# AGENTS.md - Vulcanum
+# AGENTS.md — Vulcanum
 
-## Overview
+## Scope and precedence
 
-Vulcanum is a symphony-like agentic work orchestrator. It provides:
+This file defines repository-wide rules. Before changing a module, read its local `AGENTS.md`; local rules extend or override this file for that module.
 
-- An **agentic control system** for dispatching and monitoring agent tasks.
-- **Fine-grained permissions and access controls** for multi-tenant, multi-agent environments.
-- **Agent isolation controls** to sandbox and constrain individual agents.
+Required local guides:
 
-## Repository Layout
+- `server/AGENTS.md` — Actix Web, SQLx, migrations, server layout, environment variables
+- `worker-server/AGENTS.md` — daemon lifecycle, isolation, recovery, journal semantics
+- `cli/AGENTS.md` — CLI-specific conventions
+- `frontend/AGENTS.md` — Preact architecture, state, API layer, and design system
 
-| Module                   | Path                | Technology        | Status |
-| ------------------------ | ------------------- | ----------------- | ------ |
-| CLI                      | `cli/`              | Rust              | Active |
-| Worker Daemon            | `worker-server/`    | Rust, SQLite      | Active |
-| Server                   | `server/`           | Rust              | Active |
-| Shared Types & Utilities | `shared/`           | Rust              | Active |
-| Frontend UI              | `frontend/`         | TypeScript/Preact | Active |
-| Agent Server             | _(omitted for now)_ | —                 | —      |
+Do not introduce a second convention beside an existing one. Inspect neighboring code and reuse its established pattern.
 
-All packages (Rust and JS/TS) are managed as a single monorepo via **pnpm workspaces** and **Turborepo**. The Rust crates are also part of a Cargo workspace defined in the root `Cargo.toml`.
+## Project overview
 
-## Build & Run
+Vulcanum is an agentic work orchestrator with task dispatch and monitoring, multi-tenant access control, and agent isolation.
 
-From the repository root, use turbo commands to build, lint, test, and format:
+| Module                     | Path             | Technology                  |
+| -------------------------- | ---------------- | --------------------------- |
+| CLI                        | `cli/`           | Rust                        |
+| Worker daemon              | `worker-server/` | Rust, SQLite                |
+| API server                 | `server/`        | Rust, Actix Web, PostgreSQL |
+| Shared types and utilities | `shared/`        | Rust                        |
+| Frontend                   | `frontend/`      | TypeScript, Preact          |
+
+The repository is a pnpm/Turborepo monorepo. Rust crates also belong to the root Cargo workspace.
+
+## Required workflow
+
+1. Read this file and the affected module's `AGENTS.md`.
+2. Inspect the relevant implementation, tests, and call sites before editing.
+3. Make the smallest complete change. Reuse existing abstractions and naming.
+4. Add or update tests only for application behavior affected by the change.
+5. Run the required validation from the repository root.
+
+A change is complete only when all affected callers, tests, and documentation agree with the new behavior. Do not leave compatibility aliases, deprecated paths, placeholders, or `TODO` implementations unless explicitly requested.
+
+## Commands
+
+Run repository-wide commands from the root:
 
 ```bash
-# Install all dependencies
 pnpm install
-
-# Build everything (Rust + frontend)
 pnpm run build
+pnpm run lint
+pnpm run type-check
+pnpm run validate
+pnpm run format
+pnpm run test
+pnpm run dev
+```
 
-# Build a specific package
+Filter a workspace package when needed:
+
+```bash
 pnpm run build --filter=@repo/server
 pnpm run build --filter=@repo/cli
+```
 
-# Run lints (Rust clippy + frontend biome)
-pnpm run lint
+Database commands:
 
-# Type-check (frontend only)
-pnpm run type-check
-
-# Lint + type-check (full validation)
-pnpm run validate
-
-# Format everything
-pnpm run format
-
-# Run all tests
-pnpm run test
-
-# Dev server (frontend)
-pnpm run dev
-
-# Run migrations up
+```bash
 pnpm migrate-server-up
-
-# Run migrations down
 pnpm migrate-server-down
-
-# Prepare queries cache
 pnpm prep-queries
+```
 
-# Run a specific Rust binary
+Run Rust binaries:
+
+```bash
 cargo run -p vulcanum-server --bin vulcanum-web
 cargo run -p vulcanum-worker-server --bin vulcanum-server
 cargo run -p vulcanum-cli --bin vulcanum
 ```
 
-You can also enter a crate directory and build it independently:
+## Completion checks
+
+For code changes, all of these must pass with no warnings:
 
 ```bash
-cd server/
-cargo run --bin vulcanum-web
+pnpm run format
+pnpm run validate
+pnpm run test
 ```
 
-## Conventions
+Also run `pnpm prep-queries` after changing SQL, migrations, or SQLx query macros. Commit the updated `.sqlx/` metadata.
 
-- Every Rust crate keeps its own `AGENTS.md` with **crate-specific** conventions.
-- All Rust crates share the same `rustfmt.toml` at the repository root.
-- All Rust code must follow the `rust-code-style` skill rules defined in `.agents/skills/rust-code-style/SKILL.md`.
-- All frontend UI component work must follow the `base-ui` skill rules defined in `.agents/skills/base-ui/SKILL.md`.
-- Once done implementing run `pnpm run format && pnpm run validate`, both should succeed with no warnings.
-- If you have changed/added new queries, run `pnpm run prep-queries` before committing.
+For documentation-only changes, run the repository formatter and inspect the rendered Markdown. Do not run unrelated builds or tests.
 
-## Frontend / Backend API Contract
+## Repository-wide engineering rules
 
-- The frontend's `fetchApi` wrapper (`frontend/src/utils/api/client.ts`) converts request body keys to `snake_case` and response keys to `camelCase` automatically.
-- **Do NOT add `#[serde(rename = "...")]` or `#[serde(rename_all = "camelCase")]` attributes in Rust backend models** to translate between cases. Keep Rust struct field names plain (snake_case) and let the frontend handle bidirectional conversion.
-- Enum variants that map to wire values should use `#[serde(rename_all = "snake_case")]` (e.g. `WorkerStatus`) so they serialize as lowercase strings matching the frontend's TypeScript string-union types.
+### General
 
-### Signal Reactivity in Hooks
+- Prefer clear, direct code over speculative abstractions.
+- Keep changes focused. Do not add retries, telemetry, validation, or cleanup unrelated to the request.
+- Remove code made obsolete by the change.
+- Comments explain non-obvious intent or constraints, not what the code already states.
+- Public APIs and non-trivial behavior should have concise documentation comments.
+- Avoid duplicate behavior, constants, and business rules. Extract a shared abstraction only when it has a clear owner and improves readability.
+- Prefer composition and small, single-responsibility components.
+- Never suppress a linter warning unless the suppression already exists and is still justified. Fix the cause.
 
-- When using `useEffect` with Preact signals, include `<signal>.value` in the dependency array when the effect must rerun after the signal value changes. Reactivity depends on reading the `.value` property inside the hook body.
-- When using `useCallback` for event handlers or submit handlers, do not include `<signal>.value` in the dependency array just because the callback reads or writes it. Signal objects are stable and `.value` is read at invocation time, so value dependencies recreate handlers on every signal change without improving correctness.
+### File and module layout
 
-## Rust Code Guidelines
+- Keep production code beside the domain and layer that owns it.
+- Group three or more files with one responsibility into a semantic submodule directory such as `session/` or `transport/`.
+- Inside a named submodule, remove redundant filename prefixes: use `session/metrics.rs`, not `session/session_metrics.rs`.
+- Do not create one-file directories or speculative nesting.
+- Keep files at or below 300 lines! Split earlier when a clear responsibility boundary exists.
 
-### Rust module layout
+## Rust rules
 
-- Group three or more files that share a clear responsibility into a named submodule directory. Prefer semantic names such as `authority/`, `session/`, and `transport/` over repeated filename prefixes such as `authority_*` or `session_*`.
-- Once a responsibility has its own directory, remove that prefix from its child filenames: use `session/metrics.rs`, not `session/session_metrics.rs`.
-- Add another subdirectory only when it creates a real responsibility boundary and leaves each level easier to scan. Do not create one-file directories or speculative nesting.
-- Keep production modules beside their owning domain. Do not flatten files into `rust/src/` merely to shorten import paths.
-- A domain's unit tests belong under its `tests/` submodule and should mirror production concerns, for example `network/tests/protocol.rs`. Do not scatter `*_tests.rs` files through a large production directory.
+All Rust changes must follow `.agents/skills/rust-code-style/SKILL.md` and the affected crate's `AGENTS.md`.
 
-### Important Rules
+### Safety and error handling
 
-<important_rules>
+- No `unsafe` code.
+- No `unwrap()`, `expect()`, or `panic!()` in production code. Return or handle errors explicitly; non-panicking fallbacks such as `unwrap_or` are allowed when they preserve the intended behavior.
+- Use `thiserror` for structured library/domain errors. Use `anyhow` only at application boundaries.
+- Use `tracing` for logging; never use `println!` for production logs.
+- Repository methods map database errors to domain errors. Raw SQLx errors must not escape the repository layer.
 
-- Comments should explain **why**, not **what** — only add them when the intent is genuinely hard to infer from the code.
-- Doc comments (`///`) are for public API surfaces, and for non-trivial logic where a single-line description prevents confusion.
-- The length of a single file should not be more than 300 lines; if it exceeds that, split it, the only exceptions to this rule are the files where splitting introduces too much complexity and it is semantically better to have the code centralized.
-- You should strive to write as low amount of code as possible, not in a cutting corners way, but if something can be achieved with fewer LOC - it should always be a preferred implementation path.
-- Must follow DRY (do not repeat yourself) principle. No code repetition should exist for any reason.
-- No `unwrap()`, `expect()`, or `panic!()` in production code — use proper error handling with `Result`, or alternatives that don't panic, like `unwrap_or`, `unwrap_or_else`, etc.
-- No `pub use` re-exports — use direct imports of what is needed.
-- No glob imports (`use module::*`) — always be explicit.
-- No `Vec<HashMap<String, Value>>` or raw collection returns — use proper structs/vectors of structs.
-- Prefer struct methods and traits over free functions when operations belong to a type.
-- Everything must have explicit types (use type annotations when inference is ambiguous).
-- Use `&str` over `&String`, `&[T]` over `&Vec<T>` for function parameters.
-- No `unsafe` code whatsoever.
-- No `clone()` unless necessary — leverage lifetimes and borrowing.
-- Use `match` over `if let Some(...)` chains for clarity.
-- Use `thiserror` for structured error types, `anyhow` only at application boundaries.
-- Use `tracing` for structured logging, not `println!`.
-- Don't silence clippy warnings with `#[allow(...)]` unless already present — fix the issue instead.
-- Prefer **composition over inheritance**. Build behavior by combining small single-responsibility components rather than deep class hierarchies.
-- No inline test modules (`#[cfg(test)] mod tests { ... }` inside source files). Keep small test suites in separate `*_tests.rs` files alongside the module and register them with `#[cfg(test)] mod tests_module;`.
-- When a Rust test suite needs multiple files, place every test and helper under a single `<module>_tests/` directory, register it through `<module>_tests/mod.rs`, and split files by behavior or responsibility. Never keep both `<module>_tests.rs` and a same-named `<module>_tests/` directory.
-- Only test application-specific business logic. Do not write tests for framework internals (actix-web routing, SQLx pool management, serde serialization), third-party library behavior, or trivial glue code. Focus tests on: state transitions, input validation, error handling, and business rules.
-  </important_rules>
+### Types, ownership, and imports
 
-### Style & Formatting
+- Use concrete domain structs instead of untyped collections such as `Vec<HashMap<String, Value>>`.
+- Add explicit type annotations at public boundaries and wherever inference is not immediately clear; do not annotate obvious locals solely for verbosity.
+- Accept borrowed forms: `&str` instead of `&String`, and `&[T]` instead of `&Vec<T>`.
+- Avoid `clone()` when borrowing or ownership transfer is sufficient. Clone only when a distinct owned value is required.
+- Prefer methods or traits when behavior belongs to a type.
+- Prefer `match` when handling multiple variants or branches. A single clear `if let` is acceptable; do not build long `if let Some(...)` chains.
+- No glob imports.
+- No `pub use` re-exports. Import items from their defining module.
 
-All formatting, import ordering, and style conventions (generics, documentation, import groups, `Self`, early returns, etc.) are enforced by the `rust-code-style` skill. Load it with `skill name="rust-code-style"` when editing Rust files.
+### Rust tests
 
-## Web Service Architecture
+- Test application-specific behavior: state transitions, validation, error handling, precedence, and business invariants.
+- Do not test framework behavior, SQLx pool mechanics, Serde itself, or trivial glue.
+- Never place inline `#[cfg(test)] mod tests { ... }` blocks in production files.
+- Keep a small test suite in a sibling `*_tests.rs` file and register it with `#[cfg(test)] mod <name>_tests;`.
+- When a suite needs multiple files, place all tests and helpers under one `<module>_tests/` directory with `<module>_tests/mod.rs`. Never keep both `<module>_tests.rs` and `<module>_tests/`.
+- Server route tests may live beside their route module. Shared fixtures, end-to-end tests, and cross-module service tests belong under `server/src/tests/`.
 
-All web service crates (e.g. `server`, future `agent-server`) must follow a strict layered architecture.
+## Frontend/backend API contract
 
-### Layers
+`frontend/src/utils/api/client.ts` is the case-conversion boundary:
 
-| Layer      | Responsibility                                           | Location                         |
-| ---------- | -------------------------------------------------------- | -------------------------------- |
-| HTTP       | Routing, handlers, request/response serialization        | `src/routes/` or `src/handlers/` |
-| Service    | Business logic, auth, validation, caching, orchestration | `src/services/<domain>/`         |
-| Repository | Database queries, SQLx execution                         | `src/db/<domain>.rs`             |
-| Models     | Domain rows, DTOs, enums, errors, shared principals      | `src/models/<domain>/`           |
-| Utilities  | Cross-domain helpers with no business state              | `src/util/`                      |
+- Request body keys are converted from `camelCase` to `snake_case`.
+- Response keys are converted from `snake_case` to `camelCase`.
+- Rust request and response fields remain ordinary `snake_case` fields. Do not add `#[serde(rename = "...")]` or `#[serde(rename_all = "camelCase")]` to translate frontend casing.
+- Wire enums use `#[serde(rename_all = "snake_case")]` when the frontend expects lowercase snake-case string unions.
 
-Rules:
+### Preact signal dependencies
 
-- Each layer may only communicate with the layer directly above or below it.
-- The HTTP layer **never** calls repositories directly.
-- The repository layer **never** contains business logic, caching, or auth checks.
+- In `useEffect`, include `<signal>.value` in the dependency array when the effect must rerun after that value changes. Read `.value` in the effect body.
+- In event or submit callbacks, do not add `<signal>.value` to `useCallback` dependencies merely because the callback reads or writes it. Signal objects are stable, and their current value is read when invoked.
 
-### File Organization
+All other frontend structure, state, styling, and component rules live in `frontend/AGENTS.md`.
 
-The `server` crate is organized by architectural role first, then by domain. This keeps layer boundaries visible at the top level and avoids mixing HTTP, business logic, SQL, and DTOs in one domain directory.
+## Web service architecture
 
+Web service crates use a strict layered architecture:
+
+```text
+HTTP routes/handlers → services → repositories → database
+                     ↘ domain models ↗
 ```
+
+| Layer      | Location                                    | Responsibility                                           |
+| ---------- | ------------------------------------------- | -------------------------------------------------------- |
+| HTTP       | `src/routes/` or `src/handlers/`            | Routing, extraction, request/response serialization      |
+| Service    | `src/services/<domain>/`                    | Business rules, auth, validation, caching, orchestration |
+| Repository | `src/db/<domain>.rs` and `src/db/<domain>/` | SQLx queries and database error mapping                  |
+| Models     | `src/models/<domain>/`                      | Rows, DTOs, enums, principals, domain errors             |
+| Utilities  | `src/util/`                                 | Stateless cross-domain helpers                           |
+
+Boundaries are mandatory:
+
+- HTTP handlers call services, never repositories or database pools.
+- Services own business rules, authorization, validation, caching, and orchestration.
+- Repositories are thin, stateless persistence adapters. They contain no auth, caching, or business invariants.
+- Services return domain values and errors, not HTTP responses.
+- Application state exposes services, not raw database pools.
+- Models may be shared across adjacent layers but must not acquire layer-specific behavior.
+
+### Server layout
+
+Organize `server/src/` by architectural role first, then domain:
+
+```text
 server/src/
-  routes/                    # HTTP route registration, handlers, extractors
-    jobs.rs
-    jobs_tests.rs
-  services/                  # Business logic and infrastructure owned by services
-    work_runs/
-      mod.rs
-      service/               # Service root plus one file per larger operation
-        mod.rs               # WorkRunsService type and constructor
-        poll.rs
-        submit_result.rs
-  db/                        # Repository structs and SQLx query implementations
-    work_runs.rs             # WorkRunsRepository type
-    work_runs/
-      queries.rs
-      queries/
-        limits.rs
-  models/                    # Domain rows, DTOs, enums, errors, shared principals
-    work_runs/
-      mod.rs
-      model.rs
-      errors.rs
-  tests/                     # Shared helpers, e2e tests, and cross-module service tests
-    helpers.rs
-    e2e_integration_tests.rs
-    work_runs_service/
-      mod.rs
-      work_runs_tests.rs
-  util/                      # Cross-domain helpers with no business state
+  routes/
+  services/<domain>/
+  db/<domain>.rs
+  db/<domain>/
+  models/<domain>/
+  tests/
+  util/
 ```
 
-- Put HTTP concerns in `src/routes/`. Route tests can live beside the route file as `*_tests.rs` when they only exercise that route module.
-- Put business logic in `src/services/<domain>/`. When service logic is split, keep the service root in `src/services/<domain>/service/mod.rs` and operation modules in `src/services/<domain>/service/<operation>.rs`; do not keep both `service.rs` and a sibling `service/` directory.
-- Put repository structs in `src/db/<domain>.rs` and SQLx query modules under `src/db/<domain>/`.
-- Put database row structs, request/response DTOs, enums, shared principals, and domain errors in `src/models/<domain>/`.
-- Put reusable server test helpers, e2e tests, and cross-module service tests under `src/tests/` instead of using `#[path]` from production modules.
-- Large domains may be extracted to separate workspace crates under `services/<domain>/`.
+For split service operations, use:
 
-### Repository Conventions
+```text
+services/<domain>/
+  service/
+    mod.rs
+    <operation>.rs
+```
 
-- Repositories are thin, stateless wrappers around SQLx queries (one per domain/table).
-- The shared `Queryer<'c>` trait lives in `src/db/queryer.rs`.
-- Use a `Queryer<'c>` trait so methods accept both `&PgPool` and `&mut PgConnection` for transaction support:
-  ```rust
-  pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
-  impl<'c> Queryer<'c> for &PgPool {}
-  impl<'c> Queryer<'c> for &'c mut PgConnection {}
-  ```
-- Map `sqlx::Error` to domain errors inside repository methods. Do not leak raw SQL errors.
-- **No caching, no auth, no business invariants** in repositories.
+`service/mod.rs` owns the service type, constructor, and shared dependencies. Operation files own larger service methods. Do not keep both `service.rs` and a sibling `service/` directory.
 
-### Service Conventions
+Repositories use the `Queryer<'c>` pattern from `server/src/db/queryer.rs` so methods can accept a pool or transaction:
 
-- Services are structs holding repositories, the DB pool, and other infrastructure (`Arc<dyn Mailer>`, `Arc<Queue>`, cache, etc.).
-- All business logic lives in service methods: auth checks, input validation, caching, orchestration.
-- Caching is done **exclusively** at the service layer.
-- Services return domain errors, not HTTP responses.
+```rust
+pub trait Queryer<'c>: sqlx::Executor<'c, Database = sqlx::Postgres> {}
+impl<'c> Queryer<'c> for &PgPool {}
+impl<'c> Queryer<'c> for &'c mut PgConnection {}
+```
 
-### HTTP Layer Conventions
-
-- Handlers are thin: extract request data, call the appropriate service method, and return the response.
-- Application state (`web::Data`) must expose **services**, not raw database pools.
-- No business logic, no validation rules, and no direct DB access in handlers.
-
-## Kaneo Task Management
-
-Tasks for this project live in Kaneo (project `k5s7dwb5f89anmaui2d814h9`, slug `vulcanum`).
-The local `.kaneo-conf.json` is pinned to the project — `kaneo task` commands work from this directory without extra flags.
-
-## Module-Specific Conventions
-
-For module-specific details, refer to the local `AGENTS.md` in each module directory:
-
-- `server/AGENTS.md` — Rust backend (migrations, SQLx, actix-web, env vars)
-- `worker-server/AGENTS.md`
-- `cli/AGENTS.md`
-- `frontend/AGENTS.md` — TypeScript/Preact UI (component patterns, API layer, design system)
-
-**Always read the module's local `AGENTS.md` before working on code in that directory.**
-
-### Worker Daemon Architecture
-
-The `worker-server` crate uses an embedded SQLite journal for crash-robust job execution.
-Jobs run concurrently governed by a `Semaphore` sized to `max_concurrent_jobs` (received from the server at registration).
-On restart, the journal is reconciled against Docker/subprocess reality to recover or retire in-flight jobs.
-See `worker-server/AGENTS.md` for the full architecture (daemon loop, recovery, harnesses, state journal).
-
-## Feature implementation checklist
-
-[ ] - tests for relevant logic blocks worth covering are added
-[ ] - `pnpm prep-queries` is run if any backend work has been done
-[ ] - `pnpm format` in root is successful
-[ ] - `pnpm validate` passes
-[ ] - `pnpm test` passes
+See `server/AGENTS.md` for migrations, SQLx macros, detailed layouts, and provider conventions.
