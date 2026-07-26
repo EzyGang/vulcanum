@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    svc, CreateWorkerParams, Duration, Utc, WorkersError, DEFAULT_MAX_CONCURRENT_JOBS,
+    DEFAULT_TEAM_ID,
+};
 
 #[sqlx::test]
 async fn list_all_returns_workers(pool: sqlx::PgPool) {

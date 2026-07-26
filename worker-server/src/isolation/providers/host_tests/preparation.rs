@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    opencode_config, AgentBackend, AgentConfigPayload, HostIsolation, IsolationProvider,
+    OpenCodeProviderConfig, ResourceLimits, WorkRunType,
+};
 
 #[tokio::test]
 async fn host_isolation_creates_workdir_and_config() {

@@ -1,4 +1,4 @@
-use super::*;
+use super::{insert_running_job, open_journal, JournalResultUpdate, JournalStatus, Utc, Uuid};
 
 #[test]
 fn insert_and_list_running() {
@@ -14,6 +14,7 @@ fn insert_and_list_running() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 
@@ -42,6 +43,7 @@ fn find_by_id_returns_existing_entry() {
             started_at: Utc::now(),
             max_turns: 2,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 
@@ -81,6 +83,7 @@ fn update_result_transitions_status() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 
@@ -120,6 +123,7 @@ fn mark_lost_sets_status_and_error() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 
@@ -145,6 +149,7 @@ fn mark_submitted_transitions() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 

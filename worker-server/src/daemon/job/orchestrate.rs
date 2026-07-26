@@ -145,6 +145,7 @@ pub(crate) async fn handle_job(
         started_at,
         max_turns,
         agent_backend: job.agent_backend.as_str(),
+        work_type: job.work_type,
     }) {
         match journal.find_by_id(job_id) {
             Ok(Some(entry)) => {

@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    collect_board_task_refs, IntegrationBoard, IntegrationClient, IntegrationProvider,
+    IntegrationTask, ProjectConfig, ProjectConfigsError, TaskBoardError, TaskBoardService,
+    TaskBoardTaskAugmentation, Uuid,
+};
 
 impl TaskBoardService {
     pub(super) async fn task_augmentations(

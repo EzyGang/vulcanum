@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    opencode_config, AgentBackend, AgentConfigPayload, HostIsolation, IsolatedEnvironment,
+    IsolationProvider, ResourceLimits, WorkRunType,
+};
 
 #[tokio::test]
 async fn host_isolation_writes_omp_runtime_paths() {

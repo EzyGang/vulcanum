@@ -44,7 +44,8 @@ impl Journal {
                 agent_config_dir TEXT,
                 agent_state_dir TEXT,
                 agent_transport TEXT,
-                agent_pid INTEGER
+                agent_pid INTEGER,
+                work_type TEXT NOT NULL DEFAULT 'implementation'
             )",
         )?;
 
@@ -123,6 +124,10 @@ impl Journal {
         apply_column_migration(
             &conn,
             "ALTER TABLE job_journal ADD COLUMN review_already_exists INTEGER NOT NULL DEFAULT 0",
+        )?;
+        apply_column_migration(
+            &conn,
+            "ALTER TABLE job_journal ADD COLUMN work_type TEXT NOT NULL DEFAULT 'implementation'",
         )?;
 
         Ok(Self {

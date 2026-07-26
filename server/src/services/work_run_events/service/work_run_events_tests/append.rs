@@ -1,4 +1,4 @@
-use super::*;
+use super::{build_service, make_wire_event, test_helpers, CancelStore, WorkRunEventsError};
 
 #[sqlx::test]
 async fn append_events_happy_path_returns_should_cancel_false(pool: sqlx::PgPool) {

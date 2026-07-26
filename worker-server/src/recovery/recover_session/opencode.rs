@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use vulcanum_shared::api::wire::WorkRunType;
+
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::ResourceLimits;
@@ -21,6 +22,11 @@ use crate::recovery::recover_session::common::{
     cleanup_recovery, mark_lost_and_submit, pending_turn, save_recovered_messages,
 };
 use crate::state::journal::{Journal, JournalEntry};
+
+#[must_use]
+pub(crate) fn recovered_work_type(entry: &JournalEntry) -> WorkRunType {
+    entry.work_type
+}
 
 pub(crate) async fn recover_session_task(
     entry: JournalEntry,
@@ -60,14 +66,12 @@ pub(crate) async fn recover_session_task(
             tracing::warn!(
                 job_id = %entry.job_id,
                 error = %e,
-                "failed to load job during recovery, using implementation turn loop without github credential refresh"
+                "failed to load job during recovery, continuing with persisted work type without github credential refresh"
             );
             None
         }
     };
-    let work_type = recovered_job
-        .as_ref()
-        .map_or(WorkRunType::Implementation, |job| job.work_type);
+    let work_type = recovered_work_type(&entry);
 
     let running_session = OpenCodeRunningSession::new(SessionConfig {
         client: oc_client,

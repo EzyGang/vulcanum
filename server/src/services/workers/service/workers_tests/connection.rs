@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    svc, ConnectRequest, Duration, Utc, WorkerCapabilities, WorkersError, WorkersRepository,
+    DEFAULT_MAX_CONCURRENT_JOBS, DEFAULT_TEAM_ID,
+};
 
 #[sqlx::test]
 async fn generate_code_returns_new_code(pool: sqlx::PgPool) {

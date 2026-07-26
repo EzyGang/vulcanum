@@ -1,4 +1,4 @@
-use super::*;
+use super::{build_service, test_helpers, WorkRunStatus, WorkRunsError, WorkerStatus};
 
 #[sqlx::test]
 async fn poll_returns_none_when_no_dispatch(pool: sqlx::PgPool) {

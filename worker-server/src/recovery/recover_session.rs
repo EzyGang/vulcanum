@@ -9,3 +9,5 @@ pub(super) use omp_rpc::recovered_omp_env;
 #[cfg(test)]
 pub(super) use omp_rpc::recovery_turn_exhausted;
 pub(crate) use opencode::recover_session_task;
+#[cfg(test)]
+pub(super) use opencode::recovered_work_type;

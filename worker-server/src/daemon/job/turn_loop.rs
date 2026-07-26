@@ -13,7 +13,7 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::state::worker::WorkerState;
 
-use self::continuation::{continue_session, start_recovered_turn};
+use self::continuation::{continue_session, start_recovered_turn, RecoveredTurnStart};
 use self::session::{finish_exit_code, submit_provider_failure, wait_for_session};
 use super::execution::artifact::read_finish_artifact;
 use super::execution::event_reporter::EventReporter;
@@ -58,6 +58,12 @@ pub(crate) struct StartupTurn {
     pub staged: bool,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum StartupAction {
+    Continue(StartupTurn),
+    SubmitArtifact,
+}
+
 pub(crate) async fn run_turn_loop(
     running_session: &mut Box<dyn RunningSession>,
     artifact_path: &Path,
@@ -68,7 +74,7 @@ pub(crate) async fn run_turn_loop(
     let max_turns = start.max_turns;
     let mut review_loop =
         ReviewLoopState::resume(start.work_type, max_turns, start.review_checkpoint);
-    if !start_recovered_turn(
+    match start_recovered_turn(
         running_session,
         artifact_path,
         &mut review_loop,
@@ -79,7 +85,9 @@ pub(crate) async fn run_turn_loop(
     )
     .await
     {
-        return false;
+        RecoveredTurnStart::Continue => (),
+        RecoveredTurnStart::Submitted => return true,
+        RecoveredTurnStart::Failed => return false,
     }
     let mut cancel_rx = ctx.reporter.cancel_receiver();
 
@@ -118,34 +126,37 @@ pub(crate) async fn run_turn_loop(
         let finish_artifact = read_finish_artifact(artifact_path);
 
         if let Some(artifact) = &finish_artifact {
-            if let Some(prompt) = review_loop.prompt_after_artifact(artifact) {
-                let progress = review_loop.progress();
-                ctx.reporter
-                    .emit(
-                        "review.fix.continuing",
-                        serde_json::json!({
-                            "turn": turn,
-                            "fix_pass": progress.fix_pass,
-                            "max_fix_passes": progress.max_fix_passes,
-                        }),
+            let review_prompt = review_loop.prompt_after_artifact(artifact);
+            if turn < review_loop.effective_max_turns() {
+                if let Some(prompt) = review_prompt {
+                    let progress = review_loop.progress();
+                    ctx.reporter
+                        .emit(
+                            "review.fix.continuing",
+                            serde_json::json!({
+                                "turn": turn,
+                                "fix_pass": progress.fix_pass,
+                                "max_fix_passes": progress.max_fix_passes,
+                            }),
+                        )
+                        .await;
+                    let next_turn = turn + 1;
+                    if !continue_session(
+                        running_session,
+                        &prompt,
+                        next_turn,
+                        &review_loop,
+                        true,
+                        artifact_path,
+                        ctx,
                     )
-                    .await;
-                let next_turn = turn + 1;
-                if !continue_session(
-                    running_session,
-                    &prompt,
-                    next_turn,
-                    &review_loop,
-                    true,
-                    artifact_path,
-                    ctx,
-                )
-                .await
-                {
-                    return false;
+                    .await
+                    {
+                        return false;
+                    }
+                    turn = next_turn;
+                    continue;
                 }
-                turn = next_turn;
-                continue;
             }
 
             let mut artifact_export = session_export.clone();
@@ -174,7 +185,7 @@ pub(crate) async fn run_turn_loop(
             return true;
         }
 
-        if let Some(prompt) = review_loop.prompt_after_fix_turn() {
+        if let Some(prompt) = review_loop.prompt_after_fix_turn_within_cap(turn) {
             let progress = review_loop.progress();
             ctx.reporter
                 .emit(

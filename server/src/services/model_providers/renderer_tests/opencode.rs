@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    encrypted_oauth_credentials, render_opencode_config, test_cipher, ModelProviderConfig,
+    ModelSelection, OAuthCredential, Utc, Uuid,
+};
 
 #[test]
 fn render_opencode_config_extracts_env_and_models() {

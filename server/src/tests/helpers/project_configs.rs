@@ -1,4 +1,4 @@
-use super::*;
+use super::{teams, Uuid, DEFAULT_TEAM_ID};
 
 pub async fn insert_project_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
     teams::ensure_default_team(pool).await;

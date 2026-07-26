@@ -8,6 +8,7 @@ use chrono::Utc;
 use rusqlite::Connection;
 use uuid::Uuid;
 
+use crate::state::journal::model::work_type_as_str;
 pub use crate::state::journal::model::{
     JournalEntry, JournalInsert, JournalResultUpdate, JournalStatus,
 };
@@ -20,8 +21,8 @@ impl Journal {
     pub fn insert_job(&self, job: JournalInsert<'_>) -> anyhow::Result<()> {
         let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
-            "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at, max_turns, agent_backend)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO job_journal (job_id, workdir, container_name, harness_type, status, started_at, max_turns, agent_backend, work_type)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             rusqlite::params![
                 job.job_id.to_string(),
                 job.workdir,
@@ -31,6 +32,7 @@ impl Journal {
                 job.started_at.to_rfc3339(),
                 job.max_turns,
                 job.agent_backend,
+                work_type_as_str(job.work_type),
             ],
         )?;
         Ok(())
@@ -46,7 +48,7 @@ impl Journal {
                     turn_count, review_fix_pass, review_fixing, pending_prompt,
                     pending_artifact_cleanup, session_id, max_turns, host_pid, host_port,
                     agent_backend, agent_session_path, agent_config_dir, agent_state_dir,
-                    agent_transport, agent_pid
+                    agent_transport, agent_pid, work_type
              FROM job_journal WHERE job_id = ?1",
         )?;
 
@@ -209,7 +211,7 @@ impl Journal {
                     turn_count, review_fix_pass, review_fixing, pending_prompt,
                     pending_artifact_cleanup, session_id, max_turns, host_pid, host_port,
                     agent_backend, agent_session_path, agent_config_dir, agent_state_dir,
-                    agent_transport, agent_pid
+                    agent_transport, agent_pid, work_type
              FROM job_journal WHERE status = 'running'",
         )?;
 

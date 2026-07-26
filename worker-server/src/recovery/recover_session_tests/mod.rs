@@ -12,7 +12,7 @@ use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
 use crate::recovery::recover_session::{
-    mark_lost_and_submit, recovered_omp_env, recovery_turn_exhausted,
+    mark_lost_and_submit, recovered_omp_env, recovered_work_type, recovery_turn_exhausted,
 };
 use crate::state::journal::{Journal, JournalEntry, JournalInsert, JournalStatus};
 
@@ -41,6 +41,18 @@ fn omp_recovery_respects_turn_caps_and_staged_transitions() {
             "{work_type:?} turn {current_turn}",
         );
     }
+}
+
+#[test]
+fn opencode_job_refresh_failure_preserves_review_work_type() {
+    let workdir = std::env::temp_dir();
+    let mut entry = test_entry(&workdir, "host");
+    entry.work_type = WorkRunType::PullRequestReview;
+    entry.review_fix_pass = 1;
+    entry.review_fixing = true;
+    entry.pending_prompt = Some("pending review follow-up".to_owned());
+
+    assert_eq!(recovered_work_type(&entry), WorkRunType::PullRequestReview);
 }
 
 #[tokio::test]
@@ -126,6 +138,7 @@ async fn rejected_lost_result_removes_stale_journal_entry() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: WorkRunType::Implementation,
         })
         .expect("insert job");
     let entry = journal
@@ -186,6 +199,7 @@ fn test_entry(workdir: &std::path::Path, harness_type: &str) -> JournalEntry {
         workdir: workdir.to_string_lossy().to_string(),
         container_name: Some("vulcanum-test".to_owned()),
         harness_type: harness_type.to_owned(),
+        work_type: WorkRunType::Implementation,
         status: JournalStatus::Running,
         started_at: Utc::now(),
         finished_at: None,

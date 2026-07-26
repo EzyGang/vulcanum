@@ -44,7 +44,7 @@ async fn zero_and_multiple_enabled_projects_require_actionable_selection(pool: s
     .await
     .expect("project provider")
     .expect("configured provider");
-    let second_project_id = test_helpers::insert_project_config_with_provider(
+    let second_project_id = test_helpers::project_configs::insert_project_config_with_provider(
         &pool,
         "second-followup-project",
         provider_id,

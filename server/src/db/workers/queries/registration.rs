@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    map_sqlx_error, CreateWorkerParams, DateTime, Queryer, Utc, Uuid, Worker, WorkerStatus,
+    WorkersError, WorkersRepository,
+};
 
 impl WorkersRepository {
     pub async fn create<'c, Q: Queryer<'c>>(

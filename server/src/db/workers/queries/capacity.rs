@@ -1,4 +1,4 @@
-use super::*;
+use super::{map_sqlx_error, Queryer, Uuid, WorkersError, WorkersRepository};
 
 impl WorkersRepository {
     pub async fn decrement_active_jobs<'c, Q: Queryer<'c>>(

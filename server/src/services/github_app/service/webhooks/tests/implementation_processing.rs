@@ -13,7 +13,7 @@ use crate::tests::work_runs_service::implementation_followup_tests::support::set
 #[sqlx::test]
 async fn signed_implement_command_creates_auditable_implementation_run(pool: sqlx::PgPool) {
     let project_id = setup_project(&pool).await;
-    let state = test_helpers::build_state(pool.clone()).await;
+    let state = test_helpers::state::build_state(pool.clone()).await;
     let writer = Arc::new(RecordingWriter::default());
     let work_runs = state
         .jobs
@@ -35,7 +35,7 @@ async fn signed_implement_command_creates_auditable_implementation_run(pool: sql
         &format!("@vulcanum-app implement {request}"),
         "octocat",
     );
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
 
     service
         .handle(

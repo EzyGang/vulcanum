@@ -106,6 +106,14 @@ impl ReviewLoopState {
     }
 
     #[must_use]
+    pub(crate) fn prompt_after_fix_turn_within_cap(&mut self, turn: i32) -> Option<String> {
+        if turn >= self.effective_max_turns() {
+            return None;
+        }
+        self.prompt_after_fix_turn()
+    }
+
+    #[must_use]
     pub(crate) fn effective_max_turns(&self) -> i32 {
         self.max_turns
     }

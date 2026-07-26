@@ -7,10 +7,10 @@ use crate::test_helpers;
 
 #[sqlx::test]
 async fn unmatched_close_delivery_remains_retryable(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let payload = test_helpers::github::github_webhook_payload("closed");
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     service
         .handle(&signature, "pull_request", "delivery-race", &payload)
         .await
@@ -28,7 +28,7 @@ async fn unmatched_close_delivery_remains_retryable(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn worker_stops_when_cancelled(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
     let cancellation = CancellationToken::new();
     let worker = tokio::spawn(service.run(cancellation.child_token()));

@@ -58,6 +58,7 @@ async fn corrupt_running_state_blocks_reconciliation() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("running job should be inserted");
     let connection = Connection::open(&journal_path).expect("journal database should open");

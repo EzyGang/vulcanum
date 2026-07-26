@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    insert_running_job, journal_path, open_journal_at, Connection, JournalResultUpdate,
+    JournalStatus, Uuid,
+};
 
 #[test]
 fn update_result_preserves_null_pr_url_and_reads_legacy_empty_pr_url_as_none() {

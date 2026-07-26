@@ -81,6 +81,20 @@ fn recovered_fix_turn_returns_to_follow_up_review() {
 }
 
 #[test]
+fn recovered_fix_at_effective_cap_does_not_start_follow_up_review() {
+    let checkpoint = ReviewLoopCheckpoint {
+        fix_pass: 1,
+        fixing: true,
+    };
+    let mut state = ReviewLoopState::resume(WorkRunType::PullRequestReview, 1, checkpoint);
+
+    let prompt = state.prompt_after_fix_turn_within_cap(3);
+
+    assert!(prompt.is_none());
+    assert!(state.checkpoint().fixing);
+}
+
+#[test]
 fn implementation_loop_uses_plain_max_turns() {
     let state = ReviewLoopState::new(WorkRunType::Implementation, 4);
 

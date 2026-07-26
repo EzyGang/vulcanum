@@ -1,40 +1,68 @@
-use super::session::remove_finish_artifact;
-use super::*;
+use std::path::Path;
+
+use vulcanum_shared::runtime::agent::RunningSession;
+use vulcanum_shared::runtime::types::FinishRunArtifact;
+
+use crate::daemon::job::execution::artifact::read_finish_artifact;
+use crate::daemon::job::execution::submit::{
+    submit_failed_result, submit_turn_result, FailedResult,
+};
+use crate::daemon::job::review::review_loop::{actionable_review_body, ReviewLoopState};
+
+use super::session::{finish_exit_code, remove_finish_artifact};
+use super::{PendingTurn, RecoveryTurn, StartupAction, StartupTurn, TurnLoopCtx};
 
 #[must_use]
-pub(crate) fn select_startup_turn(
+pub(crate) fn select_startup_action(
     artifact: Option<&FinishRunArtifact>,
     review_loop: &mut ReviewLoopState,
     turn: i32,
     pending_turn: Option<PendingTurn>,
     recovery_turn: Option<RecoveryTurn>,
-) -> Option<StartupTurn> {
-    match pending_turn {
-        Some(pending) => Some(StartupTurn {
-            prompt: pending.prompt,
-            turn,
-            cleanup_finish_artifact: pending.cleanup_finish_artifact,
-            staged: true,
-        }),
-        None => {
-            let review_prompt =
-                artifact.and_then(|artifact| review_loop.prompt_after_artifact(artifact));
-            match review_prompt {
-                Some(prompt) => Some(StartupTurn {
+) -> Option<StartupAction> {
+    if let Some(pending) = pending_turn {
+        let replays_artifact_transition = artifact.is_some_and(|artifact| {
+            pending.cleanup_finish_artifact && actionable_review_body(artifact).is_some()
+        });
+        if artifact.is_none() || replays_artifact_transition {
+            return Some(StartupAction::Continue(StartupTurn {
+                prompt: pending.prompt,
+                turn,
+                cleanup_finish_artifact: pending.cleanup_finish_artifact,
+                staged: true,
+            }));
+        }
+    }
+
+    if let Some(artifact) = artifact {
+        let prompt = review_loop.prompt_after_artifact(artifact);
+        return match prompt {
+            Some(prompt) if turn < review_loop.effective_max_turns() => {
+                Some(StartupAction::Continue(StartupTurn {
                     prompt,
                     turn: turn + 1,
                     cleanup_finish_artifact: true,
                     staged: false,
-                }),
-                None => recovery_turn.map(|recovery| StartupTurn {
-                    prompt: recovery.prompt,
-                    turn: recovery.turn,
-                    cleanup_finish_artifact: false,
-                    staged: false,
-                }),
+                }))
             }
-        }
+            Some(_) | None => Some(StartupAction::SubmitArtifact),
+        };
     }
+
+    recovery_turn.map(|recovery| {
+        StartupAction::Continue(StartupTurn {
+            prompt: recovery.prompt,
+            turn: recovery.turn,
+            cleanup_finish_artifact: false,
+            staged: false,
+        })
+    })
+}
+
+pub(super) enum RecoveredTurnStart {
+    Continue,
+    Submitted,
+    Failed,
 }
 
 pub(super) async fn start_recovered_turn(
@@ -45,16 +73,27 @@ pub(super) async fn start_recovered_turn(
     pending_turn: Option<PendingTurn>,
     recovery_turn: Option<RecoveryTurn>,
     ctx: &TurnLoopCtx,
-) -> bool {
+) -> RecoveredTurnStart {
     let artifact = read_finish_artifact(artifact_path);
-    let Some(startup) = select_startup_turn(
+    let action = select_startup_action(
         artifact.as_ref(),
         review_loop,
         *turn,
         pending_turn,
         recovery_turn,
-    ) else {
-        return true;
+    );
+    let Some(action) = action else {
+        return RecoveredTurnStart::Continue;
+    };
+
+    let startup = match action {
+        StartupAction::Continue(startup) => startup,
+        StartupAction::SubmitArtifact => {
+            let Some(artifact) = artifact.as_ref() else {
+                return RecoveredTurnStart::Failed;
+            };
+            return submit_recovered_artifact(running_session, artifact, ctx).await;
+        }
     };
 
     let continued = match startup.staged {
@@ -82,10 +121,51 @@ pub(super) async fn start_recovered_turn(
             .await
         }
     };
-    if continued {
-        *turn = startup.turn;
+    if !continued {
+        return RecoveredTurnStart::Failed;
     }
-    continued
+
+    *turn = startup.turn;
+    RecoveredTurnStart::Continue
+}
+
+async fn submit_recovered_artifact(
+    running_session: &mut Box<dyn RunningSession>,
+    artifact: &FinishRunArtifact,
+    ctx: &TurnLoopCtx,
+) -> RecoveredTurnStart {
+    let mut session_export = match running_session.export().await {
+        Ok(export) => export,
+        Err(error) => {
+            fail_continuation(
+                ctx,
+                0,
+                &format!("failed to export recovered terminal artifact: {error}"),
+            )
+            .await;
+            return RecoveredTurnStart::Failed;
+        }
+    };
+    session_export.exit_code = finish_exit_code(artifact);
+    submit_turn_result(
+        &ctx.client,
+        &ctx.worker_state,
+        &ctx.journal,
+        ctx.job_id,
+        &session_export,
+        Some(artifact),
+    )
+    .await;
+    RecoveredTurnStart::Submitted
+}
+
+#[must_use]
+pub(crate) fn continuation_prompt_for_dispatch(
+    prompt: &str,
+    job_id: uuid::Uuid,
+    turn: i32,
+) -> String {
+    format!("{prompt}\n\n[Vulcanum continuation id: {job_id}:{turn}]")
 }
 
 pub(super) async fn continue_session(
@@ -98,12 +178,13 @@ pub(super) async fn continue_session(
     ctx: &TurnLoopCtx,
 ) -> bool {
     let checkpoint = review_loop.checkpoint();
+    let dispatch_prompt = continuation_prompt_for_dispatch(prompt, ctx.job_id, next_turn);
     if let Err(error) = ctx.journal.stage_turn(
         ctx.job_id,
         next_turn,
         checkpoint.fix_pass,
         checkpoint.fixing,
-        prompt,
+        &dispatch_prompt,
         cleanup_finish_artifact,
     ) {
         fail_continuation(
@@ -117,7 +198,7 @@ pub(super) async fn continue_session(
 
     dispatch_staged_turn(
         running_session,
-        prompt,
+        &dispatch_prompt,
         next_turn,
         cleanup_finish_artifact,
         artifact_path,
@@ -134,6 +215,31 @@ async fn dispatch_staged_turn(
     artifact_path: &Path,
     ctx: &TurnLoopCtx,
 ) -> bool {
+    match running_session.prompt_was_dispatched(prompt).await {
+        Ok(true) => {
+            if let Err(error) = ctx.journal.clear_pending_turn(ctx.job_id) {
+                fail_continuation(
+                    ctx,
+                    turn,
+                    &format!("failed to reconcile continuation: {error}"),
+                )
+                .await;
+                return false;
+            }
+            return true;
+        }
+        Ok(false) => (),
+        Err(error) => {
+            fail_continuation(
+                ctx,
+                turn,
+                &format!("failed to reconcile continuation dispatch: {error}"),
+            )
+            .await;
+            return false;
+        }
+    }
+
     if cleanup_finish_artifact {
         remove_finish_artifact(artifact_path);
     }

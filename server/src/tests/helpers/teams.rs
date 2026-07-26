@@ -1,4 +1,4 @@
-use super::*;
+use super::{Uuid, DEFAULT_PROMPT_TEMPLATE, DEFAULT_REVIEW_PROMPT_TEMPLATE, DEFAULT_TEAM_ID};
 
 pub async fn ensure_default_team(pool: &sqlx::PgPool) {
     sqlx::query!(

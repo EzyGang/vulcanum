@@ -33,6 +33,7 @@ fn insert_running_job(journal: &Journal, job_id: Uuid) {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 }

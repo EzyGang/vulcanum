@@ -1,4 +1,4 @@
-use super::*;
+use super::{open_journal, JournalResultUpdate, JournalStatus, Utc, Uuid};
 
 #[test]
 fn update_result_persists_granular_tokens() {
@@ -14,6 +14,7 @@ fn update_result_persists_granular_tokens() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("should insert");
 
@@ -70,6 +71,7 @@ fn multiple_jobs_with_mixed_statuses() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("insert 1");
     journal
@@ -81,6 +83,7 @@ fn multiple_jobs_with_mixed_statuses() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("insert 2");
     journal
@@ -92,6 +95,7 @@ fn multiple_jobs_with_mixed_statuses() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("insert 3");
 
@@ -131,6 +135,7 @@ fn journal_persists_host_info() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("insert job");
 
@@ -161,6 +166,7 @@ fn journal_persists_agent_metadata() {
             started_at: Utc::now(),
             max_turns: 1,
             agent_backend: "omp_rpc",
+            work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         })
         .expect("insert job");
 
@@ -185,4 +191,32 @@ fn journal_persists_agent_metadata() {
         Some("/tmp/work/home/.omp/sessions/session.jsonl")
     );
     assert_eq!(entry.agent_pid, Some(1234));
+}
+
+#[test]
+fn journal_persists_review_work_type_for_recovery() {
+    let journal = open_journal();
+    let job_id = Uuid::new_v4();
+    journal
+        .insert_job(crate::state::journal::JournalInsert {
+            job_id,
+            workdir: "/tmp/review-work",
+            container_name: None,
+            harness_type: "host",
+            started_at: Utc::now(),
+            max_turns: 1,
+            agent_backend: "opencode",
+            work_type: vulcanum_shared::api::wire::WorkRunType::PullRequestReview,
+        })
+        .expect("insert review job");
+
+    let entry = journal
+        .find_by_id(job_id)
+        .expect("find succeeds")
+        .expect("entry exists");
+
+    assert_eq!(
+        entry.work_type,
+        vulcanum_shared::api::wire::WorkRunType::PullRequestReview
+    );
 }

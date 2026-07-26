@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    map_sqlx_error, DateTime, Queryer, Utc, Uuid, Worker, WorkerStatus, WorkersError,
+    WorkersRepository,
+};
 
 impl WorkersRepository {
     pub async fn update_last_seen<'c, Q: Queryer<'c>>(

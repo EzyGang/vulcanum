@@ -1,4 +1,4 @@
-use super::*;
+use super::{Hmac, Mac, Sha256, GITHUB_WEBHOOK_SECRET};
 
 pub fn github_webhook_payload(action: &str) -> Vec<u8> {
     serde_json::to_vec(&serde_json::json!({

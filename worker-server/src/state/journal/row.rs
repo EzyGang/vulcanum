@@ -2,6 +2,8 @@ use chrono::DateTime;
 use rusqlite::types::Type;
 use uuid::Uuid;
 
+use vulcanum_shared::api::wire::WorkRunType;
+
 use crate::state::journal::model::{journal_status_from_str, JournalEntry};
 
 pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<JournalEntry> {
@@ -10,6 +12,8 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
     let started_at = row.get::<_, String>(5)?;
     let finished_at = row.get::<_, Option<String>>(6)?;
 
+    let work_type = work_type_from_str(&row.get::<_, String>(34)?)
+        .ok_or_else(|| invalid_text_column(34, "invalid work run type"))?;
     let job_id = Uuid::parse_str(&job_id)
         .map_err(|err| rusqlite::Error::FromSqlConversionFailure(0, Type::Text, Box::new(err)))?;
     let status = journal_status_from_str(&status)
@@ -32,6 +36,7 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
         workdir: row.get(1)?,
         container_name: row.get(2)?,
         harness_type: row.get(3)?,
+        work_type,
         status,
         started_at,
         finished_at,
@@ -78,4 +83,12 @@ fn invalid_text_column(column: usize, message: impl Into<String>) -> rusqlite::E
 
 fn normalize_optional_text(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.is_empty())
+}
+
+fn work_type_from_str(value: &str) -> Option<WorkRunType> {
+    match value {
+        "implementation" => Some(WorkRunType::Implementation),
+        "pull_request_review" => Some(WorkRunType::PullRequestReview),
+        _ => None,
+    }
 }

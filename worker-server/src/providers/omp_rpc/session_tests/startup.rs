@@ -1,4 +1,4 @@
-use super::*;
+use super::{test_session, Error, ProcessOutputBuffer};
 
 #[tokio::test]
 async fn wait_ready_reports_stderr_when_rpc_exits_before_ready() -> Result<(), Box<dyn Error>> {

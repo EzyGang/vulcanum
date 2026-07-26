@@ -62,6 +62,7 @@ fn submit_result_from_journal_replays_stored_result() {
         workdir: "/tmp/vulcanum-work-test".to_owned(),
         container_name: None,
         harness_type: "host".to_owned(),
+        work_type: vulcanum_shared::api::wire::WorkRunType::Implementation,
         status: JournalStatus::Submitted,
         started_at: Utc::now(),
         finished_at: Some(Utc::now()),

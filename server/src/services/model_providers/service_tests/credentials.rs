@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    assert_invalid_auth_config, encrypted_api_key_credentials, insert_team, json, service,
+    test_cipher, AgentBackend, CreateModelProviderRequest, ModelProviderAuthType,
+    ModelProvidersRepository, ModelSelection, UpdateModelProviderRequest, Value,
+};
 
 #[sqlx::test]
 async fn create_rejects_non_catalog_api_key_field_before_persistence(pool: sqlx::PgPool) {

@@ -132,7 +132,7 @@ pub(crate) async fn recover_omp_rpc_session_task(
             return;
         }
     };
-    let work_type = recovered_job.work_type;
+    let work_type = entry.work_type;
     let workdir = std::path::PathBuf::from(&entry.workdir);
     let artifact_path = workdir.join("home").join("finish_artifact.json");
     let review_checkpoint = ReviewLoopCheckpoint {
