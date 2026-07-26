@@ -25,3 +25,9 @@ open = "5"
 tracing = "0.1"
 chrono = "0.4"
 sys-info = "0.9"
+
+[dev-dependencies]
+actix-web = "4"
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "postgres", "migrate", "uuid", "chrono"] }
+tempfile = "3"
+vulcanum-server = { path = "../server" }

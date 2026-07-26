@@ -197,6 +197,9 @@ mod auth_tests;
 mod project_configs_tests;
 
 #[cfg(test)]
+mod status_tests;
+
+#[cfg(test)]
 mod teams_tests;
 
 #[cfg(test)]

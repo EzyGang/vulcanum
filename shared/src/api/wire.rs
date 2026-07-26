@@ -134,9 +134,11 @@ pub struct RefreshResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatusResponse {
-    pub access_token_ttl_minutes: i64,
-    pub code_ttl_minutes: i64,
-    pub refresh_token_ttl_days: i64,
+    pub app_access_token_ttl_minutes: i64,
+    pub app_refresh_token_ttl_days: i64,
+    pub worker_access_token_ttl_minutes: i64,
+    pub worker_refresh_token_ttl_days: i64,
+    pub worker_registration_code_ttl_minutes: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

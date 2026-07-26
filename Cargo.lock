@@ -4153,6 +4153,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 name = "vulcanum-cli"
 version = "0.1.0"
 dependencies = [
+ "actix-web",
  "anyhow",
  "chrono",
  "clap",
@@ -4161,12 +4162,15 @@ dependencies = [
  "indicatif",
  "open",
  "serde_json",
+ "sqlx",
  "sys-info",
+ "tempfile",
  "tokio",
  "tracing",
  "unicode-width",
  "url",
  "uuid",
+ "vulcanum-server",
  "vulcanum-shared",
 ]
 

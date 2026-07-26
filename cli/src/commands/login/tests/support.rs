@@ -4,8 +4,7 @@ use vulcanum_shared::state::app::AppSession;
 
 use super::super::{run_with, LoginRuntime};
 
-pub(super) const STATUS: &str =
-    r#"{"access_token_ttl_minutes":15,"code_ttl_minutes":10,"refresh_token_ttl_days":30}"#;
+pub(super) const STATUS: &str = r#"{"app_access_token_ttl_minutes":15,"app_refresh_token_ttl_days":30,"worker_access_token_ttl_minutes":15,"worker_refresh_token_ttl_days":30,"worker_registration_code_ttl_minutes":10}"#;
 pub(super) const TOKENS: &str = r#"{"access_token":"access-secret","refresh_token":"refresh-secret","refresh_expires_at":"2030-01-02T03:04:05Z"}"#;
 
 pub(super) struct Fixture {
