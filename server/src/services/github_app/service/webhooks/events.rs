@@ -1,7 +1,10 @@
 use serde::Deserialize;
 
+use crate::services::github_app::service::webhooks::commands::{comment_command, CommentCommand};
 use crate::services::github_app::service::webhooks::GithubWebhookError;
-use crate::services::github_app::webhook_store::{GithubWebhookDelivery, GithubWebhookKind};
+use crate::services::github_app::webhook_store::{
+    GithubWebhookCommandError, GithubWebhookDelivery, GithubWebhookKind,
+};
 
 pub(super) fn parse_event(
     event: &str,
@@ -11,7 +14,7 @@ pub(super) fn parse_event(
 ) -> Result<Option<GithubWebhookDelivery>, GithubWebhookError> {
     match event {
         "pull_request" => closed_pull_request(delivery_id, body),
-        "issue_comment" => review_request(delivery_id, app_slug, body),
+        "issue_comment" => issue_comment_command(delivery_id, app_slug, body),
         _ => Ok(None),
     }
 }
@@ -35,115 +38,75 @@ fn closed_pull_request(
         sender_id: None,
         pr_title: None,
         project_selector: None,
+        request_body: None,
+        command_error: None,
         attempts: 0,
     }))
 }
 
-fn review_request(
+fn issue_comment_command(
     delivery_id: &str,
     app_slug: Option<&str>,
     body: &[u8],
 ) -> Result<Option<GithubWebhookDelivery>, GithubWebhookError> {
     let app_slug = app_slug.ok_or(GithubWebhookError::MissingAppSlug)?;
     let payload = serde_json::from_slice::<IssueCommentEvent>(body)?;
-    let command = review_command(&payload.comment.body, app_slug);
     if payload.action != "created"
         || payload.issue.state != "open"
         || payload.issue.pull_request.is_none()
         || is_app_sender(&payload.sender.login, app_slug)
-        || command.is_none()
     {
         return Ok(None);
     }
 
+    let command = match comment_command(&payload.comment.body, app_slug) {
+        Some(command) => command,
+        None => return Ok(None),
+    };
+    let (kind, project_selector, request_body, command_error) = match command {
+        CommentCommand::Review(project_selector) => (
+            GithubWebhookKind::ReviewRequested,
+            project_selector,
+            None,
+            None,
+        ),
+        CommentCommand::Implement {
+            project_selector,
+            request_body,
+        } => (
+            GithubWebhookKind::ImplementationFollowupRequested,
+            project_selector,
+            Some(request_body),
+            None,
+        ),
+        CommentCommand::MalformedImplementation => (
+            GithubWebhookKind::ImplementationFollowupRequested,
+            None,
+            None,
+            Some(GithubWebhookCommandError::Malformed),
+        ),
+        CommentCommand::AmbiguousImplementation => (
+            GithubWebhookKind::ImplementationFollowupRequested,
+            None,
+            None,
+            Some(GithubWebhookCommandError::Ambiguous),
+        ),
+    };
+
     Ok(Some(GithubWebhookDelivery {
         delivery_id: delivery_id.to_owned(),
-        kind: GithubWebhookKind::ReviewRequested,
+        kind,
         installation_id: payload.installation.id,
         repo_full_name: payload.repository.full_name,
         pr_number: payload.issue.number,
         comment_id: Some(payload.comment.id),
         sender_id: Some(payload.sender.id.to_string()),
         pr_title: Some(payload.issue.title),
-        project_selector: command.flatten(),
+        project_selector,
+        request_body,
+        command_error,
         attempts: 0,
     }))
-}
-
-fn review_command(body: &str, app_slug: &str) -> Option<Option<String>> {
-    let body_bytes = body.as_bytes();
-    let mention = format!("@{app_slug}").to_ascii_lowercase();
-    let mention = mention.as_bytes();
-    if mention.len() > body_bytes.len() {
-        return None;
-    }
-
-    for index in 0..=body_bytes.len() - mention.len() {
-        let end = index + mention.len();
-        if body_bytes[index..end].eq_ignore_ascii_case(mention)
-            && boundary_before(body_bytes, index)
-            && boundary_after(body_bytes, end)
-        {
-            let Some(command) = parse_review_command(&body[end..]) else {
-                continue;
-            };
-            return Some(command);
-        }
-    }
-
-    None
-}
-
-fn parse_review_command(suffix: &str) -> Option<Option<String>> {
-    let suffix = suffix.trim_start();
-    let command = suffix.get(..6)?;
-    if !command.eq_ignore_ascii_case("review") {
-        return None;
-    }
-
-    let remainder = &suffix[6..];
-    if remainder
-        .chars()
-        .next()
-        .is_some_and(|character| !character.is_whitespace())
-    {
-        return None;
-    }
-
-    let selector = trim_selector(remainder.trim());
-    if selector.is_empty() {
-        return Some(None);
-    }
-    if selector.split_whitespace().count() != 1
-        || !selector
-            .get(..8)
-            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("project:"))
-    {
-        return None;
-    }
-
-    Some(Some(selector.to_owned()))
-}
-
-fn trim_selector(value: &str) -> &str {
-    value.trim_matches(|character: char| {
-        matches!(
-            character,
-            '`' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}'
-        )
-    })
-}
-
-fn boundary_before(body: &[u8], index: usize) -> bool {
-    index == 0 || !is_login_byte(body[index - 1])
-}
-
-fn boundary_after(body: &[u8], index: usize) -> bool {
-    index == body.len() || !is_login_byte(body[index])
-}
-
-fn is_login_byte(value: u8) -> bool {
-    value.is_ascii_alphanumeric() || matches!(value, b'-' | b'_')
 }
 
 fn is_app_sender(login: &str, app_slug: &str) -> bool {

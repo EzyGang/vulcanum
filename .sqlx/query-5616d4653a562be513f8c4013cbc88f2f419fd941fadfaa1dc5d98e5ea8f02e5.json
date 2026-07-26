@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH inserted AS (\n                INSERT INTO github_implementation_followup_requests\n                    (delivery_id, github_installation_id, repo_full_name, pr_number, comment_id,\n                     sender_id, project_config_id, request_body)\n                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n                ON CONFLICT DO NOTHING\n                RETURNING delivery_id, github_installation_id, repo_full_name, pr_number, comment_id,\n                    sender_id, project_config_id, external_task_ref, work_run_id, request_body,\n                    ticket_created, outcome\n            ),\n            selected AS (\n                SELECT delivery_id, github_installation_id, repo_full_name, pr_number, comment_id,\n                    sender_id, project_config_id, external_task_ref, work_run_id, request_body,\n                    ticket_created, outcome\n                FROM inserted\n                UNION ALL\n                SELECT delivery_id, github_installation_id, repo_full_name, pr_number, comment_id,\n                    sender_id, project_config_id, external_task_ref, work_run_id, request_body,\n                    ticket_created, outcome\n                FROM github_implementation_followup_requests\n                WHERE delivery_id = $1 AND NOT EXISTS (SELECT 1 FROM inserted)\n            )\n            SELECT delivery_id AS \"delivery_id!\", github_installation_id AS \"github_installation_id!\",\n                repo_full_name AS \"repo_full_name!\", pr_number AS \"pr_number!\",\n                comment_id AS \"comment_id!\", sender_id AS \"sender_id!\",\n                project_config_id AS \"project_config_id!\", external_task_ref, work_run_id,\n                request_body AS \"request_body!\", ticket_created AS \"ticket_created!\",\n                outcome AS \"outcome!\"\n            FROM selected\n            LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "delivery_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "github_installation_id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_full_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "pr_number!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "comment_id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "sender_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "project_config_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "work_run_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "request_body!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "ticket_created!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "outcome!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Text",
+        "Int8",
+        "Int8",
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "5616d4653a562be513f8c4013cbc88f2f419fd941fadfaa1dc5d98e5ea8f02e5"
+}

@@ -1,8 +1,9 @@
+use uuid::Uuid;
+
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
-use crate::services::work_runs::service::request_github_review::{
-    GithubReviewRequestOutcome, ReviewProjectOption,
-};
+use crate::services::work_runs::service::github_commands::GithubProjectOption;
+use crate::services::work_runs::service::request_github_review::GithubReviewRequestOutcome;
 
 pub(super) async fn respond_to_outcome(
     writer: &dyn PullRequestCommentWriter,
@@ -46,23 +47,23 @@ pub(super) async fn respond_to_outcome(
 
     match response {
         Some((team_id, body)) => {
-            let marker = format!("<!-- vulcanum:github-delivery:{delivery_id} -->");
-            writer
-                .ensure_pull_request_comment(
-                    team_id,
-                    installation_id,
-                    repo_full_name,
-                    pr_number,
-                    &marker,
-                    &body,
-                )
-                .await
+            ensure_response(
+                writer,
+                Some(team_id),
+                delivery_id,
+                installation_id,
+                repo_full_name,
+                pr_number,
+                &body,
+                "",
+            )
+            .await
         }
         None => Ok(()),
     }
 }
 
-fn project_choices(heading: &str, app_slug: &str, projects: &[ReviewProjectOption]) -> String {
+fn project_choices(heading: &str, app_slug: &str, projects: &[GithubProjectOption]) -> String {
     if projects.is_empty() {
         return format!("{heading}\n\nNo review-enabled project is available.");
     }
@@ -81,7 +82,46 @@ fn project_choices(heading: &str, app_slug: &str, projects: &[ReviewProjectOptio
     format!("{heading}\n\n{choices}")
 }
 
-fn markdown_escape(value: &str) -> String {
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn ensure_response(
+    writer: &dyn PullRequestCommentWriter,
+    team_id: Option<Uuid>,
+    delivery_id: &str,
+    installation_id: i64,
+    repo_full_name: &str,
+    pr_number: i64,
+    body: &str,
+    marker_suffix: &str,
+) -> Result<(), GithubAppError> {
+    let marker = format!("<!-- vulcanum:github-delivery:{delivery_id}{marker_suffix} -->");
+    match team_id {
+        Some(team_id) => {
+            writer
+                .ensure_pull_request_comment(
+                    team_id,
+                    installation_id,
+                    repo_full_name,
+                    pr_number,
+                    &marker,
+                    body,
+                )
+                .await
+        }
+        None => {
+            writer
+                .ensure_pull_request_comment_for_installation(
+                    installation_id,
+                    repo_full_name,
+                    pr_number,
+                    &marker,
+                    body,
+                )
+                .await
+        }
+    }
+}
+
+pub(super) fn markdown_escape(value: &str) -> String {
     let mut escaped = String::with_capacity(value.len());
     for character in value.chars() {
         if matches!(

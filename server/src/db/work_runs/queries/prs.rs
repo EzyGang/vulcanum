@@ -135,6 +135,37 @@ impl WorkRunsRepository {
         .map_err(WorkRunsError::from)
     }
 
+    pub async fn upsert_github_followup_task_pr<'c, Q>(
+        &self,
+        db: Q,
+        project_config_id: Uuid,
+        external_task_ref: &str,
+        pr_url: &str,
+        repo_full_name: &str,
+        pr_number: i64,
+    ) -> Result<(), WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query!(
+            r#"INSERT INTO task_prs
+                   (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number)
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET
+                   repo_full_name = EXCLUDED.repo_full_name,
+                   pr_number = EXCLUDED.pr_number"#,
+            project_config_id,
+            external_task_ref,
+            pr_url,
+            repo_full_name,
+            pr_number,
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn insert_review_result<'c, Q>(
         &self,
         db: Q,

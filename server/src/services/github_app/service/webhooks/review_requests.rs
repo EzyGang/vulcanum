@@ -1,7 +1,9 @@
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::webhooks::processing::DeliveryDisposition;
 use crate::services::github_app::service::webhooks::responses::respond_to_outcome;
-use crate::services::github_app::service::webhooks::GithubWebhookService;
+use crate::services::github_app::service::webhooks::{
+    required_delivery_field, GithubWebhookService,
+};
 use crate::services::github_app::webhook_store::GithubWebhookDelivery;
 use crate::services::work_runs::service::request_github_review::GithubReviewRequest;
 
@@ -10,8 +12,8 @@ impl GithubWebhookService {
         &self,
         delivery: &GithubWebhookDelivery,
     ) -> Result<DeliveryDisposition, GithubAppError> {
-        let sender_id = required(&delivery.sender_id, "sender_id")?;
-        let pr_title = required(&delivery.pr_title, "pr_title")?;
+        let sender_id = required_delivery_field(&delivery.sender_id, "sender_id")?;
+        let pr_title = required_delivery_field(&delivery.pr_title, "pr_title")?;
         let comment_id = delivery
             .comment_id
             .ok_or_else(|| GithubAppError::Redis("review webhook omitted comment_id".to_owned()))?;
@@ -62,10 +64,4 @@ impl GithubWebhookService {
             Err(error) => Ok(DeliveryDisposition::Retry(error.to_string())),
         }
     }
-}
-
-fn required<'a>(value: &'a Option<String>, field: &str) -> Result<&'a str, GithubAppError> {
-    value
-        .as_deref()
-        .ok_or_else(|| GithubAppError::Redis(format!("review webhook omitted {field}")))
 }

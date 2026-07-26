@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO task_prs\n                   (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number)\n               VALUES ($1, $2, $3, $4, $5)\n               ON CONFLICT (project_config_id, external_task_ref, pr_url) DO UPDATE SET\n                   repo_full_name = EXCLUDED.repo_full_name,\n                   pr_number = EXCLUDED.pr_number",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "808131eb46cb29a6e99aa4fa8d825476d5254433de8ba45c000ece031b59772a"
+}

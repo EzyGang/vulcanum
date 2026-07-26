@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO github_installations (github_installation_id, account_login, team_id) VALUES ($1, 'acme', $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9cf72c67817065a9a7b85967a071eb6d9a09feb3b86cb05e95e40dfd7a31b2f9"
+}

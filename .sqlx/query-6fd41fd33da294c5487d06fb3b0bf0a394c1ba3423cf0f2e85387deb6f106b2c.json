@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT github_installation_id, repo_full_name, pr_number, project_config_id,\n           external_task_ref, request_body, outcome\n           FROM github_implementation_followup_requests WHERE delivery_id = 'delivery-reuse'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "pr_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "external_task_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "request_body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "outcome",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6fd41fd33da294c5487d06fb3b0bf0a394c1ba3423cf0f2e85387deb6f106b2c"
+}

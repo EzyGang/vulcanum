@@ -57,6 +57,9 @@ impl GithubWebhookService {
                     GithubWebhookKind::ReviewRequested => {
                         self.process_review_requested(delivery).await
                     }
+                    GithubWebhookKind::ImplementationFollowupRequested => {
+                        self.process_implementation_requested(delivery).await
+                    }
                 }
             })
             .await?;

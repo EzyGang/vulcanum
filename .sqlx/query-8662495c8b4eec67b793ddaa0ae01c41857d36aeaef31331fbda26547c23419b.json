@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, project_config_id, work_type AS \"work_type: WorkRunType\",\n           github_installation_id, github_delivery_id\n           FROM work_runs WHERE github_delivery_id = 'implement-smoke-delivery'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "work_type: WorkRunType",
+        "type_info": {
+          "Custom": {
+            "name": "work_run_type",
+            "kind": {
+              "Enum": [
+                "implementation",
+                "pull_request_review"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "github_delivery_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "8662495c8b4eec67b793ddaa0ae01c41857d36aeaef31331fbda26547c23419b"
+}

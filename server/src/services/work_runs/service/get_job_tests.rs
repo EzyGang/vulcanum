@@ -8,9 +8,13 @@ use vulcanum_shared::api::wire::{AgentBackend, JobRepo};
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::providers::errors::IntegrationError;
 use crate::models::providers::model::IntegrationTask;
-use crate::models::work_runs::model::{WorkRun, WorkRunStatus, WorkRunType};
+use crate::models::work_runs::model::{
+    GithubImplementationFollowupContext, WorkRun, WorkRunStatus, WorkRunType,
+};
 use crate::services::providers::client::TaskFetcher;
-use crate::services::work_runs::service::get_job::render_implementation_prompt;
+use crate::services::work_runs::service::job_prompts::{
+    render_implementation_followup_prompt, render_implementation_prompt,
+};
 use crate::test_helpers;
 
 #[test]
@@ -55,6 +59,40 @@ fn implementation_prompt_uses_work_run_repos_not_current_config() {
     assert!(prompt.contains("old/repo: ./old-repo"));
     assert!(!prompt.contains("https://github.com/new/repo"));
     assert!(!prompt.contains("new/repo"));
+}
+
+#[test]
+fn implementation_followup_prompt_contains_current_contract_and_exact_request() {
+    let task = IntegrationTask {
+        id: "task-1".to_owned(),
+        title: "Retry checkout".to_owned(),
+        project_id: "project-1".to_owned(),
+        description: Some("Original contract\n\nAppended tracker context".to_owned()),
+        status: "in-progress".to_owned(),
+        priority: "medium".to_owned(),
+        number: None,
+        project_slug: None,
+        assignee_name: None,
+        created_at: "2026-01-01T00:00:00Z".to_owned(),
+        updated_at: None,
+        labels: Vec::new(),
+    };
+    let request = "Handle retries exactly.\n\nKeep this second paragraph.";
+    let context = GithubImplementationFollowupContext {
+        delivery_id: "delivery-1".to_owned(),
+        repo_full_name: "acme/widgets".to_owned(),
+        pr_number: 42,
+        request_body: request.to_owned(),
+    };
+
+    let prompt = render_implementation_followup_prompt(&task, &context);
+
+    assert!(prompt.contains("Retry checkout"));
+    assert!(prompt.contains("Original contract\n\nAppended tracker context"));
+    assert!(prompt.contains("Repository: acme/widgets"));
+    assert!(prompt.contains("https://github.com/acme/widgets/pull/42"));
+    assert!(prompt.contains(&format!("## Exact GitHub follow-up request\n\n{request}")));
+    assert!(prompt.contains("existing pull request branch"));
 }
 
 #[test]
