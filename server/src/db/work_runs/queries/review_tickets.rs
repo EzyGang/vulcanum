@@ -12,6 +12,33 @@ pub enum ReviewTicketReservation {
 }
 
 impl WorkRunsRepository {
+    pub async fn find_github_review_ticket<'c, Q>(
+        &self,
+        db: Q,
+        project_config_id: Uuid,
+        repo_full_name: &str,
+        pr_number: i64,
+    ) -> Result<Option<String>, WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_scalar!(
+            r#"SELECT external_task_ref
+               FROM github_review_tickets
+               WHERE project_config_id = $1
+                 AND repo_full_name = $2
+                 AND pr_number = $3"#,
+            project_config_id,
+            repo_full_name,
+            pr_number,
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(WorkRunsError::from)
+        .map(Option::flatten)
+    }
+}
+impl WorkRunsRepository {
     pub async fn reserve_github_review_ticket<'c, Q>(
         &self,
         db: Q,

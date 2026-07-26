@@ -45,11 +45,13 @@ pub(super) fn persisted_outcome(
             external_task_ref: persisted.external_task_ref.clone()?,
             work_run_id: persisted.work_run_id?,
             ticket_created: persisted.ticket_created,
+            task_slug: None,
         }),
         "active_run" => Some(GithubImplementationRequestOutcome::AlreadyActive {
             team_id,
             external_task_ref: persisted.external_task_ref.clone()?,
             ticket_created: persisted.ticket_created,
+            task_slug: None,
         }),
         "ambiguous_ticket" => Some(GithubImplementationRequestOutcome::AmbiguousTickets {
             team_id,

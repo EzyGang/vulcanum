@@ -10,6 +10,16 @@ use crate::tests::work_runs_service::implementation_followup_tests::support::{
 #[sqlx::test]
 async fn unmapped_pr_creates_one_executable_ticket_and_mapping(pool: sqlx::PgPool) {
     let project_id = setup_project(&pool).await;
+    sqlx::query!(
+        r#"INSERT INTO github_review_tickets
+           (project_config_id, repo_full_name, pr_number, external_task_ref, creation_token)
+           VALUES ($1, 'acme/widgets', 42, 'review-ticket', $2)"#,
+        project_id,
+        uuid::Uuid::new_v4(),
+    )
+    .execute(&pool)
+    .await
+    .expect("seed review ticket");
     let client = Arc::new(MockFollowupTicketClient::default());
     let work_runs = service(pool.clone(), client.clone()).await;
 
@@ -30,6 +40,13 @@ async fn unmapped_pr_creates_one_executable_ticket_and_mapping(pool: sqlx::PgPoo
         } if external_task_ref == "created-followup-ticket"
     ));
     assert_eq!(client.create_count(), 1);
+    assert_eq!(
+        client.block_relations(),
+        vec![(
+            "created-followup-ticket".to_owned(),
+            "review-ticket".to_owned()
+        )]
+    );
     let task = client.task("created-followup-ticket");
     assert_eq!(task.title, "Follow up PR #42: Improve retries");
     assert_eq!(task.status, "in progress");
@@ -47,6 +64,14 @@ async fn unmapped_pr_creates_one_executable_ticket_and_mapping(pool: sqlx::PgPoo
     .expect("created task mapping");
     assert_eq!(mapping.external_task_ref, "created-followup-ticket");
     assert_eq!(mapping.source_work_run_id, None);
+    let run_task_slug = sqlx::query_scalar!(
+        "SELECT task_slug FROM work_runs WHERE project_config_id = $1",
+        project_id,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("created work run");
+    assert_eq!(run_task_slug.as_deref(), Some("VLC-2"));
 }
 
 #[sqlx::test]

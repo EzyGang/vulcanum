@@ -40,11 +40,13 @@ pub(crate) enum GithubImplementationRequestOutcome {
         external_task_ref: String,
         work_run_id: Uuid,
         ticket_created: bool,
+        task_slug: Option<String>,
     },
     AlreadyActive {
         team_id: Uuid,
         external_task_ref: String,
         ticket_created: bool,
+        task_slug: Option<String>,
     },
     AmbiguousTickets {
         team_id: Uuid,

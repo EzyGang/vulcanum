@@ -46,6 +46,11 @@ impl WorkRunsService {
             }
         };
 
+        let review_task_ref = self
+            .work_runs_repo
+            .find_github_review_ticket(&self.db, selected.id, normalized_repo, request.pr_number)
+            .await?;
+
         let mut transaction = self.db.begin().await?;
         self.work_runs_repo
             .lock_task_pr_target(
@@ -115,7 +120,7 @@ impl WorkRunsService {
             }
         };
         let reused_mapped_ticket = target.is_some();
-        let task_slug = target.as_ref().and_then(|target| target.task_slug.clone());
+        let mapped_task_slug = target.as_ref().and_then(|target| target.task_slug.clone());
         let external_task_ref = target
             .as_ref()
             .map(|target| target.external_task_ref.as_str())
@@ -152,6 +157,7 @@ impl WorkRunsService {
                 team_id,
                 external_task_ref: active_task_ref.to_owned(),
                 ticket_created: false,
+                task_slug: mapped_task_slug,
             });
         }
         let existing_work_run_id = availability.existing_work_run_id;
@@ -166,8 +172,10 @@ impl WorkRunsService {
                 request_body,
                 token,
                 external_task_ref,
+                review_task_ref: review_task_ref.as_deref(),
             })
             .await?;
+        let task_slug = mapped_task_slug.or_else(|| task.slug());
         self.work_runs_repo
             .lock_implementation_task(&mut transaction, selected.id, &task.id)
             .await?;
@@ -194,6 +202,7 @@ impl WorkRunsService {
             external_task_ref: finalized.external_task_ref,
             work_run_id: finalized.work_run_id,
             ticket_created: finalized.ticket_created,
+            task_slug: finalized.task_slug,
         })
     }
 }

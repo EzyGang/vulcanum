@@ -27,6 +27,7 @@ pub(crate) struct FinalizedFollowup {
     pub external_task_ref: String,
     pub work_run_id: Uuid,
     pub ticket_created: bool,
+    pub task_slug: Option<String>,
 }
 
 pub(crate) struct TerminalFollowupRequest<'a> {
@@ -112,7 +113,7 @@ impl WorkRunsService {
                             team_id: request.team_id,
                             external_task_ref: request.task.id.clone(),
                             task_title: Some(request.task.title.clone()),
-                            task_slug: request.task_slug,
+                            task_slug: request.task_slug.clone(),
                             project_config_id: request.project.id,
                             repo_full_names: vec![request.github.repo_full_name.to_owned()],
                             status: WorkRunStatus::Pending,
@@ -165,6 +166,7 @@ impl WorkRunsService {
             external_task_ref: request.task.id,
             work_run_id,
             ticket_created,
+            task_slug: request.task_slug,
         })
     }
 

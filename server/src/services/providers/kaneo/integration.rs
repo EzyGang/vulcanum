@@ -76,8 +76,11 @@ impl IntegrationProviderClient for KaneoClient {
         )
         .await
         .map_err(IntegrationError::from)?;
+        let project = KaneoClient::lookup_project(self, &input.project_id)
+            .await
+            .map_err(IntegrationError::from)?;
 
-        Ok(kaneo_task_to_integration(&task, None))
+        Ok(kaneo_task_to_integration(&task, Some(&project.slug)))
     }
 
     async fn update_task(
@@ -113,6 +116,16 @@ impl IntegrationProviderClient for KaneoClient {
         description: &str,
     ) -> Result<(), IntegrationError> {
         KaneoClient::update_task_description(self, task_id, description)
+            .await
+            .map_err(IntegrationError::from)
+    }
+
+    async fn ensure_task_blocks(
+        &self,
+        source_task_id: &str,
+        target_task_id: &str,
+    ) -> Result<(), IntegrationError> {
+        KaneoClient::ensure_task_blocks(self, source_task_id, target_task_id)
             .await
             .map_err(IntegrationError::from)
     }

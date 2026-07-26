@@ -52,7 +52,7 @@ async fn signed_implement_command_creates_auditable_implementation_run(pool: sql
         .expect("process signed implement command"));
 
     let run = sqlx::query!(
-        r#"SELECT id, project_config_id, work_type AS "work_type: WorkRunType",
+        r#"SELECT id, project_config_id, task_slug, work_type AS "work_type: WorkRunType",
            github_installation_id, github_delivery_id
            FROM work_runs WHERE github_delivery_id = 'implement-smoke-delivery'"#,
     )
@@ -62,6 +62,7 @@ async fn signed_implement_command_creates_auditable_implementation_run(pool: sql
     assert_eq!(run.project_config_id, project_id);
     assert_eq!(run.work_type, WorkRunType::Implementation);
     assert_eq!(run.github_installation_id, Some(123));
+    assert_eq!(run.task_slug.as_deref(), Some("VLC-2"));
     let context = sqlx::query!(
         r#"SELECT repo_full_name, pr_number, request_body, external_task_ref, work_run_id
            FROM github_implementation_followup_requests
@@ -83,6 +84,7 @@ async fn signed_implement_command_creates_auditable_implementation_run(pool: sql
     assert!(calls[0]
         .0
         .contains("implement-smoke-delivery:implementation"));
-    assert!(calls[0].1.contains("created implementation ticket"));
-    assert!(calls[0].1.contains(&run.id.to_string()));
+    assert!(calls[0].1.contains("created implementation ticket VLC\\-2"));
+    assert!(calls[0].1.contains("queued it for implementation"));
+    assert!(!calls[0].1.contains(&run.id.to_string()));
 }

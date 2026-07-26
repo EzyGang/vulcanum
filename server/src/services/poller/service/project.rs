@@ -259,7 +259,7 @@ fn build_work_run_params(config: &ProjectConfig, task: &IntegrationTask) -> Inse
         team_id: config.team_id,
         external_task_ref: task.id.clone(),
         task_title: Some(task.title.clone()),
-        task_slug: task_slug(task),
+        task_slug: task.slug(),
         project_config_id: config.id,
         repo_full_names: config.repo_full_names.clone(),
         status: WorkRunStatus::Pending,
@@ -269,16 +269,6 @@ fn build_work_run_params(config: &ProjectConfig, task: &IntegrationTask) -> Inse
         review_target_repo_full_name: None,
         github_installation_id: None,
         github_delivery_id: None,
-    }
-}
-
-#[must_use]
-fn task_slug(task: &IntegrationTask) -> Option<String> {
-    match (task.project_slug.as_deref(), task.number) {
-        (Some(project_slug), Some(number)) if !project_slug.is_empty() => {
-            Some(format!("{project_slug}-{number}"))
-        }
-        _ => None,
     }
 }
 

@@ -20,26 +20,28 @@ pub(super) async fn respond_to_implementation_outcome(
         GithubImplementationRequestOutcome::Spawned {
             team_id,
             external_task_ref,
-            work_run_id,
             ticket_created,
+            task_slug,
+            ..
         } => (
             Some(*team_id),
             format!(
-                "Vulcanum {} implementation ticket `{}` and queued implementation run `{work_run_id}`.",
+                "Vulcanum {} implementation ticket {} and queued it for implementation.",
                 ticket_action(*ticket_created),
-                markdown_escape(external_task_ref),
+                markdown_escape(task_slug.as_deref().unwrap_or(external_task_ref)),
             ),
         ),
         GithubImplementationRequestOutcome::AlreadyActive {
             team_id,
             external_task_ref,
             ticket_created,
+            task_slug,
         } => (
             Some(*team_id),
             format!(
-                "Vulcanum {} implementation ticket `{}`, but that ticket already has an active implementation run. Retry after the current run finishes.",
+                "Vulcanum {} implementation ticket {}, but that ticket already has an active implementation run. Retry after the current run finishes.",
                 ticket_action(*ticket_created),
-                markdown_escape(external_task_ref),
+                markdown_escape(task_slug.as_deref().unwrap_or(external_task_ref)),
             ),
         ),
         GithubImplementationRequestOutcome::AmbiguousTickets {

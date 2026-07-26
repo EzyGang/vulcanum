@@ -60,6 +60,12 @@ pub trait IntegrationProviderClient: Send + Sync {
         description: &str,
     ) -> Result<(), IntegrationError>;
 
+    async fn ensure_task_blocks(
+        &self,
+        source_task_id: &str,
+        target_task_id: &str,
+    ) -> Result<(), IntegrationError>;
+
     async fn lookup_project(
         &self,
         project_id: &str,
@@ -182,6 +188,16 @@ impl IntegrationClient {
     ) -> Result<(), IntegrationError> {
         self.inner
             .update_task_description(task_id, description)
+            .await
+    }
+
+    pub async fn ensure_task_blocks(
+        &self,
+        source_task_id: &str,
+        target_task_id: &str,
+    ) -> Result<(), IntegrationError> {
+        self.inner
+            .ensure_task_blocks(source_task_id, target_task_id)
             .await
     }
 

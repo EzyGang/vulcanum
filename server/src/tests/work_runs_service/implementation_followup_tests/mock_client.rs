@@ -16,6 +16,7 @@ pub(crate) struct MockFollowupTicketClient {
     tasks: Mutex<HashMap<String, IntegrationTask>>,
     create_count: AtomicUsize,
     update_count: AtomicUsize,
+    block_relations: Mutex<Vec<(String, String)>>,
     fail_after_create: AtomicBool,
 }
 
@@ -55,6 +56,10 @@ impl MockFollowupTicketClient {
 
     pub fn update_count(&self) -> usize {
         self.update_count.load(Ordering::SeqCst)
+    }
+
+    pub fn block_relations(&self) -> Vec<(String, String)> {
+        self.block_relations.lock().expect("relation lock").clone()
     }
 }
 
@@ -100,12 +105,14 @@ impl ImplementationFollowupTicketClient for MockFollowupTicketClient {
         input: CreateIntegrationTaskInput,
     ) -> Result<IntegrationTask, WorkRunsError> {
         self.create_count.fetch_add(1, Ordering::SeqCst);
-        let task = integration_task(
+        let mut task = integration_task(
             "created-followup-ticket",
             &input.title,
             Some(input.body),
             &input.status,
         );
+        task.number = Some(2);
+        task.project_slug = Some("VLC".to_owned());
         self.tasks
             .lock()
             .expect("task lock")
@@ -130,6 +137,20 @@ impl ImplementationFollowupTicketClient for MockFollowupTicketClient {
             WorkRunsError::Provider(IntegrationError::Other("missing mock task".to_owned()))
         })?;
         task.description = Some(description.to_owned());
+        Ok(())
+    }
+
+    async fn ensure_blocks(
+        &self,
+        _provider: &IntegrationProvider,
+        source_task_ref: &str,
+        target_task_ref: &str,
+    ) -> Result<(), WorkRunsError> {
+        let mut relations = self.block_relations.lock().expect("relation lock");
+        let relation = (source_task_ref.to_owned(), target_task_ref.to_owned());
+        if !relations.contains(&relation) {
+            relations.push(relation);
+        }
         Ok(())
     }
 }

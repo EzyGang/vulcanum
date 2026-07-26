@@ -32,6 +32,18 @@ pub struct IntegrationTask {
     pub labels: Vec<IntegrationLabel>,
 }
 
+impl IntegrationTask {
+    #[must_use]
+    pub fn slug(&self) -> Option<String> {
+        match (self.project_slug.as_deref(), self.number) {
+            (Some(project_slug), Some(number)) if !project_slug.is_empty() => {
+                Some(format!("{project_slug}-{number}"))
+            }
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct IntegrationProject {
     pub id: String,

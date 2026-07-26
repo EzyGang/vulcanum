@@ -97,6 +97,14 @@ impl IntegrationProviderClient for LabelFailingClient {
         Err(unexpected_call("update_task_description"))
     }
 
+    async fn ensure_task_blocks(
+        &self,
+        _source_task_id: &str,
+        _target_task_id: &str,
+    ) -> Result<(), IntegrationError> {
+        Err(unexpected_call("ensure_task_blocks"))
+    }
+
     async fn lookup_project(
         &self,
         _project_id: &str,

@@ -20,6 +20,7 @@ pub(crate) struct FollowupTicketRequest<'a> {
     pub request_body: &'a str,
     pub token: Uuid,
     pub external_task_ref: Option<&'a str>,
+    pub review_task_ref: Option<&'a str>,
 }
 
 impl WorkRunsService {
@@ -116,6 +117,15 @@ impl WorkRunsService {
                 .update_description(&provider, &task.id, &description)
                 .await?;
             task.description = Some(description);
+        }
+
+        match request.review_task_ref {
+            Some(review_task_ref) if review_task_ref != task.id.as_str() => {
+                self.implementation_followup_ticket_client
+                    .ensure_blocks(&provider, &task.id, review_task_ref)
+                    .await?;
+            }
+            Some(_) | None => (),
         }
 
         Ok(task)

@@ -483,6 +483,10 @@ selection, Vulcanum does not guess: its reply lists exact commands with a
 and chooses only a ticket already mapped to that PR and project. A ticket with an active
 implementation run rejects another follow-up before its tracker description is changed.
 
+When a separate review ticket already exists for the PR, the implementation ticket is linked as
+blocking that review ticket. The implementation run records the tracker slug, and the confirmation
+uses that slug without exposing the internal work-run ID.
+
 Examples:
 
 ```text

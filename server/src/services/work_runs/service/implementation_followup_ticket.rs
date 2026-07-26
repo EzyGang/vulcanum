@@ -34,6 +34,13 @@ pub(crate) trait ImplementationFollowupTicketClient: Send + Sync {
         external_task_ref: &str,
         description: &str,
     ) -> Result<(), WorkRunsError>;
+
+    async fn ensure_blocks(
+        &self,
+        provider: &IntegrationProvider,
+        source_task_ref: &str,
+        target_task_ref: &str,
+    ) -> Result<(), WorkRunsError>;
 }
 
 pub(crate) struct IntegrationImplementationFollowupTicketClient;
@@ -90,6 +97,18 @@ impl ImplementationFollowupTicketClient for IntegrationImplementationFollowupTic
     ) -> Result<(), WorkRunsError> {
         IntegrationClient::from_provider(provider)
             .update_task_description(external_task_ref, description)
+            .await
+            .map_err(WorkRunsError::from)
+    }
+
+    async fn ensure_blocks(
+        &self,
+        provider: &IntegrationProvider,
+        source_task_ref: &str,
+        target_task_ref: &str,
+    ) -> Result<(), WorkRunsError> {
+        IntegrationClient::from_provider(provider)
+            .ensure_task_blocks(source_task_ref, target_task_ref)
             .await
             .map_err(WorkRunsError::from)
     }

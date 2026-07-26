@@ -73,6 +73,7 @@ async fn rejection_and_provider_outcomes_return_secret_free_actionable_feedback(
             team_id,
             external_task_ref: "task-1".to_owned(),
             ticket_created: false,
+            task_slug: Some("VLC-1".to_owned()),
         },
         GithubImplementationRequestOutcome::AmbiguousTickets {
             team_id,
