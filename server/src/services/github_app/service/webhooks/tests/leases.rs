@@ -50,7 +50,7 @@ impl PullRequestCommentWriter for SlowWriter {
 #[sqlx::test]
 async fn active_delivery_lease_prevents_duplicate_slow_comment(pool: sqlx::PgPool) {
     setup_review_request(&pool).await;
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let writer = Arc::new(SlowWriter::default());
     let service = service_with_writer(&state, writer.clone());
     service
@@ -91,10 +91,10 @@ async fn active_delivery_lease_prevents_duplicate_slow_comment(pool: sqlx::PgPoo
 
 #[sqlx::test]
 async fn stale_claim_cannot_complete_or_retry_new_owner(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let payload = test_helpers::github::github_webhook_payload("closed");
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     service
         .handle(&signature, "pull_request", "fenced-delivery", &payload)
         .await

@@ -14,7 +14,7 @@ use super::support::{setup_review_project, MockReviewTicketCreator, INSTALLATION
 #[sqlx::test]
 async fn github_review_request_is_authorized_and_idempotent(pool: sqlx::PgPool) {
     setup_review_project(&pool).await;
-    let mut state = test_helpers::build_state(pool.clone()).await;
+    let mut state = test_helpers::state::build_state(pool.clone()).await;
     let creator = Arc::new(MockReviewTicketCreator::default());
     state.jobs = state
         .jobs
@@ -88,7 +88,7 @@ async fn linked_review_identity_authorizes_request_without_team_membership(pool:
     .execute(&pool)
     .await
     .expect("link review identity");
-    let mut state = test_helpers::build_state(pool).await;
+    let mut state = test_helpers::state::build_state(pool).await;
     state.jobs = state
         .jobs
         .clone()
@@ -132,7 +132,7 @@ async fn stale_reservation_recovers_remote_ticket_without_duplicate(pool: sqlx::
     .await
     .expect("insert stale reservation");
     let creator = Arc::new(MockReviewTicketCreator::with_existing("recovered-ticket"));
-    let mut state = test_helpers::build_state(pool.clone()).await;
+    let mut state = test_helpers::state::build_state(pool.clone()).await;
     state.jobs = state
         .jobs
         .clone()
@@ -179,7 +179,7 @@ async fn fresh_reservation_does_not_duplicate_remote_creation(pool: sqlx::PgPool
     .await
     .expect("insert active reservation");
     let creator = Arc::new(MockReviewTicketCreator::default());
-    let mut state = test_helpers::build_state(pool).await;
+    let mut state = test_helpers::state::build_state(pool).await;
     state.jobs = state
         .jobs
         .clone()

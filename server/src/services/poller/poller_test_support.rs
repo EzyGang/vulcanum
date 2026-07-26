@@ -119,7 +119,7 @@ pub(crate) fn make_task(id: &str, title: &str) -> IntegrationTask {
 pub(crate) async fn insert_provider(pool: &PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
-    crate::test_helpers::ensure_default_team(pool).await;
+    crate::test_helpers::teams::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) \
@@ -141,7 +141,7 @@ pub(crate) async fn insert_project_config(
 ) -> Uuid {
     let id = Uuid::new_v4();
 
-    crate::test_helpers::ensure_default_team(pool).await;
+    crate::test_helpers::teams::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO project_configs \

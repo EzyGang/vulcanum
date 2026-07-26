@@ -67,7 +67,7 @@ fn parentless_linked_review_is_not_standalone() {
 
 #[sqlx::test]
 async fn standalone_review_token_uses_triggering_installation(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let mut run = standalone_review();
     run.team_id = test_helpers::DEFAULT_TEAM_ID;
     let repos = vec![JobRepo {
@@ -91,7 +91,7 @@ async fn standalone_review_token_uses_triggering_installation(pool: sqlx::PgPool
 
 #[sqlx::test]
 async fn standalone_review_bypasses_task_fetcher(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = state.jobs.with_task_fetcher(Arc::new(FailingTaskFetcher));
     let run = standalone_review();
     let cfg = JobConfigFields::empty_for_team(run.team_id);

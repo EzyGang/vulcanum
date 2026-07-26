@@ -62,9 +62,12 @@ async fn age_work_run(pool: &PgPool, work_run_id: uuid::Uuid) {
 #[sqlx::test]
 async fn dispatch_assigns_pending_job_to_idle_worker(pool: PgPool) {
     let svc = build_service(pool.clone());
-    let worker_id = test_helpers::insert_worker(&pool, "dispatch-worker").await;
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-dispatch-1").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-dispatch-1").await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "dispatch-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-dispatch-1").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "task-dispatch-1")
+            .await;
 
     let summary = svc.dispatch_once().await.expect("Should succeed");
 
@@ -85,8 +88,10 @@ async fn dispatch_assigns_pending_job_to_idle_worker(pool: PgPool) {
 #[sqlx::test]
 async fn dispatch_skips_when_no_idle_workers(pool: PgPool) {
     let svc = build_service(pool.clone());
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-dispatch-2").await;
-    let _wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-no-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-dispatch-2").await;
+    let _wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "task-no-worker").await;
 
     let summary = svc.dispatch_once().await.expect("Should succeed");
 
@@ -97,7 +102,7 @@ async fn dispatch_skips_when_no_idle_workers(pool: PgPool) {
 #[sqlx::test]
 async fn dispatch_skips_when_no_pending_jobs(pool: PgPool) {
     let svc = build_service(pool.clone());
-    let _worker_id = test_helpers::insert_worker(&pool, "idle-no-work").await;
+    let _worker_id = test_helpers::workers::insert_worker(&pool, "idle-no-work").await;
 
     let summary = svc.dispatch_once().await.expect("Should succeed");
 
@@ -108,9 +113,11 @@ async fn dispatch_skips_when_no_pending_jobs(pool: PgPool) {
 #[sqlx::test]
 async fn dispatch_sets_redis_flag(pool: PgPool) {
     let store = Arc::new(InMemoryDispatchStore::new());
-    let worker_id = test_helpers::insert_worker(&pool, "flag-worker").await;
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-dispatch-3").await;
-    let _wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-flag").await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "flag-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-dispatch-3").await;
+    let _wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "task-flag").await;
 
     let svc = DispatcherService::new(
         DispatchRepository::new(),
@@ -131,9 +138,11 @@ async fn dispatch_sets_redis_flag(pool: PgPool) {
 #[sqlx::test]
 async fn dispatch_marks_worker_busy(pool: PgPool) {
     let svc = build_service(pool.clone());
-    let worker_id = test_helpers::insert_worker(&pool, "busy-after").await;
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-dispatch-4").await;
-    let _wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "task-busy").await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "busy-after").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-dispatch-4").await;
+    let _wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "task-busy").await;
 
     svc.dispatch_once().await.expect("Should succeed");
 
@@ -151,10 +160,16 @@ async fn dispatch_marks_worker_busy(pool: PgPool) {
 #[sqlx::test]
 async fn dispatch_recovers_capacity_from_orphaned_dispatched_run(pool: PgPool) {
     let svc = build_service(pool.clone());
-    let worker_id = test_helpers::insert_worker(&pool, "orphaned-dispatch-worker").await;
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-orphaned-dispatch").await;
-    let wr_id =
-        test_helpers::insert_pending_work_run(&pool, project_id, "task-orphaned-dispatch").await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "orphaned-dispatch-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-orphaned-dispatch")
+            .await;
+    let wr_id = test_helpers::work_runs::insert_pending_work_run(
+        &pool,
+        project_id,
+        "task-orphaned-dispatch",
+    )
+    .await;
 
     svc.dispatch_once().await.expect("Should dispatch");
     age_work_run(&pool, wr_id).await;
@@ -183,11 +198,16 @@ async fn dispatch_recovers_capacity_from_orphaned_dispatched_run(pool: PgPool) {
 
 #[sqlx::test]
 async fn reset_stalled_running_releases_worker_capacity(pool: PgPool) {
-    let worker_id = test_helpers::insert_worker(&pool, "stalled-running-worker").await;
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-stalled-running").await;
-    let wr_id =
-        test_helpers::insert_running_work_run(&pool, project_id, "task-stalled-running", worker_id)
-            .await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "stalled-running-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-stalled-running").await;
+    let wr_id = test_helpers::work_runs::insert_running_work_run(
+        &pool,
+        project_id,
+        "task-stalled-running",
+        worker_id,
+    )
+    .await;
 
     age_work_run(&pool, wr_id).await;
     let reset = WorkRunsRepository::new()

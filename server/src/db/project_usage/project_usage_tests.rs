@@ -23,7 +23,8 @@ fn usage_params(
 
 #[sqlx::test]
 async fn daily_usage_accumulates_and_returns_project_summary(pool: sqlx::PgPool) {
-    let project_config_id = test_helpers::insert_project_config(&pool, "project-usage").await;
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "project-usage").await;
     let repo = ProjectUsageRepository::new();
 
     repo.increment_daily(
@@ -74,7 +75,8 @@ async fn daily_usage_accumulates_and_returns_project_summary(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn weekly_usage_excludes_days_before_monday(pool: sqlx::PgPool) {
-    let project_config_id = test_helpers::insert_project_config(&pool, "project-usage-week").await;
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "project-usage-week").await;
     let repo = ProjectUsageRepository::new();
 
     sqlx::query!(

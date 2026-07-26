@@ -13,7 +13,7 @@ use super::support::{setup_review_project, MockReviewTicketCreator, INSTALLATION
 async fn slow_create_renews_ownership_and_prevents_takeover(pool: sqlx::PgPool) {
     let project_id = setup_review_project(&pool).await;
     let creator = Arc::new(MockReviewTicketCreator::slow());
-    let mut state = test_helpers::build_state(pool.clone()).await;
+    let mut state = test_helpers::state::build_state(pool.clone()).await;
     state.jobs = state
         .jobs
         .clone()

@@ -8,7 +8,7 @@ use crate::test_helpers;
 const TEST_PASSWORD: &str = "test-password";
 
 async fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool).await
+    test_helpers::state::build_state(pool).await
 }
 
 fn auth_header(token: &str) -> (&str, String) {
@@ -18,7 +18,7 @@ fn auth_header(token: &str) -> (&str, String) {
 async fn insert_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
     let id = Uuid::new_v4();
 
-    test_helpers::ensure_default_team(pool).await;
+    test_helpers::teams::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type) VALUES ($1, $2, $3, $4, 'kaneo')",
@@ -37,7 +37,7 @@ async fn insert_config(pool: &sqlx::PgPool, external_project_id: &str) -> Uuid {
 async fn insert_provider(pool: &sqlx::PgPool) -> Uuid {
     let id = Uuid::new_v4();
 
-    test_helpers::ensure_default_team(pool).await;
+    test_helpers::teams::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
@@ -61,7 +61,7 @@ async fn insert_config_with_provider(
 ) -> Uuid {
     let id = Uuid::new_v4();
 
-    test_helpers::ensure_default_team(pool).await;
+    test_helpers::teams::ensure_default_team(pool).await;
 
     sqlx::query!(
         "INSERT INTO project_configs (id, team_id, external_project_id, prompt_template, integration_type, provider_id) VALUES ($1, $2, $3, $4, 'kaneo', $5)",

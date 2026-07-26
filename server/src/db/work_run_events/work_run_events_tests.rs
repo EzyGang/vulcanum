@@ -19,8 +19,9 @@ fn make_event(seq: i64, event_type: &str) -> InsertEventParams {
 #[sqlx::test]
 async fn insert_batch_happy_path(pool: sqlx::PgPool) {
     let repo = WorkRunEventsRepository::new();
-    let project_id = test_helpers::insert_project_config(&pool, "evt-happy").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "evt-happy-task").await;
+    let project_id = test_helpers::project_configs::insert_project_config(&pool, "evt-happy").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "evt-happy-task").await;
 
     let events = vec![
         make_event(1, "turn.started"),
@@ -38,8 +39,9 @@ async fn insert_batch_happy_path(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn insert_batch_accepts_out_of_order_sequences(pool: sqlx::PgPool) {
     let repo = WorkRunEventsRepository::new();
-    let project_id = test_helpers::insert_project_config(&pool, "evt-ooo").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "evt-ooo-task").await;
+    let project_id = test_helpers::project_configs::insert_project_config(&pool, "evt-ooo").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "evt-ooo-task").await;
 
     let result = repo
         .insert_batch(&pool, wr_id, &[make_event(2, "late.arrival")])
@@ -59,8 +61,9 @@ async fn insert_batch_accepts_out_of_order_sequences(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn insert_batch_duplicate_is_skipped(pool: sqlx::PgPool) {
     let repo = WorkRunEventsRepository::new();
-    let project_id = test_helpers::insert_project_config(&pool, "evt-dup").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "evt-dup-task").await;
+    let project_id = test_helpers::project_configs::insert_project_config(&pool, "evt-dup").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "evt-dup-task").await;
 
     let r1 = repo
         .insert_batch(&pool, wr_id, &[make_event(1, "session.started")])
@@ -80,8 +83,9 @@ async fn insert_batch_duplicate_is_skipped(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn insert_batch_empty(pool: sqlx::PgPool) {
     let repo = WorkRunEventsRepository::new();
-    let project_id = test_helpers::insert_project_config(&pool, "evt-empty").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "evt-empty-task").await;
+    let project_id = test_helpers::project_configs::insert_project_config(&pool, "evt-empty").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "evt-empty-task").await;
 
     let result = repo.insert_batch(&pool, wr_id, &[]).await.expect("empty");
 
@@ -91,8 +95,9 @@ async fn insert_batch_empty(pool: sqlx::PgPool) {
 #[sqlx::test]
 async fn find_after_returns_ordered_results(pool: sqlx::PgPool) {
     let repo = WorkRunEventsRepository::new();
-    let project_id = test_helpers::insert_project_config(&pool, "evt-find").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "evt-find-task").await;
+    let project_id = test_helpers::project_configs::insert_project_config(&pool, "evt-find").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "evt-find-task").await;
 
     let events: Vec<InsertEventParams> = (1..=5).map(|i| make_event(i, &format!("e{i}"))).collect();
     repo.insert_batch(&pool, wr_id, &events)
@@ -118,8 +123,9 @@ async fn find_last_n_returns_ascending(pool: sqlx::PgPool) {
     use chrono::TimeZone;
 
     let repo = WorkRunEventsRepository::new();
-    let project_id = test_helpers::insert_project_config(&pool, "evt-last").await;
-    let wr_id = test_helpers::insert_pending_work_run(&pool, project_id, "evt-last-task").await;
+    let project_id = test_helpers::project_configs::insert_project_config(&pool, "evt-last").await;
+    let wr_id =
+        test_helpers::work_runs::insert_pending_work_run(&pool, project_id, "evt-last-task").await;
 
     let mut events: Vec<InsertEventParams> = Vec::new();
     for i in 1..=10 {

@@ -8,7 +8,7 @@ use vulcanum_shared::api::wire::ConnectRequest;
 const TEST_PASSWORD: &str = "test-password";
 
 async fn build_state(pool: sqlx::PgPool) -> AppState {
-    test_helpers::build_state(pool).await
+    test_helpers::state::build_state(pool).await
 }
 
 fn auth_header(token: &str) -> (&str, String) {
@@ -206,9 +206,9 @@ async fn delete_worker_returns_204(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn self_delete_worker_returns_204(pool: sqlx::PgPool) {
-    let worker_id = test_helpers::insert_worker(&pool, "self-delete-me").await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "self-delete-me").await;
     let state = build_state(pool).await;
-    let token = test_helpers::build_worker_token(worker_id);
+    let token = test_helpers::workers::build_worker_token(worker_id);
 
     let app = test::init_service(
         App::new()
@@ -228,8 +228,8 @@ async fn self_delete_worker_returns_204(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn list_workers_returns_200(pool: sqlx::PgPool) {
-    test_helpers::insert_worker(&pool, "list-test-1").await;
-    test_helpers::insert_worker(&pool, "list-test-2").await;
+    test_helpers::workers::insert_worker(&pool, "list-test-1").await;
+    test_helpers::workers::insert_worker(&pool, "list-test-2").await;
 
     let state = build_state(pool).await;
     let token = state

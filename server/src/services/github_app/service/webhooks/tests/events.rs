@@ -10,8 +10,8 @@ use crate::test_helpers;
 
 #[test]
 fn signature_accepts_exact_payload() {
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let payload = test_helpers::github::github_webhook_payload("closed");
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     assert!(verify_signature(
         Some(test_helpers::GITHUB_WEBHOOK_SECRET),
         &signature,
@@ -22,8 +22,8 @@ fn signature_accepts_exact_payload() {
 
 #[test]
 fn signature_rejects_modified_payload() {
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let payload = test_helpers::github::github_webhook_payload("closed");
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     assert!(matches!(
         verify_signature(
             Some(test_helpers::GITHUB_WEBHOOK_SECRET),
@@ -36,10 +36,10 @@ fn signature_rejects_modified_payload() {
 
 #[sqlx::test]
 async fn completion_events_are_queued_idempotently(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let payload = test_helpers::github::github_webhook_payload("closed");
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     let first = service
         .handle(&signature, "pull_request", "delivery-1", &payload)
         .await
@@ -54,7 +54,7 @@ async fn completion_events_are_queued_idempotently(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn issue_comment_command_is_queued_with_review_fields(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
     let payload = issue_comment_payload(
         "created",
@@ -63,7 +63,7 @@ async fn issue_comment_command_is_queued_with_review_fields(pool: sqlx::PgPool) 
         "Please @Vulcanum-App review project:00000000-0000-0000-0000-000000000123",
         "octocat",
     );
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     assert_eq!(
         service
             .handle(&signature, "issue_comment", "delivery-review", &payload)
@@ -89,7 +89,7 @@ async fn issue_comment_command_is_queued_with_review_fields(pool: sqlx::PgPool) 
 
 #[sqlx::test]
 async fn invalid_issue_comment_shapes_are_ignored(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
     let cases = [
         issue_comment_payload(
@@ -144,7 +144,7 @@ async fn invalid_issue_comment_shapes_are_ignored(pool: sqlx::PgPool) {
         ),
     ];
     for (index, payload) in cases.iter().enumerate() {
-        let signature = test_helpers::sign_github_webhook(payload);
+        let signature = test_helpers::github::sign_github_webhook(payload);
         assert_eq!(
             service
                 .handle(
@@ -162,7 +162,7 @@ async fn invalid_issue_comment_shapes_are_ignored(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn issue_comment_requires_app_slug(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = GithubWebhookService::new(
         Some(Arc::from(test_helpers::GITHUB_WEBHOOK_SECRET)),
         None,
@@ -178,7 +178,7 @@ async fn issue_comment_requires_app_slug(pool: sqlx::PgPool) {
         "@app",
         "octocat",
     );
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     assert!(matches!(
         service
             .handle(&signature, "issue_comment", "missing-slug", &payload)

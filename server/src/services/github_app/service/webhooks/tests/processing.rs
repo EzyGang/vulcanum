@@ -18,7 +18,7 @@ use crate::test_helpers;
 #[sqlx::test]
 async fn signed_review_command_creates_standalone_run(pool: sqlx::PgPool) {
     setup_review_request(&pool).await;
-    let state = test_helpers::build_state(pool.clone()).await;
+    let state = test_helpers::state::build_state(pool.clone()).await;
     let writer = Arc::new(RecordingWriter::default());
     let service = service_with_writer(&state, writer.clone());
     let payload = issue_comment_payload(
@@ -28,7 +28,7 @@ async fn signed_review_command_creates_standalone_run(pool: sqlx::PgPool) {
         "@vulcanum-app review",
         "octocat",
     );
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
 
     service
         .handle(&signature, "issue_comment", "smoke-delivery", &payload)
@@ -56,10 +56,10 @@ async fn signed_review_command_creates_standalone_run(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn unmatched_close_delivery_remains_retryable(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
-    let payload = test_helpers::github_webhook_payload("closed");
-    let signature = test_helpers::sign_github_webhook(&payload);
+    let payload = test_helpers::github::github_webhook_payload("closed");
+    let signature = test_helpers::github::sign_github_webhook(&payload);
     service
         .handle(&signature, "pull_request", "delivery-race", &payload)
         .await
@@ -77,7 +77,7 @@ async fn unmatched_close_delivery_remains_retryable(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn worker_stops_when_cancelled(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let service = service(&state);
     let cancellation = CancellationToken::new();
     let worker = tokio::spawn(service.run(cancellation.child_token()));
@@ -90,7 +90,7 @@ async fn worker_stops_when_cancelled(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn comment_writer_rejects_disconnected_installation_before_github_call(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let error = state
         .github
         .ensure_pull_request_comment(
@@ -150,7 +150,7 @@ async fn selection_reply_contains_marker_and_exact_commands() {
 }
 
 pub(super) async fn setup_review_request(pool: &sqlx::PgPool) {
-    test_helpers::ensure_default_team(pool).await;
+    test_helpers::teams::ensure_default_team(pool).await;
     sqlx::query!(
         "UPDATE teams SET review_enabled = true WHERE id = $1",
         test_helpers::DEFAULT_TEAM_ID,
@@ -158,7 +158,8 @@ pub(super) async fn setup_review_request(pool: &sqlx::PgPool) {
     .execute(pool)
     .await
     .expect("enable reviews");
-    let project_id = test_helpers::insert_project_config(pool, "webhook-smoke").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(pool, "webhook-smoke").await;
     sqlx::query!(
         "INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position) VALUES ($1, 'acme/widgets', 'https://github.com/acme/widgets', 0)",
         project_id,

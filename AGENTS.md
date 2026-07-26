@@ -199,7 +199,6 @@ server/src/
 - Put repository structs in `src/db/<domain>.rs` and SQLx query modules under `src/db/<domain>/`.
 - Put database row structs, request/response DTOs, enums, shared principals, and domain errors in `src/models/<domain>/`.
 - Put reusable server test helpers, e2e tests, and cross-module service tests under `src/tests/` instead of using `#[path]` from production modules.
-- Split files when they exceed 200 lines.
 - Large domains may be extracted to separate workspace crates under `services/<domain>/`.
 
 ### Repository Conventions

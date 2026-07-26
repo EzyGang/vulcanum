@@ -27,7 +27,7 @@ fn signed_instance_user_token() -> String {
 async fn instance_auth_rejects_instance_subject_with_user_type(pool: sqlx::PgPool) {
     let app = test::init_service(
         App::new()
-            .app_data(web::Data::new(test_helpers::build_state(pool).await))
+            .app_data(web::Data::new(test_helpers::state::build_state(pool).await))
             .route("/instance-only", web::get().to(instance_only)),
     )
     .await;

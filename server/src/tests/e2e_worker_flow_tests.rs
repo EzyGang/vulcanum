@@ -13,7 +13,7 @@ use crate::test_helpers;
 
 #[sqlx::test]
 async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool.clone()).await;
+    let state = test_helpers::state::build_state(pool.clone()).await;
     let token = state
         .auth
         .instance_login("test-password")
@@ -46,7 +46,8 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
     let worker_id = connect_body["worker_id"].as_str().unwrap();
     let worker_uuid = Uuid::parse_str(worker_id).unwrap();
 
-    let project_id = test_helpers::insert_project_config(&pool, "kaneo-review-fix").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-review-fix").await;
     let review_run = WorkRunsRepository::new()
         .insert_work_run(
             &pool,
@@ -180,8 +181,8 @@ async fn review_result_with_warning_does_not_enqueue_fix_run(pool: sqlx::PgPool)
 
 #[sqlx::test]
 async fn stale_worker_marked_disconnected(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool.clone()).await;
-    let worker_id = test_helpers::insert_worker(&pool, "stale-worker").await;
+    let state = test_helpers::state::build_state(pool.clone()).await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "stale-worker").await;
 
     sqlx::query!(
         "UPDATE workers SET last_seen = NOW() - INTERVAL '10 minutes' WHERE id = $1",

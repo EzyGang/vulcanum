@@ -159,8 +159,9 @@ impl IntegrationProviderClient for LabelFailingClient {
 
 #[sqlx::test]
 async fn merged_pr_moves_task_when_lifecycle_label_sync_fails(pool: sqlx::PgPool) {
-    let project_config_id = test_helpers::insert_project_config(&pool, "project-1").await;
-    let state = test_helpers::build_state(pool).await;
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "project-1").await;
+    let state = test_helpers::state::build_state(pool).await;
     let config = state
         .project_configs
         .find_by_id(project_config_id)

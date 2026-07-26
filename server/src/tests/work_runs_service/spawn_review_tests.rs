@@ -89,14 +89,14 @@ fn static_task(title: &str) -> Arc<StaticTaskFetcher> {
 
 #[sqlx::test]
 async fn spawn_review_inherits_parent_task_metadata(pool: sqlx::PgPool) {
-    let svc = test_helpers::build_state(pool.clone())
+    let svc = test_helpers::state::build_state(pool.clone())
         .await
         .jobs
         .with_task_fetcher(static_task(
             "Fetched title must not replace parent metadata",
         ));
     let project_config_id =
-        test_helpers::insert_project_config(&pool, "kaneo-review-metadata").await;
+        test_helpers::project_configs::insert_project_config(&pool, "kaneo-review-metadata").await;
     sqlx::query!(
         "UPDATE project_configs SET review_enabled = true WHERE id = $1",
         project_config_id,
