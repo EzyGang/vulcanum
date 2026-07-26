@@ -18,4 +18,6 @@ fn default_review_prompt_checks_repo_instructions_and_validation() {
     assert!(DEFAULT_REVIEW_PROMPT_TEMPLATE.contains("must not edit files"));
     assert!(DEFAULT_REVIEW_PROMPT_TEMPLATE.contains("formatted and validated"));
     assert!(DEFAULT_REVIEW_PROMPT_TEMPLATE.contains("Keep the final response concise"));
+    assert!(DEFAULT_REVIEW_PROMPT_TEMPLATE.contains("fresh review request"));
+    assert!(DEFAULT_REVIEW_PROMPT_TEMPLATE.contains("earlier run does not satisfy"));
 }

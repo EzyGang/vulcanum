@@ -1,0 +1,259 @@
+use actix_web::{test, web, App};
+
+use crate::app_state::AppState;
+use crate::routes;
+use crate::test_helpers;
+use vulcanum_shared::api::wire::ConnectRequest;
+
+const TEST_PASSWORD: &str = "test-password";
+
+async fn build_state(pool: sqlx::PgPool) -> AppState {
+    test_helpers::state::build_state(pool).await
+}
+
+fn auth_header(token: &str) -> (&str, String) {
+    ("Authorization", format!("Bearer {token}"))
+}
+
+#[sqlx::test]
+async fn generate_code_returns_201(pool: sqlx::PgPool) {
+    let state = build_state(pool).await;
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/workers/codes")
+        .insert_header(auth_header(&token))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 201);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert!(body["code"].as_str().unwrap().len() == 16);
+    assert!(body["expires_at"].is_string());
+}
+
+#[sqlx::test]
+async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
+    let state = build_state(pool).await;
+    let code = state
+        .workers
+        .generate_code(test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("should generate");
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/workers/connect")
+        .set_json(serde_json::json!({
+            "code": code.code,
+            "worker_name": "handler-test"
+        }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 200);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert!(body["access_token"].is_string());
+    assert!(body["expires_at"].is_string());
+    assert_eq!(body["name"], "handler-test");
+}
+
+#[sqlx::test]
+async fn connect_with_invalid_code_returns_400(pool: sqlx::PgPool) {
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool).await))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/workers/connect")
+        .set_json(serde_json::json!({
+            "code": "nope",
+            "worker_name": "x"
+        }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 400);
+}
+
+#[sqlx::test]
+async fn refresh_with_valid_token_returns_200(pool: sqlx::PgPool) {
+    let state = build_state(pool).await;
+    let code = state
+        .workers
+        .generate_code(test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("should generate");
+    let connect = state
+        .workers
+        .connect(ConnectRequest {
+            code: code.code,
+            worker_name: "rt-handler".to_owned(),
+            max_concurrent_jobs: None,
+            capabilities: Default::default(),
+        })
+        .await
+        .unwrap();
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/workers/refresh")
+        .set_json(serde_json::json!({
+            "refresh_token": connect.refresh_token
+        }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 200);
+
+    let body: serde_json::Value = test::read_body_json(resp).await;
+    assert!(body["access_token"].is_string());
+    assert!(body["refresh_token"].is_string());
+    assert!(body["expires_at"].is_string());
+}
+
+#[sqlx::test]
+async fn refresh_with_invalid_token_returns_401(pool: sqlx::PgPool) {
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(build_state(pool).await))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::post()
+        .uri("/api/v1/workers/refresh")
+        .set_json(serde_json::json!({
+            "refresh_token": "bad-token"
+        }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 401);
+}
+
+#[sqlx::test]
+async fn delete_worker_returns_204(pool: sqlx::PgPool) {
+    let state = build_state(pool).await;
+    let code = state
+        .workers
+        .generate_code(test_helpers::DEFAULT_TEAM_ID)
+        .await
+        .expect("should generate");
+    let connect = state
+        .workers
+        .connect(ConnectRequest {
+            code: code.code,
+            worker_name: "delete-me".to_owned(),
+            max_concurrent_jobs: None,
+            capabilities: Default::default(),
+        })
+        .await
+        .unwrap();
+    let worker_id = connect.worker_id;
+
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::delete()
+        .uri(&format!("/api/v1/workers/{worker_id}"))
+        .insert_header(auth_header(&token))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 204);
+}
+
+#[sqlx::test]
+async fn self_delete_worker_returns_204(pool: sqlx::PgPool) {
+    let worker_id = test_helpers::workers::insert_worker(&pool, "self-delete-me").await;
+    let state = build_state(pool).await;
+    let token = test_helpers::workers::build_worker_token(worker_id);
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::delete()
+        .uri("/api/v1/workers/me")
+        .insert_header(("Authorization", token))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 204);
+}
+
+#[sqlx::test]
+async fn list_workers_returns_200(pool: sqlx::PgPool) {
+    test_helpers::workers::insert_worker(&pool, "list-test-1").await;
+    test_helpers::workers::insert_worker(&pool, "list-test-2").await;
+
+    let state = build_state(pool).await;
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .unwrap()
+        .access_token;
+
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::get()
+        .uri("/api/v1/workers")
+        .insert_header(auth_header(&token))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 200);
+
+    let body: Vec<serde_json::Value> = test::read_body_json(resp).await;
+    assert!(body.len() >= 2);
+}

@@ -13,12 +13,14 @@ use anyhow::Context;
 
 use tokio::sync::RwLock;
 
+use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::client::ApiClient;
-use vulcanum_shared::runtime::types::SessionExport;
+use vulcanum_shared::runtime::types::{FinishRunArtifact, SessionExport};
 use vulcanum_shared::state::worker::WorkerState;
 
 use crate::daemon::job::execution::artifact::read_finish_artifact;
 use crate::daemon::job::execution::submit::submit_turn_result;
+use crate::daemon::job::review::review_loop::{ReviewLoopCheckpoint, ReviewLoopState};
 use crate::daemon::queue::JobTracker;
 use crate::providers::opencode;
 use crate::providers::opencode::api;
@@ -29,6 +31,16 @@ use crate::recovery::recover_session::{
     mark_lost_and_submit, recover_omp_rpc_session_task, recover_session_task,
 };
 use crate::state::journal::Journal;
+
+#[must_use]
+fn should_resume_review_artifact(
+    artifact: &FinishRunArtifact,
+    max_turns: i32,
+    checkpoint: ReviewLoopCheckpoint,
+) -> bool {
+    let mut state = ReviewLoopState::resume(WorkRunType::PullRequestReview, max_turns, checkpoint);
+    state.prompt_after_artifact(artifact).is_some()
+}
 
 pub async fn reconcile_running_jobs(
     journal: &Arc<Journal>,
@@ -50,22 +62,40 @@ pub async fn reconcile_running_jobs(
         let artifact_path = std::path::Path::new(&entry.workdir)
             .join("home")
             .join("finish_artifact.json");
-        if let Some(artifact) = read_finish_artifact(&artifact_path) {
-            tracing::info!(
-                job_id = %entry.job_id,
-                "submitting recovered finish artifact without resuming agent"
-            );
-            submit_turn_result(
-                client,
-                worker_state,
-                journal,
-                entry.job_id,
-                &recovered_artifact_export(),
-                Some(&artifact),
-            )
-            .await;
-            cleanup_stale_job(entry).await;
-            continue;
+        match read_finish_artifact(&artifact_path) {
+            Some(artifact)
+                if should_resume_review_artifact(
+                    &artifact,
+                    entry.max_turns.unwrap_or(1),
+                    ReviewLoopCheckpoint {
+                        fix_pass: entry.review_fix_pass,
+                        fixing: entry.review_fixing,
+                    },
+                ) =>
+            {
+                tracing::info!(
+                    job_id = %entry.job_id,
+                    "resuming session to address recovered review findings"
+                );
+            }
+            Some(artifact) => {
+                tracing::info!(
+                    job_id = %entry.job_id,
+                    "submitting recovered finish artifact without resuming agent"
+                );
+                submit_turn_result(
+                    client,
+                    worker_state,
+                    journal,
+                    entry.job_id,
+                    &recovered_artifact_export(),
+                    Some(&artifact),
+                )
+                .await;
+                cleanup_stale_job(entry).await;
+                continue;
+            }
+            None => (),
         }
         if entry.agent_backend.as_deref() == Some("omp_rpc") {
             if !job_tracker.reserve(entry.job_id).await {

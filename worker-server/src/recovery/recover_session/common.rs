@@ -19,6 +19,18 @@ use crate::recovery::cleanup::kill_host_process_group;
 use crate::state::journal::{Journal, JournalEntry, JournalResultUpdate, JournalStatus};
 use crate::storage::messages::MessageStore;
 
+pub(super) fn pending_turn(
+    entry: &JournalEntry,
+) -> Option<crate::daemon::job::turn_loop::PendingTurn> {
+    entry
+        .pending_prompt
+        .as_ref()
+        .map(|prompt| crate::daemon::job::turn_loop::PendingTurn {
+            prompt: prompt.clone(),
+            cleanup_finish_artifact: entry.pending_artifact_cleanup,
+        })
+}
+
 pub(super) fn recovery_continuation_prompt(turn: i32, max_turns: i32) -> String {
     let next_turn = turn + 1;
     let final_turn_instruction = match next_turn >= max_turns {

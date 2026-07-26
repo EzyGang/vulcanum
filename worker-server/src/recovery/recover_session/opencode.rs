@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use vulcanum_shared::api::wire::WorkRunType;
+
 use vulcanum_shared::client::ApiClient;
 use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::ResourceLimits;
@@ -12,14 +13,20 @@ use crate::daemon::auth::with_retry_on_401;
 use crate::daemon::job::github_credentials::{
     setup_recovered_credentials, spawn_refresh_task, stop_refresh_task,
 };
-use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx};
+use crate::daemon::job::review::review_loop::ReviewLoopCheckpoint;
+use crate::daemon::job::turn_loop::{run_turn_loop, TurnLoopCtx, TurnLoopStart};
 use crate::providers::opencode::events;
 use crate::providers::opencode::runner::{OpenCodeRunningSession, SessionConfig};
 use crate::providers::opencode::OpenCodeClient;
 use crate::recovery::recover_session::common::{
-    cleanup_recovery, mark_lost_and_submit, save_recovered_messages,
+    cleanup_recovery, mark_lost_and_submit, pending_turn, save_recovered_messages,
 };
 use crate::state::journal::{Journal, JournalEntry};
+
+#[must_use]
+pub(crate) fn recovered_work_type(entry: &JournalEntry) -> WorkRunType {
+    entry.work_type
+}
 
 pub(crate) async fn recover_session_task(
     entry: JournalEntry,
@@ -46,7 +53,7 @@ pub(crate) async fn recover_session_task(
 
     let max_turns = entry.max_turns.unwrap_or(1).max(1);
     let current_turn = entry.turn_count.unwrap_or(0);
-    let initial_turn = current_turn + 1;
+    let initial_turn = current_turn.max(1);
     let recovered_job = match with_retry_on_401(&api_client, &worker_state, |token| {
         let client = api_client.clone();
         let job_id = entry.job_id;
@@ -59,14 +66,12 @@ pub(crate) async fn recover_session_task(
             tracing::warn!(
                 job_id = %entry.job_id,
                 error = %e,
-                "failed to load job during recovery, using implementation turn loop without github credential refresh"
+                "failed to load job during recovery, continuing with persisted work type without github credential refresh"
             );
             None
         }
     };
-    let work_type = recovered_job
-        .as_ref()
-        .map_or(WorkRunType::Implementation, |job| job.work_type);
+    let work_type = recovered_work_type(&entry);
 
     let running_session = OpenCodeRunningSession::new(SessionConfig {
         client: oc_client,
@@ -135,15 +140,18 @@ pub(crate) async fn recover_session_task(
             )
         })
     });
-    run_turn_loop(
-        &mut boxed,
-        &artifact_path,
+    let start = TurnLoopStart {
         work_type,
         max_turns,
-        initial_turn,
-        &ctx,
-    )
-    .await;
+        turn: initial_turn,
+        review_checkpoint: ReviewLoopCheckpoint {
+            fix_pass: entry.review_fix_pass,
+            fixing: entry.review_fixing,
+        },
+        pending_turn: pending_turn(&entry),
+        recovery_turn: None,
+    };
+    run_turn_loop(&mut boxed, &artifact_path, start, &ctx).await;
     stop_refresh_task(github_refresh_stop);
     if let Some(session_id) = boxed.session_id().map(str::to_owned) {
         match boxed.export_messages().await {

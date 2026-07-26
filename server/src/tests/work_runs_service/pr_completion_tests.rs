@@ -35,7 +35,7 @@ impl PullRequestStateReader for FakePullRequestStateReader {
 
 #[sqlx::test]
 async fn terminal_pr_set_requires_at_least_one_pr(pool: sqlx::PgPool) {
-    let service = test_helpers::build_state(pool)
+    let service = test_helpers::state::build_state(pool)
         .await
         .jobs
         .with_pr_state_reader(Arc::new(FakePullRequestStateReader {
@@ -50,7 +50,7 @@ async fn terminal_pr_set_requires_at_least_one_pr(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn closed_and_merged_prs_are_terminal(pool: sqlx::PgPool) {
-    let service = test_helpers::build_state(pool)
+    let service = test_helpers::state::build_state(pool)
         .await
         .jobs
         .with_pr_state_reader(Arc::new(FakePullRequestStateReader {
@@ -69,7 +69,7 @@ async fn closed_and_merged_prs_are_terminal(pool: sqlx::PgPool) {
 
 #[sqlx::test]
 async fn open_pr_blocks_completion_and_lookup_failure_retries(pool: sqlx::PgPool) {
-    let open_service = test_helpers::build_state(pool.clone())
+    let open_service = test_helpers::state::build_state(pool.clone())
         .await
         .jobs
         .with_pr_state_reader(Arc::new(FakePullRequestStateReader {
@@ -78,7 +78,7 @@ async fn open_pr_blocks_completion_and_lookup_failure_retries(pool: sqlx::PgPool
                 (2, Some(PullRequestState::Open)),
             ]),
         }));
-    let failed_service = test_helpers::build_state(pool)
+    let failed_service = test_helpers::state::build_state(pool)
         .await
         .jobs
         .with_pr_state_reader(Arc::new(FakePullRequestStateReader {
@@ -100,7 +100,8 @@ async fn open_pr_blocks_completion_and_lookup_failure_retries(pool: sqlx::PgPool
 
 #[sqlx::test]
 async fn webhook_target_lookup_is_scoped_to_installation_and_pr(pool: sqlx::PgPool) {
-    let project_config_id = test_helpers::insert_project_config(&pool, "webhook-target").await;
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "webhook-target").await;
     sqlx::query!(
         "INSERT INTO github_installations \
          (github_installation_id, account_login, team_id) VALUES ($1, $2, $3)",

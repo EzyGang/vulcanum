@@ -1,7 +1,7 @@
 use vulcanum_shared::api::wire::WorkRunType;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus};
 
-use crate::daemon::job::review::review_loop::ReviewLoopState;
+use crate::daemon::job::review::review_loop::{ReviewLoopCheckpoint, ReviewLoopState};
 
 #[test]
 fn review_loop_continues_for_each_configured_follow_up_pass() {
@@ -36,6 +36,62 @@ fn review_loop_submits_clean_review_immediately() {
     ));
 
     assert!(prompt.is_none());
+}
+
+#[test]
+fn existing_actionable_review_still_starts_fix_pass() {
+    let mut state = ReviewLoopState::new(WorkRunType::PullRequestReview, 1);
+    let mut artifact = actionable_review_artifact();
+    artifact.review_already_exists = true;
+
+    let prompt = state.prompt_after_artifact(&artifact);
+
+    assert!(prompt.is_some());
+    assert_eq!(state.progress().fix_pass, 1);
+}
+
+#[test]
+fn recovered_follow_up_preserves_completed_fix_passes() {
+    let checkpoint = ReviewLoopCheckpoint {
+        fix_pass: 1,
+        fixing: false,
+    };
+    let mut state = ReviewLoopState::resume(WorkRunType::PullRequestReview, 1, checkpoint);
+
+    let prompt = state.prompt_after_artifact(&actionable_review_artifact());
+
+    assert!(prompt.is_none());
+    assert_eq!(state.progress().fix_pass, 1);
+}
+
+#[test]
+fn recovered_fix_turn_returns_to_follow_up_review() {
+    let checkpoint = ReviewLoopCheckpoint {
+        fix_pass: 1,
+        fixing: true,
+    };
+    let mut state = ReviewLoopState::resume(WorkRunType::PullRequestReview, 3, checkpoint);
+
+    let prompt = state
+        .prompt_after_fix_turn()
+        .expect("recovered fix turn should continue into re-review");
+
+    assert!(prompt.contains("[Review follow-up 1/3]"));
+    assert_eq!(state.progress().fix_pass, 1);
+}
+
+#[test]
+fn recovered_fix_at_effective_cap_does_not_start_follow_up_review() {
+    let checkpoint = ReviewLoopCheckpoint {
+        fix_pass: 1,
+        fixing: true,
+    };
+    let mut state = ReviewLoopState::resume(WorkRunType::PullRequestReview, 1, checkpoint);
+
+    let prompt = state.prompt_after_fix_turn_within_cap(3);
+
+    assert!(prompt.is_none());
+    assert!(state.checkpoint().fixing);
 }
 
 #[test]

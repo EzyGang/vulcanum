@@ -2,6 +2,8 @@ use chrono::DateTime;
 use rusqlite::types::Type;
 use uuid::Uuid;
 
+use vulcanum_shared::api::wire::WorkRunType;
+
 use crate::state::journal::model::{journal_status_from_str, JournalEntry};
 
 pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<JournalEntry> {
@@ -10,6 +12,8 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
     let started_at = row.get::<_, String>(5)?;
     let finished_at = row.get::<_, Option<String>>(6)?;
 
+    let work_type = work_type_from_str(&row.get::<_, String>(34)?)
+        .ok_or_else(|| invalid_text_column(34, "invalid work run type"))?;
     let job_id = Uuid::parse_str(&job_id)
         .map_err(|err| rusqlite::Error::FromSqlConversionFailure(0, Type::Text, Box::new(err)))?;
     let status = journal_status_from_str(&status)
@@ -32,6 +36,7 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
         workdir: row.get(1)?,
         container_name: row.get(2)?,
         harness_type: row.get(3)?,
+        work_type,
         status,
         started_at,
         finished_at,
@@ -48,16 +53,20 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
         review_already_exists: row.get(17)?,
         error_message: row.get(18)?,
         turn_count: row.get(19)?,
-        session_id: row.get(20)?,
-        max_turns: row.get(21)?,
-        host_pid: row.get(22)?,
-        host_port: row.get(23)?,
-        agent_backend: row.get(24)?,
-        agent_session_path: row.get(25)?,
-        agent_config_dir: row.get(26)?,
-        agent_state_dir: row.get(27)?,
-        agent_transport: row.get(28)?,
-        agent_pid: row.get(29)?,
+        review_fix_pass: row.get(20)?,
+        review_fixing: row.get(21)?,
+        pending_prompt: row.get(22)?,
+        pending_artifact_cleanup: row.get(23)?,
+        session_id: row.get(24)?,
+        max_turns: row.get(25)?,
+        host_pid: row.get(26)?,
+        host_port: row.get(27)?,
+        agent_backend: row.get(28)?,
+        agent_session_path: row.get(29)?,
+        agent_config_dir: row.get(30)?,
+        agent_state_dir: row.get(31)?,
+        agent_transport: row.get(32)?,
+        agent_pid: row.get(33)?,
     })
 }
 
@@ -74,4 +83,12 @@ fn invalid_text_column(column: usize, message: impl Into<String>) -> rusqlite::E
 
 fn normalize_optional_text(value: Option<String>) -> Option<String> {
     value.filter(|value| !value.is_empty())
+}
+
+fn work_type_from_str(value: &str) -> Option<WorkRunType> {
+    match value {
+        "implementation" => Some(WorkRunType::Implementation),
+        "pull_request_review" => Some(WorkRunType::PullRequestReview),
+        _ => None,
+    }
 }

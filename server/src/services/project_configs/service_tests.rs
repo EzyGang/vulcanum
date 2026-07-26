@@ -18,8 +18,9 @@ async fn get_by_id_rejects_cross_team_config(pool: sqlx::PgPool) {
         IntegrationProvidersRepository::new(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
-    let team_b = test_helpers::insert_team(&pool, "team-b").await;
-    let config_id = test_helpers::insert_project_config(&pool, "cross-team-project").await;
+    let team_b = test_helpers::teams::insert_team(&pool, "team-b").await;
+    let config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "cross-team-project").await;
 
     let err = svc
         .get_by_id(config_id, team_b)
@@ -37,7 +38,8 @@ async fn effective_settings_uses_default_prompts_for_empty_team_prompts(pool: sq
         IntegrationProvidersRepository::new(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
-    let config_id = test_helpers::insert_project_config(&pool, "empty-review-prompt").await;
+    let config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "empty-review-prompt").await;
     sqlx::query!(
         "UPDATE project_configs SET prompt_template = '' WHERE id = $1",
         config_id,
@@ -71,7 +73,8 @@ async fn effective_settings_uses_project_capacity_override(pool: sqlx::PgPool) {
         IntegrationProvidersRepository::new(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
-    let config_id = test_helpers::insert_project_config(&pool, "capacity-override").await;
+    let config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "capacity-override").await;
     sqlx::query!(
         "UPDATE project_configs SET max_in_progress_tasks = 3 WHERE id = $1",
         config_id,
@@ -100,7 +103,8 @@ async fn effective_settings_rejects_invalid_stored_agent_backend(pool: sqlx::PgP
         IntegrationProvidersRepository::new(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
-    let config_id = test_helpers::insert_project_config(&pool, "invalid-agent-backend").await;
+    let config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "invalid-agent-backend").await;
     sqlx::query!(
         "UPDATE teams SET agent_backend = 'not_a_backend' WHERE id = $1",
         test_helpers::DEFAULT_TEAM_ID,
@@ -168,8 +172,8 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
         IntegrationProvidersRepository::new(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
-    test_helpers::ensure_default_team(&pool).await;
-    let team_b = test_helpers::insert_team(&pool, "provider-team-b").await;
+    test_helpers::teams::ensure_default_team(&pool).await;
+    let team_b = test_helpers::teams::insert_team(&pool, "provider-team-b").await;
     let provider_id = uuid::Uuid::new_v4();
     sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
@@ -182,7 +186,9 @@ async fn update_rejects_cross_team_provider(pool: sqlx::PgPool) {
     .execute(&pool)
     .await
     .expect("provider should insert");
-    let config_id = test_helpers::insert_project_config(&pool, "cross-team-provider-update").await;
+    let config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "cross-team-provider-update")
+            .await;
     sqlx::query!(
         "INSERT INTO project_config_repos (project_config_id, repo_full_name, repo_url, position) VALUES ($1, 'acme/api', 'https://github.com/acme/api', 0)",
         config_id
@@ -214,7 +220,8 @@ async fn update_rejects_enabling_automation_without_repos(pool: sqlx::PgPool) {
         IntegrationProvidersRepository::new(),
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
-    let config_id = test_helpers::insert_project_config(&pool, "empty-repo-enable").await;
+    let config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "empty-repo-enable").await;
     sqlx::query!(
         "UPDATE project_configs SET enabled = false WHERE id = $1",
         config_id
@@ -247,9 +254,12 @@ async fn update_rejects_empty_repo_list_while_automation_remains_enabled(pool: s
         TeamsService::new(TeamsRepository::new(), pool.clone()),
     );
     let provider_id = insert_provider(&pool).await;
-    let config_id =
-        test_helpers::insert_project_config_with_provider(&pool, "empty-repo-update", provider_id)
-            .await;
+    let config_id = test_helpers::project_configs::insert_project_config_with_provider(
+        &pool,
+        "empty-repo-update",
+        provider_id,
+    )
+    .await;
 
     let err = svc
         .update(

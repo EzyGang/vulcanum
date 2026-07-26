@@ -1,3 +1,6 @@
+pub(super) mod continuation;
+mod session;
+
 use std::path::Path;
 use std::sync::Arc;
 
@@ -10,11 +13,13 @@ use vulcanum_shared::runtime::agent::RunningSession;
 use vulcanum_shared::runtime::types::{FinishRunArtifact, FinishStatus, SessionExport};
 use vulcanum_shared::state::worker::WorkerState;
 
+use self::continuation::{continue_session, start_recovered_turn, RecoveredTurnStart};
+use self::session::{finish_exit_code, submit_provider_failure, wait_for_session};
 use super::execution::artifact::read_finish_artifact;
 use super::execution::event_reporter::EventReporter;
 use super::execution::submit::{submit_failed_result, submit_turn_result, FailedResult};
 use super::prompts::text::continuation_prompt;
-use super::review::review_loop::ReviewLoopState;
+use super::review::review_loop::{ReviewLoopCheckpoint, ReviewLoopState};
 use crate::state::journal::Journal;
 
 pub(crate) struct TurnLoopCtx {
@@ -25,17 +30,65 @@ pub(crate) struct TurnLoopCtx {
     pub worker_id: Uuid,
     pub reporter: Arc<EventReporter>,
 }
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) struct PendingTurn {
+    pub prompt: String,
+    pub cleanup_finish_artifact: bool,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) struct RecoveryTurn {
+    pub prompt: String,
+    pub turn: i32,
+}
+pub(crate) struct TurnLoopStart {
+    pub work_type: WorkRunType,
+    pub max_turns: i32,
+    pub turn: i32,
+    pub review_checkpoint: ReviewLoopCheckpoint,
+    pub pending_turn: Option<PendingTurn>,
+    pub recovery_turn: Option<RecoveryTurn>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) struct StartupTurn {
+    pub prompt: String,
+    pub turn: i32,
+    pub cleanup_finish_artifact: bool,
+    pub staged: bool,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum StartupAction {
+    Continue(StartupTurn),
+    SubmitArtifact,
+}
 
 pub(crate) async fn run_turn_loop(
     running_session: &mut Box<dyn RunningSession>,
     artifact_path: &Path,
-    work_type: WorkRunType,
-    max_turns: i32,
-    initial_turn: i32,
+    start: TurnLoopStart,
     ctx: &TurnLoopCtx,
 ) -> bool {
-    let mut turn = initial_turn;
-    let mut review_loop = ReviewLoopState::new(work_type, max_turns);
+    let mut turn = start.turn;
+    let max_turns = start.max_turns;
+    let mut review_loop =
+        ReviewLoopState::resume(start.work_type, max_turns, start.review_checkpoint);
+    match start_recovered_turn(
+        running_session,
+        artifact_path,
+        &mut review_loop,
+        &mut turn,
+        start.pending_turn,
+        start.recovery_turn,
+        ctx,
+    )
+    .await
+    {
+        RecoveredTurnStart::Continue => (),
+        RecoveredTurnStart::Submitted => return true,
+        RecoveredTurnStart::Failed => return false,
+    }
     let mut cancel_rx = ctx.reporter.cancel_receiver();
 
     loop {
@@ -73,25 +126,37 @@ pub(crate) async fn run_turn_loop(
         let finish_artifact = read_finish_artifact(artifact_path);
 
         if let Some(artifact) = &finish_artifact {
-            if let Some(prompt) = review_loop.prompt_after_artifact(artifact) {
-                let progress = review_loop.progress();
-                remove_finish_artifact(artifact_path);
-                ctx.reporter
-                    .emit(
-                        "review.fix.continuing",
-                        serde_json::json!({
-                            "turn": turn,
-                            "fix_pass": progress.fix_pass,
-                            "max_fix_passes": progress.max_fix_passes,
-                        }),
+            let review_prompt = review_loop.prompt_after_artifact(artifact);
+            if turn < review_loop.effective_max_turns() {
+                if let Some(prompt) = review_prompt {
+                    let progress = review_loop.progress();
+                    ctx.reporter
+                        .emit(
+                            "review.fix.continuing",
+                            serde_json::json!({
+                                "turn": turn,
+                                "fix_pass": progress.fix_pass,
+                                "max_fix_passes": progress.max_fix_passes,
+                            }),
+                        )
+                        .await;
+                    let next_turn = turn + 1;
+                    if !continue_session(
+                        running_session,
+                        &prompt,
+                        next_turn,
+                        &review_loop,
+                        true,
+                        artifact_path,
+                        ctx,
                     )
-                    .await;
-                if !continue_session(running_session, &prompt, turn, ctx).await {
-                    return false;
+                    .await
+                    {
+                        return false;
+                    }
+                    turn = next_turn;
+                    continue;
                 }
-                turn += 1;
-                let _ = ctx.journal.update_turn(ctx.job_id, turn);
-                continue;
             }
 
             let mut artifact_export = session_export.clone();
@@ -120,7 +185,7 @@ pub(crate) async fn run_turn_loop(
             return true;
         }
 
-        if let Some(prompt) = review_loop.prompt_after_fix_turn() {
+        if let Some(prompt) = review_loop.prompt_after_fix_turn_within_cap(turn) {
             let progress = review_loop.progress();
             ctx.reporter
                 .emit(
@@ -132,11 +197,21 @@ pub(crate) async fn run_turn_loop(
                     }),
                 )
                 .await;
-            if !continue_session(running_session, &prompt, turn, ctx).await {
+            let next_turn = turn + 1;
+            if !continue_session(
+                running_session,
+                &prompt,
+                next_turn,
+                &review_loop,
+                false,
+                artifact_path,
+                ctx,
+            )
+            .await
+            {
                 return false;
             }
-            turn += 1;
-            let _ = ctx.journal.update_turn(ctx.job_id, turn);
+            turn = next_turn;
             continue;
         }
 
@@ -178,208 +253,20 @@ pub(crate) async fn run_turn_loop(
                 serde_json::json!({"turn": turn, "next_turn": turn + 1}),
             )
             .await;
-        if !continue_session(running_session, &prompt, turn, ctx).await {
+        let next_turn = turn + 1;
+        if !continue_session(
+            running_session,
+            &prompt,
+            next_turn,
+            &review_loop,
+            false,
+            artifact_path,
+            ctx,
+        )
+        .await
+        {
             return false;
         }
-
-        turn += 1;
-        let _ = ctx.journal.update_turn(ctx.job_id, turn);
-    }
-}
-
-async fn wait_for_session(
-    running_session: &mut Box<dyn RunningSession>,
-    cancel_rx: &mut watch::Receiver<bool>,
-    turn: i32,
-    ctx: &TurnLoopCtx,
-) -> Option<SessionExport> {
-    if *cancel_rx.borrow() {
-        return cancel_running_session(running_session, turn, ctx).await;
-    }
-
-    loop {
-        tokio::select! {
-            result = running_session.wait() => {
-                return match result {
-                    Ok(export) => Some(export),
-                    Err(error) => {
-                        tracing::error!(
-                            worker_id = %ctx.worker_id,
-                            work_run_id = %ctx.job_id,
-                            turn = turn,
-                            error = %error,
-                            "session wait failed",
-                        );
-                        let _ = running_session.cancel().await;
-                        ctx.reporter
-                            .emit(
-                                "session.failed",
-                                serde_json::json!({"reason": "wait_error", "turn": turn}),
-                            )
-                            .await;
-                        submit_failed_result(
-                            ctx.client.clone(),
-                            ctx.worker_state.clone(),
-                            ctx.journal.clone(),
-                            ctx.job_id,
-                            &FailedResult::empty(),
-                        )
-                        .await;
-                        None
-                    }
-                };
-            }
-            changed = cancel_rx.changed() => match changed {
-                Ok(()) if *cancel_rx.borrow() => {
-                    return cancel_running_session(running_session, turn, ctx).await;
-                }
-                Ok(()) => (),
-                Err(_) => (),
-            },
-        }
-    }
-}
-
-async fn cancel_running_session(
-    running_session: &mut Box<dyn RunningSession>,
-    turn: i32,
-    ctx: &TurnLoopCtx,
-) -> Option<SessionExport> {
-    tracing::warn!(
-        worker_id = %ctx.worker_id,
-        work_run_id = %ctx.job_id,
-        turn = turn,
-        "server-requested cancellation received, cancelling running session",
-    );
-    if let Err(error) = running_session.cancel().await {
-        tracing::warn!(
-            worker_id = %ctx.worker_id,
-            work_run_id = %ctx.job_id,
-            turn = turn,
-            error = %error,
-            "provider cancellation returned an error after cleanup",
-        );
-    }
-    ctx.reporter
-        .emit(
-            "session.cancelled",
-            serde_json::json!({"reason": "server_requested", "turn": turn}),
-        )
-        .await;
-    match running_session.export().await {
-        Ok(export) => {
-            submit_turn_result(
-                &ctx.client,
-                &ctx.worker_state,
-                &ctx.journal,
-                ctx.job_id,
-                &export,
-                None,
-            )
-            .await;
-        }
-        Err(error) => {
-            tracing::warn!(
-                worker_id = %ctx.worker_id,
-                work_run_id = %ctx.job_id,
-                turn = turn,
-                error = %error,
-                "failed to export cancelled session",
-            );
-            submit_failed_result(
-                ctx.client.clone(),
-                ctx.worker_state.clone(),
-                ctx.journal.clone(),
-                ctx.job_id,
-                &FailedResult::empty(),
-            )
-            .await;
-        }
-    }
-    None
-}
-
-async fn submit_provider_failure(ctx: &TurnLoopCtx, turn: i32, session_export: &SessionExport) {
-    tracing::warn!(
-        worker_id = %ctx.worker_id,
-        work_run_id = %ctx.job_id,
-        turn = turn,
-        exit_code = session_export.exit_code,
-        provider_error = ?session_export.failure_payload,
-        "session failed, not continuing turn loop",
-    );
-    ctx.reporter
-        .emit(
-            "session.failed",
-            serde_json::json!({
-                "reason": "nonzero_exit",
-                "turn": turn,
-                "exit_code": session_export.exit_code,
-                "tokens_used": session_export.tokens_used,
-                "model_used": session_export.model_used.clone(),
-                "provider_error": session_export.failure_payload.clone(),
-            }),
-        )
-        .await;
-    submit_turn_result(
-        &ctx.client,
-        &ctx.worker_state,
-        &ctx.journal,
-        ctx.job_id,
-        session_export,
-        None,
-    )
-    .await;
-}
-
-async fn continue_session(
-    running_session: &mut Box<dyn RunningSession>,
-    prompt: &str,
-    turn: i32,
-    ctx: &TurnLoopCtx,
-) -> bool {
-    if let Err(e) = running_session.continue_with(prompt).await {
-        tracing::error!(
-            worker_id = %ctx.worker_id,
-            work_run_id = %ctx.job_id,
-            turn = turn,
-            error = %e,
-            "continuation prompt failed",
-        );
-        ctx.reporter
-            .emit(
-                "session.failed",
-                serde_json::json!({"reason": "continuation_failed", "turn": turn}),
-            )
-            .await;
-        submit_failed_result(
-            ctx.client.clone(),
-            ctx.worker_state.clone(),
-            ctx.journal.clone(),
-            ctx.job_id,
-            &FailedResult::empty(),
-        )
-        .await;
-        return false;
-    }
-
-    true
-}
-
-fn remove_finish_artifact(path: &Path) {
-    match std::fs::remove_file(path) {
-        Ok(()) => (),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-        Err(e) => {
-            tracing::warn!(path = %path.display(), error = %e, "failed to remove finish artifact")
-        }
-    }
-}
-
-#[must_use]
-fn finish_exit_code(artifact: &FinishRunArtifact) -> i32 {
-    match artifact.status {
-        FinishStatus::Completed => 0,
-        FinishStatus::Failed | FinishStatus::Blocked => 1,
+        turn = next_turn;
     }
 }

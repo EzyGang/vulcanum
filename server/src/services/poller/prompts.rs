@@ -28,5 +28,5 @@ pub const REVIEW_GITHUB_INSTRUCTION: &str = "\n\nGitHub review workflow:\n\
     1. Confirm the focus pull request and record its current head commit before reviewing.\n\
     2. Use `gh pr view`, `gh pr diff`, and the repository's validation commands to inspect the change and its checks without modifying the worktree.\n\
     3. Do not create branches, edit files, commit, push, or create another pull request during the review.\n\
-    4. Post exactly one comment-only GitHub pull request review for the current head commit. Do not approve or request changes. If a suitable review already exists for that commit, do not duplicate it; if the head changed, review the new commit and post a new review.\n\
-    5. Call `finish_run` with the posted or existing review details";
+    4. Treat this run as a fresh review request. Read prior reviews as context, verify whether their CRITICAL and WARNINGS findings are resolved, and post exactly one new comment-only GitHub pull request review for the current head commit. Do not approve or request changes. A review from an earlier run does not satisfy this request; only avoid posting when this same work run already posted its review before the session resumed.\n\
+    5. Call `finish_run` with the new review details";

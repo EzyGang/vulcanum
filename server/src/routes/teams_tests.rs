@@ -6,7 +6,7 @@ use crate::test_helpers;
 
 #[sqlx::test]
 async fn defaults_returns_prompt_templates(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let token = state
         .auth
         .instance_login("test-password")

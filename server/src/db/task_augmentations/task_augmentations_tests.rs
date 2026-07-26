@@ -26,7 +26,8 @@ fn usage_params<'a>(
 async fn increment_usage_accumulates_counts_and_tokens_per_task(pool: sqlx::PgPool) {
     let repo = TaskAugmentationsRepository::new();
     let project_config_id =
-        test_helpers::insert_project_config(&pool, "task-augment-accumulate").await;
+        test_helpers::project_configs::insert_project_config(&pool, "task-augment-accumulate")
+            .await;
 
     repo.increment_usage(
         &pool,
@@ -75,16 +76,20 @@ async fn increment_usage_accumulates_counts_and_tokens_per_task(pool: sqlx::PgPo
 #[sqlx::test]
 async fn list_for_task_refs_returns_visible_augmentations_in_board_order(pool: sqlx::PgPool) {
     let repo = TaskAugmentationsRepository::new();
-    let project_config_id = test_helpers::insert_project_config(&pool, "task-augment-board").await;
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "task-augment-board").await;
     let other_project_config_id =
-        test_helpers::insert_project_config(&pool, "task-augment-other-project").await;
-    let other_team_id = test_helpers::insert_team(&pool, "Task augmentation other team").await;
-    let other_team_project_config_id = test_helpers::insert_project_config_for_team(
-        &pool,
-        other_team_id,
-        "task-augment-other-team",
-    )
-    .await;
+        test_helpers::project_configs::insert_project_config(&pool, "task-augment-other-project")
+            .await;
+    let other_team_id =
+        test_helpers::teams::insert_team(&pool, "Task augmentation other team").await;
+    let other_team_project_config_id =
+        test_helpers::project_configs::insert_project_config_for_team(
+            &pool,
+            other_team_id,
+            "task-augment-other-team",
+        )
+        .await;
 
     repo.increment_usage(
         &pool,

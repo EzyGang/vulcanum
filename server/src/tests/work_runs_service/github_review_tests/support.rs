@@ -91,7 +91,7 @@ impl ReviewTicketCreator for MockReviewTicketCreator {
 }
 
 pub(super) async fn setup_review_project(pool: &sqlx::PgPool) -> Uuid {
-    test_helpers::ensure_default_team(pool).await;
+    test_helpers::teams::ensure_default_team(pool).await;
     sqlx::query!(
         "UPDATE teams SET review_enabled = true WHERE id = $1",
         test_helpers::DEFAULT_TEAM_ID,
@@ -111,7 +111,7 @@ pub(super) async fn setup_review_project(pool: &sqlx::PgPool) -> Uuid {
     .execute(pool)
     .await
     .expect("insert review provider");
-    let project_id = test_helpers::insert_project_config_with_provider(
+    let project_id = test_helpers::project_configs::insert_project_config_with_provider(
         pool,
         "github-review-project",
         provider_id,

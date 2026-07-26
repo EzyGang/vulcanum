@@ -9,5 +9,7 @@ pub(crate) mod turn_loop;
 
 #[cfg(test)]
 mod github_credentials_tests;
+#[cfg(test)]
+mod turn_loop_tests;
 
 pub(crate) use orchestrate::handle_job;

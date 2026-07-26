@@ -16,7 +16,7 @@ use super::support::{setup_review_project, MockReviewTicketCreator, INSTALLATION
 #[sqlx::test]
 async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
     let project_id = setup_review_project(&pool).await;
-    let mut state = test_helpers::build_state(pool.clone()).await;
+    let mut state = test_helpers::state::build_state(pool.clone()).await;
     state.jobs = state
         .jobs
         .clone()
@@ -89,7 +89,7 @@ async fn github_review_request_creates_standalone_review(pool: sqlx::PgPool) {
 async fn github_review_request_reuses_ticket_for_matching_pull_request(pool: sqlx::PgPool) {
     let project_id = setup_review_project(&pool).await;
     let ticket_creator = Arc::new(MockReviewTicketCreator::default());
-    let mut state = test_helpers::build_state(pool.clone()).await;
+    let mut state = test_helpers::state::build_state(pool.clone()).await;
     state.jobs = state
         .jobs
         .clone()

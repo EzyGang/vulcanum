@@ -5,8 +5,8 @@ use crate::test_helpers;
 #[sqlx::test]
 async fn insert_installation_does_not_reassign_cross_team_installation(pool: sqlx::PgPool) {
     let repo = GithubAppRepository::new();
-    test_helpers::ensure_default_team(&pool).await;
-    let team_b = test_helpers::insert_team(&pool, "github-app-team-b").await;
+    test_helpers::teams::ensure_default_team(&pool).await;
+    let team_b = test_helpers::teams::insert_team(&pool, "github-app-team-b").await;
     let installation_id = 123_456;
 
     repo.insert_installation(
@@ -39,7 +39,7 @@ async fn insert_installation_does_not_reassign_cross_team_installation(pool: sql
 #[sqlx::test]
 async fn link_review_identity_updates_only_selected_installation(pool: sqlx::PgPool) {
     let repo = GithubAppRepository::new();
-    test_helpers::ensure_default_team(&pool).await;
+    test_helpers::teams::ensure_default_team(&pool).await;
     let first = repo
         .insert_installation(
             &pool,

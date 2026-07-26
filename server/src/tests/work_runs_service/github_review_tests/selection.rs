@@ -12,9 +12,11 @@ use super::support::{
 #[sqlx::test]
 async fn github_review_request_requires_deterministic_project_selection(pool: sqlx::PgPool) {
     let first_id = setup_review_project(&pool).await;
-    let second_id = test_helpers::insert_project_config(&pool, "github-review-project-two").await;
+    let second_id =
+        test_helpers::project_configs::insert_project_config(&pool, "github-review-project-two")
+            .await;
     connect_repo(&pool, second_id).await;
-    let mut state = test_helpers::build_state(pool.clone()).await;
+    let mut state = test_helpers::state::build_state(pool.clone()).await;
     state.jobs = state
         .jobs
         .clone()
@@ -61,7 +63,7 @@ async fn github_review_request_explains_disabled_invalid_and_missing_projects(po
     .execute(&pool)
     .await
     .expect("disable project review");
-    let mut state = test_helpers::build_state(pool).await;
+    let mut state = test_helpers::state::build_state(pool).await;
     state.jobs = state
         .jobs
         .clone()

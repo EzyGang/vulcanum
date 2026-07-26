@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use vulcanum_shared::api::wire::WorkRunType;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum JournalStatus {
     Running,
@@ -41,6 +43,7 @@ pub struct JournalEntry {
     pub workdir: String,
     pub container_name: Option<String>,
     pub harness_type: String,
+    pub work_type: WorkRunType,
     pub status: JournalStatus,
     pub started_at: DateTime<Utc>,
     pub finished_at: Option<DateTime<Utc>>,
@@ -57,6 +60,10 @@ pub struct JournalEntry {
     pub review_already_exists: bool,
     pub error_message: Option<String>,
     pub turn_count: Option<i32>,
+    pub review_fix_pass: i32,
+    pub review_fixing: bool,
+    pub pending_prompt: Option<String>,
+    pub pending_artifact_cleanup: bool,
     pub session_id: Option<String>,
     pub max_turns: Option<i32>,
     pub host_pid: Option<i64>,
@@ -93,8 +100,16 @@ pub struct JournalInsert<'a> {
     pub started_at: DateTime<Utc>,
     pub max_turns: i32,
     pub agent_backend: &'a str,
+    pub work_type: WorkRunType,
 }
 
 pub(super) fn journal_status_from_str(s: &str) -> Option<JournalStatus> {
     JournalStatus::from_str(s)
+}
+
+pub(super) fn work_type_as_str(work_type: WorkRunType) -> &'static str {
+    match work_type {
+        WorkRunType::Implementation => "implementation",
+        WorkRunType::PullRequestReview => "pull_request_review",
+    }
 }

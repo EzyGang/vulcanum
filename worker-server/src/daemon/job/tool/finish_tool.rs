@@ -58,8 +58,8 @@ const OPENCODE_REVIEW_TOOL_BODY_TS: &str = r#"export default tool({
     status: tool.schema.enum(["completed", "failed", "blocked"]).describe("Outcome of the review run"),
     summary: tool.schema.string().optional().describe("Brief summary of what was reviewed, what went wrong, or why blocked"),
     review_url: tool.schema.string().optional().describe("URL of the GitHub review that was posted"),
-    review_body: tool.schema.string().optional().describe("Body of the GitHub review that was posted or already exists, including any missing or failing formatter, validation, or test commands"),
-    review_already_exists: tool.schema.boolean().optional().describe("True only when a suitable review already exists for the current PR head commit. If the PR has new commits after the existing review, post a new review and leave this false."),
+    review_body: tool.schema.string().optional().describe("Body of the review requested by this run, including any missing or failing formatter, validation, or test commands"),
+    review_already_exists: tool.schema.boolean().optional().describe("True only when this same work run already posted its review before the session resumed. A review from an earlier run does not satisfy a new review request."),
   },
   async execute(args) {
     const path = artifactPath()

@@ -29,7 +29,7 @@ Before judging the implementation, inspect the repository instructions and proje
 
 Review the solution for correctness, maintainability, and project fit. Make sure the implementation is elegant, avoids duplication, and has been formatted and validated with the repository commands that apply to the changed code. During the review phase, do not edit files, commit, push, or create pull requests. Keep the final response concise and focused on actionable findings.
 
-Post exactly one GitHub pull request review comment using gh. Use comment-only review, not approve or request changes. If a suitable review already exists for the current PR head commit, do not post a duplicate review. If the PR has new commits after the existing review, post a new review.
+Treat this launch as a fresh review request. Read prior reviews as context and verify whether every previous CRITICAL and WARNINGS finding is resolved, even when the pull request head commit has not changed. Post exactly one new GitHub pull request review comment using gh. Use comment-only review, not approve or request changes. Only avoid posting when this same work run already posted its review before the session resumed; a review from an earlier run does not satisfy this request.
 
 The review body must use exactly these Markdown sections in this order:
 ## CRITICAL

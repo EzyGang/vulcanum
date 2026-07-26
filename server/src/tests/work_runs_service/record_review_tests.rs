@@ -53,8 +53,9 @@ fn review_comment_reports_without_review_url() {
 
 #[sqlx::test]
 async fn actionable_review_records_result_without_spawning_fix_run(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool.clone()).await;
-    let project_config_id = test_helpers::insert_project_config(&pool, "review-fix-project").await;
+    let state = test_helpers::state::build_state(pool.clone()).await;
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "review-fix-project").await;
     let run = WorkRunsRepository::new()
         .insert_work_run(
             &pool,

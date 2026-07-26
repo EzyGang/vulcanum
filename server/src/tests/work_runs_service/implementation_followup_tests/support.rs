@@ -11,7 +11,7 @@ pub(super) const INSTALLATION_ID: i64 = 123;
 pub(super) const SENDER_ID: &str = "456";
 
 pub(crate) async fn setup_project(pool: &sqlx::PgPool) -> Uuid {
-    test_helpers::ensure_default_team(pool).await;
+    test_helpers::teams::ensure_default_team(pool).await;
     let provider_id = Uuid::new_v4();
     sqlx::query!(
         "INSERT INTO integration_providers (id, team_id, name, instance_url, api_key) VALUES ($1, $2, $3, $4, $5)",
@@ -24,7 +24,7 @@ pub(crate) async fn setup_project(pool: &sqlx::PgPool) -> Uuid {
     .execute(pool)
     .await
     .expect("insert provider");
-    let project_id = test_helpers::insert_project_config_with_provider(
+    let project_id = test_helpers::project_configs::insert_project_config_with_provider(
         pool,
         "github-followup-project",
         provider_id,
@@ -73,7 +73,7 @@ pub(super) async fn service(
     pool: sqlx::PgPool,
     client: Arc<MockFollowupTicketClient>,
 ) -> WorkRunsService {
-    test_helpers::build_state(pool)
+    test_helpers::state::build_state(pool)
         .await
         .jobs
         .clone()

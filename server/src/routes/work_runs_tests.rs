@@ -5,7 +5,7 @@ use crate::test_helpers;
 
 #[sqlx::test]
 async fn list_runs_rejects_negative_pagination(pool: sqlx::PgPool) {
-    let state = test_helpers::build_state(pool).await;
+    let state = test_helpers::state::build_state(pool).await;
     let token = state
         .auth
         .instance_login("test-password")
