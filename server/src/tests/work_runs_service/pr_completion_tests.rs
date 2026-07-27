@@ -34,7 +34,7 @@ impl PullRequestStateReader for FakePullRequestStateReader {
 }
 
 #[sqlx::test]
-async fn terminal_pr_set_requires_at_least_one_pr(pool: sqlx::PgPool) {
+async fn merged_pr_set_requires_at_least_one_pr(pool: sqlx::PgPool) {
     let service = test_helpers::state::build_state(pool)
         .await
         .jobs
@@ -43,13 +43,13 @@ async fn terminal_pr_set_requires_at_least_one_pr(pool: sqlx::PgPool) {
         }));
 
     assert!(!service
-        .task_prs_are_terminal(Uuid::new_v4(), "task-1", &[])
+        .task_prs_are_merged(Uuid::new_v4(), "task-1", &[])
         .await
         .expect("evaluate empty PR set"));
 }
 
 #[sqlx::test]
-async fn closed_and_merged_prs_are_terminal(pool: sqlx::PgPool) {
+async fn every_linked_pr_must_be_merged(pool: sqlx::PgPool) {
     let service = test_helpers::state::build_state(pool)
         .await
         .jobs
@@ -61,10 +61,10 @@ async fn closed_and_merged_prs_are_terminal(pool: sqlx::PgPool) {
         }));
     let task_prs = vec![task_pr(1), task_pr(2)];
 
-    assert!(service
-        .task_prs_are_terminal(Uuid::new_v4(), "task-1", &task_prs)
+    assert!(!service
+        .task_prs_are_merged(Uuid::new_v4(), "task-1", &task_prs)
         .await
-        .expect("evaluate terminal PR set"));
+        .expect("reject unmerged PR"));
 }
 
 #[sqlx::test]
@@ -74,7 +74,7 @@ async fn open_pr_blocks_completion_and_lookup_failure_retries(pool: sqlx::PgPool
         .jobs
         .with_pr_state_reader(Arc::new(FakePullRequestStateReader {
             states: HashMap::from([
-                (1, Some(PullRequestState::Closed)),
+                (1, Some(PullRequestState::Merged)),
                 (2, Some(PullRequestState::Open)),
             ]),
         }));
@@ -82,17 +82,17 @@ async fn open_pr_blocks_completion_and_lookup_failure_retries(pool: sqlx::PgPool
         .await
         .jobs
         .with_pr_state_reader(Arc::new(FakePullRequestStateReader {
-            states: HashMap::from([(1, Some(PullRequestState::Closed)), (2, None)]),
+            states: HashMap::from([(1, Some(PullRequestState::Merged)), (2, None)]),
         }));
     let task_prs = vec![task_pr(1), task_pr(2)];
 
     assert!(!open_service
-        .task_prs_are_terminal(Uuid::new_v4(), "task-1", &task_prs)
+        .task_prs_are_merged(Uuid::new_v4(), "task-1", &task_prs)
         .await
         .expect("evaluate open PR set"));
     assert!(matches!(
         failed_service
-            .task_prs_are_terminal(Uuid::new_v4(), "task-1", &task_prs)
+            .task_prs_are_merged(Uuid::new_v4(), "task-1", &task_prs)
             .await,
         Err(WorkRunsError::GithubApp(_))
     ));

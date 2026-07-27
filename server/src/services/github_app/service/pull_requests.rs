@@ -13,13 +13,6 @@ pub(crate) enum PullRequestState {
     Merged,
 }
 
-impl PullRequestState {
-    #[must_use]
-    pub(crate) const fn is_terminal(self) -> bool {
-        matches!(self, Self::Closed | Self::Merged)
-    }
-}
-
 #[async_trait]
 pub(crate) trait PullRequestCommentWriter: Send + Sync {
     async fn ensure_pull_request_comment(

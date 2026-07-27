@@ -24,7 +24,7 @@ fn closed_pull_request(
     body: &[u8],
 ) -> Result<Option<GithubWebhookDelivery>, GithubWebhookError> {
     let payload = serde_json::from_slice::<PullRequestEvent>(body)?;
-    if payload.action != "closed" {
+    if payload.action != "closed" || !payload.pull_request.merged {
         return Ok(None);
     }
 
@@ -126,6 +126,7 @@ struct PullRequestEvent {
     number: i64,
     installation: Installation,
     repository: Repository,
+    pull_request: PullRequest,
 }
 
 #[derive(Deserialize)]
@@ -146,6 +147,11 @@ struct Installation {
 #[derive(Deserialize)]
 struct Repository {
     full_name: String,
+}
+
+#[derive(Deserialize)]
+struct PullRequest {
+    merged: bool,
 }
 
 #[derive(Deserialize)]

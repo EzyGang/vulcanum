@@ -59,7 +59,7 @@ impl WorkRunsService {
             .list_task_prs_for_refs(&self.db, config.id, &task_refs)
             .await?;
         if !self
-            .task_prs_are_terminal(config.team_id, task_ref, &task_prs)
+            .task_prs_are_merged(config.team_id, task_ref, &task_prs)
             .await?
         {
             return Ok(false);
@@ -68,7 +68,7 @@ impl WorkRunsService {
         self.move_task_to_done(&config, task_ref).await
     }
 
-    pub(crate) async fn task_prs_are_terminal(
+    pub(crate) async fn task_prs_are_merged(
         &self,
         team_id: uuid::Uuid,
         task_ref: &str,
@@ -80,7 +80,9 @@ impl WorkRunsService {
                 .pull_request_state(team_id, &task_pr.repo_full_name, task_pr.pr_number)
                 .await
             {
-                Ok(state) if state.is_terminal() => (),
+                Ok(
+                    crate::services::github_app::service::pull_requests::PullRequestState::Merged,
+                ) => (),
                 Ok(_) => return Ok(false),
                 Err(e) => {
                     tracing::warn!(
@@ -118,7 +120,10 @@ impl WorkRunsService {
         task_ref: &str,
         client: &IntegrationClient,
     ) -> Result<bool, WorkRunsError> {
-        let current = client.fetch_task(task_ref).await?;
+        let current = match &self.task_fetcher {
+            Some(task_fetcher) => task_fetcher.fetch_task(task_ref).await?,
+            None => client.fetch_task(task_ref).await?,
+        };
 
         if current.status != config.review_column {
             tracing::debug!(
@@ -130,9 +135,18 @@ impl WorkRunsService {
             return Ok(false);
         }
 
-        client
-            .update_task_status(task_ref, &config.done_column)
-            .await?;
+        match &self.task_fetcher {
+            Some(task_fetcher) => {
+                task_fetcher
+                    .update_task_status(task_ref, &config.done_column)
+                    .await?;
+            }
+            None => {
+                client
+                    .update_task_status(task_ref, &config.done_column)
+                    .await?
+            }
+        }
 
         if !self
             .set_lifecycle_label_for_task(
