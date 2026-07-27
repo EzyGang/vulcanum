@@ -1,3 +1,4 @@
+mod completion;
 mod events;
 mod implementation_processing;
 mod implementation_responses;
