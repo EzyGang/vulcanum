@@ -1,7 +1,7 @@
 use anyhow::Context;
 use uuid::Uuid;
 
-use crate::api::app::teams::{AppTeam, AppWorker, UpdateTeamModelsRequest};
+use crate::api::app::teams::{AppTeam, AppWorker, RenameWorkerRequest, UpdateTeamModelsRequest};
 use crate::client::{map_response, ApiClient};
 
 impl ApiClient {
@@ -33,6 +33,22 @@ impl ApiClient {
         access_token: &str,
     ) -> anyhow::Result<Vec<AppWorker>> {
         self.team_get("workers", team_id, access_token).await
+    }
+
+    pub async fn rename_worker(
+        &self,
+        worker_id: Uuid,
+        team_id: Uuid,
+        request: &RenameWorkerRequest,
+        access_token: &str,
+    ) -> anyhow::Result<AppWorker> {
+        self.team_patch(
+            &format!("workers/{worker_id}/name"),
+            team_id,
+            request,
+            access_token,
+        )
+        .await
     }
 
     pub async fn update_team_models(

@@ -140,6 +140,7 @@ impl From<WorkersError> for AppError {
             WorkersError::InvalidRefreshToken => Self::InvalidRefreshToken,
             WorkersError::RefreshTokenExpired => Self::InvalidRefreshToken,
             WorkersError::WorkerNotFound => Self::WorkerNotFound,
+            WorkersError::InvalidName => Self::BadRequest("worker name cannot be empty".to_owned()),
             WorkersError::ActiveJobsInvariant {
                 worker_id,
                 active_jobs,

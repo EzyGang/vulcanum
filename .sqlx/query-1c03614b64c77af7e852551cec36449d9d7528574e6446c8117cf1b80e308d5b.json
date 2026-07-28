@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workers SET status = 'busy'::worker_status, active_jobs = 1 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1c03614b64c77af7e852551cec36449d9d7528574e6446c8117cf1b80e308d5b"
+}

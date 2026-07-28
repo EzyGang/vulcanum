@@ -22,6 +22,8 @@ interface WorkersViewProps {
     deletingId: Signal<string | null>;
     deleteError: Signal<string | null>;
     updateStatusError: ApiError | null;
+    renameError: ApiError | null;
+    renameLoading: boolean;
     copiedTarget: Signal<WorkerRegistrationCopyTarget | null>;
     copyError: Signal<string | null>;
   };
@@ -31,6 +33,7 @@ interface WorkersViewProps {
     onCancelDelete: () => void;
     onDeleteWorker: (id: string) => void;
     onUpdateStatus: (id: string, status: UpdateWorkerStatusRequest['status']) => void;
+    onRenameWorker: (id: string, name: string) => void;
     onCopyCode: () => void;
     onCopySetupCommand: () => void;
   };
@@ -45,6 +48,8 @@ export const WorkersView = ({
     deletingId,
     deleteError,
     updateStatusError,
+    renameError,
+    renameLoading,
     copiedTarget,
     copyError
   },
@@ -54,6 +59,7 @@ export const WorkersView = ({
     onCancelDelete,
     onDeleteWorker,
     onUpdateStatus,
+    onRenameWorker,
     onCopyCode,
     onCopySetupCommand
   }
@@ -80,6 +86,8 @@ export const WorkersView = ({
 
       {updateStatusError && <ErrorBanner message={updateStatusError.message} />}
 
+      {renameError && <ErrorBanner message={`Could not rename worker: ${renameError.message}`} />}
+
       {loading && <div class='text-text-muted text-sm'>Loading workers...</div>}
 
       {!loading && !error && workers.length === 0 && (
@@ -93,7 +101,14 @@ export const WorkersView = ({
         <WorkersTable
           workers={workers}
           deletingId={deletingId}
-          actions={{ onConfirmDelete, onCancelDelete, onDeleteWorker, onUpdateStatus }}
+          renameLoading={renameLoading}
+          actions={{
+            onConfirmDelete,
+            onCancelDelete,
+            onDeleteWorker,
+            onUpdateStatus,
+            onRenameWorker
+          }}
         />
       )}
     </section>

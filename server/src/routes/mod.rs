@@ -164,6 +164,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/refresh", web::post().to(workers::refresh))
                     .route("/me", web::delete().to(workers::self_delete))
                     .route("/{id}/status", web::patch().to(workers::update_status))
+                    .route("/{id}/name", web::patch().to(workers::rename))
                     .route("/{id}", web::delete().to(workers::delete)),
             )
             .service(

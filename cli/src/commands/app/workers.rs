@@ -1,6 +1,7 @@
 use std::io;
 
 use uuid::Uuid;
+use vulcanum_shared::api::app::teams::RenameWorkerRequest;
 use vulcanum_shared::state::app as app_state;
 
 use crate::commands::app::{
@@ -18,6 +19,48 @@ pub async fn list(team: Option<Uuid>) -> anyhow::Result<()> {
         save_session: &mut save_session,
     };
     list_with(team, &mut runtime).await
+}
+
+pub async fn rename(worker_id: Uuid, name: &str, team: Option<Uuid>) -> anyhow::Result<()> {
+    let mut stdout = io::stdout();
+    let mut load_session = app_state::load_state;
+    let mut save_session = app_state::save_state;
+    let mut runtime = AppRuntime {
+        stdout: &mut stdout,
+        load_session: &mut load_session,
+        save_session: &mut save_session,
+    };
+    rename_with(worker_id, name, team, &mut runtime).await
+}
+
+pub(super) async fn rename_with(
+    worker_id: Uuid,
+    name: &str,
+    team_override: Option<Uuid>,
+    runtime: &mut AppRuntime<'_>,
+) -> anyhow::Result<()> {
+    let context = authenticated_context(runtime).await?;
+    let team = resolve_team(&context, team_override).await?;
+    let worker = context
+        .client
+        .rename_worker(
+            worker_id,
+            team.id,
+            &RenameWorkerRequest {
+                name: name.to_owned(),
+            },
+            &context.session.access_token,
+        )
+        .await
+        .map_err(|error| handle_authenticated_error("Rename worker", error))?;
+
+    writeln!(
+        runtime.stdout,
+        "Renamed worker {} to {}.",
+        worker.id,
+        escape_terminal(&worker.name)
+    )?;
+    Ok(())
 }
 
 pub(super) async fn list_with(

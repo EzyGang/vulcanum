@@ -8,7 +8,9 @@ use crate::config::AppConfig;
 use crate::db::workers::queries::CreateWorkerParams;
 use crate::db::workers::WorkersRepository;
 use crate::models::workers::errors::WorkersError;
-use crate::models::workers::model::DEFAULT_MAX_CONCURRENT_JOBS;
+use crate::models::workers::model::{
+    RenameWorkerRequest, WorkerStatus, DEFAULT_MAX_CONCURRENT_JOBS,
+};
 use crate::services::workers::registration_code_store::InMemoryCodeStore;
 use crate::services::workers::service::WorkersService;
 use crate::test_helpers::DEFAULT_TEAM_ID;

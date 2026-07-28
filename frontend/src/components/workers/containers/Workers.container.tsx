@@ -14,6 +14,8 @@ export const WorkersContainer = (): JSX.Element => {
     deletingId,
     deleteError,
     updateStatusError,
+    renameError,
+    renameLoading,
     loading,
     error,
     handleGenerateCode,
@@ -21,6 +23,7 @@ export const WorkersContainer = (): JSX.Element => {
     handleCancelDelete,
     handleDeleteWorker,
     handleUpdateStatus,
+    handleRenameWorker,
     copyGeneratedCode,
     copySetupCommand
   } = useWorkers();
@@ -36,6 +39,8 @@ export const WorkersContainer = (): JSX.Element => {
         deleteError,
         updateStatusError,
         copiedTarget,
+        renameError,
+        renameLoading,
         copyError
       }}
       actions={{
@@ -45,7 +50,8 @@ export const WorkersContainer = (): JSX.Element => {
         onDeleteWorker: handleDeleteWorker,
         onUpdateStatus: handleUpdateStatus,
         onCopyCode: copyGeneratedCode,
-        onCopySetupCommand: copySetupCommand
+        onCopySetupCommand: copySetupCommand,
+        onRenameWorker: handleRenameWorker
       }}
     />
   );

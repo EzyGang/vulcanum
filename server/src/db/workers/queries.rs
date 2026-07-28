@@ -1,5 +1,6 @@
 mod capacity;
 mod registration;
+mod rename;
 mod status;
 
 use chrono::{DateTime, Utc};

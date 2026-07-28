@@ -12,6 +12,7 @@ pub mod delete;
 pub mod generate_code;
 pub mod list;
 pub mod refresh;
+pub mod rename;
 pub mod set_status;
 mod token;
 

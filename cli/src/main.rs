@@ -136,6 +136,11 @@ async fn main() -> anyhow::Result<()> {
         },
         Command::Workers { cmd } => match cmd {
             WorkersCommand::List { team } => commands::app::workers::list(team).await,
+            WorkersCommand::Rename {
+                worker_id,
+                name,
+                team,
+            } => commands::app::workers::rename(worker_id, &name, team).await,
         },
         Command::Projects { cmd } => match cmd {
             ProjectsCommand::List { team } => commands::app::projects::list(team).await,
