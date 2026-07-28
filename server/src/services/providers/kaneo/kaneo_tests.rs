@@ -162,6 +162,13 @@ fn board_deserializes_embedded_task_labels_without_metadata() {
 }
 
 #[test]
+fn task_description_update_uses_partial_update_endpoint() {
+    let path = KaneoClient::task_description_path("task-123");
+
+    assert_eq!(path, "/task/description/task-123");
+}
+
+#[test]
 fn kaneo_error_display() {
     let api_err = KaneoError::Api("something went wrong".to_owned());
     assert_eq!(api_err.to_string(), "kaneo API error: something went wrong");
