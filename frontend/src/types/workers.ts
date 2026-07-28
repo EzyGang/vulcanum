@@ -20,3 +20,7 @@ export interface GenerateCodeResponse {
 export interface UpdateWorkerStatusRequest {
   status: 'idle' | 'unhealthy';
 }
+
+export interface RenameWorkerRequest {
+  name: string;
+}

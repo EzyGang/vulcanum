@@ -5,9 +5,14 @@ import {
   deleteWorker,
   generateCode,
   listWorkers,
+  renameWorker,
   updateWorkerStatus
 } from '../../../services/workers/workers.service';
-import type { UpdateWorkerStatusRequest, Worker } from '../../../types/workers';
+import type {
+  RenameWorkerRequest,
+  UpdateWorkerStatusRequest,
+  Worker
+} from '../../../types/workers';
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation, useApiQuery } from '../../../utils/api/query/hooks';
 import { formatRelativeTime } from '../../../utils/format';
@@ -143,6 +148,13 @@ export const useWorkers = () => {
     }
   );
 
+  const renameWorkerMutation = useApiMutation(
+    ({ id, data }: { id: string; data: RenameWorkerRequest }) => renameWorker(id, data),
+    {
+      onSuccess: () => invalidate('workers')
+    }
+  );
+
   const formattedWorkers = workers ? formatWorkers(workers) : [];
 
   const {
@@ -164,6 +176,13 @@ export const useWorkers = () => {
       updateStatusMutation.mutate({ id, data: { status } });
     },
     [updateStatusMutation]
+  );
+
+  const handleRenameWorker = useCallback(
+    (id: string, name: string) => {
+      renameWorkerMutation.mutate({ id, data: { name } });
+    },
+    [renameWorkerMutation]
   );
 
   useSignalEffect(() => {
@@ -224,6 +243,7 @@ export const useWorkers = () => {
     deletingId,
     deleteError,
     updateStatusError: updateStatusMutation.error,
+    renameError: renameWorkerMutation.error,
     loading,
     error,
     handleGenerateCode,
@@ -232,6 +252,7 @@ export const useWorkers = () => {
     handleDeleteWorker,
     handleUpdateStatus,
     copyGeneratedCode,
+    handleRenameWorker,
     copySetupCommand
   };
 };

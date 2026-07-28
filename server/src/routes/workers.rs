@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::errors::AppError;
 use crate::models::auth::model::TeamPrincipal;
-use crate::models::workers::model::UpdateWorkerStatusRequest;
+use crate::models::workers::model::{RenameWorkerRequest, UpdateWorkerStatusRequest};
 use crate::routes::worker_auth::WorkerAuth;
 use vulcanum_shared::api::wire::{ConnectRequest, RefreshRequest};
 
@@ -61,6 +61,23 @@ pub async fn update_status(
     let worker = state
         .workers
         .set_worker_status(path.into_inner(), team_id, body.into_inner())
+        .await?;
+    Ok(HttpResponse::Ok().json(worker))
+}
+
+pub async fn rename(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    body: web::Json<RenameWorkerRequest>,
+    auth: TeamPrincipal,
+) -> Result<HttpResponse, AppError> {
+    let team_id = state
+        .teams
+        .resolve_team(&auth, state.is_single_user)
+        .await?;
+    let worker = state
+        .workers
+        .rename_worker(path.into_inner(), team_id, body.into_inner())
         .await?;
     Ok(HttpResponse::Ok().json(worker))
 }

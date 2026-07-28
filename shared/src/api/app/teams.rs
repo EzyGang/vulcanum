@@ -22,6 +22,11 @@ pub struct AppWorker {
     pub max_concurrent_jobs: i32,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct RenameWorkerRequest {
+    pub name: String,
+}
+
 #[derive(Clone, Default, Serialize)]
 pub struct UpdateTeamModelsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]

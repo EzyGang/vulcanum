@@ -28,6 +28,51 @@ fn worker_list_forms_parse_exactly() {
 }
 
 #[test]
+fn worker_rename_forms_parse_exactly() {
+    let worker_id = Uuid::from_u128(7);
+    let workers = Cli::try_parse_from([
+        "vulcanum",
+        "workers",
+        "rename",
+        &worker_id.to_string(),
+        "build-a",
+    ])
+    .expect("worker rename should parse");
+    assert!(matches!(
+        workers.command,
+        Command::Workers {
+            cmd: WorkersCommand::Rename {
+                worker_id: parsed_id,
+                name,
+                team: None,
+            }
+        } if parsed_id == worker_id && name == "build-a"
+    ));
+
+    let expected_team = Uuid::parse_str(TEAM).expect("team UUID should parse");
+    let workers = Cli::try_parse_from([
+        "vulcanum",
+        "workers",
+        "rename",
+        &worker_id.to_string(),
+        "build-a",
+        "--team",
+        TEAM,
+    ])
+    .expect("worker rename with team override should parse");
+    assert!(matches!(
+        workers.command,
+        Command::Workers {
+            cmd: WorkersCommand::Rename {
+                worker_id: parsed_id,
+                name,
+                team: Some(team),
+            }
+        } if parsed_id == worker_id && name == "build-a" && team == expected_team
+    ));
+}
+
+#[test]
 fn malformed_worker_team_uuid_fails_during_parsing() {
     assert!(Cli::try_parse_from(["vulcanum", "workers", "list", "--team", "not-a-uuid",]).is_err());
 }

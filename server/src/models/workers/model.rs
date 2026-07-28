@@ -77,6 +77,11 @@ pub struct UpdateWorkerStatusRequest {
     pub status: WorkerStatusOverride,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenameWorkerRequest {
+    pub name: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct CodeResponse {
     pub code: String,

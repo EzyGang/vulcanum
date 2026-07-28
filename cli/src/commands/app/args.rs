@@ -10,6 +10,13 @@ pub(crate) enum WorkersCommand {
         #[arg(long)]
         team: Option<Uuid>,
     },
+    /// Rename a registered worker
+    Rename {
+        worker_id: Uuid,
+        name: String,
+        #[arg(long)]
+        team: Option<Uuid>,
+    },
 }
 
 #[derive(Subcommand)]

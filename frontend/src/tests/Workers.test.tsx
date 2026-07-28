@@ -36,6 +36,7 @@ describe('Workers.view', () => {
     deletingId,
     deleteError,
     updateStatusError: null as ApiError | null,
+    renameError: null as ApiError | null,
     copiedTarget,
     copyError
   };
@@ -46,6 +47,7 @@ describe('Workers.view', () => {
     onDeleteWorker,
     onUpdateStatus,
     onCopyCode,
+    onRenameWorker: vi.fn(),
     onCopySetupCommand
   };
   const baseData = {
@@ -112,12 +114,46 @@ describe('Workers.view', () => {
       makeWorker({ id: '2', name: 'runner-2', status: 'busy' as const })
     ];
 
-    const { getByText } = render(
+    const { getByDisplayValue } = render(
       <WorkersView data={{ ...baseData, workers }} status={baseStatus} actions={baseActions} />
     );
 
-    expect(getByText('runner-1')).toBeDefined();
-    expect(getByText('runner-2')).toBeDefined();
+    expect(getByDisplayValue('runner-1')).toBeDefined();
+    expect(getByDisplayValue('runner-2')).toBeDefined();
+  });
+
+  it('invokes rename with the edited worker name', () => {
+    const onRenameWorker = vi.fn();
+    const { getByLabelText, getByText } = render(
+      <WorkersView
+        data={{ ...baseData, workers: [makeWorker({ id: '1', name: 'runner-1' })] }}
+        status={baseStatus}
+        actions={{ ...baseActions, onRenameWorker }}
+      />
+    );
+
+    fireEvent.input(getByLabelText('Worker name'), { target: { value: 'release-runner' } });
+    fireEvent.click(getByText('Rename'));
+
+    expect(onRenameWorker).toHaveBeenCalledWith('1', 'release-runner');
+  });
+
+  it('shows rename failures', () => {
+    const renameError = {
+      name: 'ApiError',
+      message: 'worker not found',
+      status: 404,
+      serverError: 'worker not found'
+    };
+    const { getByText } = render(
+      <WorkersView
+        data={{ ...baseData, workers: [makeWorker()] }}
+        status={{ ...baseStatus, renameError }}
+        actions={baseActions}
+      />
+    );
+
+    expect(getByText('Could not rename worker: worker not found')).toBeDefined();
   });
 
   it('shows empty state when no workers', () => {
