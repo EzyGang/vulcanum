@@ -243,6 +243,7 @@ export const useWorkers = () => {
     deletingId,
     deleteError,
     updateStatusError: updateStatusMutation.error,
+    renameLoading: renameWorkerMutation.isPending,
     renameError: renameWorkerMutation.error,
     loading,
     error,

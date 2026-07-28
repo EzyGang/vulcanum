@@ -37,6 +37,7 @@ describe('Workers.view', () => {
     deleteError,
     updateStatusError: null as ApiError | null,
     renameError: null as ApiError | null,
+    renameLoading: false,
     copiedTarget,
     copyError
   };
@@ -136,6 +137,19 @@ describe('Workers.view', () => {
     fireEvent.click(getByText('Rename'));
 
     expect(onRenameWorker).toHaveBeenCalledWith('1', 'release-runner');
+  });
+
+  it('disables worker rename controls while a rename is pending', () => {
+    const { getByLabelText, getByText } = render(
+      <WorkersView
+        data={{ ...baseData, workers: [makeWorker({ id: '1', name: 'runner-1' })] }}
+        status={{ ...baseStatus, renameLoading: true }}
+        actions={baseActions}
+      />
+    );
+
+    expect((getByLabelText('Worker name') as HTMLInputElement).disabled).toBe(true);
+    expect((getByText('Rename') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('shows rename failures', () => {

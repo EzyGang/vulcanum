@@ -76,6 +76,33 @@ async fn rename_worker_returns_updated_worker(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test]
+async fn rename_worker_rejects_blank_name(pool: sqlx::PgPool) {
+    let state = build_state(pool.clone()).await;
+    let worker_id = test_helpers::workers::insert_worker(&pool, "setup-name").await;
+    let token = state
+        .auth
+        .instance_login(TEST_PASSWORD)
+        .await
+        .expect("instance login should succeed")
+        .access_token;
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state))
+            .configure(routes::configure),
+    )
+    .await;
+
+    let req = test::TestRequest::patch()
+        .uri(&format!("/api/v1/workers/{worker_id}/name"))
+        .insert_header(auth_header(&token))
+        .set_json(serde_json::json!({ "name": " \t " }))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    assert_eq!(resp.status(), 400);
+}
+
+#[sqlx::test]
 async fn connect_with_valid_code_returns_200(pool: sqlx::PgPool) {
     let state = build_state(pool).await;
     let code = state

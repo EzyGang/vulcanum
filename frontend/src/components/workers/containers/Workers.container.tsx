@@ -15,6 +15,7 @@ export const WorkersContainer = (): JSX.Element => {
     deleteError,
     updateStatusError,
     renameError,
+    renameLoading,
     loading,
     error,
     handleGenerateCode,
@@ -39,6 +40,7 @@ export const WorkersContainer = (): JSX.Element => {
         updateStatusError,
         copiedTarget,
         renameError,
+        renameLoading,
         copyError
       }}
       actions={{

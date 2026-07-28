@@ -11,6 +11,10 @@ impl WorkersService {
         team_id: Uuid,
         req: RenameWorkerRequest,
     ) -> Result<WorkerResponse, WorkersError> {
+        if req.name.trim().is_empty() {
+            return Err(WorkersError::InvalidName);
+        }
+
         let existing = self.repo.find_by_id(&self.db, worker_id).await?;
         if existing.team_id != team_id {
             return Err(WorkersError::WorkerNotFound);

@@ -23,6 +23,7 @@ interface WorkersViewProps {
     deleteError: Signal<string | null>;
     updateStatusError: ApiError | null;
     renameError: ApiError | null;
+    renameLoading: boolean;
     copiedTarget: Signal<WorkerRegistrationCopyTarget | null>;
     copyError: Signal<string | null>;
   };
@@ -48,6 +49,7 @@ export const WorkersView = ({
     deleteError,
     updateStatusError,
     renameError,
+    renameLoading,
     copiedTarget,
     copyError
   },
@@ -99,6 +101,7 @@ export const WorkersView = ({
         <WorkersTable
           workers={workers}
           deletingId={deletingId}
+          renameLoading={renameLoading}
           actions={{
             onConfirmDelete,
             onCancelDelete,

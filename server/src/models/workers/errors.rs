@@ -13,6 +13,8 @@ pub enum WorkersError {
     RefreshTokenExpired,
     #[error("worker not found")]
     WorkerNotFound,
+    #[error("worker name cannot be empty")]
+    InvalidName,
     #[error("registration failed: {0}")]
     RegistrationFailed(String),
     #[error(

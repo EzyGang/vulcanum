@@ -13,6 +13,7 @@ import type { FormattedWorker } from '../../hooks/useWorkers.hook';
 interface WorkersTableProps {
   workers: FormattedWorker[];
   deletingId: Signal<string | null>;
+  renameLoading: boolean;
   actions: {
     onConfirmDelete: (id: string) => void;
     onCancelDelete: () => void;
@@ -25,6 +26,7 @@ interface WorkersTableProps {
 export const WorkersTable = ({
   workers,
   deletingId,
+  renameLoading,
   actions: { onConfirmDelete, onCancelDelete, onDeleteWorker, onUpdateStatus, onRenameWorker }
 }: WorkersTableProps): JSX.Element => (
   <Table>
@@ -54,10 +56,11 @@ export const WorkersTable = ({
                 id={`worker-name-${worker.id}`}
                 name='name'
                 defaultValue={worker.name}
+                disabled={renameLoading}
                 required
                 class='min-w-0 bg-bg-input border border-border-base px-2 py-1 text-text-primary text-sm font-mono outline-none focus:border-border-focus'
               />
-              <Button type='submit' variant='ghost' class='px-1 py-1'>
+              <Button type='submit' variant='ghost' class='px-1 py-1' disabled={renameLoading}>
                 Rename
               </Button>
             </form>
