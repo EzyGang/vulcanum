@@ -126,7 +126,7 @@ impl KaneoClient {
             description: String,
         }
 
-        let path = format!("/task/{task_id}");
+        let path = Self::task_description_path(task_id);
         let start = std::time::Instant::now();
         let result = client
             .put(
@@ -142,5 +142,10 @@ impl KaneoClient {
 
         log_kaneo_result("PUT", &path, duration_ms, &result);
         result
+    }
+
+    #[must_use]
+    pub(crate) fn task_description_path(task_id: &str) -> String {
+        format!("/task/description/{task_id}")
     }
 }
