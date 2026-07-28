@@ -1,6 +1,7 @@
 pub mod invites;
 mod provider_identity;
 mod resolve;
+mod review_models;
 
 use std::sync::Arc;
 
@@ -13,6 +14,7 @@ use crate::models::auth::model::TeamPrincipal;
 use crate::models::teams::errors::TeamsError;
 use crate::models::teams::model::{Team, TeamMemberInfo, UpdateTeamRequest};
 use crate::services::teams::invite_store::{InMemoryTeamInviteStore, TeamInviteStore};
+use crate::services::teams::service::review_models::validate_review_model_pairs;
 
 #[derive(Clone)]
 pub struct TeamsService {
@@ -120,6 +122,8 @@ impl TeamsService {
         };
         self.authorize_owner(team_id, principal, single_user)
             .await?;
+        let existing = self.repo.get_by_id(&self.db, team_id).await?;
+        validate_review_model_pairs(&existing, params)?;
         self.repo
             .update_settings(
                 &self.db,
@@ -140,6 +144,22 @@ impl TeamsService {
                     .as_ref()
                     .map(|value| value.as_deref()),
                 params.small_model_id.as_ref().map(|value| value.as_deref()),
+                params
+                    .review_primary_model_provider_key
+                    .as_ref()
+                    .map(|value| value.as_deref()),
+                params
+                    .review_primary_model_id
+                    .as_ref()
+                    .map(|value| value.as_deref()),
+                params
+                    .review_small_model_provider_key
+                    .as_ref()
+                    .map(|value| value.as_deref()),
+                params
+                    .review_small_model_id
+                    .as_ref()
+                    .map(|value| value.as_deref()),
                 params.review_enabled,
                 params.review_max_turns,
                 params.review_prompt_template.as_deref(),

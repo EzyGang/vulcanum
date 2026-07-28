@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT t.id, t.name, t.personal_user_id, t.prompt_template, t.agents_md, t.primary_model_provider_key,\n             t.primary_model_id, t.small_model_provider_key, t.small_model_id,\n             t.review_enabled, t.review_max_turns, t.review_prompt_template, t.max_in_progress_tasks, t.agent_backend,\n             t.created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams t\n             INNER JOIN team_members tm ON tm.team_id = t.id\n             WHERE tm.user_id = $1\n             ORDER BY t.created_at ASC",
+  "query": "INSERT INTO teams (id, name, prompt_template, review_prompt_template)\n             VALUES ($1, $2, '', '')\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,\n              review_primary_model_id, review_small_model_provider_key, review_small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
   "describe": {
     "columns": [
       {
@@ -50,37 +50,58 @@
       },
       {
         "ordinal": 9,
-        "name": "review_enabled",
-        "type_info": "Bool"
+        "name": "review_primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 10,
-        "name": "review_max_turns",
-        "type_info": "Int4"
+        "name": "review_primary_model_id",
+        "type_info": "Text"
       },
       {
         "ordinal": 11,
-        "name": "review_prompt_template",
+        "name": "review_small_model_provider_key",
         "type_info": "Text"
       },
       {
         "ordinal": 12,
+        "name": "review_small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 15,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 13,
+        "ordinal": 17,
         "name": "agent_backend",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 18,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Text"
       ]
     },
@@ -94,6 +115,10 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
       false,
       false,
       false,
@@ -102,5 +127,5 @@
       false
     ]
   },
-  "hash": "2f23442ba225b95e22bb5e395f97f20b521259a84ba992856a92dfd1fa102888"
+  "hash": "89bb0c7ea38895712dde85e423d67517fc6ec3685d49602c614d7964380a545c"
 }

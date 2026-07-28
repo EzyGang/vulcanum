@@ -1,0 +1,154 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE teams SET\n             name = COALESCE($2, name),\n             prompt_template = COALESCE($3, prompt_template),\n             agents_md = COALESCE($4, agents_md),\n             primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $7 THEN $8 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $9 THEN $10 ELSE small_model_provider_key END,\n             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END,\n             review_primary_model_provider_key = CASE WHEN $13 THEN $14 ELSE review_primary_model_provider_key END,\n             review_primary_model_id = CASE WHEN $15 THEN $16 ELSE review_primary_model_id END,\n             review_small_model_provider_key = CASE WHEN $17 THEN $18 ELSE review_small_model_provider_key END,\n             review_small_model_id = CASE WHEN $19 THEN $20 ELSE review_small_model_id END,\n             review_enabled = COALESCE($21, review_enabled),\n             review_max_turns = COALESCE($22, review_max_turns),\n             review_prompt_template = COALESCE($23, review_prompt_template),\n             max_in_progress_tasks = COALESCE($24, max_in_progress_tasks),\n             agent_backend = COALESCE($25, agent_backend)\n             WHERE id = $1\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,\n              review_primary_model_id, review_small_model_provider_key, review_small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "personal_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agents_md",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "primary_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "review_primary_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "review_primary_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "review_small_model_provider_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "review_small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 15,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "max_in_progress_tasks",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 17,
+        "name": "agent_backend",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "created_at!: chrono::DateTime<chrono::Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Int4",
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d6483cc780cc417f4608f7e65cbcdc8edcc0432a6a0c153288b4acd11e6b3419"
+}

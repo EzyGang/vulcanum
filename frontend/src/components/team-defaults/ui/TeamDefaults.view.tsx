@@ -8,8 +8,8 @@ import { CheckboxWithLabel } from '../../shared/ui/CheckboxWithLabel.view';
 import { ErrorBanner } from '../../shared/ui/ErrorBanner.view';
 import { Input } from '../../shared/ui/Input.view';
 import { Label } from '../../shared/ui/Label.view';
-import { Select } from '../../shared/ui/Select.view';
 import { TextArea } from '../../shared/ui/TextArea.view';
+import { ModelSelectionFields } from './ModelSelectionFields.view';
 
 export type TeamDefaultsSection = 'defaults' | 'models';
 
@@ -22,6 +22,10 @@ interface TeamDefaultsViewProps {
     primaryModelProviderKey: Signal<string>;
     primaryModelId: Signal<string>;
     smallModelProviderKey: Signal<string>;
+    reviewPrimaryModelProviderKey: Signal<string>;
+    reviewPrimaryModelId: Signal<string>;
+    reviewSmallModelProviderKey: Signal<string>;
+    reviewSmallModelId: Signal<string>;
     smallModelId: Signal<string>;
     reviewEnabled: Signal<boolean>;
     reviewMaxTurns: Signal<number>;
@@ -32,6 +36,8 @@ interface TeamDefaultsViewProps {
     agentBackendItems: SelectOption[];
     connectedProviderItems: SelectOption[];
     primaryModelItems: SelectOption[];
+    reviewPrimaryModelItems: SelectOption[];
+    reviewSmallModelItems: SelectOption[];
     smallModelItems: SelectOption[];
   };
   status: {
@@ -46,6 +52,10 @@ interface TeamDefaultsViewProps {
     onPrimaryProviderChange: (value: string) => void;
     onPrimaryModelChange: (value: string) => void;
     onSmallProviderChange: (value: string) => void;
+    onReviewPrimaryProviderChange: (value: string) => void;
+    onReviewPrimaryModelChange: (value: string) => void;
+    onReviewSmallProviderChange: (value: string) => void;
+    onReviewSmallModelChange: (value: string) => void;
     onSmallModelChange: (value: string) => void;
     onAgentBackendChange: (value: string) => void;
     onReviewEnabledChange: (checked: boolean) => void;
@@ -80,86 +90,6 @@ const SaveButton = ({ saving, label }: { saving: boolean; label: string }): JSX.
       {saving ? 'Saving…' : label}
     </span>
   </Button>
-);
-
-const ModelSelectionFields = ({
-  data,
-  status,
-  actions
-}: Pick<TeamDefaultsViewProps, 'data' | 'status' | 'actions'>): JSX.Element => (
-  <div class='grid grid-cols-1 gap-4 xl:grid-cols-2'>
-    <div class='flex flex-col gap-2 border border-border-base bg-bg-card p-4 xl:col-span-2'>
-      <span class='text-xs font-medium uppercase tracking-wider text-accent'>
-        Implementation runtime
-      </span>
-      <Label for='team-agent-backend'>Agent Backend</Label>
-      <Select
-        id='team-agent-backend'
-        value={data.agentBackend.value}
-        onValueChange={actions.onAgentBackendChange}
-        disabled={status.saving}
-        placeholder='Select an agent backend...'
-        items={data.agentBackendItems}
-      />
-      <p class='text-xs leading-relaxed text-text-muted'>
-        New implementation and review runs use the selected worker runtime.
-      </p>
-    </div>
-
-    <div class='flex flex-col gap-2 border border-border-base bg-bg-card p-4'>
-      <span class='text-xs font-medium uppercase tracking-wider text-accent'>Primary runtime</span>
-      <div class='flex flex-col gap-2'>
-        <Label for='team-primary-provider'>Primary Model Provider</Label>
-        <Select
-          id='team-primary-provider'
-          value={data.primaryModelProviderKey.value}
-          onValueChange={actions.onPrimaryProviderChange}
-          disabled={status.saving}
-          placeholder='Select a connected model provider...'
-          items={data.connectedProviderItems}
-        />
-      </div>
-      <div class='flex flex-col gap-2'>
-        <Label for='team-primary-model'>Primary Model</Label>
-        <Select
-          id='team-primary-model'
-          value={data.primaryModelId.value}
-          onValueChange={actions.onPrimaryModelChange}
-          disabled={status.saving || data.primaryModelItems.length === 0}
-          placeholder='Select a model...'
-          items={data.primaryModelItems}
-        />
-      </div>
-    </div>
-
-    <div class='flex flex-col gap-2 border border-border-base bg-bg-card p-4'>
-      <span class='text-xs font-medium uppercase tracking-wider text-accent'>
-        Small-model runtime
-      </span>
-      <div class='flex flex-col gap-2'>
-        <Label for='team-small-provider'>Small Model Provider</Label>
-        <Select
-          id='team-small-provider'
-          value={data.smallModelProviderKey.value}
-          onValueChange={actions.onSmallProviderChange}
-          disabled={status.saving}
-          placeholder='Optional provider...'
-          items={data.connectedProviderItems}
-        />
-      </div>
-      <div class='flex flex-col gap-2'>
-        <Label for='team-small-model'>Small Model</Label>
-        <Select
-          id='team-small-model'
-          value={data.smallModelId.value}
-          onValueChange={actions.onSmallModelChange}
-          disabled={status.saving || data.smallModelItems.length === 0}
-          placeholder='Optional model...'
-          items={data.smallModelItems}
-        />
-      </div>
-    </div>
-  </div>
 );
 
 const AgentDefaultFields = ({
@@ -278,7 +208,7 @@ export const TeamDefaultsView = ({
     {!status.loading && (
       <>
         {section === 'models' ? (
-          <ModelSelectionFields data={data} status={status} actions={actions} />
+          <ModelSelectionFields data={data} saving={status.saving} actions={actions} />
         ) : (
           <AgentDefaultFields data={data} status={status} actions={actions} />
         )}

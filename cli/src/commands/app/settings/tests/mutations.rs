@@ -48,6 +48,33 @@ async fn model_set_validates_connection_and_catalog_before_atomic_patch() {
 }
 
 #[tokio::test]
+async fn review_model_set_patches_only_the_review_pair() {
+    let server = FakeServer::start(vec![
+        refresh(),
+        team(),
+        Response::ok("GET", "/api/v1/model-providers", format!("[{PROVIDER}]")),
+        Response::ok(
+            "GET",
+            "/api/v1/model-providers/catalog",
+            r#"{"providers":[{"id":"openai","name":"OpenAI","env":[],"models":[{"id":"gpt-5","name":"GPT-5"}]}]}"#,
+        ),
+        Response::ok("PATCH", &format!("/api/v1/teams/{TEAM_ID}"), TEAM),
+    ]);
+    let mut harness = Harness::new(&server.url);
+    harness
+        .run_model_set(ModelSlot::ReviewPrimary, "openai", "gpt-5")
+        .await
+        .expect("review model set should succeed");
+    let patch = server.finish().pop().expect("patch should be sent");
+
+    assert_eq!(
+        patch.body,
+        r#"{"review_primary_model_provider_key":"openai","review_primary_model_id":"gpt-5"}"#
+    );
+    assert!(harness.output().contains("review primary model"));
+}
+
+#[tokio::test]
 async fn model_clear_sends_null_pair_and_omits_other_slot() {
     let server = FakeServer::start(vec![
         refresh(),

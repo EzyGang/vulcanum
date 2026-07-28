@@ -16,6 +16,10 @@ const makeProps = (): TeamDefaultsProps => ({
     primaryModelId: signal(''),
     smallModelProviderKey: signal(''),
     smallModelId: signal(''),
+    reviewPrimaryModelProviderKey: signal(''),
+    reviewPrimaryModelId: signal(''),
+    reviewSmallModelProviderKey: signal(''),
+    reviewSmallModelId: signal(''),
     reviewEnabled: signal(false),
     reviewMaxTurns: signal(1),
     reviewPromptTemplate: signal('Custom review prompt'),
@@ -25,7 +29,9 @@ const makeProps = (): TeamDefaultsProps => ({
     agentBackendItems: [],
     connectedProviderItems: [],
     primaryModelItems: [],
-    smallModelItems: []
+    smallModelItems: [],
+    reviewPrimaryModelItems: [],
+    reviewSmallModelItems: []
   },
   status: {
     loading: false,
@@ -40,6 +46,10 @@ const makeProps = (): TeamDefaultsProps => ({
     onPrimaryModelChange: vi.fn(),
     onSmallProviderChange: vi.fn(),
     onSmallModelChange: vi.fn(),
+    onReviewPrimaryProviderChange: vi.fn(),
+    onReviewPrimaryModelChange: vi.fn(),
+    onReviewSmallProviderChange: vi.fn(),
+    onReviewSmallModelChange: vi.fn(),
     onAgentBackendChange: vi.fn(),
     onReviewEnabledChange: vi.fn(),
     onReviewMaxTurnsInput: vi.fn(),

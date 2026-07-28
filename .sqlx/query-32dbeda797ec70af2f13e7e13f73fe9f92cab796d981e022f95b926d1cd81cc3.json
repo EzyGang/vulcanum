@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE teams SET\n             name = COALESCE($2, name),\n             prompt_template = COALESCE($3, prompt_template),\n             agents_md = COALESCE($4, agents_md),\n             primary_model_provider_key = CASE WHEN $5 THEN $6 ELSE primary_model_provider_key END,\n             primary_model_id = CASE WHEN $7 THEN $8 ELSE primary_model_id END,\n             small_model_provider_key = CASE WHEN $9 THEN $10 ELSE small_model_provider_key END,\n             small_model_id = CASE WHEN $11 THEN $12 ELSE small_model_id END,\n             review_enabled = COALESCE($13, review_enabled),\n             review_max_turns = COALESCE($14, review_max_turns),\n             review_prompt_template = COALESCE($15, review_prompt_template),\n             max_in_progress_tasks = COALESCE($16, max_in_progress_tasks),\n             agent_backend = COALESCE($17, agent_backend)\n             WHERE id = $1\n             RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n              primary_model_id, small_model_provider_key, small_model_id,\n              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n              created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"",
+  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,\n             review_primary_model_id, review_small_model_provider_key, review_small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams\n             ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -50,55 +50,57 @@
       },
       {
         "ordinal": 9,
-        "name": "review_enabled",
-        "type_info": "Bool"
+        "name": "review_primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 10,
-        "name": "review_max_turns",
-        "type_info": "Int4"
+        "name": "review_primary_model_id",
+        "type_info": "Text"
       },
       {
         "ordinal": 11,
-        "name": "review_prompt_template",
+        "name": "review_small_model_provider_key",
         "type_info": "Text"
       },
       {
         "ordinal": 12,
+        "name": "review_small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 15,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 13,
+        "ordinal": 17,
         "name": "agent_backend",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 18,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Text",
-        "Bool",
-        "Int4",
-        "Text",
-        "Int4",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -106,6 +108,10 @@
       true,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       true,
       true,
       true,
@@ -118,5 +124,5 @@
       false
     ]
   },
-  "hash": "fd1dc7a319c3707ec22de6d8340eea735e9762eaa4e10028851188a1cec1ca3c"
+  "hash": "32dbeda797ec70af2f13e7e13f73fe9f92cab796d981e022f95b926d1cd81cc3"
 }
