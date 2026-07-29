@@ -49,18 +49,10 @@ impl WorkRunsService {
         };
 
         let team = self.project_configs.teams.get_team(cfg.team_id).await?;
+        let selection = model_selection_for_work_type(&team, run.work_type);
         let rendered = self
             .model_providers
-            .render_agent_config_for_team(
-                cfg.team_id,
-                cfg.agent_backend,
-                ModelSelection {
-                    primary_provider_key: team.primary_model_provider_key.as_deref(),
-                    primary_model_id: team.primary_model_id.as_deref(),
-                    small_provider_key: team.small_model_provider_key.as_deref(),
-                    small_model_id: team.small_model_id.as_deref(),
-                },
-            )
+            .render_agent_config_for_team(cfg.team_id, cfg.agent_backend, selection)
             .await?;
 
         Ok(JobResponse {
@@ -181,5 +173,37 @@ fn shared_work_type(work_type: WorkRunType) -> vulcanum_shared::api::wire::WorkR
         WorkRunType::PullRequestReview => {
             vulcanum_shared::api::wire::WorkRunType::PullRequestReview
         }
+    }
+}
+
+pub(super) fn model_selection_for_work_type<'a>(
+    team: &'a crate::models::teams::model::Team,
+    work_type: WorkRunType,
+) -> ModelSelection<'a> {
+    match work_type {
+        WorkRunType::Implementation => ModelSelection {
+            primary_provider_key: team.primary_model_provider_key.as_deref(),
+            primary_model_id: team.primary_model_id.as_deref(),
+            small_provider_key: team.small_model_provider_key.as_deref(),
+            small_model_id: team.small_model_id.as_deref(),
+        },
+        WorkRunType::PullRequestReview => ModelSelection {
+            primary_provider_key: team
+                .review_primary_model_provider_key
+                .as_deref()
+                .or(team.primary_model_provider_key.as_deref()),
+            primary_model_id: team
+                .review_primary_model_id
+                .as_deref()
+                .or(team.primary_model_id.as_deref()),
+            small_provider_key: team
+                .review_small_model_provider_key
+                .as_deref()
+                .or(team.small_model_provider_key.as_deref()),
+            small_model_id: team
+                .review_small_model_id
+                .as_deref()
+                .or(team.small_model_id.as_deref()),
+        },
     }
 }

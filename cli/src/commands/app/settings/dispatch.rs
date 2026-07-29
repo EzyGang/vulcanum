@@ -20,6 +20,12 @@ pub(crate) async fn run(cmd: SettingsCommand) -> anyhow::Result<()> {
             SettingsModelsCommand::Small { cmd } => {
                 run_model_selection(models::ModelSlot::Small, cmd).await
             }
+            SettingsModelsCommand::ReviewPrimary { cmd } => {
+                run_model_selection(models::ModelSlot::ReviewPrimary, cmd).await
+            }
+            SettingsModelsCommand::ReviewSmall { cmd } => {
+                run_model_selection(models::ModelSlot::ReviewSmall, cmd).await
+            }
         },
         SettingsCommand::TaskTrackers { cmd } => match cmd {
             TaskTrackersCommand::Add {

@@ -73,6 +73,10 @@ pub struct Team {
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
+    pub review_primary_model_provider_key: Option<String>,
+    pub review_primary_model_id: Option<String>,
+    pub review_small_model_provider_key: Option<String>,
+    pub review_small_model_id: Option<String>,
     pub review_enabled: bool,
     pub review_max_turns: i32,
     pub review_prompt_template: String,
@@ -119,6 +123,14 @@ pub struct UpdateTeamRequest {
     pub small_model_provider_key: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_nullable_string")]
     pub small_model_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub review_primary_model_provider_key: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub review_primary_model_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub review_small_model_provider_key: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub review_small_model_id: Option<Option<String>>,
     #[serde(default)]
     pub review_enabled: Option<bool>,
     #[serde(default)]

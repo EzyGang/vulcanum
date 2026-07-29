@@ -2,6 +2,7 @@ use super::{
     build_service, static_task, test_helpers, AgentBackend, SubmitResultRequest, Uuid,
     WorkRunsError, WorkRunsRepository,
 };
+use vulcanum_shared::api::wire::{AgentConfigPayload, JobResponse};
 
 #[sqlx::test]
 async fn submit_result_fails_if_not_running(pool: sqlx::PgPool) {
@@ -116,6 +117,87 @@ async fn get_job_returns_full_details(pool: sqlx::PgPool) {
     assert!(job.prompt_text.contains("Debian-based container"));
     assert!(job.repos.is_empty());
     assert_eq!(job.agent_backend, AgentBackend::OmpRpc);
+}
+
+#[sqlx::test]
+async fn get_review_job_uses_review_models_for_opencode(pool: sqlx::PgPool) {
+    let job = configured_review_job(&pool, AgentBackend::OpenCode).await;
+
+    match job.agent_config {
+        AgentConfigPayload::OpenCode {
+            model, small_model, ..
+        } => {
+            assert_eq!(model.as_deref(), Some("review-primary/review-model"));
+            assert_eq!(
+                small_model.as_deref(),
+                Some("review-small/review-small-model")
+            );
+        }
+        AgentConfigPayload::OmpRpc { .. } => panic!("Expected OpenCode config"),
+    }
+}
+
+#[sqlx::test]
+async fn get_review_job_uses_review_models_for_omp_rpc(pool: sqlx::PgPool) {
+    let job = configured_review_job(&pool, AgentBackend::OmpRpc).await;
+
+    assert_eq!(
+        job.model_provider_env.get("VULCANUM_OMP_PROVIDER"),
+        Some(&"review-primary".to_owned())
+    );
+    assert_eq!(
+        job.model_provider_env.get("VULCANUM_OMP_MODEL"),
+        Some(&"review-model".to_owned())
+    );
+    assert_eq!(
+        job.model_provider_env.get("VULCANUM_OMP_SMOL"),
+        Some(&"review-small/review-small-model".to_owned())
+    );
+}
+
+async fn configured_review_job(pool: &sqlx::PgPool, backend: AgentBackend) -> JobResponse {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::workers::insert_worker(pool, "review-model-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(pool, "review-model-project").await;
+    let work_run_id =
+        test_helpers::work_runs::insert_pending_work_run(pool, project_id, "review-model-task")
+            .await;
+    let agent_backend = match backend {
+        AgentBackend::OpenCode => "opencode",
+        AgentBackend::OmpRpc => "omp_rpc",
+    };
+
+    sqlx::query!(
+        "UPDATE work_runs SET worker_id = $1, work_type = 'pull_request_review' WHERE id = $2",
+        worker_id,
+        work_run_id
+    )
+    .execute(pool)
+    .await
+    .expect("Should configure review work run");
+    sqlx::query!(
+        r#"UPDATE teams
+           SET agent_backend = $2,
+               primary_model_provider_key = 'implementation-primary',
+               primary_model_id = 'implementation-model',
+               small_model_provider_key = 'implementation-small',
+               small_model_id = 'implementation-small-model',
+               review_primary_model_provider_key = 'review-primary',
+               review_primary_model_id = 'review-model',
+               review_small_model_provider_key = 'review-small',
+               review_small_model_id = 'review-small-model'
+           WHERE id = $1"#,
+        test_helpers::DEFAULT_TEAM_ID,
+        agent_backend,
+    )
+    .execute(pool)
+    .await
+    .expect("Should configure review model selection");
+
+    svc.get_job(work_run_id, worker_id)
+        .await
+        .expect("Should get review job")
 }
 
 #[sqlx::test]

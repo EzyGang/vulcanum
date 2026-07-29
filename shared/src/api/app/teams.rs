@@ -10,6 +10,10 @@ pub struct AppTeam {
     pub primary_model_id: Option<String>,
     pub small_model_provider_key: Option<String>,
     pub small_model_id: Option<String>,
+    pub review_primary_model_provider_key: Option<String>,
+    pub review_primary_model_id: Option<String>,
+    pub review_small_model_provider_key: Option<String>,
+    pub review_small_model_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
@@ -37,4 +41,12 @@ pub struct UpdateTeamModelsRequest {
     pub small_model_provider_key: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub small_model_id: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_primary_model_provider_key: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_primary_model_id: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_small_model_provider_key: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review_small_model_id: Option<Option<String>>,
 }

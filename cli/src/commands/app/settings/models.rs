@@ -13,6 +13,8 @@ use crate::console::escape_terminal;
 pub(crate) enum ModelSlot {
     Primary,
     Small,
+    ReviewPrimary,
+    ReviewSmall,
 }
 
 pub(crate) async fn set(
@@ -132,6 +134,8 @@ impl ModelSlot {
         match self {
             Self::Primary => "primary",
             Self::Small => "small",
+            Self::ReviewPrimary => "review primary",
+            Self::ReviewSmall => "review small",
         }
     }
 }
@@ -161,6 +165,22 @@ fn selection_request(
             UpdateTeamModelsRequest {
                 small_model_provider_key,
                 small_model_id,
+                ..UpdateTeamModelsRequest::default()
+            }
+        }
+        ModelSlot::ReviewPrimary => {
+            let (review_primary_model_provider_key, review_primary_model_id) = pair();
+            UpdateTeamModelsRequest {
+                review_primary_model_provider_key,
+                review_primary_model_id,
+                ..UpdateTeamModelsRequest::default()
+            }
+        }
+        ModelSlot::ReviewSmall => {
+            let (review_small_model_provider_key, review_small_model_id) = pair();
+            UpdateTeamModelsRequest {
+                review_small_model_provider_key,
+                review_small_model_id,
                 ..UpdateTeamModelsRequest::default()
             }
         }
