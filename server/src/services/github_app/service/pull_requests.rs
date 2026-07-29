@@ -3,6 +3,7 @@ use octocrab::models::{reactions::ReactionContent, InstallationId, IssueState};
 use uuid::Uuid;
 
 use crate::models::github_app::errors::GithubAppError;
+use crate::models::github_app::model::GithubInstallation;
 use crate::services::github_app::service::GithubAppManager;
 use crate::util::github::parse_github_repo;
 
@@ -154,6 +155,19 @@ impl PullRequestCommentWriter for GithubAppManager {
     }
 }
 
+impl GithubAppManager {
+    pub(crate) async fn pull_request_installation(
+        &self,
+        team_id: Uuid,
+        repo_owner: &str,
+    ) -> Result<GithubInstallation, GithubAppError> {
+        self.repo
+            .find_installation_by_account_login(&self.db, team_id, repo_owner)
+            .await?
+            .ok_or(GithubAppError::NoInstallation)
+    }
+}
+
 #[async_trait]
 impl PullRequestStateReader for GithubAppManager {
     async fn pull_request_state(
@@ -167,10 +181,8 @@ impl PullRequestStateReader for GithubAppManager {
         let number = u64::try_from(number)
             .map_err(|e| GithubAppError::Api(format!("invalid pull request number: {e}")))?;
         let installation = self
-            .repo
-            .get_installation(&self.db, team_id)
-            .await?
-            .ok_or(GithubAppError::NoInstallation)?;
+            .pull_request_installation(team_id, repo.owner())
+            .await?;
         let client = self
             .app_octocrab()?
             .installation(InstallationId(installation.github_installation_id as u64))

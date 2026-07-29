@@ -3,6 +3,8 @@ mod commit_author;
 mod commit_author_tests;
 mod installation_authorization;
 pub(crate) mod pull_requests;
+#[cfg(test)]
+mod pull_requests_tests;
 mod repos;
 mod state_nonce;
 pub(crate) mod webhooks;
