@@ -10,6 +10,10 @@ export interface Team {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewPrimaryModelProviderKey?: string | null;
+  reviewPrimaryModelId?: string | null;
+  reviewSmallModelProviderKey?: string | null;
+  reviewSmallModelId?: string | null;
   reviewEnabled: boolean;
   reviewMaxTurns: number;
   reviewPromptTemplate: string;
@@ -44,6 +48,10 @@ export interface UpdateTeamRequest {
   primaryModelId?: string | null;
   smallModelProviderKey?: string | null;
   smallModelId?: string | null;
+  reviewPrimaryModelProviderKey?: string | null;
+  reviewPrimaryModelId?: string | null;
+  reviewSmallModelProviderKey?: string | null;
+  reviewSmallModelId?: string | null;
   reviewEnabled?: boolean;
   reviewMaxTurns?: number;
   reviewPromptTemplate?: string;

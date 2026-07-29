@@ -7,13 +7,17 @@ interface UseModelItemsParams {
   catalogProviders: CatalogProvider[];
   primaryModelProviderKey: Signal<string>;
   smallModelProviderKey: Signal<string>;
+  reviewPrimaryModelProviderKey: Signal<string>;
+  reviewSmallModelProviderKey: Signal<string>;
 }
 
 export const useModelItems = ({
   modelProviders,
   catalogProviders,
   primaryModelProviderKey,
-  smallModelProviderKey
+  smallModelProviderKey,
+  reviewPrimaryModelProviderKey,
+  reviewSmallModelProviderKey
 }: UseModelItemsParams) => ({
   connectedProviderItems: modelProviders.map((provider) => ({
     value: provider.providerKey,
@@ -28,6 +32,16 @@ export const useModelItems = ({
     catalogProviders,
     modelProviders,
     smallModelProviderKey.value
+  ),
+  reviewPrimaryModelItems: modelItemsForProvider(
+    catalogProviders,
+    modelProviders,
+    reviewPrimaryModelProviderKey.value
+  ),
+  reviewSmallModelItems: modelItemsForProvider(
+    catalogProviders,
+    modelProviders,
+    reviewSmallModelProviderKey.value
   )
 });
 

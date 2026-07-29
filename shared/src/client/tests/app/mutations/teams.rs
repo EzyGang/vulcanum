@@ -10,8 +10,7 @@ async fn update_models_patches_nested_nullable_fields() {
     let request = UpdateTeamModelsRequest {
         primary_model_provider_key: Some(Some("openai".to_owned())),
         primary_model_id: Some(Some("gpt-5".to_owned())),
-        small_model_provider_key: None,
-        small_model_id: None,
+        ..UpdateTeamModelsRequest::default()
     };
     ApiClient::new(base_url)
         .update_team_models(TEAM_ID, &request, "app-access")

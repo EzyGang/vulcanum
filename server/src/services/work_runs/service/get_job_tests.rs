@@ -8,10 +8,12 @@ use vulcanum_shared::api::wire::{AgentBackend, JobRepo};
 use crate::models::project_configs::model::JobConfigFields;
 use crate::models::providers::errors::IntegrationError;
 use crate::models::providers::model::IntegrationTask;
+use crate::models::teams::model::Team;
 use crate::models::work_runs::model::{
     GithubImplementationFollowupContext, WorkRun, WorkRunStatus, WorkRunType,
 };
 use crate::services::providers::client::TaskFetcher;
+use crate::services::work_runs::service::get_job::model_selection_for_work_type;
 use crate::services::work_runs::service::job_prompts::{
     render_implementation_followup_prompt, render_implementation_prompt,
 };
@@ -101,6 +103,47 @@ fn parentless_linked_review_is_not_standalone() {
     run.github_delivery_id = None;
 
     assert!(!run.is_standalone_review());
+}
+
+#[test]
+fn review_model_selection_uses_overrides_and_independent_fallbacks() {
+    let team = Team {
+        id: Uuid::nil(),
+        name: "Core".to_owned(),
+        personal_user_id: None,
+        prompt_template: String::new(),
+        agents_md: String::new(),
+        primary_model_provider_key: Some("implementation-primary".to_owned()),
+        primary_model_id: Some("implementation-model".to_owned()),
+        small_model_provider_key: Some("implementation-small".to_owned()),
+        small_model_id: Some("implementation-small-model".to_owned()),
+        review_primary_model_provider_key: Some("review-primary".to_owned()),
+        review_primary_model_id: Some("review-model".to_owned()),
+        review_small_model_provider_key: None,
+        review_small_model_id: None,
+        review_enabled: true,
+        review_max_turns: 1,
+        review_prompt_template: String::new(),
+        max_in_progress_tasks: 1,
+        agent_backend: "opencode".to_owned(),
+        created_at: Utc::now(),
+    };
+
+    let implementation = model_selection_for_work_type(&team, WorkRunType::Implementation);
+    let review = model_selection_for_work_type(&team, WorkRunType::PullRequestReview);
+
+    assert_eq!(
+        implementation.primary_provider_key,
+        Some("implementation-primary")
+    );
+    assert_eq!(
+        implementation.primary_model_id,
+        Some("implementation-model")
+    );
+    assert_eq!(review.primary_provider_key, Some("review-primary"));
+    assert_eq!(review.primary_model_id, Some("review-model"));
+    assert_eq!(review.small_provider_key, Some("implementation-small"));
+    assert_eq!(review.small_model_id, Some("implementation-small-model"));
 }
 
 #[sqlx::test]

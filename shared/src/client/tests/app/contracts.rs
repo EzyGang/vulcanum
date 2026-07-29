@@ -6,8 +6,7 @@ fn model_selection_distinguishes_omitted_and_null_fields() {
     let request = UpdateTeamModelsRequest {
         primary_model_provider_key: Some(None),
         primary_model_id: Some(None),
-        small_model_provider_key: None,
-        small_model_id: None,
+        ..UpdateTeamModelsRequest::default()
     };
     let value = serde_json::to_value(request).expect("request should serialize");
 

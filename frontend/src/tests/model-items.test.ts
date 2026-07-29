@@ -27,7 +27,9 @@ describe('model item filtering', () => {
         }
       ],
       primaryModelProviderKey: signal('openai'),
-      smallModelProviderKey: signal('openai')
+      smallModelProviderKey: signal('openai'),
+      reviewPrimaryModelProviderKey: signal('openai'),
+      reviewSmallModelProviderKey: signal('openai')
     });
 
     expect(result.primaryModelItems).toEqual([{ value: 'gpt-5.5', label: 'GPT 5.5' }]);

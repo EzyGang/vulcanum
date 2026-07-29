@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams WHERE id = $1",
+  "query": "SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,\n             primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,\n             review_primary_model_id, review_small_model_provider_key, review_small_model_id,\n             review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,\n             created_at as \"created_at!: chrono::DateTime<chrono::Utc>\"\n             FROM teams ORDER BY created_at ASC LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -50,39 +50,57 @@
       },
       {
         "ordinal": 9,
-        "name": "review_enabled",
-        "type_info": "Bool"
+        "name": "review_primary_model_provider_key",
+        "type_info": "Text"
       },
       {
         "ordinal": 10,
-        "name": "review_max_turns",
-        "type_info": "Int4"
+        "name": "review_primary_model_id",
+        "type_info": "Text"
       },
       {
         "ordinal": 11,
-        "name": "review_prompt_template",
+        "name": "review_small_model_provider_key",
         "type_info": "Text"
       },
       {
         "ordinal": 12,
+        "name": "review_small_model_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 14,
+        "name": "review_max_turns",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 15,
+        "name": "review_prompt_template",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
         "name": "max_in_progress_tasks",
         "type_info": "Int4"
       },
       {
-        "ordinal": 13,
+        "ordinal": 17,
         "name": "agent_backend",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 18,
         "name": "created_at!: chrono::DateTime<chrono::Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -90,6 +108,10 @@
       true,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       true,
       true,
       true,
@@ -102,5 +124,5 @@
       false
     ]
   },
-  "hash": "99adddd194d483813e7fa8cee6b7fbbce6a379f68b3902426a698a7c5d491400"
+  "hash": "2093f2483420629cff88597214364db0956c2b50809c10de6ad0f9a71fd297a4"
 }

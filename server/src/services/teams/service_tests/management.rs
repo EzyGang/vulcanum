@@ -61,6 +61,10 @@ async fn member_cannot_rename_team(pool: sqlx::PgPool) {
                 primary_model_id: None,
                 small_model_provider_key: None,
                 small_model_id: None,
+                review_primary_model_provider_key: None,
+                review_primary_model_id: None,
+                review_small_model_provider_key: None,
+                review_small_model_id: None,
                 review_enabled: None,
                 review_max_turns: None,
                 review_prompt_template: None,
@@ -95,6 +99,10 @@ async fn owner_can_change_team_agent_backend(pool: sqlx::PgPool) {
                 primary_model_id: None,
                 small_model_provider_key: None,
                 small_model_id: None,
+                review_primary_model_provider_key: None,
+                review_primary_model_id: None,
+                review_small_model_provider_key: None,
+                review_small_model_id: None,
                 review_enabled: None,
                 review_max_turns: None,
                 review_prompt_template: None,
@@ -108,6 +116,42 @@ async fn owner_can_change_team_agent_backend(pool: sqlx::PgPool) {
         .expect("owner should update team backend");
 
     assert_eq!(team.agent_backend, "omp_rpc");
+}
+
+#[sqlx::test]
+async fn owner_cannot_save_an_incomplete_review_model_pair(pool: sqlx::PgPool) {
+    let owner_id = "review-model-owner";
+    let team_id = insert_team_with_member(&pool, owner_id, "owner").await;
+    let svc = TeamsService::new(TeamsRepository::new(), pool);
+
+    let err = svc
+        .update_for_principal(
+            team_id,
+            &UpdateTeamRequest {
+                name: None,
+                prompt_template: None,
+                agents_md: None,
+                primary_model_provider_key: None,
+                primary_model_id: None,
+                small_model_provider_key: None,
+                small_model_id: None,
+                review_primary_model_provider_key: Some(Some("openai".to_owned())),
+                review_primary_model_id: None,
+                review_small_model_provider_key: None,
+                review_small_model_id: None,
+                review_enabled: None,
+                review_max_turns: None,
+                review_prompt_template: None,
+                max_in_progress_tasks: None,
+                agent_backend: None,
+            },
+            &user_principal(owner_id),
+            false,
+        )
+        .await
+        .expect_err("incomplete review selection should be rejected");
+
+    assert!(matches!(err, TeamsError::InvalidOperation(_)));
 }
 
 #[sqlx::test]

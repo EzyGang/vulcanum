@@ -21,7 +21,8 @@ impl TeamsRepository {
             r#"INSERT INTO teams (id, name, personal_user_id, prompt_template, review_prompt_template)
              VALUES ($1, $2, $3, '', '')
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
-              primary_model_id, small_model_provider_key, small_model_id,
+              primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,
+              review_primary_model_id, review_small_model_provider_key, review_small_model_id,
               review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
@@ -43,7 +44,8 @@ impl TeamsRepository {
             r#"INSERT INTO teams (id, name, prompt_template, review_prompt_template)
              VALUES ($1, $2, '', '')
              RETURNING id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
-              primary_model_id, small_model_provider_key, small_model_id,
+              primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,
+              review_primary_model_id, review_small_model_provider_key, review_small_model_id,
               review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
               created_at as "created_at!: chrono::DateTime<chrono::Utc>""#,
             id,
@@ -61,7 +63,8 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
-             primary_model_id, small_model_provider_key, small_model_id,
+             primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,
+             review_primary_model_id, review_small_model_provider_key, review_small_model_id,
              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE id = $1"#,
@@ -101,7 +104,8 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
-             primary_model_id, small_model_provider_key, small_model_id,
+             primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,
+             review_primary_model_id, review_small_model_provider_key, review_small_model_id,
              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams WHERE personal_user_id = $1"#,
@@ -172,7 +176,8 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"SELECT t.id, t.name, t.personal_user_id, t.prompt_template, t.agents_md, t.primary_model_provider_key,
-             t.primary_model_id, t.small_model_provider_key, t.small_model_id,
+             t.primary_model_id, t.small_model_provider_key, t.small_model_id, t.review_primary_model_provider_key,
+             t.review_primary_model_id, t.review_small_model_provider_key, t.review_small_model_id,
              t.review_enabled, t.review_max_turns, t.review_prompt_template, t.max_in_progress_tasks, t.agent_backend,
              t.created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams t
@@ -193,7 +198,8 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
-             primary_model_id, small_model_provider_key, small_model_id,
+             primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,
+             review_primary_model_id, review_small_model_provider_key, review_small_model_id,
              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams
@@ -211,7 +217,8 @@ impl TeamsRepository {
         sqlx::query_as!(
             Team,
             r#"SELECT id, name, personal_user_id, prompt_template, agents_md, primary_model_provider_key,
-             primary_model_id, small_model_provider_key, small_model_id,
+             primary_model_id, small_model_provider_key, small_model_id, review_primary_model_provider_key,
+             review_primary_model_id, review_small_model_provider_key, review_small_model_id,
              review_enabled, review_max_turns, review_prompt_template, max_in_progress_tasks, agent_backend,
              created_at as "created_at!: chrono::DateTime<chrono::Utc>"
              FROM teams ORDER BY created_at ASC LIMIT 1"#,

@@ -145,6 +145,16 @@ pub(crate) enum SettingsModelsCommand {
         #[command(subcommand)]
         cmd: ModelSelectionCommand,
     },
+    /// Manage the pull-request review primary model override
+    ReviewPrimary {
+        #[command(subcommand)]
+        cmd: ModelSelectionCommand,
+    },
+    /// Manage the pull-request review small model override
+    ReviewSmall {
+        #[command(subcommand)]
+        cmd: ModelSelectionCommand,
+    },
 }
 
 #[derive(Subcommand)]

@@ -29,6 +29,10 @@ export const useTeamDefaults = (teamId: string | null) => {
   const primaryModelId = useSignal('');
   const smallModelProviderKey = useSignal('');
   const smallModelId = useSignal('');
+  const reviewPrimaryModelProviderKey = useSignal('');
+  const reviewPrimaryModelId = useSignal('');
+  const reviewSmallModelProviderKey = useSignal('');
+  const reviewSmallModelId = useSignal('');
   const agentBackend = useSignal<TeamAgentBackend>('opencode');
   const reviewEnabled = useSignal(false);
   const reviewMaxTurns = useSignal(DEFAULT_REVIEW_MAX_TURNS);
@@ -67,6 +71,10 @@ export const useTeamDefaults = (teamId: string | null) => {
     primaryModelId.value = team.primaryModelId ?? '';
     smallModelProviderKey.value = team.smallModelProviderKey ?? '';
     smallModelId.value = team.smallModelId ?? '';
+    reviewPrimaryModelProviderKey.value = team.reviewPrimaryModelProviderKey ?? '';
+    reviewPrimaryModelId.value = team.reviewPrimaryModelId ?? '';
+    reviewSmallModelProviderKey.value = team.reviewSmallModelProviderKey ?? '';
+    reviewSmallModelId.value = team.reviewSmallModelId ?? '';
     agentBackend.value = team.agentBackend;
     reviewEnabled.value = team.reviewEnabled;
     reviewMaxTurns.value = team.reviewMaxTurns;
@@ -79,11 +87,19 @@ export const useTeamDefaults = (teamId: string | null) => {
   }, [teamId, team, teamDefaults]);
 
   const catalogProviders = modelCatalog?.providers ?? [];
-  const { connectedProviderItems, primaryModelItems, smallModelItems } = useModelItems({
+  const {
+    connectedProviderItems,
+    primaryModelItems,
+    smallModelItems,
+    reviewPrimaryModelItems,
+    reviewSmallModelItems
+  } = useModelItems({
     modelProviders,
     catalogProviders,
     primaryModelProviderKey,
-    smallModelProviderKey
+    smallModelProviderKey,
+    reviewPrimaryModelProviderKey,
+    reviewSmallModelProviderKey
   });
 
   const mutation = useApiMutation(
@@ -106,6 +122,10 @@ export const useTeamDefaults = (teamId: string | null) => {
       primaryModelId,
       smallModelProviderKey,
       smallModelId,
+      reviewPrimaryModelProviderKey,
+      reviewPrimaryModelId,
+      reviewSmallModelProviderKey,
+      reviewSmallModelId,
       reviewEnabled,
       reviewMaxTurns,
       reviewPromptTemplate,
@@ -115,7 +135,9 @@ export const useTeamDefaults = (teamId: string | null) => {
       agentBackendItems: AGENT_BACKEND_ITEMS,
       connectedProviderItems,
       primaryModelItems,
-      smallModelItems
+      smallModelItems,
+      reviewPrimaryModelItems,
+      reviewSmallModelItems
     },
     status: {
       loading: isLoading || defaultsLoading,
@@ -145,6 +167,28 @@ export const useTeamDefaults = (teamId: string | null) => {
       },
       onSmallModelChange: (value: string) => {
         smallModelId.value = value;
+      },
+      onReviewPrimaryProviderChange: (value: string) => {
+        reviewPrimaryModelProviderKey.value = value;
+        reviewPrimaryModelId.value = '';
+      },
+      onReviewPrimaryModelChange: (value: string) => {
+        reviewPrimaryModelId.value = value;
+      },
+      onReviewSmallProviderChange: (value: string) => {
+        reviewSmallModelProviderKey.value = value;
+        reviewSmallModelId.value = '';
+      },
+      onReviewSmallModelChange: (value: string) => {
+        reviewSmallModelId.value = value;
+      },
+      onClearReviewPrimaryModel: () => {
+        reviewPrimaryModelProviderKey.value = '';
+        reviewPrimaryModelId.value = '';
+      },
+      onClearReviewSmallModel: () => {
+        reviewSmallModelProviderKey.value = '';
+        reviewSmallModelId.value = '';
       },
       onAgentBackendChange: (value: string) => {
         agentBackend.value = value as TeamAgentBackend;
@@ -187,6 +231,10 @@ export const useTeamDefaults = (teamId: string | null) => {
             primaryModelId: primaryModelId.value || null,
             smallModelProviderKey: smallModelProviderKey.value || null,
             smallModelId: smallModelId.value || null,
+            reviewPrimaryModelProviderKey: reviewPrimaryModelProviderKey.value || null,
+            reviewPrimaryModelId: reviewPrimaryModelId.value || null,
+            reviewSmallModelProviderKey: reviewSmallModelProviderKey.value || null,
+            reviewSmallModelId: reviewSmallModelId.value || null,
             reviewEnabled: reviewEnabled.value,
             reviewMaxTurns: reviewMaxTurns.value,
             reviewPromptTemplate: reviewPromptTemplateInherited.value

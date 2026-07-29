@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE teams\n           SET agent_backend = $2,\n               primary_model_provider_key = 'implementation-primary',\n               primary_model_id = 'implementation-model',\n               small_model_provider_key = 'implementation-small',\n               small_model_id = 'implementation-small-model',\n               review_primary_model_provider_key = 'review-primary',\n               review_primary_model_id = 'review-model',\n               review_small_model_provider_key = 'review-small',\n               review_small_model_id = 'review-small-model'\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6444364bb2f4b04b7bed19cec8c4a0b5a65ab7818a68ca4b1d33f38108fb1549"
+}
