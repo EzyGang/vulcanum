@@ -2,6 +2,7 @@ import type { Signal } from '@preact/signals';
 import type { JSX } from 'preact';
 import type { SelectOption } from '../../../types/shared';
 import type { TeamAgentBackend } from '../../../types/teams';
+import { Button } from '../../shared/ui/Button.view';
 import { Label } from '../../shared/ui/Label.view';
 import { Select } from '../../shared/ui/Select.view';
 
@@ -25,6 +26,8 @@ interface ModelSelectionFieldsProps {
   };
   saving: boolean;
   actions: {
+    onClearReviewPrimaryModel: () => void;
+    onClearReviewSmallModel: () => void;
     onAgentBackendChange: (value: string) => void;
     onPrimaryProviderChange: (value: string) => void;
     onPrimaryModelChange: (value: string) => void;
@@ -87,7 +90,8 @@ export const ModelSelectionFields = ({
         model: data.reviewPrimaryModelId,
         modelItems: data.reviewPrimaryModelItems,
         onProviderChange: actions.onReviewPrimaryProviderChange,
-        onModelChange: actions.onReviewPrimaryModelChange
+        onModelChange: actions.onReviewPrimaryModelChange,
+        onClear: actions.onClearReviewPrimaryModel
       }}
       small={{
         providerId: 'team-review-small-provider',
@@ -96,7 +100,8 @@ export const ModelSelectionFields = ({
         model: data.reviewSmallModelId,
         modelItems: data.reviewSmallModelItems,
         onProviderChange: actions.onReviewSmallProviderChange,
-        onModelChange: actions.onReviewSmallModelChange
+        onModelChange: actions.onReviewSmallModelChange,
+        onClear: actions.onClearReviewSmallModel
       }}
       connectedProviderItems={data.connectedProviderItems}
       saving={saving}
@@ -112,6 +117,7 @@ interface PairProps {
   modelItems: SelectOption[];
   onProviderChange: (value: string) => void;
   onModelChange: (value: string) => void;
+  onClear?: () => void;
 }
 
 interface RuntimeControlsProps {
@@ -184,5 +190,15 @@ const ModelPair = ({
       placeholder='Optional model...'
       items={pair.modelItems}
     />
+    {pair.onClear ? (
+      <Button
+        type='button'
+        variant='ghost'
+        onClick={pair.onClear}
+        disabled={saving || (!pair.provider.value && !pair.model.value)}
+      >
+        Clear override
+      </Button>
+    ) : null}
   </div>
 );

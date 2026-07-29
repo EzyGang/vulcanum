@@ -56,6 +56,8 @@ interface TeamDefaultsViewProps {
     onReviewPrimaryModelChange: (value: string) => void;
     onReviewSmallProviderChange: (value: string) => void;
     onReviewSmallModelChange: (value: string) => void;
+    onClearReviewPrimaryModel: () => void;
+    onClearReviewSmallModel: () => void;
     onSmallModelChange: (value: string) => void;
     onAgentBackendChange: (value: string) => void;
     onReviewEnabledChange: (checked: boolean) => void;

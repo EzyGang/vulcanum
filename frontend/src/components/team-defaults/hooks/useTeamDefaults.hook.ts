@@ -182,6 +182,14 @@ export const useTeamDefaults = (teamId: string | null) => {
       onReviewSmallModelChange: (value: string) => {
         reviewSmallModelId.value = value;
       },
+      onClearReviewPrimaryModel: () => {
+        reviewPrimaryModelProviderKey.value = '';
+        reviewPrimaryModelId.value = '';
+      },
+      onClearReviewSmallModel: () => {
+        reviewSmallModelProviderKey.value = '';
+        reviewSmallModelId.value = '';
+      },
       onAgentBackendChange: (value: string) => {
         agentBackend.value = value as TeamAgentBackend;
       },
