@@ -1,5 +1,6 @@
 packages:
   - "frontend"
+  - "website/landing"
   - "cli"
   - "server"
   - "worker-server"

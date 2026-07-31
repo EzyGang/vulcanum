@@ -3,6 +3,7 @@ target/
 .gitignore
 node_modules/
 *.md
+!website/docs/content/**/*.md
 AGENTS.md
 **/Dockerfile
 **/.dockerignore

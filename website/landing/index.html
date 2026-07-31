@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth scheme-dark motion-reduce:scroll-auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Vulcanum connects task trackers, coding agents, and isolated workers in one control plane."
+    />
+    <meta name="theme-color" content="#000000" />
+    <link rel="canonical" href="https://vulcanum.ezygang.digital/" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <title>Vulcanum — Agentic work orchestration</title>
+  </head>
+  <body class="site-grid min-h-screen min-w-80 overflow-x-hidden bg-page font-sans text-white antialiased">
+    <a
+      class="fixed top-3 left-3 z-50 -translate-y-[160%] bg-white px-3.5 py-2.5 font-mono text-xs font-bold text-page uppercase focus:translate-y-0 focus:outline-2 focus:outline-accent focus:outline-offset-4"
+      href="#main"
+    >
+      Skip to content
+    </a>
+
+    <div class="mx-auto min-h-screen w-[min(calc(100%-40px),1280px)] border-line border-x bg-page/92 max-[600px]:w-full max-[600px]:border-x-0">
+      <header class="flex min-h-19 items-center justify-between gap-8 border-line border-b px-8 py-4 max-[600px]:min-h-16 max-[600px]:px-5 max-[600px]:py-3.5">
+        <a class="inline-flex items-center gap-3 text-base font-bold tracking-[-0.02em] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4" href="/" aria-label="Vulcanum home">
+          <span class="grid size-7.5 place-items-center border border-line-strong bg-surface font-mono text-[0.82rem] font-extrabold text-accent" aria-hidden="true">V</span>
+          <span>Vulcanum</span>
+        </a>
+
+        <nav class="flex items-center gap-7 max-[600px]:gap-4" aria-label="Primary navigation">
+          <a class="font-mono text-[0.72rem] font-semibold tracking-[0.08em] text-white/72 uppercase transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4 max-[600px]:hidden" href="/docs/">Documentation</a>
+          <a class="font-mono text-[0.72rem] font-semibold tracking-[0.08em] text-white/72 uppercase transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4" href="https://github.com/EzyGang/vulcanum">GitHub</a>
+        </nav>
+      </header>
+
+      <main id="main">
+        <section class="grid min-h-160 grid-cols-[minmax(0,1.18fr)_minmax(380px,0.82fr)] items-center gap-18 border-line border-b px-[clamp(32px,6vw,88px)] py-[clamp(72px,10vw,136px)] max-[900px]:grid-cols-1 max-[600px]:gap-14 max-[600px]:px-5 max-[600px]:py-18" aria-labelledby="hero-title">
+          <div class="flex flex-col items-start gap-7.5">
+            <p class="animate-rise flex items-center gap-3 font-mono text-[0.73rem] font-semibold tracking-[0.1em] text-white/72 uppercase motion-reduce:animate-none">
+              <span class="h-px w-7 bg-accent"></span> Agentic work orchestration
+            </p>
+            <h1 id="hero-title" class="animate-rise max-w-190 text-[clamp(3.4rem,7vw,6.6rem)] leading-[0.9] font-semibold tracking-[-0.065em] [animation-delay:70ms] motion-reduce:animate-none max-[600px]:text-[clamp(3rem,16vw,4.8rem)]">
+              Move work.<br />Run agents.<br /><em class="text-accent not-italic">Keep control.</em>
+            </h1>
+            <p class="animate-rise max-w-160 text-[clamp(1rem,1.4vw,1.18rem)] leading-[1.65] text-white/72 [animation-delay:140ms] motion-reduce:animate-none">
+              Vulcanum connects task trackers, model runtimes, source control, and isolated workers without coupling them together.
+            </p>
+            <div class="animate-rise flex flex-wrap items-center gap-3 [animation-delay:210ms] motion-reduce:animate-none max-[600px]:w-full">
+              <a class="inline-flex min-h-12 items-center justify-center gap-6 border border-white bg-white px-4 py-3 font-mono text-[0.72rem] font-bold tracking-[0.07em] text-page uppercase transition-colors hover:border-accent hover:bg-accent focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4 max-[600px]:w-full" href="/docs/">
+                Read the documentation <span aria-hidden="true">→</span>
+              </a>
+              <a class="inline-flex min-h-12 items-center justify-center border border-line px-4 py-3 font-mono text-[0.72rem] font-bold tracking-[0.07em] uppercase transition-colors hover:border-line-strong hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4 max-[600px]:w-full" href="https://github.com/EzyGang/vulcanum">View the source</a>
+            </div>
+          </div>
+
+          <div class="animate-rise border border-line-strong bg-surface [animation-delay:180ms] motion-reduce:animate-none max-[900px]:w-full" aria-label="Vulcanum system flow">
+            <div class="flex min-h-13.5 items-center justify-between gap-5 border-line border-b px-4.5 py-3.5 font-mono text-[0.68rem] font-semibold tracking-[0.09em] text-text-muted uppercase">
+              <span>Control plane</span>
+              <span class="inline-flex items-center gap-2 text-success"><i class="size-1.75 bg-current shadow-[0_0_12px_currentColor]"></i> Ready</span>
+            </div>
+            <ol>
+              <li class="grid min-h-21.5 grid-cols-[42px_1fr_auto] items-center gap-3.5 px-4.5 py-3.5">
+                <span class="font-mono text-[0.68rem] text-text-muted">01</span>
+                <div class="flex flex-col gap-1.5"><strong class="text-[0.94rem] font-semibold">Track</strong><small class="font-mono text-[0.72rem] leading-[1.4] text-text-muted">Receive work from Kaneo</small></div>
+                <span class="size-2 border border-line-strong" aria-hidden="true"></span>
+              </li>
+              <li class="grid min-h-21.5 grid-cols-[42px_1fr_auto] items-center gap-3.5 border-line border-t px-4.5 py-3.5">
+                <span class="font-mono text-[0.68rem] text-text-muted">02</span>
+                <div class="flex flex-col gap-1.5"><strong class="text-[0.94rem] font-semibold">Dispatch</strong><small class="font-mono text-[0.72rem] leading-[1.4] text-text-muted">Reserve compatible capacity</small></div>
+                <span class="size-2 border border-line-strong" aria-hidden="true"></span>
+              </li>
+              <li class="grid min-h-21.5 grid-cols-[42px_1fr_auto] items-center gap-3.5 border-line border-t px-4.5 py-3.5">
+                <span class="font-mono text-[0.68rem] text-text-muted">03</span>
+                <div class="flex flex-col gap-1.5"><strong class="text-[0.94rem] font-semibold">Execute</strong><small class="font-mono text-[0.72rem] leading-[1.4] text-text-muted">Run an agent in isolation</small></div>
+                <span class="size-2 border border-line-strong" aria-hidden="true"></span>
+              </li>
+              <li class="grid min-h-21.5 grid-cols-[42px_1fr_auto] items-center gap-3.5 border-line border-t px-4.5 py-3.5">
+                <span class="font-mono text-[0.68rem] text-text-muted">04</span>
+                <div class="flex flex-col gap-1.5"><strong class="text-[0.94rem] font-semibold">Report</strong><small class="font-mono text-[0.72rem] leading-[1.4] text-text-muted">Return state and results</small></div>
+                <span class="size-2 border border-accent bg-accent" aria-hidden="true"></span>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-3 border-line border-b max-[900px]:grid-cols-1" aria-label="Capabilities">
+          <article class="flex min-h-77.5 flex-col items-start gap-6.5 px-9 py-10.5 max-[900px]:min-h-0 max-[600px]:px-5 max-[600px]:py-9">
+            <p class="font-mono text-[0.68rem] font-semibold tracking-[0.1em] text-accent uppercase">01 / Dispatch</p>
+            <h2 class="text-[clamp(1.7rem,3vw,2.6rem)] leading-[1.05] font-semibold tracking-[-0.045em]">One queue.<br />Many workers.</h2>
+            <span class="max-w-80 text-sm leading-[1.6] text-text-muted">Match work to available workers and reserve capacity before a run starts.</span>
+          </article>
+          <article class="flex min-h-77.5 flex-col items-start gap-6.5 border-line border-l px-9 py-10.5 max-[900px]:min-h-0 max-[900px]:border-t max-[900px]:border-l-0 max-[600px]:px-5 max-[600px]:py-9">
+            <p class="font-mono text-[0.68rem] font-semibold tracking-[0.1em] text-accent uppercase">02 / Isolation</p>
+            <h2 class="text-[clamp(1.7rem,3vw,2.6rem)] leading-[1.05] font-semibold tracking-[-0.045em]">Choose the<br />boundary.</h2>
+            <span class="max-w-80 text-sm leading-[1.6] text-text-muted">Run agents on the host, in Docker, or with Kata Containers.</span>
+          </article>
+          <article class="flex min-h-77.5 flex-col items-start gap-6.5 border-line border-l px-9 py-10.5 max-[900px]:min-h-0 max-[900px]:border-t max-[900px]:border-l-0 max-[600px]:px-5 max-[600px]:py-9">
+            <p class="font-mono text-[0.68rem] font-semibold tracking-[0.1em] text-accent uppercase">03 / Control</p>
+            <h2 class="text-[clamp(1.7rem,3vw,2.6rem)] leading-[1.05] font-semibold tracking-[-0.045em]">State stays<br />visible.</h2>
+            <span class="max-w-80 text-sm leading-[1.6] text-text-muted">Keep task, run, provider, and worker state in one control plane.</span>
+          </article>
+        </section>
+      </main>
+
+      <footer class="flex min-h-27 items-center justify-between gap-6 px-8 py-7 max-[600px]:flex-col max-[600px]:items-start max-[600px]:px-5">
+        <p class="text-[0.78rem] text-text-muted">Open source. Pre-1.0. Built for infrastructure you control.</p>
+        <a class="font-mono text-[0.72rem] font-semibold tracking-[0.08em] text-white/72 uppercase transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-4" href="/docs/architecture/">Explore the architecture <span aria-hidden="true">↗</span></a>
+      </footer>
+    </div>
+  </body>
+</html>

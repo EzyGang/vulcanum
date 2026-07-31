@@ -1,0 +1,76 @@
+[project]
+site_name = "Vulcanum Documentation"
+site_description = "Deployment, configuration, provider, worker, and CLI documentation for Vulcanum."
+docs_dir = "content"
+site_dir = "site"
+site_url = "https://vulcanum.ezygang.digital/docs/"
+repo_url = "https://github.com/EzyGang/vulcanum"
+repo_name = "EzyGang/vulcanum"
+edit_uri = "edit/main/website/docs/content/"
+
+nav = [
+  { "Home" = "index.md" },
+  { "Architecture" = "architecture.md" },
+  { "Deployment" = [
+    { "Overview" = "deployment/index.md" },
+    { "Control plane" = "deployment/control-plane.md" },
+    { "Local development" = "deployment/local-development.md" },
+  ] },
+  { "Web UI" = [
+    { "Overview" = "web-ui/index.md" },
+    { "Settings" = "web-ui/settings.md" },
+    { "Projects and task boards" = "web-ui/projects-and-boards.md" },
+  ] },
+  { "Providers" = [
+    { "Overview" = "providers/index.md" },
+    { "Task trackers" = "providers/task-trackers.md" },
+    { "Model providers" = "providers/model-providers.md" },
+    { "GitHub App" = "providers/github-app.md" },
+  ] },
+  { "Workers" = [
+    { "Overview" = "workers/index.md" },
+    { "Set up a worker" = "workers/setup.md" },
+    { "Configuration" = "workers/configuration.md" },
+    { "Isolation and recovery" = "workers/isolation-and-recovery.md" },
+  ] },
+  { "CLI" = [
+    { "Overview" = "cli/index.md" },
+    { "Command reference" = "cli/reference.md" },
+  ] },
+]
+
+[project.theme]
+variant = "modern"
+features = [
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.instant.progress",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
+  "navigation.sections",
+  "navigation.path",
+  "navigation.tracking",
+  "navigation.top",
+  "toc.follow",
+  "search.highlight",
+  "content.code.copy",
+  "content.code.select",
+  "content.action.edit",
+  "content.action.view",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "deep-orange"
+accent = "orange"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "deep-orange"
+accent = "orange"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"

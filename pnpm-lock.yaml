@@ -80,6 +80,21 @@ importers:
 
   shared: {}
 
+  website/landing:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.4.15
+        version: 2.4.15
+      '@tailwindcss/vite':
+        specifier: ^4.3.0
+        version: 4.3.0(vite@7.3.3(@types/node@25.9.3)(jiti@2.7.0)(lightningcss@1.32.0))
+      tailwindcss:
+        specifier: ^4.3.0
+        version: 4.3.0
+      vite:
+        specifier: ^7.0.4
+        version: 7.3.3(@types/node@25.9.3)(jiti@2.7.0)(lightningcss@1.32.0)
+
   worker-server: {}
 
 packages:

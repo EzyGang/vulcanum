@@ -69,6 +69,14 @@ Prints the selected team's workers with these columns:
 - last-seen timestamp
 - active and maximum job counts
 
+### Rename a worker
+
+```bash
+vulcanum workers rename <WORKER_ID> <NAME> [--team <UUID>]
+```
+
+The command changes the server-side display name for the selected worker. It does not change the host name.
+
 This plural `workers` namespace is separate from the singular `worker` lifecycle namespace.
 
 ## Work run inspection
@@ -215,9 +223,13 @@ vulcanum settings models primary set <PROVIDER_KEY> <MODEL_ID> [--team <UUID>]
 vulcanum settings models primary clear [--team <UUID>]
 vulcanum settings models small set <PROVIDER_KEY> <MODEL_ID> [--team <UUID>]
 vulcanum settings models small clear [--team <UUID>]
+vulcanum settings models review-primary set <PROVIDER_KEY> <MODEL_ID> [--team <UUID>]
+vulcanum settings models review-primary clear [--team <UUID>]
+vulcanum settings models review-small set <PROVIDER_KEY> <MODEL_ID> [--team <UUID>]
+vulcanum settings models review-small clear [--team <UUID>]
 ```
 
-`set` requires a connected provider and a model present in that provider's catalog. Provider and model are updated as one pair. `clear` clears both values in the selected pair.
+`set` requires a connected provider and a model present in that provider's catalog. Provider and model are updated as one pair. `clear` clears both values in the selected pair. Empty review pairs inherit the corresponding implementation pair.
 
 ### Manage task trackers
 

@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, "Segoe UI Variable", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  --color-page: oklch(0% 0 0);
+  --color-surface: oklch(14% 0 0);
+  --color-surface-raised: oklch(19% 0 0);
+  --color-text-muted: oklch(68% 0 0);
+  --color-line: oklch(100% 0 0 / 0.12);
+  --color-line-strong: oklch(100% 0 0 / 0.28);
+  --color-accent: oklch(70% 0.19 46);
+  --color-success: oklch(82% 0.2 145);
+
+  --animate-rise: rise 560ms ease both;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@layer base {
+  body {
+    font-synthesis: none;
+  }
+}
+
+.site-grid {
+  background:
+    linear-gradient(90deg, var(--color-page) 0%, transparent 25%, transparent 75%, var(--color-page) 100%),
+    linear-gradient(var(--color-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-line) 1px, transparent 1px), var(--color-page);
+  background-size:
+    auto,
+    64px 64px,
+    64px 64px,
+    auto;
+}

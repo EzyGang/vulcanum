@@ -20,7 +20,7 @@ The point is not to build another task tracker, another coding agent, or just an
 ## Contents
 
 - [Installation](#installation)
-- [CLI Reference](docs/cli-reference.md)
+- [CLI Reference](website/docs/content/cli/reference.md)
 - [What Vulcanum Is For](#what-vulcanum-is-for)
 - [Where It Fits](#where-it-fits)
 - [A Typical Run](#a-typical-run)
@@ -172,7 +172,7 @@ To place a skill manually or pass it directly to an agent, print its complete `S
 vulcanum skills install ticket-template --stdout > ./SKILL.md
 ```
 
-See the [CLI reference](docs/cli-reference.md#agent-skills) for canonical skill names and command behavior.
+See the [CLI reference](website/docs/content/cli/reference.md#agent-skills) for canonical skill names and command behavior.
 
 ---
 
@@ -344,7 +344,7 @@ Despite the binary name, this is the worker daemon. It polls the control plane, 
 
 #### `vulcanum`
 
-This is the CLI. It provisions, registers, starts, and removes workers; installs the bundled agent skills; and provides authenticated commands for workers, runs, projects, task boards, integrations, and model settings. See the [CLI reference](docs/cli-reference.md) for command syntax, authentication, and team-selection behavior.
+This is the CLI. It provisions, registers, starts, and removes workers; installs the bundled agent skills; and provides authenticated commands for workers, runs, projects, task boards, integrations, and model settings. See the [CLI reference](website/docs/content/cli/reference.md) for command syntax, authentication, and team-selection behavior.
 
 #### Frontend
 

@@ -81,3 +81,21 @@ jobs:
               --cache-from "type=registry,ref=$DOCKER_REGISTRY/$IMAGE_NAME:deps" \
               .
           fi
+
+      - name: Build & Push Website Image
+        env:
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          IMAGE_NAME: ${{ vars.WEBSITE_IMAGE_NAME }}
+        run: |
+          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD $DOCKER_REGISTRY
+
+          if !(docker manifest inspect $DOCKER_REGISTRY/$IMAGE_NAME:${GITHUB_SHA::7})
+          then
+            docker buildx build --push --file website/docker/Dockerfile \
+              --tag $DOCKER_REGISTRY/$IMAGE_NAME:${GITHUB_SHA::7} \
+              --cache-to "type=registry,ref=$DOCKER_REGISTRY/$IMAGE_NAME:deps,compression=zstd" \
+              --cache-from "type=registry,ref=$DOCKER_REGISTRY/$IMAGE_NAME:deps" \
+              .
+          fi

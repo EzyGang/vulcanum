@@ -2,6 +2,7 @@
 .DS_Store
 Thumbs.db
 .playwright-cli
+.tmp-omp-sessions
 # IDE
 .idea/
 .vscode/
