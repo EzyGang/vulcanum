@@ -47,16 +47,10 @@
        x="3.3084905"
        y="3.3084905"
        ry="0" />
-    <text
-       xml:space="preserve"
-       style="font-weight:300;font-size:90.3111px;font-family:Inter;-inkscape-font-specification:'Inter Light';text-align:start;letter-spacing:0px;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#f96f16;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round;paint-order:markers stroke fill;fill-opacity:1"
-       x="40.639988"
-       y="100.69686"
-       id="text1"><tspan
-         sodipodi:role="line"
-         id="tspan1"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:90.3111px;font-family:'JetBrains Mono';-inkscape-font-specification:'JetBrains Mono Bold';fill:#f96f16;fill-opacity:1;stroke-width:0.529167"
-         x="40.639988"
-         y="100.69686">V</tspan></text>
+    <path
+       id="text1"
+       d="M219.279296875 0 35.37445068359375 730H164.64581298828125L275.1903076171875 254.47576904296875Q283.5101318359375 218.85638427734375 291.6325988769531 178.74404907226562Q299.75506591796875 138.6317138671875 303.75506591796875 113.87664794921875Q307.75506591796875 138.6317138671875 314.7925109863281 178.74404907226562Q321.8299560546875 218.85638427734375 330.1497802734375 255.060791015625L438.52423095703125 730H564.6255493164062L381.47576904296875 0Z"
+       transform="translate(40.639988 100.69686) scale(0.0903111 -0.0903111)"
+       style="fill:#f96f16;fill-opacity:1;stroke-width:0.529167;stroke-linecap:round;stroke-linejoin:round;paint-order:markers stroke fill" />
   </g>
 </svg>

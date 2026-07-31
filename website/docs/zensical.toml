@@ -41,6 +41,8 @@ nav = [
 
 [project.theme]
 variant = "modern"
+logo = "/logo.svg"
+favicon = "/logo.svg"
 features = [
   "navigation.instant",
   "navigation.instant.prefetch",
