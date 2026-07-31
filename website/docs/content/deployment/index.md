@@ -51,6 +51,7 @@ The repository contains these Dockerfiles:
 server/docker/Dockerfile
 frontend/docker/Dockerfile
 docker/agent/Dockerfile
+website/docker/Dockerfile
 ```
 
 Build the control-plane and frontend images from the repository root:
@@ -64,8 +65,18 @@ The control-plane image contains `vulcanum-web` and `vulcanum-dispatcher`. Its d
 
 The frontend image listens on port `80`. Its Nginx configuration sends `/api` requests to `http://server:8000`. Name the API service `server`, or provide an equivalent proxy configuration.
 
+The website image serves the public landing page at `/` and the Zensical documentation at `/docs/`. It does not start the Vulcanum server and does not need control-plane environment variables.
+
 The repository does not include a production Compose or Kubernetes definition. Supply PostgreSQL, Redis, secrets, storage policy, health checks, and TLS in your deployment platform.
 
 ## Release scope
 
-Published release archives contain only the worker-side `vulcanum` and `vulcanum-server` binaries. They do not contain the control-plane server, dispatcher, or frontend.
+Published release archives contain the worker-side `vulcanum` and `vulcanum-server` binaries. Release tags also publish multi-platform control-plane, frontend, and website images:
+
+```text
+ghcr.io/ezygang/vulcanum/backend:<release-tag>
+ghcr.io/ezygang/vulcanum/frontend:<release-tag>
+ghcr.io/ezygang/vulcanum/website:<release-tag>
+```
+
+Use the exact release tag, such as `v0.1.2` or `v0.1.2-alpha.1`. The release workflow does not publish a mutable `latest` tag.

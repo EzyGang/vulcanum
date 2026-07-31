@@ -17,6 +17,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY website/landing/package.json ./website/landing/package.json
 RUN corepack enable && pnpm install --frozen-lockfile --filter @repo/landing...
 
+COPY frontend/public/logo.svg ./frontend/public/logo.svg
 COPY website/landing ./website/landing
 RUN pnpm --filter @repo/landing build
 

@@ -620,7 +620,15 @@ Each release includes `vulcanum` and `vulcanum-server` in checksum-protected arc
 - x86_64 and ARM64 Linux;
 - x86_64 and ARM64 macOS.
 
-Use the [installation script](#installation) to select the archive for the current platform automatically. The release workflow does not publish the control-plane server, dispatcher, or frontend.
+Use the [installation script](#installation) to select the archive for the current platform automatically. Each release also publishes multi-platform control-plane, frontend, and public website images:
+
+```text
+ghcr.io/ezygang/vulcanum/backend:<release-tag>
+ghcr.io/ezygang/vulcanum/frontend:<release-tag>
+ghcr.io/ezygang/vulcanum/website:<release-tag>
+```
+
+Use the exact version tag. The release workflow does not publish a mutable `latest` tag for these images.
 
 ### Contributing
 
