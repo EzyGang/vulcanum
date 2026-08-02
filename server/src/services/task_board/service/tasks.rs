@@ -50,16 +50,13 @@ impl TaskBoardService {
         request: UpdateTaskRequest,
     ) -> Result<UpdateTaskResponse, TaskBoardError> {
         let title = normalized_required(&request.title, TaskBoardError::EmptyTitle)?;
-        let (client, _) = self
+        let (client, task) = self
             .load_task_provider(team_id, provider_id, task_id)
             .await?;
         let task = client
-            .update_task(UpdateIntegrationTaskInput {
-                task_id: task_id.to_owned(),
-                title,
-                body: request.body,
-            })
-            .await?;
+            .update_task(task_update_input(task, title, request.body))
+            .await
+            .map_err(TaskBoardError::TaskUpdate)?;
 
         Ok(UpdateTaskResponse { task })
     }
@@ -82,5 +79,24 @@ impl TaskBoardService {
             task_id: task_id.to_owned(),
             status: next_status,
         })
+    }
+}
+
+pub(crate) fn task_update_input(
+    current: crate::models::providers::model::IntegrationTask,
+    title: String,
+    body: String,
+) -> UpdateIntegrationTaskInput {
+    UpdateIntegrationTaskInput {
+        task_id: current.id,
+        title,
+        body,
+        status: current.status,
+        priority: current.priority,
+        project_id: current.project_id,
+        position: current.position.unwrap_or(0.0),
+        due_date: current.due_date.unwrap_or_default(),
+        start_date: current.start_date.unwrap_or_default(),
+        user_id: current.assignee_id.unwrap_or_default(),
     }
 }

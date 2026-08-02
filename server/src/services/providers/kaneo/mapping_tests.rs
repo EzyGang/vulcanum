@@ -21,13 +21,18 @@ fn task(id: &str, status: &str) -> KaneoTask {
         id: id.to_owned(),
         project_id: "project-1".to_owned(),
         number: Some(7),
+        position: Some(7.5),
         title: format!("Task {id}"),
         description: Some("body".to_owned()),
         status: status.to_owned(),
         priority: "low".to_owned(),
+        due_date: Some("2026-01-10T00:00:00Z".to_owned()),
+        start_date: Some("2026-01-03T00:00:00Z".to_owned()),
+        user_id: Some("user-1".to_owned()),
         created_at: "2026-01-01T00:00:00Z".to_owned(),
         updated_at: Some("2026-01-02T00:00:00Z".to_owned()),
         assignee_name: Some("Agent".to_owned()),
+        assignee_id: Some("user-1".to_owned()),
         labels: vec![label("label-1")],
     }
 }
@@ -75,6 +80,10 @@ fn kaneo_task_mapping_keeps_labels() {
     assert_eq!(result.labels[0].id, "label-1");
     assert_eq!(result.labels[0].name, "Label label-1");
     assert_eq!(result.labels[0].color, "#6366f1");
+    assert_eq!(result.position, Some(7.5));
+    assert_eq!(result.due_date.as_deref(), Some("2026-01-10T00:00:00Z"));
+    assert_eq!(result.start_date.as_deref(), Some("2026-01-03T00:00:00Z"));
+    assert_eq!(result.assignee_id.as_deref(), Some("user-1"));
 }
 
 #[test]

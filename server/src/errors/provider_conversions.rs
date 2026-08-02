@@ -16,6 +16,16 @@ impl From<TaskBoardError> for AppError {
                     Self::Internal
                 }
             },
+            TaskBoardError::TaskUpdate(e) => match provider_request_error(&e) {
+                Some(Self::BadRequest(message)) => Self::BadRequest(format!(
+                    "Task tracker rejected the update: {message}. Refresh the board and retry"
+                )),
+                Some(err) => err,
+                None => {
+                    tracing::error!(error = %e, operation = "task_board_update", "integration error");
+                    Self::Internal
+                }
+            },
             TaskBoardError::ProjectConfig(e) => e.into(),
             TaskBoardError::WorkRuns(e) => e.into(),
             TaskBoardError::EmptyTitle => Self::BadRequest("Task title is required".to_owned()),
