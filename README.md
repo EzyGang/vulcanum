@@ -89,64 +89,12 @@ vulcanum worker updates enable
 
 Each command changes only `auto_update_enabled`; all other worker configuration
 is preserved. A running daemon reads the changed setting on its next startup.
-The update interval defaults to 24 hours and must be between 60 seconds and one
-year. When enabled, the daemon checks at startup and again after each interval
-while no new or recovered job is active or queued.
+When enabled, the worker updates the `vulcanum` CLI and `vulcanum-server` daemon
+together from stable releases. Automatic updates cover only this worker-side pair,
+not the control-plane server, dispatcher, or frontend.
 
-Each check queries the latest non-prerelease GitHub release, compares its semantic
-version with the installed `.vulcanum-version` marker, and selects the archive for
-the current Linux or macOS architecture. The daemon downloads the same
-`vulcanum-<target>.tar.gz` archive and `.sha256` asset used by `install.sh`. It
-limits archive downloads to 256 MiB, checksum downloads to 4 KiB, and each
-extracted binary to 128 MiB. It verifies SHA-256 before extracting either binary,
-requires both binaries in the archive, and stages them beside the installation so
-replacements stay on the same filesystem.
-
-Activation first executes the staged daemon in preflight mode, then durably backs
-up the working pair and version marker under `<install-dir>/.vulcanum-rollback/`.
-It records an activation transaction before replacing either binary and keeps that
-transaction through the service restart. The replacement daemon commits the update
-only after configuration, server connectivity, the journal, and running-job
-recovery initialize successfully. An interrupted activation or failed replacement
-startup restores the previous pair before work is accepted. Download, checksum,
-extraction, and activation failures never leave a mixed installed pair. Only
-successful activation requests a service restart:
-
-- Linux uses `systemctl --no-block restart vulcanum-worker`
-- macOS uses `launchctl kickstart -k system/com.vulcanum.worker`
-
-The worker logs an `up to date`, `applied`, or `failed` outcome and includes the
-target release when GitHub metadata was available. Linux logs are available through
-`journalctl -u vulcanum-worker`; launchd setup writes stdout and stderr to
-`/tmp/vulcanum-worker.log` and `/tmp/vulcanum-worker.err`.
-
-Operational prerequisites:
-
-- the service account must have HTTPS access to `api.github.com` and
-  `github.com/EzyGang/vulcanum/releases`
-- the service account must be able to write the directory containing both installed
-  binaries
-- `sudo -n` must permit the configured service restart command; the systemd service
-  normally runs as root, while a macOS launchd installation requires an explicit,
-  narrowly scoped `sudoers` rule for its worker user
-- `vulcanum` and `vulcanum-server` must remain in the same install directory
-
-For a download, verification, extraction, activation, service restart, or
-replacement startup failure, the updater keeps or restores the existing pair and
-the next cadence retries. If automatic rollback is interrupted, the durable
-transaction restores the previous pair before the next update check. The failure
-log reports the rollback directory for manual recovery if the filesystem itself
-prevents restoration. To recover manually, stop the worker service, copy
-`vulcanum`, `vulcanum-server`, and `.vulcanum-version` together from that directory
-into the install directory, remove `.vulcanum-update-state`, preserve executable
-mode on both binaries, and start the service again. Alternatively, rerun
-`install.sh` with a pinned `VULCANUM_VERSION`; after the full pair and marker are
-installed, the installer clears stale update state. Then restart `vulcanum-worker`
-with systemd or the `com.vulcanum.worker` launchd service. Never restore only one
-binary.
-
-Automatic updates cover only the worker-side release pair. They do not update the
-control-plane server, dispatcher, or frontend.
+See [Worker configuration](website/docs/content/workers/configuration.md#automatic-updates)
+for update cadence, verification, activation, rollback, and recovery details.
 
 
 ### Install the agent skills
