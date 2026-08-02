@@ -104,6 +104,9 @@ pub struct WorkerConfig {
     pub auto_update_enabled: bool,
     #[serde(default = "default_update_check_interval")]
     pub update_check_interval_secs: u64,
+    /// Retains configuration keys unknown to this version when persisting a configuration.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Default for WorkerConfig {
@@ -116,6 +119,7 @@ impl Default for WorkerConfig {
             poll_interval_secs: default_poll_interval(),
             auto_update_enabled: default_auto_update_enabled(),
             update_check_interval_secs: default_update_check_interval(),
+            extra: serde_json::Map::new(),
         }
     }
 }

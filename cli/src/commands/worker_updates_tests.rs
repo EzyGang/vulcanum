@@ -1,6 +1,8 @@
 use std::ffi::OsString;
 use std::sync::{Mutex, MutexGuard};
 
+use serde_json::{json, Map};
+
 use tempfile::TempDir;
 use vulcanum_shared::config::{load_config, save_config, WorkerConfig};
 
@@ -51,6 +53,9 @@ fn explicit_opt_out_remains_disabled_until_enabled() {
 }
 
 fn configured_worker(auto_update_enabled: bool) -> WorkerConfig {
+    let mut extra = Map::new();
+    extra.insert("future_setting".to_owned(), json!({ "enabled": true }));
+
     WorkerConfig {
         harness: "kata".to_owned(),
         image: "registry.example/vulcanum/agent:pinned".to_owned(),
@@ -59,6 +64,7 @@ fn configured_worker(auto_update_enabled: bool) -> WorkerConfig {
         poll_interval_secs: 17,
         auto_update_enabled,
         update_check_interval_secs: 3_600,
+        extra,
     }
 }
 
@@ -72,6 +78,7 @@ fn assert_unrelated_fields_are_preserved(actual: &WorkerConfig, expected: &Worke
         actual.update_check_interval_secs,
         expected.update_check_interval_secs
     );
+    assert_eq!(actual.extra, expected.extra);
 }
 
 struct TestHome {
