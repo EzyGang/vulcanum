@@ -143,7 +143,7 @@ All worker configuration lives in `~/.vulcanum/config.json`. On first run, defau
 | `log_format` | `null` | Set to `"json"` for JSON-formatted logs |
 | `debug` | `false` | Enable debug-level logging |
 | `poll_interval_secs` | `30` | Seconds to sleep between polls when no jobs are available |
-| `auto_update_enabled` | `false` | Enable verified automatic updates of the CLI and worker daemon release pair |
+| `auto_update_enabled` | `true` | Enable verified automatic updates of the installed `vulcanum` CLI and `vulcanum-server` worker daemon release pair. Use `vulcanum worker updates enable` or `disable`; a running daemon applies the setting on its next startup |
 | `update_check_interval_secs` | `86400` | Seconds between automatic update checks; must be between 60 and 31536000 |
 
 ## Build & Run

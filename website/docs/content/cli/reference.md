@@ -335,6 +335,19 @@ vulcanum worker daemon
 
 Starts the installed worker daemon and waits for it to exit.
 
+### Configure automatic updates
+
+```bash
+vulcanum worker updates disable
+vulcanum worker updates enable
+```
+
+New worker configurations enable automatic updates by default. These commands
+change only `auto_update_enabled` and preserve every other local worker setting.
+The setting controls verified updates of the installed `vulcanum` CLI and
+`vulcanum-server` worker daemon release pair. A running daemon applies the changed
+setting on its next startup.
+
 ### Remove the local worker
 
 ```bash

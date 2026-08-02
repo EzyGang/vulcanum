@@ -23,6 +23,10 @@ const fn default_update_check_interval() -> u64 {
     24 * 60 * 60
 }
 
+const fn default_auto_update_enabled() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum IsolationBackend {
@@ -100,6 +104,9 @@ pub struct WorkerConfig {
     pub auto_update_enabled: bool,
     #[serde(default = "default_update_check_interval")]
     pub update_check_interval_secs: u64,
+    /// Retains configuration keys unknown to this version when persisting a configuration.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Default for WorkerConfig {
@@ -110,8 +117,9 @@ impl Default for WorkerConfig {
             log_format: None,
             debug: false,
             poll_interval_secs: default_poll_interval(),
-            auto_update_enabled: false,
+            auto_update_enabled: default_auto_update_enabled(),
             update_check_interval_secs: default_update_check_interval(),
+            extra: serde_json::Map::new(),
         }
     }
 }
