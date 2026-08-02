@@ -1,4 +1,5 @@
-import { useMemo } from 'preact/hooks';
+import { useSignal } from '@preact/signals';
+import { useCallback, useMemo } from 'preact/hooks';
 import { listRepos } from '../../../services/github/github.service';
 import { listProjects } from '../../../services/projects/projects.service';
 import { getTaskBoard } from '../../../services/task-board/task-board.service';
@@ -28,6 +29,19 @@ export const useTaskBoard = () => {
       staleTime: 60_000
     }
   );
+  const refreshing = useSignal(false);
+  const refreshBoard = useCallback(async (): Promise<void> => {
+    if (refreshing.value) {
+      return;
+    }
+
+    refreshing.value = true;
+    try {
+      await boardQuery.refetch();
+    } finally {
+      refreshing.value = false;
+    }
+  }, [boardQuery.refetch, refreshing]);
   const { data: projectConfigs = [] } = useApiQuery(projectConfigsQueryKey, listProjects, {
     enabled: Boolean(selection)
   });
@@ -132,6 +146,7 @@ export const useTaskBoard = () => {
     status: {
       loading: boardQuery.isLoading,
       error: boardQuery.error?.message ?? null,
+      refreshing: refreshing.value,
       creating: create.status.creating,
       movingTaskId: movement.status.movingTaskId,
       moving: movement.status.moving,
@@ -141,6 +156,7 @@ export const useTaskBoard = () => {
       ...settings.status
     },
     actions: {
+      onRefreshBoard: refreshBoard,
       ...create.actions,
       ...movement.actions,
       ...settings.actions,
