@@ -5,6 +5,7 @@ use crate::models::work_runs::model::TaskPr;
 use crate::services::providers::client::IntegrationClient;
 use crate::services::work_runs::service::lifecycle_labels::LifecycleLabelState;
 use crate::services::work_runs::service::WorkRunsService;
+use crate::util::github::github_pr_url;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) struct PullRequestReconciliation {
@@ -15,18 +16,13 @@ pub(crate) struct PullRequestReconciliation {
 impl WorkRunsService {
     pub(crate) async fn reconcile_pull_request_completion(
         &self,
-        installation_id: i64,
         repo_full_name: &str,
         pr_number: i64,
     ) -> Result<PullRequestReconciliation, WorkRunsError> {
+        let pr_url = github_pr_url(repo_full_name, pr_number);
         let targets = self
             .work_runs_repo
-            .list_task_pr_targets_for_pull_request(
-                &self.db,
-                installation_id,
-                repo_full_name,
-                pr_number,
-            )
+            .list_task_pr_targets_for_pr_url(&self.db, &pr_url)
             .await?;
         let matched = targets.len();
         let mut moved = 0;
