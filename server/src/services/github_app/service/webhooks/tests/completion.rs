@@ -79,7 +79,7 @@ impl TaskFetcher for RecordingTaskFetcher {
 }
 
 #[sqlx::test]
-async fn merged_webhook_moves_mapped_review_ticket_to_done(pool: sqlx::PgPool) {
+async fn merged_webhook_matches_pr_url_without_installation_mapping(pool: sqlx::PgPool) {
     let (service, task_fetcher) = completion_service(&pool).await;
     let payload = test_helpers::github::github_pull_request_payload("closed", true);
     let signature = test_helpers::github::sign_github_webhook(&payload);
@@ -147,16 +147,6 @@ async fn completion_service(
         provider_id,
     )
     .await;
-    sqlx::query!(
-        "INSERT INTO github_installations \
-         (github_installation_id, account_login, team_id) VALUES ($1, $2, $3)",
-        123_i64,
-        "acme",
-        test_helpers::DEFAULT_TEAM_ID,
-    )
-    .execute(pool)
-    .await
-    .expect("insert GitHub installation");
     sqlx::query!(
         "INSERT INTO task_prs \
          (project_config_id, external_task_ref, pr_url, repo_full_name, pr_number) \

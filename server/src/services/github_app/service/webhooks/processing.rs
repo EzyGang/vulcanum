@@ -80,11 +80,7 @@ impl GithubWebhookService {
     ) -> Result<DeliveryDisposition, GithubAppError> {
         match self
             .work_runs
-            .reconcile_pull_request_completion(
-                delivery.installation_id,
-                &delivery.repo_full_name,
-                delivery.pr_number,
-            )
+            .reconcile_pull_request_completion(&delivery.repo_full_name, delivery.pr_number)
             .await
         {
             Ok(outcome) if outcome.matched > 0 => {

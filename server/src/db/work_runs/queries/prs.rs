@@ -64,6 +64,31 @@ impl WorkRunsRepository {
         .map_err(WorkRunsError::from)
     }
 
+    pub async fn list_task_pr_targets_for_pr_url<'c, Q>(
+        &self,
+        db: Q,
+        pr_url: &str,
+    ) -> Result<Vec<TaskPrTarget>, WorkRunsError>
+    where
+        Q: Queryer<'c>,
+    {
+        sqlx::query_as!(
+            TaskPrTarget,
+            r#"SELECT DISTINCT ON (tp.project_config_id, tp.external_task_ref)
+                 tp.project_config_id, tp.external_task_ref, tp.source_work_run_id,
+                 wr.task_title, wr.task_slug
+             FROM task_prs tp
+             INNER JOIN project_configs pc ON pc.id = tp.project_config_id
+             LEFT JOIN work_runs wr ON wr.id = tp.source_work_run_id
+             WHERE LOWER(tp.pr_url) = LOWER($1)
+             ORDER BY tp.project_config_id, tp.external_task_ref, tp.updated_at DESC, tp.id DESC"#,
+            pr_url,
+        )
+        .fetch_all(db)
+        .await
+        .map_err(WorkRunsError::from)
+    }
+
     pub async fn list_task_pr_targets_for_pull_request<'c, Q>(
         &self,
         db: Q,
