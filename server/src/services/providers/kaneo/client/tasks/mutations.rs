@@ -13,9 +13,12 @@ pub(crate) struct UpdateTaskBody {
     status: String,
     project_id: String,
     position: f64,
-    due_date: String,
-    start_date: String,
-    user_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    due_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    start_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_id: Option<String>,
 }
 
 #[must_use]

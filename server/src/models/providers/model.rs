@@ -98,9 +98,9 @@ pub struct UpdateIntegrationTaskInput {
     pub priority: String,
     pub project_id: String,
     pub position: f64,
-    pub due_date: String,
-    pub start_date: String,
-    pub user_id: String,
+    pub due_date: Option<String>,
+    pub start_date: Option<String>,
+    pub user_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]

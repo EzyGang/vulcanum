@@ -183,9 +183,9 @@ fn task_update_request_contains_complete_kaneo_payload() {
         priority: "urgent".to_owned(),
         project_id: "project-1".to_owned(),
         position: 7.5,
-        due_date: "2026-01-10T00:00:00Z".to_owned(),
-        start_date: "2026-01-03T00:00:00Z".to_owned(),
-        user_id: "user-1".to_owned(),
+        due_date: Some("2026-01-10T00:00:00Z".to_owned()),
+        start_date: Some("2026-01-03T00:00:00Z".to_owned()),
+        user_id: Some("user-1".to_owned()),
     };
 
     let (path, body) = update_task_request(&input);
@@ -210,7 +210,7 @@ fn task_update_request_contains_complete_kaneo_payload() {
 }
 
 #[test]
-fn task_update_request_sends_accepted_empty_optional_values() {
+fn task_update_request_omits_absent_optional_values() {
     let input = UpdateIntegrationTaskInput {
         task_id: "task-123".to_owned(),
         title: "Current title".to_owned(),
@@ -219,17 +219,17 @@ fn task_update_request_sends_accepted_empty_optional_values() {
         priority: "medium".to_owned(),
         project_id: "project-1".to_owned(),
         position: 0.0,
-        due_date: String::new(),
-        start_date: String::new(),
-        user_id: String::new(),
+        due_date: None,
+        start_date: None,
+        user_id: None,
     };
 
     let (_, body) = update_task_request(&input);
     let payload = serde_json::to_value(body).expect("update body serializes");
 
-    assert_eq!(payload["dueDate"], "");
-    assert_eq!(payload["startDate"], "");
-    assert_eq!(payload["userId"], "");
+    assert!(payload.get("dueDate").is_none());
+    assert!(payload.get("startDate").is_none());
+    assert!(payload.get("userId").is_none());
 }
 
 #[test]

@@ -5,7 +5,7 @@ use crate::models::providers::model::UpdateIntegrationTaskInput;
 use crate::routes;
 use crate::services::providers::kaneo::client::KaneoClient;
 use crate::test_helpers;
-use crate::test_helpers::kaneo::{start_kaneo_server, SSL_CERT_FILE_LOCK};
+use crate::test_helpers::kaneo::{start_kaneo_server, SslCertFileGuard, SSL_CERT_FILE_LOCK};
 
 async fn insert_provider(pool: &sqlx::PgPool, instance_url: &str) -> Uuid {
     let id = Uuid::new_v4();
@@ -30,8 +30,7 @@ async fn insert_provider(pool: &sqlx::PgPool, instance_url: &str) -> Uuid {
 async fn kaneo_client_captures_full_update_over_tls() {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
     let server = start_kaneo_server(200).await;
-    let previous_certificate = std::env::var_os("SSL_CERT_FILE");
-    std::env::set_var("SSL_CERT_FILE", &server.certificate_path);
+    let _ssl_cert_file = SslCertFileGuard::set(&server.certificate_path);
 
     KaneoClient::new(server.instance_url, "test-key".to_owned())
         .update_task(&UpdateIntegrationTaskInput {
@@ -42,17 +41,12 @@ async fn kaneo_client_captures_full_update_over_tls() {
             priority: "urgent".to_owned(),
             project_id: "project-1".to_owned(),
             position: 7.5,
-            due_date: "2026-01-10T00:00:00Z".to_owned(),
-            start_date: "2026-01-03T00:00:00Z".to_owned(),
-            user_id: "user-1".to_owned(),
+            due_date: Some("2026-01-10T00:00:00Z".to_owned()),
+            start_date: Some("2026-01-03T00:00:00Z".to_owned()),
+            user_id: Some("user-1".to_owned()),
         })
         .await
         .expect("Kaneo task update succeeds");
-
-    match previous_certificate {
-        Some(path) => std::env::set_var("SSL_CERT_FILE", path),
-        None => std::env::remove_var("SSL_CERT_FILE"),
-    }
 
     let payload = server.request.await.expect("captured Kaneo PUT request");
     assert_eq!(payload["description"], "Updated body");
@@ -86,8 +80,7 @@ async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::
     )
     .await;
 
-    let previous_certificate = std::env::var_os("SSL_CERT_FILE");
-    std::env::set_var("SSL_CERT_FILE", &server.certificate_path);
+    let _ssl_cert_file = SslCertFileGuard::set(&server.certificate_path);
     let response = test::call_service(
         &app,
         test::TestRequest::patch()
@@ -99,10 +92,6 @@ async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::
             .to_request(),
     )
     .await;
-    match previous_certificate {
-        Some(path) => std::env::set_var("SSL_CERT_FILE", path),
-        None => std::env::remove_var("SSL_CERT_FILE"),
-    }
 
     assert!(response.status().is_success());
     let payload = server.request.await.expect("captured Kaneo PUT request");

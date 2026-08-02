@@ -1,3 +1,5 @@
+use std::ffi::OsString;
+use std::path::Path;
 use std::sync::LazyLock;
 
 use rcgen::generate_simple_self_signed;
@@ -9,6 +11,27 @@ use tokio_rustls::TlsAcceptor;
 use uuid::Uuid;
 
 pub(crate) static SSL_CERT_FILE_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+pub(crate) struct SslCertFileGuard {
+    previous: Option<OsString>,
+}
+
+impl SslCertFileGuard {
+    pub(crate) fn set(path: &Path) -> Self {
+        let previous = std::env::var_os("SSL_CERT_FILE");
+        std::env::set_var("SSL_CERT_FILE", path);
+        Self { previous }
+    }
+}
+
+impl Drop for SslCertFileGuard {
+    fn drop(&mut self) {
+        match self.previous.take() {
+            Some(path) => std::env::set_var("SSL_CERT_FILE", path),
+            None => std::env::remove_var("SSL_CERT_FILE"),
+        }
+    }
+}
 
 pub(crate) struct KaneoTestServer {
     pub(crate) instance_url: String,

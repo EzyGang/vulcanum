@@ -134,9 +134,9 @@ fn body_edit_of_in_progress_task_preserves_update_contract_state() {
     assert_eq!(input.priority, "urgent");
     assert_eq!(input.project_id, "project-1");
     assert_eq!(input.position, 7.5);
-    assert_eq!(input.due_date, "2026-01-10T00:00:00Z");
-    assert_eq!(input.start_date, "2026-01-03T00:00:00Z");
-    assert_eq!(input.user_id, "user-1");
+    assert_eq!(input.due_date.as_deref(), Some("2026-01-10T00:00:00Z"));
+    assert_eq!(input.start_date.as_deref(), Some("2026-01-03T00:00:00Z"));
+    assert_eq!(input.user_id.as_deref(), Some("user-1"));
 }
 
 #[test]

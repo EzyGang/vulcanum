@@ -97,8 +97,8 @@ pub(crate) fn task_update_input(
         position: current
             .position
             .ok_or(TaskBoardError::MissingTaskPosition)?,
-        due_date: current.due_date.unwrap_or_default(),
-        start_date: current.start_date.unwrap_or_default(),
-        user_id: current.assignee_id.unwrap_or_default(),
+        due_date: current.due_date,
+        start_date: current.start_date,
+        user_id: current.assignee_id,
     })
 }
