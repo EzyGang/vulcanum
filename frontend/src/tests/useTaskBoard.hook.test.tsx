@@ -53,20 +53,6 @@ vi.mock('../components/task-board/hooks/useTaskBoardMovement.hook', () => ({
   })
 }));
 
-vi.mock('../components/task-board/hooks/useTaskBoardSettings.hook', () => ({
-  useTaskBoardSettings: () => ({
-    data: {
-      settingsDialogOpen: true,
-      automationEnabled: false,
-      dismissedHelpCards: []
-    },
-    form: {},
-    error: null,
-    status: {},
-    actions: {}
-  })
-}));
-
 vi.mock('../components/task-board/hooks/useTaskBoardViewModel.hook', () => ({
   useTaskBoardViewModel: () => ({
     data: {
@@ -132,6 +118,15 @@ const BoardHarness = (): JSX.Element => {
         disabled={status.refreshing}
         onClick={actions.onRefreshBoard}
       />
+      <button type='button' aria-label='Open settings' onClick={actions.onOpenSettings} />
+      <button
+        type='button'
+        aria-label='Refresh board twice'
+        onClick={() => {
+          void actions.onRefreshBoard();
+          void actions.onRefreshBoard();
+        }}
+      />
     </div>
   );
 };
@@ -144,7 +139,7 @@ beforeEach(() => {
 });
 
 describe('useTaskBoard manual refresh', () => {
-  it('refetches the selected board once and preserves local dialog state', async () => {
+  it('refetches once, blocks duplicate actions, and preserves open dialog state', async () => {
     let resolveRefresh: (response: TaskBoardResponse) => void = () => undefined;
     const refreshResponse = new Promise<TaskBoardResponse>((resolve) => {
       resolveRefresh = resolve;
@@ -162,12 +157,13 @@ describe('useTaskBoard manual refresh', () => {
     );
 
     await waitFor(() => expect(view.getByText('Initial board')).toBeTruthy());
+    fireEvent.click(view.getByRole('button', { name: 'Open settings' }));
+    expect(view.getByText('Settings open')).toBeTruthy();
+
+    fireEvent.click(view.getByRole('button', { name: 'Refresh board twice' }));
 
     const refreshButton = view.getByRole('button', { name: 'Refresh board' });
-    fireEvent.click(refreshButton);
-
     await waitFor(() => expect(refreshButton).toHaveProperty('disabled', true));
-    fireEvent.click(refreshButton);
     expect(serviceMocks.getTaskBoard).toHaveBeenCalledTimes(2);
     expect(serviceMocks.getTaskBoard).toHaveBeenLastCalledWith('provider-1', 'project-1');
 
@@ -176,5 +172,50 @@ describe('useTaskBoard manual refresh', () => {
     await waitFor(() => expect(view.getByText('Refreshed board')).toBeTruthy());
     expect(refreshButton).toHaveProperty('disabled', false);
     expect(view.getByText('Settings open')).toBeTruthy();
+  });
+
+  it('allows the newly selected board to refresh while another board is pending', async () => {
+    let resolveFirstRefresh: (response: TaskBoardResponse) => void = () => undefined;
+    let resolveSecondRefresh: (response: TaskBoardResponse) => void = () => undefined;
+    const firstRefresh = new Promise<TaskBoardResponse>((resolve) => {
+      resolveFirstRefresh = resolve;
+    });
+    const secondRefresh = new Promise<TaskBoardResponse>((resolve) => {
+      resolveSecondRefresh = resolve;
+    });
+    serviceMocks.getTaskBoard
+      .mockResolvedValueOnce(makeBoardResponse('Board A'))
+      .mockReturnValueOnce(firstRefresh)
+      .mockResolvedValueOnce(makeBoardResponse('Board B'))
+      .mockReturnValueOnce(secondRefresh);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } }
+    });
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <BoardHarness />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(view.getByText('Board A')).toBeTruthy());
+    fireEvent.click(view.getByRole('button', { name: 'Refresh board' }));
+    await waitFor(() =>
+      expect(view.getByRole('button', { name: 'Refresh board' })).toHaveProperty('disabled', true)
+    );
+
+    selectedTaskProjectKey.value = 'provider-2/project-2';
+
+    await waitFor(() => expect(view.getByText('Board B')).toBeTruthy());
+    const secondRefreshButton = view.getByRole('button', { name: 'Refresh board' });
+    expect(secondRefreshButton).toHaveProperty('disabled', false);
+    fireEvent.click(secondRefreshButton);
+
+    await waitFor(() => expect(secondRefreshButton).toHaveProperty('disabled', true));
+    expect(serviceMocks.getTaskBoard).toHaveBeenLastCalledWith('provider-2', 'project-2');
+
+    resolveSecondRefresh(makeBoardResponse('Board B refreshed'));
+    resolveFirstRefresh(makeBoardResponse('Board A refreshed'));
+
+    await waitFor(() => expect(view.getByText('Board B refreshed')).toBeTruthy());
   });
 });

@@ -29,19 +29,25 @@ export const useTaskBoard = () => {
       staleTime: 60_000
     }
   );
-  const refreshing = useSignal(false);
+  const refreshingBoardKeys = useSignal<ReadonlySet<string>>(new Set());
+  const selectedBoardKey = selectedTaskProjectKey.value;
   const refreshBoard = useCallback(async (): Promise<void> => {
-    if (refreshing.value) {
+    if (!selectedBoardKey || refreshingBoardKeys.value.has(selectedBoardKey)) {
       return;
     }
 
-    refreshing.value = true;
+    refreshingBoardKeys.value = new Set([...refreshingBoardKeys.value, selectedBoardKey]);
     try {
       await boardQuery.refetch();
     } finally {
-      refreshing.value = false;
+      const pendingBoardKeys = refreshingBoardKeys.value;
+      if (pendingBoardKeys.has(selectedBoardKey)) {
+        const nextPendingBoardKeys = new Set(pendingBoardKeys);
+        nextPendingBoardKeys.delete(selectedBoardKey);
+        refreshingBoardKeys.value = nextPendingBoardKeys;
+      }
     }
-  }, [boardQuery.refetch, refreshing]);
+  }, [boardQuery.refetch, refreshingBoardKeys, selectedBoardKey]);
   const { data: projectConfigs = [] } = useApiQuery(projectConfigsQueryKey, listProjects, {
     enabled: Boolean(selection)
   });
@@ -146,7 +152,7 @@ export const useTaskBoard = () => {
     status: {
       loading: boardQuery.isLoading,
       error: boardQuery.error?.message ?? null,
-      refreshing: refreshing.value,
+      refreshing: selectedBoardKey !== null && refreshingBoardKeys.value.has(selectedBoardKey),
       creating: create.status.creating,
       movingTaskId: movement.status.movingTaskId,
       moving: movement.status.moving,

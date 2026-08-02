@@ -577,6 +577,15 @@ describe('TaskBoard.view', () => {
     );
   });
 
+  it('keeps the refresh control available after a board refresh error', () => {
+    const props = makeProps();
+    props.status.error = 'Unable to refresh board';
+    const { getByRole, getByText } = render(<TaskBoardView {...props} />);
+
+    expect(getByText('Unable to refresh board')).toBeTruthy();
+    expect(getByRole('button', { name: 'Refresh board' })).toBeTruthy();
+  });
+
   it('submits task creation from the creation modal', () => {
     const props = makeProps();
     props.data.createDialogOpen = true;

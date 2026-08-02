@@ -90,7 +90,7 @@ export const TaskBoardView = ({
     return <p class='text-sm text-text-muted'>Loading board…</p>;
   }
 
-  if (status.error) {
+  if (status.error && !board) {
     return <ErrorBanner message={status.error} />;
   }
 
@@ -183,6 +183,7 @@ export const TaskBoardView = ({
           </Button>
         </div>
       </div>
+      {status.error && <ErrorBanner message={status.error} />}
 
       {projectUsageSummary && <ProjectUsageSummaryView data={projectUsageSummary} />}
 
