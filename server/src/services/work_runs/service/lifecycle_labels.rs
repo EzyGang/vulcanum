@@ -82,7 +82,6 @@ impl WorkRunsService {
             Some(labels) => labels,
             None => return false,
         };
-
         let target = match labels.get(&state) {
             Some(label) => label,
             None => {
@@ -94,21 +93,31 @@ impl WorkRunsService {
                 return false;
             }
         };
+        let fetched_labels = match attached_labels {
+            Some(_) => None,
+            None => {
+                let task = match client.fetch_task(task_ref).await {
+                    Ok(task) => task,
+                    Err(e) => {
+                        tracing::warn!(
+                            task_ref,
+                            error = %e,
+                            "failed to fetch task labels before lifecycle label update",
+                        );
+                        return false;
+                    }
+                };
+                Some(task.labels)
+            }
+        };
+        let attached_labels = match attached_labels {
+            Some(labels) => labels,
+            None => fetched_labels.as_deref().unwrap_or(&[]),
+        };
         let mut succeeded = true;
 
-        for other_state in LifecycleLabelState::ALL {
-            if other_state == state {
-                continue;
-            }
-
-            let Some(label) = labels.get(&other_state) else {
-                continue;
-            };
-            if attached_labels.is_some_and(|attached| {
-                !attached
-                    .iter()
-                    .any(|attached_label| attached_label.id == label.id)
-            }) {
+        for label in attached_labels {
+            if label.name == target.name || !is_lifecycle_label(&label.name) {
                 continue;
             }
 
@@ -122,6 +131,13 @@ impl WorkRunsService {
                 );
                 succeeded = false;
             }
+        }
+
+        if attached_labels
+            .iter()
+            .any(|label| label.name == target.name)
+        {
+            return succeeded;
         }
 
         if let Err(e) = client.add_task_label(task_ref, &target.id).await {
@@ -209,10 +225,7 @@ async fn ensure_lifecycle_labels(
     let mut labels = HashMap::new();
 
     for state in LifecycleLabelState::ALL {
-        match provider_labels
-            .iter()
-            .find(|label| label.name == state.name())
-        {
+        match lifecycle_label_template(&provider_labels, state) {
             Some(label) => {
                 labels.insert(state, label.clone());
             }
@@ -244,4 +257,19 @@ async fn ensure_lifecycle_labels(
     }
 
     Some(labels)
+}
+
+pub(super) fn lifecycle_label_template(
+    labels: &[IntegrationLabel],
+    state: LifecycleLabelState,
+) -> Option<&IntegrationLabel> {
+    labels
+        .iter()
+        .find(|label| label.task_id.is_none() && label.name == state.name())
+}
+
+fn is_lifecycle_label(name: &str) -> bool {
+    LifecycleLabelState::ALL
+        .iter()
+        .any(|state| state.name() == name)
 }

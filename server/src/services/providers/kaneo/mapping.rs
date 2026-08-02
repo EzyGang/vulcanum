@@ -23,15 +23,20 @@ pub(crate) fn kaneo_label_to_integration(label: &KaneoLabel) -> IntegrationLabel
         id: label.id.clone(),
         name: label.name.clone(),
         color: label.color.clone(),
+        task_id: label.task_id.clone(),
     }
 }
 
 #[must_use]
-pub(crate) fn kaneo_task_label_to_integration(label: &KaneoTaskLabel) -> IntegrationLabel {
+pub(crate) fn kaneo_task_label_to_integration(
+    label: &KaneoTaskLabel,
+    task_id: &str,
+) -> IntegrationLabel {
     IntegrationLabel {
         id: label.id.clone(),
         name: label.name.clone(),
         color: label.color.clone(),
+        task_id: Some(task_id.to_owned()),
     }
 }
 
@@ -55,7 +60,7 @@ pub(crate) fn kaneo_task_to_integration(
         labels: task
             .labels
             .iter()
-            .map(kaneo_task_label_to_integration)
+            .map(|label| kaneo_task_label_to_integration(label, &task.id))
             .collect(),
     }
 }

@@ -1,6 +1,5 @@
-use super::client::filter_tasks_in_column;
 use super::client::types::{KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask};
-use super::client::{log_kaneo_result, KaneoClient};
+use super::client::{filter_tasks_in_column, log_kaneo_result, KaneoClient};
 use super::errors::KaneoError;
 
 fn task(id: &str, status: &str) -> KaneoTask {

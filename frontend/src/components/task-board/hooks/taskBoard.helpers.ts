@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '../../../types/projects';
-import type { TaskBoardColumn } from '../../../types/task-board';
+import type { TaskBoardColumn, TaskBoardLabel } from '../../../types/task-board';
 import type {
   TaskBoardColumnPreferences,
   TaskBoardColumnRoles,
@@ -18,6 +18,14 @@ export const reposQueryKey = ['github-repos'];
 export const taskBoardProjectsQueryKey = ['task-board-projects'];
 export const COLUMN_PAGE_SIZE = 20;
 export const LIFECYCLE_LABELS_HELP_CARD_ID: TaskBoardHelpCard = 'lifecycle-labels';
+
+export const selectedTemplateLabelIds = (
+  availableLabels: TaskBoardLabel[],
+  attachedLabels: TaskBoardLabel[]
+): string[] => {
+  const attachedNames = new Set(attachedLabels.map((label) => label.name));
+  return availableLabels.filter((label) => attachedNames.has(label.name)).map((label) => label.id);
+};
 
 const HELP_CARD_STORAGE_KEY = 'vulcanum-task-board-dismissed-help-cards';
 const COLUMN_PREFERENCES_STORAGE_KEY = 'vulcanum-task-board-column-preferences';

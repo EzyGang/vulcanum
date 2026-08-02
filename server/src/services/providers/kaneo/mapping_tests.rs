@@ -1,11 +1,11 @@
-use kaneo_cli::api::types::Column;
+use kaneo_cli::api::types::{Column, Label};
 
 use crate::services::providers::kaneo::client::types::{
     KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask, KaneoTaskLabel,
 };
 use crate::services::providers::kaneo::mapping::{
     column_name_to_slug, kaneo_board_to_integration, kaneo_column_slug,
-    kaneo_column_to_integration, kaneo_task_to_integration,
+    kaneo_column_to_integration, kaneo_label_to_integration, kaneo_task_to_integration,
 };
 
 fn label(id: &str) -> KaneoTaskLabel {
@@ -66,6 +66,22 @@ fn kaneo_column_mapping_prefers_status_slug() {
 }
 
 #[test]
+fn kaneo_workspace_label_mapping_keeps_attachment_owner() {
+    let label = Label {
+        id: "label-1".to_owned(),
+        name: "In review".to_owned(),
+        color: "#6366f1".to_owned(),
+        created_at: "2026-01-01T00:00:00Z".to_owned(),
+        task_id: Some("task-1".to_owned()),
+        workspace_id: Some("workspace-1".to_owned()),
+    };
+
+    let result = kaneo_label_to_integration(&label);
+
+    assert_eq!(result.task_id.as_deref(), Some("task-1"));
+}
+
+#[test]
 fn kaneo_task_mapping_keeps_labels() {
     let task = task("task-1", "in-progress");
 
@@ -75,6 +91,7 @@ fn kaneo_task_mapping_keeps_labels() {
     assert_eq!(result.labels[0].id, "label-1");
     assert_eq!(result.labels[0].name, "Label label-1");
     assert_eq!(result.labels[0].color, "#6366f1");
+    assert_eq!(result.labels[0].task_id.as_deref(), Some("task-1"));
 }
 
 #[test]

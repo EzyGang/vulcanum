@@ -194,9 +194,10 @@ impl IntegrationProviderClient for KaneoClient {
         &self,
         input: CreateIntegrationLabelInput,
     ) -> Result<IntegrationLabel, IntegrationError> {
-        let label = KaneoClient::create_label(self, &input.workspace_id, &input.name, &input.color)
-            .await
-            .map_err(IntegrationError::from)?;
+        let label =
+            KaneoClient::create_label(self, &input.workspace_id, &input.name, &input.color, None)
+                .await
+                .map_err(IntegrationError::from)?;
 
         Ok(kaneo_label_to_integration(&label))
     }

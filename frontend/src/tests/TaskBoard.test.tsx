@@ -5,6 +5,7 @@ import {
   normalizeTaskBoardColumnPreferences,
   readDismissedHelpCards,
   readTaskBoardColumnPreferences,
+  selectedTemplateLabelIds,
   writeDismissedHelpCards,
   writeTaskBoardColumnPreferences
 } from '../components/task-board/hooks/taskBoard.helpers';
@@ -402,6 +403,15 @@ describe('taskBoard.helpers', () => {
     writeDismissedHelpCards(['proxy', 'lifecycle-labels']);
 
     expect(readDismissedHelpCards()).toEqual(['proxy', 'lifecycle-labels']);
+  });
+
+  it('matches attached label copies to workspace templates by name', () => {
+    expect(
+      selectedTemplateLabelIds(
+        [{ id: 'template-label', name: 'Bug', color: '#ef4444' }],
+        [{ id: 'attached-copy', name: 'Bug', color: '#ef4444' }]
+      )
+    ).toEqual(['template-label']);
   });
 
   it('persists column view preferences per board in local storage', () => {
