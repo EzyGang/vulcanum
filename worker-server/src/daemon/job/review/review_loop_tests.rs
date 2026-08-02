@@ -134,6 +134,7 @@ fn review_artifact(review_body: &str) -> FinishRunArtifact {
         status: FinishStatus::Completed,
         pr_urls: Vec::new(),
         summary: None,
+        blocked_reason: None,
         review_url: Some("https://github.com/acme/app/pull/1#pullrequestreview-1".to_owned()),
         review_body: Some(review_body.to_owned()),
         review_already_exists: false,

@@ -58,7 +58,8 @@ fn finish_run_instruction(work_type: WorkRunType) -> &'static str {
         WorkRunType::Implementation => {
             "\n\nBefore ending the run, call the `finish_run` tool exactly once. \
 Use `completed` when the requested work is done, `blocked` when external input is needed, \
-or `failed` when the task cannot be completed. Install missing project dependencies, tools, runtimes, and local services \
+or `failed` when the task cannot be completed. When using `blocked`, `blocked_reason` is mandatory and must concisely \
+explain the external dependency or input needed. Install missing project dependencies, tools, runtimes, and local services \
 needed to run formatter, validation, and test commands. Treat infrastructure as blocked only when it cannot be reproduced \
 in or reached from the container after reasonable setup. Use `completed` only after running those commands for every \
 repository you changed, or after recording the irreproducible dependency and attempted setup. \
@@ -67,7 +68,8 @@ If pull requests were created, include their URLs in `pr_urls`."
         WorkRunType::PullRequestReview => {
             "\n\nBefore ending the review run, call the `finish_run` tool exactly once. \
 Use `completed` when the requested review was posted, `blocked` when external input is needed, \
-or `failed` when the review cannot be completed. Put the requested review details in `review_url` and `review_body`. \
+or `failed` when the review cannot be completed. When using `blocked`, `blocked_reason` is mandatory and must concisely \
+explain the external dependency or input needed. Put the requested review details in `review_url` and `review_body`. \
 Treat reviews from earlier runs as context, not completion, even when the PR head commit is unchanged. Verify whether \
 their CRITICAL and WARNINGS findings are resolved and post a fresh review. Set `review_already_exists` only when this \
 same work run already posted its review before the session resumed. The review_body must contain CRITICAL, WARNINGS, \

@@ -51,6 +51,7 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
         review_url: row.get(15)?,
         review_body: row.get(16)?,
         review_already_exists: row.get(17)?,
+        blocked_reason: row.get(35)?,
         error_message: row.get(18)?,
         turn_count: row.get(19)?,
         review_fix_pass: row.get(20)?,

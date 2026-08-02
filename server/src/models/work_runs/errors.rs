@@ -17,6 +17,8 @@ pub enum WorkRunsError {
     InvalidStatusTransition,
     #[error("work run not owned by this worker")]
     NotOwned,
+    #[error("blocked results require a non-empty blocked reason")]
+    BlockedReasonRequired,
     #[error("cannot delete a running work run")]
     DeleteRunning,
     #[error("invalid pagination: {0}")]

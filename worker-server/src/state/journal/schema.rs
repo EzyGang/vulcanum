@@ -45,7 +45,8 @@ impl Journal {
                 agent_state_dir TEXT,
                 agent_transport TEXT,
                 agent_pid INTEGER,
-                work_type TEXT NOT NULL DEFAULT 'implementation'
+                work_type TEXT NOT NULL DEFAULT 'implementation',
+                blocked_reason TEXT
             )",
         )?;
 
@@ -128,6 +129,10 @@ impl Journal {
         apply_column_migration(
             &conn,
             "ALTER TABLE job_journal ADD COLUMN work_type TEXT NOT NULL DEFAULT 'implementation'",
+        )?;
+        apply_column_migration(
+            &conn,
+            "ALTER TABLE job_journal ADD COLUMN blocked_reason TEXT",
         )?;
 
         Ok(Self {

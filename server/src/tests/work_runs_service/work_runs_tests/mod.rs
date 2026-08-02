@@ -159,6 +159,7 @@ fn completed_result_request() -> SubmitResultRequest {
         model_used: None,
         finish_status: None,
         result_summary: None,
+        blocked_reason: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,

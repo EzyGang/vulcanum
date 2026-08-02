@@ -1,6 +1,8 @@
 use chrono::Utc;
 use uuid::Uuid;
 
+use vulcanum_shared::runtime::types::FinishStatus;
+
 use crate::daemon::job::execution::submit::{
     submit_result_from_journal, submit_result_request, SubmitResultParams,
 };
@@ -20,6 +22,7 @@ fn submit_result_maps_summary_to_result_summary() {
         model_used: None,
         finish_status: None,
         result_summary: Some("Looks good".to_owned()),
+        blocked_reason: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -42,6 +45,7 @@ fn submit_result_maps_review_metadata() {
         model_used: None,
         finish_status: None,
         result_summary: Some("Review complete".to_owned()),
+        blocked_reason: None,
         review_url: Some("https://github.com/acme/app/pull/1#pullrequestreview-1".to_owned()),
         review_body: Some("Looks good".to_owned()),
         review_already_exists: true,
@@ -56,7 +60,34 @@ fn submit_result_maps_review_metadata() {
 }
 
 #[test]
-fn submit_result_from_journal_replays_stored_result() {
+fn submit_result_maps_blocked_reason() {
+    let request = submit_result_request(SubmitResultParams {
+        pr_urls: Vec::new(),
+        exit_code: 1,
+        tokens_used: 10,
+        duration_ms: 100,
+        input_tokens: 1,
+        output_tokens: 2,
+        cache_read_tokens: 3,
+        cache_write_tokens: 4,
+        model_used: None,
+        finish_status: Some(FinishStatus::Blocked),
+        result_summary: Some("Partial outcome".to_owned()),
+        blocked_reason: Some("Waiting for API credentials".to_owned()),
+        review_url: None,
+        review_body: None,
+        review_already_exists: false,
+    });
+
+    assert_eq!(
+        request.blocked_reason.as_deref(),
+        Some("Waiting for API credentials")
+    );
+    assert_eq!(request.result_summary.as_deref(), Some("Partial outcome"));
+}
+
+#[test]
+fn submit_result_from_journal_replays_blocked_result() {
     let entry = JournalEntry {
         job_id: Uuid::new_v4(),
         workdir: "/tmp/vulcanum-work-test".to_owned(),
@@ -66,7 +97,7 @@ fn submit_result_from_journal_replays_stored_result() {
         status: JournalStatus::Submitted,
         started_at: Utc::now(),
         finished_at: Some(Utc::now()),
-        exit_code: Some(0),
+        exit_code: Some(1),
         tokens_used: Some(100),
         input_tokens: Some(60),
         output_tokens: Some(30),
@@ -79,6 +110,7 @@ fn submit_result_from_journal_replays_stored_result() {
         ),
         review_body: Some("Looks good".to_owned()),
         review_already_exists: true,
+        blocked_reason: Some("Waiting for repository access".to_owned()),
         error_message: None,
         turn_count: Some(1),
         review_fix_pass: 0,
@@ -99,13 +131,18 @@ fn submit_result_from_journal_replays_stored_result() {
 
     let request = submit_result_from_journal(&entry);
 
-    assert_eq!(request.exit_code, 0);
+    assert_eq!(request.exit_code, 1);
     assert_eq!(request.tokens_used, 100);
     assert_eq!(request.input_tokens, 60);
     assert_eq!(request.output_tokens, 30);
     assert_eq!(request.cache_read_tokens, 7);
     assert_eq!(request.cache_write_tokens, 3);
     assert_eq!(request.duration_ms, 5_000);
+    assert_eq!(request.finish_status, Some(FinishStatus::Blocked));
+    assert_eq!(
+        request.blocked_reason.as_deref(),
+        Some("Waiting for repository access")
+    );
     assert_eq!(
         request.pr_urls,
         vec!["https://github.com/EzyGang/vulcanum/pull/101".to_owned()]

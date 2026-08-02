@@ -159,6 +159,7 @@ fn actionable_review_artifact() -> FinishRunArtifact {
         status: FinishStatus::Completed,
         pr_urls: Vec::new(),
         summary: None,
+        blocked_reason: None,
         review_url: Some("https://github.com/acme/app/pull/1#pullrequestreview-1".to_owned()),
         review_body: Some(
             "## CRITICAL\n- None\n\n## WARNINGS\n- Missing validation\n\n## SUGGESTIONS\n- None"

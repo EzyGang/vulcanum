@@ -102,6 +102,7 @@ fn update_result_transitions_status() {
             review_body: None,
             review_already_exists: false,
             status: JournalStatus::Completed,
+            blocked_reason: None,
         })
         .expect("should update");
 
@@ -168,6 +169,7 @@ fn mark_submitted_transitions() {
             review_body: None,
             review_already_exists: false,
             status: JournalStatus::Completed,
+            blocked_reason: None,
         })
         .expect("should update");
 

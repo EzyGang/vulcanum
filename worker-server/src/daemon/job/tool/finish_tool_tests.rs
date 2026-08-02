@@ -64,9 +64,21 @@ fn finish_tool_is_selected_by_work_type() {
 }
 
 #[test]
-fn finish_tool_omits_unused_blocked_and_column_fields() {
-    for tool in [implementation_tool(), review_tool()] {
-        assert!(!tool.contains("blocked_reason"));
+fn finish_tools_require_a_concrete_reason_for_blocked_status() {
+    for tool in [
+        implementation_tool(),
+        review_tool(),
+        omp_finish_run_tool_ts(WorkRunType::Implementation),
+        omp_finish_run_tool_ts(WorkRunType::PullRequestReview),
+    ] {
+        assert!(tool.contains("blocked_reason"));
+        assert!(tool.contains("external dependency or input needed"));
+        assert!(
+            tool.contains(r#"input.status === "blocked""#)
+                || tool.contains(r#"args.status === "blocked""#)
+        );
+        assert!(tool.contains("blocked_reason is required when status is blocked"));
+        assert!(tool.contains("blocked_reason: blockedReason"));
         assert!(!tool.contains("next_column"));
     }
 }

@@ -47,6 +47,7 @@ pub(crate) fn map_work_runs_error(e: WorkRunsError) -> WorkRunEventsError {
         WorkRunsError::AlreadyClaimed
         | WorkRunsError::InvalidStatusTransition
         | WorkRunsError::NotOwned
+        | WorkRunsError::BlockedReasonRequired
         | WorkRunsError::DeleteRunning
         | WorkRunsError::InvalidPagination(_)
         | WorkRunsError::ReviewTicketCreationPending

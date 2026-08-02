@@ -30,3 +30,39 @@ fn parses_review_finish_artifact_fields() {
     assert_eq!(artifact.review_body.as_deref(), Some("Looks good"));
     assert!(artifact.review_already_exists);
 }
+
+#[test]
+fn parses_and_trims_blocked_reason() {
+    let path = std::env::temp_dir().join(format!("finish-artifact-{}.json", Uuid::new_v4()));
+    fs::write(
+        &path,
+        r#"{"status":"blocked","blocked_reason":"  Waiting for repository access  "}"#,
+    )
+    .expect("artifact should be written");
+
+    let artifact = read_finish_artifact(&path).expect("blocked artifact should parse");
+    let _ = fs::remove_file(path);
+
+    assert_eq!(artifact.status, FinishStatus::Blocked);
+    assert_eq!(
+        artifact.blocked_reason.as_deref(),
+        Some("Waiting for repository access")
+    );
+}
+
+#[test]
+fn rejects_blocked_artifact_without_concrete_reason() {
+    for json in [
+        r#"{"status":"blocked"}"#,
+        r#"{"status":"blocked","blocked_reason":""}"#,
+        r#"{"status":"blocked","blocked_reason":"   "}"#,
+    ] {
+        let path = std::env::temp_dir().join(format!("finish-artifact-{}.json", Uuid::new_v4()));
+        fs::write(&path, json).expect("artifact should be written");
+
+        let artifact = read_finish_artifact(&path);
+        let _ = fs::remove_file(path);
+
+        assert!(artifact.is_none());
+    }
+}

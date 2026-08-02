@@ -48,7 +48,7 @@ impl Journal {
                     turn_count, review_fix_pass, review_fixing, pending_prompt,
                     pending_artifact_cleanup, session_id, max_turns, host_pid, host_port,
                     agent_backend, agent_session_path, agent_config_dir, agent_state_dir,
-                    agent_transport, agent_pid, work_type
+                    agent_transport, agent_pid, work_type, blocked_reason
              FROM job_journal WHERE job_id = ?1",
         )?;
 
@@ -75,8 +75,8 @@ impl Journal {
             "UPDATE job_journal SET status = ?1, finished_at = ?2, exit_code = ?3, tokens_used = ?4,
              input_tokens = ?5, output_tokens = ?6, cache_read_tokens = ?7, cache_write_tokens = ?8,
              pr_url = ?9, duration_ms = ?10, review_url = ?11, review_body = ?12,
-             review_already_exists = ?13, pending_prompt = NULL, pending_artifact_cleanup = 0
-             WHERE job_id = ?14",
+             review_already_exists = ?13, blocked_reason = ?14, pending_prompt = NULL,
+             pending_artifact_cleanup = 0 WHERE job_id = ?15",
             rusqlite::params![
                 result.status.as_str(),
                 now,
@@ -91,6 +91,7 @@ impl Journal {
                 result.review_url,
                 result.review_body,
                 result.review_already_exists,
+                result.blocked_reason,
                 result.job_id.to_string(),
             ],
         )?;
@@ -211,7 +212,7 @@ impl Journal {
                     turn_count, review_fix_pass, review_fixing, pending_prompt,
                     pending_artifact_cleanup, session_id, max_turns, host_pid, host_port,
                     agent_backend, agent_session_path, agent_config_dir, agent_state_dir,
-                    agent_transport, agent_pid, work_type
+                    agent_transport, agent_pid, work_type, blocked_reason
              FROM job_journal WHERE status = 'running'",
         )?;
 
