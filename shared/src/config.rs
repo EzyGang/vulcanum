@@ -100,7 +100,7 @@ pub struct WorkerConfig {
     pub debug: bool,
     #[serde(default = "default_poll_interval")]
     pub poll_interval_secs: u64,
-    #[serde(default = "default_auto_update_enabled")]
+    #[serde(default)]
     pub auto_update_enabled: bool,
     #[serde(default = "default_update_check_interval")]
     pub update_check_interval_secs: u64,

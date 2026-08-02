@@ -11,7 +11,7 @@ fn worker_config_defaults_to_verified_updates() {
 }
 
 #[test]
-fn deserialization_defaults_updates_on_but_preserves_explicit_opt_out() {
+fn deserialization_preserves_legacy_opt_out_for_missing_or_explicit_values() {
     let defaulted: WorkerConfig =
         serde_json::from_value(json!({})).expect("minimal config should deserialize");
     let opted_out: WorkerConfig = serde_json::from_value(json!({
@@ -19,6 +19,6 @@ fn deserialization_defaults_updates_on_but_preserves_explicit_opt_out() {
     }))
     .expect("explicit worker opt-out should deserialize");
 
-    assert!(defaulted.auto_update_enabled);
+    assert!(!defaulted.auto_update_enabled);
     assert!(!opted_out.auto_update_enabled);
 }
