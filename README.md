@@ -77,21 +77,21 @@ This installs the worker-side binaries only. The control-plane server, dispatche
 
 ### Automatic worker-side updates
 
-Installed workers can update the `vulcanum` CLI and `vulcanum-server` daemon as one
-release pair. Automatic updates are disabled by default. Enable them in the worker
-service account's `~/.vulcanum/config.json`:
+Installed workers update the `vulcanum` CLI and `vulcanum-server` worker daemon
+as one verified release pair. Automatic updates are enabled by default for newly
+created worker configurations. Operators can opt out or back in without editing
+`~/.vulcanum/config.json`:
 
-```json
-{
-  "auto_update_enabled": true,
-  "update_check_interval_secs": 86400
-}
+```bash
+vulcanum worker updates disable
+vulcanum worker updates enable
 ```
 
-Existing configuration fields remain in the same object. The interval is measured
-in seconds, defaults to 24 hours, and must be between 60 seconds and one year.
-When enabled, the daemon checks at startup and again after each interval while no
-new or recovered job is active or queued.
+Each command changes only `auto_update_enabled`; all other worker configuration
+is preserved. A running daemon reads the changed setting on its next startup.
+The update interval defaults to 24 hours and must be between 60 seconds and one
+year. When enabled, the daemon checks at startup and again after each interval
+while no new or recovered job is active or queued.
 
 Each check queries the latest non-prerelease GitHub release, compares its semantic
 version with the installed `.vulcanum-version` marker, and selects the archive for
