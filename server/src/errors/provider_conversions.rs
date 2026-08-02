@@ -16,12 +16,11 @@ impl From<TaskBoardError> for AppError {
                     Self::Internal
                 }
             },
-            TaskBoardError::TaskUpdate(e) => match provider_request_error(&e) {
-                Some(Self::BadRequest(message)) => Self::BadRequest(format!(
-                    "Task tracker rejected the update: {message}. Refresh the board and retry"
-                )),
-                Some(err) => err,
-                None => {
+            TaskBoardError::TaskUpdate(e) => match e.provider_http_status_code() {
+                Some(status) if (400..500).contains(&status) => Self::BadRequest(
+                    "Task tracker rejected the update. Refresh the board and retry".to_owned(),
+                ),
+                _ => {
                     tracing::error!(error = %e, operation = "task_board_update", "integration error");
                     Self::Internal
                 }
@@ -31,6 +30,9 @@ impl From<TaskBoardError> for AppError {
             TaskBoardError::EmptyTitle => Self::BadRequest("Task title is required".to_owned()),
             TaskBoardError::EmptyStatus => Self::BadRequest("Task status is required".to_owned()),
             TaskBoardError::EmptyLabel => Self::BadRequest("Task label is required".to_owned()),
+            TaskBoardError::MissingTaskPosition => Self::BadRequest(
+                "Task is missing required tracker metadata. Refresh the board and retry".to_owned(),
+            ),
         }
     }
 }

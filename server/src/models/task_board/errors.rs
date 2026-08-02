@@ -23,4 +23,6 @@ pub enum TaskBoardError {
     EmptyStatus,
     #[error("task label is required")]
     EmptyLabel,
+    #[error("task is missing its position and cannot be safely updated")]
+    MissingTaskPosition,
 }

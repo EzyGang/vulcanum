@@ -54,7 +54,7 @@ impl TaskBoardService {
             .load_task_provider(team_id, provider_id, task_id)
             .await?;
         let task = client
-            .update_task(task_update_input(task, title, request.body))
+            .update_task(task_update_input(task, title, request.body)?)
             .await
             .map_err(TaskBoardError::TaskUpdate)?;
 
@@ -86,17 +86,19 @@ pub(crate) fn task_update_input(
     current: crate::models::providers::model::IntegrationTask,
     title: String,
     body: String,
-) -> UpdateIntegrationTaskInput {
-    UpdateIntegrationTaskInput {
+) -> Result<UpdateIntegrationTaskInput, TaskBoardError> {
+    Ok(UpdateIntegrationTaskInput {
         task_id: current.id,
         title,
         body,
         status: current.status,
         priority: current.priority,
         project_id: current.project_id,
-        position: current.position.unwrap_or(0.0),
+        position: current
+            .position
+            .ok_or(TaskBoardError::MissingTaskPosition)?,
         due_date: current.due_date.unwrap_or_default(),
         start_date: current.start_date.unwrap_or_default(),
         user_id: current.assignee_id.unwrap_or_default(),
-    }
+    })
 }

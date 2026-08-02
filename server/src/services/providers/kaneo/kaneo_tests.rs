@@ -1,5 +1,10 @@
+use std::sync::Mutex;
+
 use super::client::types::{KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask};
-use super::client::{filter_tasks_in_column, log_kaneo_result, update_task_request, KaneoClient};
+use super::client::{
+    filter_tasks_in_column, log_kaneo_result, send_task_update, update_task_request, KaneoClient,
+    TaskUpdateTransport, UpdateTaskBody,
+};
 use super::errors::KaneoError;
 use crate::models::providers::model::UpdateIntegrationTaskInput;
 
@@ -21,6 +26,20 @@ fn task(id: &str, status: &str) -> KaneoTask {
         assignee_name: None,
         assignee_id: None,
         labels: Vec::new(),
+    }
+}
+
+#[derive(Default)]
+struct RecordingTaskUpdateTransport {
+    request: Mutex<Option<(String, serde_json::Value)>>,
+}
+
+impl TaskUpdateTransport for RecordingTaskUpdateTransport {
+    async fn put_task(&self, path: &str, body: &UpdateTaskBody) -> Result<KaneoTask, KaneoError> {
+        let payload = serde_json::to_value(body).expect("update body serializes");
+        *self.request.lock().expect("request lock") = Some((path.to_owned(), payload));
+
+        Ok(task("task-123", "in-progress"))
     }
 }
 
@@ -207,6 +226,49 @@ fn task_update_request_contains_complete_kaneo_payload() {
         })
     );
     assert!(payload.get("labels").is_none());
+}
+
+#[actix_web::test]
+async fn task_update_captures_complete_put_request() {
+    let input = UpdateIntegrationTaskInput {
+        task_id: "task-123".to_owned(),
+        title: "Updated title".to_owned(),
+        body: "Updated body".to_owned(),
+        status: "in-progress".to_owned(),
+        priority: "urgent".to_owned(),
+        project_id: "project-1".to_owned(),
+        position: 7.5,
+        due_date: "2026-01-10T00:00:00Z".to_owned(),
+        start_date: "2026-01-03T00:00:00Z".to_owned(),
+        user_id: "user-1".to_owned(),
+    };
+    let transport = RecordingTaskUpdateTransport::default();
+
+    send_task_update(&transport, &input)
+        .await
+        .expect("task update succeeds");
+
+    let request = transport
+        .request
+        .lock()
+        .expect("request lock")
+        .take()
+        .expect("request captured");
+    assert_eq!(request.0, "/task/task-123");
+    assert_eq!(
+        request.1,
+        serde_json::json!({
+            "title": "Updated title",
+            "description": "Updated body",
+            "priority": "urgent",
+            "status": "in-progress",
+            "projectId": "project-1",
+            "position": 7.5,
+            "dueDate": "2026-01-10T00:00:00Z",
+            "startDate": "2026-01-03T00:00:00Z",
+            "userId": "user-1"
+        })
+    );
 }
 
 #[test]

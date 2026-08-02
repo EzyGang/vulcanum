@@ -25,8 +25,7 @@ async fn task_board_provider_client_error_is_not_internal() {
 #[actix_web::test]
 async fn task_update_validation_error_is_sanitized_and_actionable() {
     let err: AppError = TaskBoardError::TaskUpdate(IntegrationError::Kaneo(KaneoError::Api(
-        "400 Bad Request: {\"data\":{\"description\":\"secret body\"},\"success\":false}"
-            .to_owned(),
+        "400 Bad Request: invalid description: secret body".to_owned(),
     )))
     .into();
 
@@ -37,7 +36,7 @@ async fn task_update_validation_error_is_sanitized_and_actionable() {
     let payload: serde_json::Value = serde_json::from_slice(&body).expect("body is JSON");
     assert_eq!(
         payload["error"],
-        "Task tracker rejected the update: Provider rejected request. Refresh the board and retry"
+        "Task tracker rejected the update. Refresh the board and retry"
     );
     assert!(!payload["error"]
         .as_str()

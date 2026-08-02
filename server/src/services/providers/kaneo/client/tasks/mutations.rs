@@ -36,6 +36,28 @@ pub(crate) fn update_task_request(input: &UpdateIntegrationTaskInput) -> (String
     )
 }
 
+#[allow(async_fn_in_trait)]
+pub(crate) trait TaskUpdateTransport {
+    async fn put_task(&self, path: &str, body: &UpdateTaskBody) -> Result<KaneoTask, KaneoError>;
+}
+
+impl TaskUpdateTransport for kaneo_cli::api::client::ApiClient {
+    async fn put_task(&self, path: &str, body: &UpdateTaskBody) -> Result<KaneoTask, KaneoError> {
+        self.put(path, body).await.map_err(api_err)
+    }
+}
+
+pub(crate) async fn send_task_update<T>(
+    transport: &T,
+    input: &UpdateIntegrationTaskInput,
+) -> Result<KaneoTask, KaneoError>
+where
+    T: TaskUpdateTransport,
+{
+    let (path, body) = update_task_request(input);
+    transport.put_task(&path, &body).await
+}
+
 impl KaneoClient {
     pub async fn update_task_status(
         &self,
@@ -100,9 +122,9 @@ impl KaneoClient {
         input: &UpdateIntegrationTaskInput,
     ) -> Result<KaneoTask, KaneoError> {
         let client = self.build_client()?;
-        let (path, body) = update_task_request(input);
+        let path = format!("/task/{}", input.task_id);
         let start = std::time::Instant::now();
-        let result = client.put(&path, &body).await.map_err(api_err);
+        let result = send_task_update(&client, input).await;
         let duration_ms = start.elapsed().as_millis() as i64;
 
         log_kaneo_result("PUT", &path, duration_ms, &result);

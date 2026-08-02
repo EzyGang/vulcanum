@@ -9,7 +9,10 @@ use kaneo_cli::api::client::ApiClient;
 use crate::services::providers::kaneo::errors::{api_err, KaneoError};
 
 #[cfg(test)]
-pub(crate) use tasks::{filter_tasks_in_column, update_task_request};
+pub(crate) use tasks::{
+    filter_tasks_in_column, send_task_update, update_task_request, TaskUpdateTransport,
+    UpdateTaskBody,
+};
 
 #[derive(Clone)]
 pub struct KaneoClient {
