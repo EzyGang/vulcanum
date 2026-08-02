@@ -1,4 +1,5 @@
 pub(crate) mod github;
+pub(crate) mod kaneo;
 pub(crate) mod project_configs;
 pub(crate) mod state;
 pub(crate) mod teams;

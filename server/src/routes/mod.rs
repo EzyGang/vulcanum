@@ -211,3 +211,6 @@ mod jobs_tests;
 
 #[cfg(test)]
 mod work_runs_tests;
+
+#[cfg(test)]
+mod task_board_tests;

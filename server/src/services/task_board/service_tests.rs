@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -9,11 +7,6 @@ use crate::models::providers::model::{
     IntegrationTask, IntegrationType,
 };
 use crate::models::task_board::errors::TaskBoardError;
-use crate::services::providers::kaneo::client::types::KaneoTask;
-use crate::services::providers::kaneo::client::{
-    send_task_update, TaskUpdateTransport, UpdateTaskBody,
-};
-use crate::services::providers::kaneo::errors::KaneoError;
 use crate::services::task_board::service::{
     collect_board_task_refs, default_column_status, project_config_to_provider_project,
     task_update_input,
@@ -72,37 +65,6 @@ fn integration_task(id: &str) -> IntegrationTask {
     }
 }
 
-#[derive(Default)]
-struct RecordingTaskUpdateTransport {
-    request: Mutex<Option<(String, serde_json::Value)>>,
-}
-
-impl TaskUpdateTransport for RecordingTaskUpdateTransport {
-    async fn put_task(&self, path: &str, body: &UpdateTaskBody) -> Result<KaneoTask, KaneoError> {
-        let payload = serde_json::to_value(body).expect("update body serializes");
-        *self.request.lock().expect("request lock") = Some((path.to_owned(), payload));
-
-        Ok(KaneoTask {
-            id: "task-1".to_owned(),
-            project_id: "project-1".to_owned(),
-            number: None,
-            position: Some(7.5),
-            title: "Current title".to_owned(),
-            description: Some("Updated body".to_owned()),
-            status: "in-progress".to_owned(),
-            priority: "urgent".to_owned(),
-            due_date: Some("2026-01-10T00:00:00Z".to_owned()),
-            start_date: Some("2026-01-03T00:00:00Z".to_owned()),
-            user_id: Some("user-1".to_owned()),
-            created_at: "2026-01-01T00:00:00Z".to_owned(),
-            updated_at: None,
-            assignee_name: None,
-            assignee_id: Some("user-1".to_owned()),
-            labels: Vec::new(),
-        })
-    }
-}
-
 fn project_config(name: &str, provider_id: Option<Uuid>) -> ProjectConfig {
     ProjectConfig {
         id: Uuid::new_v4(),
@@ -140,8 +102,8 @@ fn default_column_status_prefers_first_non_final_column() {
 
     assert_eq!(default_column_status(&columns), "in-progress");
 }
-#[actix_web::test]
-async fn body_edit_of_in_progress_task_preserves_update_contract_state() {
+#[test]
+fn body_edit_of_in_progress_task_preserves_update_contract_state() {
     let mut current = integration_task("task-1");
     current.title = "Current title".to_owned();
     current.description = Some("Current body".to_owned());
@@ -164,33 +126,16 @@ async fn body_edit_of_in_progress_task_preserves_update_contract_state() {
         "Updated body".to_owned(),
     )
     .expect("complete task update state");
-    let transport = RecordingTaskUpdateTransport::default();
 
-    send_task_update(&transport, &input)
-        .await
-        .expect("task update succeeds");
-
-    let request = transport
-        .request
-        .lock()
-        .expect("request lock")
-        .take()
-        .expect("request captured");
-    assert_eq!(request.0, "/task/task-1");
-    assert_eq!(
-        request.1,
-        serde_json::json!({
-            "title": "Current title",
-            "description": "Updated body",
-            "priority": "urgent",
-            "status": "in-progress",
-            "projectId": "project-1",
-            "position": 7.5,
-            "dueDate": "2026-01-10T00:00:00Z",
-            "startDate": "2026-01-03T00:00:00Z",
-            "userId": "user-1"
-        })
-    );
+    assert_eq!(input.task_id, "task-1");
+    assert_eq!(input.title, "Current title");
+    assert_eq!(input.body, "Updated body");
+    assert_eq!(input.status, "in-progress");
+    assert_eq!(input.priority, "urgent");
+    assert_eq!(input.project_id, "project-1");
+    assert_eq!(input.position, 7.5);
+    assert_eq!(input.due_date, "2026-01-10T00:00:00Z");
+    assert_eq!(input.start_date, "2026-01-03T00:00:00Z");
     assert_eq!(input.user_id, "user-1");
 }
 

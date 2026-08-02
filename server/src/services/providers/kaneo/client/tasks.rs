@@ -2,9 +2,7 @@ mod board;
 mod mutations;
 
 #[cfg(test)]
-pub(crate) use mutations::{
-    send_task_update, update_task_request, TaskUpdateTransport, UpdateTaskBody,
-};
+pub(crate) use mutations::update_task_request;
 
 use std::collections::HashSet;
 
