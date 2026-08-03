@@ -56,6 +56,7 @@ pub(crate) async fn submit_failed_result(
         review_url: None,
         review_body: None,
         review_already_exists: false,
+        finish_status: result.finish_status,
         blocked_reason: result.blocked_reason.as_deref(),
         status: JournalStatus::Failed,
     });
@@ -123,6 +124,7 @@ pub(crate) async fn submit_turn_result(
         review_already_exists: finish_artifact
             .map(|a| a.review_already_exists)
             .unwrap_or(false),
+        finish_status: finish_artifact.map(|a| a.status),
         blocked_reason: finish_artifact.and_then(|a| a.blocked_reason.as_deref()),
         status: journal_status,
     });
@@ -254,7 +256,7 @@ pub(crate) fn submit_result_from_journal(entry: &JournalEntry) -> SubmitResultRe
         cache_read_tokens: entry.cache_read_tokens.unwrap_or(0),
         cache_write_tokens: entry.cache_write_tokens.unwrap_or(0),
         model_used: None,
-        finish_status: entry.blocked_reason.as_ref().map(|_| FinishStatus::Blocked),
+        finish_status: entry.finish_status,
         result_summary: None,
         blocked_reason: entry.blocked_reason.clone(),
         review_url: entry.review_url.clone(),

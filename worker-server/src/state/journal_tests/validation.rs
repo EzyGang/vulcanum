@@ -25,6 +25,7 @@ fn update_result_preserves_null_pr_url_and_reads_legacy_empty_pr_url_as_none() {
             review_body: None,
             review_already_exists: false,
             status: JournalStatus::Completed,
+            finish_status: None,
             blocked_reason: None,
         })
         .expect("result should update");

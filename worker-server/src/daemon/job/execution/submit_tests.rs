@@ -87,8 +87,8 @@ fn submit_result_maps_blocked_reason() {
 }
 
 #[test]
-fn submit_result_from_journal_replays_blocked_result() {
-    let entry = JournalEntry {
+fn submit_result_from_journal_replays_explicit_finish_status() {
+    let mut entry = JournalEntry {
         job_id: Uuid::new_v4(),
         workdir: "/tmp/vulcanum-work-test".to_owned(),
         container_name: None,
@@ -110,6 +110,7 @@ fn submit_result_from_journal_replays_blocked_result() {
         ),
         review_body: Some("Looks good".to_owned()),
         review_already_exists: true,
+        finish_status: Some(FinishStatus::Blocked),
         blocked_reason: Some("Waiting for repository access".to_owned()),
         error_message: None,
         turn_count: Some(1),
@@ -153,4 +154,13 @@ fn submit_result_from_journal_replays_blocked_result() {
     );
     assert_eq!(request.review_body.as_deref(), Some("Looks good"));
     assert!(request.review_already_exists);
+
+    entry.finish_status = Some(FinishStatus::Completed);
+    let request = submit_result_from_journal(&entry);
+
+    assert_eq!(request.finish_status, Some(FinishStatus::Completed));
+    assert_eq!(
+        request.blocked_reason.as_deref(),
+        Some("Waiting for repository access")
+    );
 }

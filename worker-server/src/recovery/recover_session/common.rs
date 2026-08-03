@@ -130,6 +130,7 @@ pub(crate) async fn mark_lost_and_submit(
         review_url: None,
         review_body: None,
         review_already_exists: false,
+        finish_status: None,
         blocked_reason: None,
         status: JournalStatus::Lost,
     }) {

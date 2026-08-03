@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use vulcanum_shared::api::wire::WorkRunType;
+use vulcanum_shared::runtime::types::FinishStatus;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum JournalStatus {
@@ -58,6 +59,7 @@ pub struct JournalEntry {
     pub review_url: Option<String>,
     pub review_body: Option<String>,
     pub review_already_exists: bool,
+    pub finish_status: Option<FinishStatus>,
     pub blocked_reason: Option<String>,
     pub error_message: Option<String>,
     pub turn_count: Option<i32>,
@@ -91,6 +93,7 @@ pub struct JournalResultUpdate<'a> {
     pub review_url: Option<&'a str>,
     pub review_body: Option<&'a str>,
     pub review_already_exists: bool,
+    pub finish_status: Option<FinishStatus>,
     pub blocked_reason: Option<&'a str>,
 }
 
