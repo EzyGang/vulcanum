@@ -36,7 +36,23 @@ impl Drop for SslCertFileGuard {
 pub(crate) struct KaneoTestServer {
     pub(crate) instance_url: String,
     pub(crate) certificate_path: std::path::PathBuf,
-    pub(crate) request: oneshot::Receiver<serde_json::Value>,
+    request: Option<oneshot::Receiver<serde_json::Value>>,
+}
+
+impl KaneoTestServer {
+    pub(crate) async fn captured_request(&mut self) -> serde_json::Value {
+        self.request
+            .take()
+            .expect("captured request receiver is available")
+            .await
+            .expect("captured Kaneo PUT request")
+    }
+}
+
+impl Drop for KaneoTestServer {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.certificate_path);
+    }
 }
 
 pub(crate) async fn start_kaneo_server(update_status: u16) -> KaneoTestServer {
@@ -94,7 +110,7 @@ pub(crate) async fn start_kaneo_server(update_status: u16) -> KaneoTestServer {
     KaneoTestServer {
         instance_url: format!("localhost:{port}"),
         certificate_path,
-        request: receiver,
+        request: Some(receiver),
     }
 }
 
@@ -164,4 +180,21 @@ fn kaneo_task_response() -> String {
         "labels": []
     })
     .to_string()
+}
+
+#[test]
+fn kaneo_test_server_removes_certificate_on_drop() {
+    let certificate_path =
+        std::env::temp_dir().join(format!("kaneo-cleanup-test-{}.pem", Uuid::new_v4()));
+    std::fs::write(&certificate_path, "certificate").expect("write test certificate");
+    let (_sender, receiver) = oneshot::channel();
+    let server = KaneoTestServer {
+        instance_url: "localhost".to_owned(),
+        certificate_path: certificate_path.clone(),
+        request: Some(receiver),
+    };
+
+    drop(server);
+
+    assert!(!certificate_path.exists());
 }

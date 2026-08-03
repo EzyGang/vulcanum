@@ -29,10 +29,10 @@ async fn insert_provider(pool: &sqlx::PgPool, instance_url: &str) -> Uuid {
 #[actix_web::test]
 async fn kaneo_client_captures_full_update_over_tls() {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
-    let server = start_kaneo_server(200).await;
+    let mut server = start_kaneo_server(200).await;
     let _ssl_cert_file = SslCertFileGuard::set(&server.certificate_path);
 
-    KaneoClient::new(server.instance_url, "test-key".to_owned())
+    KaneoClient::new(server.instance_url.clone(), "test-key".to_owned())
         .update_task(&UpdateIntegrationTaskInput {
             task_id: "task-1".to_owned(),
             title: "Current title".to_owned(),
@@ -48,7 +48,7 @@ async fn kaneo_client_captures_full_update_over_tls() {
         .await
         .expect("Kaneo task update succeeds");
 
-    let payload = server.request.await.expect("captured Kaneo PUT request");
+    let payload = server.captured_request().await;
     assert_eq!(payload["description"], "Updated body");
     assert_eq!(payload["status"], "in-progress");
     assert_eq!(payload["priority"], "urgent");
@@ -57,7 +57,7 @@ async fn kaneo_client_captures_full_update_over_tls() {
 #[sqlx::test]
 async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::PgPool) {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
-    let server = start_kaneo_server(200).await;
+    let mut server = start_kaneo_server(200).await;
     let provider_id = insert_provider(&pool, &server.instance_url).await;
     test_helpers::project_configs::insert_project_config_with_provider(
         &pool,
@@ -94,7 +94,7 @@ async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::
     .await;
 
     assert!(response.status().is_success());
-    let payload = server.request.await.expect("captured Kaneo PUT request");
+    let payload = server.captured_request().await;
     assert_eq!(
         payload,
         serde_json::json!({
@@ -114,7 +114,7 @@ async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::
 #[sqlx::test]
 async fn task_edit_sanitizes_kaneo_validation_error(pool: sqlx::PgPool) {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
-    let server = start_kaneo_server(400).await;
+    let mut server = start_kaneo_server(400).await;
     let provider_id = insert_provider(&pool, &server.instance_url).await;
     test_helpers::project_configs::insert_project_config_with_provider(
         &pool,
@@ -160,5 +160,5 @@ async fn task_edit_sanitizes_kaneo_validation_error(pool: sqlx::PgPool) {
         .as_str()
         .expect("error is a string")
         .contains("secret body"));
-    let _ = server.request.await.expect("captured Kaneo PUT request");
+    let _ = server.captured_request().await;
 }
