@@ -159,8 +159,6 @@ jobs:
             file: server/docker/Dockerfile
           - name: frontend
             file: frontend/docker/Dockerfile
-          - name: website
-            file: website/docker/Dockerfile
         architecture:
           - name: amd64
             platform: linux/amd64
@@ -227,7 +225,6 @@ jobs:
         image:
           - backend
           - frontend
-          - website
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Set up Docker Buildx
