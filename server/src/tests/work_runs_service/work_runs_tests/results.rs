@@ -4,6 +4,8 @@ use super::{
     WorkRunsError, WorkRunsRepository,
 };
 
+use vulcanum_shared::runtime::types::FinishStatus;
+
 #[sqlx::test]
 async fn submit_result_marks_completed(pool: sqlx::PgPool) {
     let svc = build_service(pool.clone());
@@ -44,8 +46,9 @@ async fn submit_result_marks_completed(pool: sqlx::PgPool) {
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
-        finish_status: None,
+        finish_status: Some(FinishStatus::Completed),
         result_summary: None,
+        blocked_reason: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -104,8 +107,9 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         cache_read_tokens: 0,
         cache_write_tokens: 0,
         model_used: None,
-        finish_status: None,
+        finish_status: Some(FinishStatus::Failed),
         result_summary: None,
+        blocked_reason: None,
         review_url: None,
         review_body: None,
         review_already_exists: false,
@@ -116,6 +120,77 @@ async fn submit_result_marks_failed_on_nonzero_exit(pool: sqlx::PgPool) {
         .expect("Should succeed");
 
     assert!(matches!(job.status, WorkRunStatus::Failed));
+}
+
+#[sqlx::test]
+async fn submit_blocked_result_persists_trimmed_reason_separately(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::workers::insert_worker(&pool, "blocked-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "blocked-result").await;
+    let wr_id = test_helpers::work_runs::insert_running_work_run(
+        &pool,
+        project_id,
+        "task-blocked-result",
+        worker_id,
+    )
+    .await;
+    let mut params = completed_result_request();
+    params.exit_code = 1;
+    params.finish_status = Some(FinishStatus::Blocked);
+    params.result_summary = Some("Work completed up to deployment".to_owned());
+    params.blocked_reason = Some("  Waiting for production credentials  ".to_owned());
+
+    let job = svc
+        .submit_result(wr_id, worker_id, params)
+        .await
+        .expect("Blocked result with a reason should succeed");
+
+    assert!(matches!(job.status, WorkRunStatus::Failed));
+    assert_eq!(
+        job.finish_blocked_reason.as_deref(),
+        Some("Waiting for production credentials")
+    );
+    assert_eq!(
+        job.result_summary.as_deref(),
+        Some("Work completed up to deployment")
+    );
+}
+
+#[sqlx::test]
+async fn submit_blocked_result_rejects_missing_or_blank_reason(pool: sqlx::PgPool) {
+    let svc = build_service(pool.clone());
+    let worker_id = test_helpers::workers::insert_worker(&pool, "invalid-blocked-worker").await;
+    let project_id =
+        test_helpers::project_configs::insert_project_config(&pool, "invalid-blocked").await;
+    let wr_id = test_helpers::work_runs::insert_running_work_run(
+        &pool,
+        project_id,
+        "task-invalid-blocked",
+        worker_id,
+    )
+    .await;
+
+    for blocked_reason in [None, Some(String::new()), Some("   ".to_owned())] {
+        let mut params = completed_result_request();
+        params.exit_code = 1;
+        params.finish_status = Some(FinishStatus::Blocked);
+        params.result_summary = Some("This must not become the blocked reason".to_owned());
+        params.blocked_reason = blocked_reason;
+
+        let error = svc
+            .submit_result(wr_id, worker_id, params)
+            .await
+            .expect_err("Blocked result without a reason should be rejected");
+        assert!(matches!(error, WorkRunsError::BlockedReasonRequired));
+    }
+
+    let run = WorkRunsRepository::new()
+        .find_by_id(&pool, wr_id)
+        .await
+        .expect("Work run should still exist");
+    assert!(matches!(run.status, WorkRunStatus::Running));
+    assert!(run.finish_blocked_reason.is_none());
 }
 
 #[sqlx::test]
@@ -226,6 +301,7 @@ async fn submit_result_accumulates_task_and_project_usage_once_per_result(pool: 
             model_used: None,
             finish_status: None,
             result_summary: None,
+            blocked_reason: None,
             review_url: None,
             review_body: None,
             review_already_exists: false,

@@ -8,6 +8,12 @@ function stringOrUndefined(value) {
   return typeof value === "string" && value.length > 0 ? value : undefined
 }
 
+function trimmedStringOrUndefined(value) {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
 function stringArrayOrEmpty(value) {
   if (!Array.isArray(value)) return []
   return value.filter((item) => typeof item === "string" && item.length > 0)
@@ -38,15 +44,21 @@ const OPENCODE_IMPLEMENTATION_TOOL_BODY_TS: &str = r#"export default tool({
   description: "Call this when the implementation task is complete to submit the final result. REQUIRED at end of every run.",
   args: {
     status: tool.schema.enum(["completed", "failed", "blocked"]).describe("Outcome of the run"),
-    summary: tool.schema.string().optional().describe("Brief summary of what was done and which formatter, validation, and test commands were run, or why blocked"),
+    summary: tool.schema.string().optional().describe("Brief optional summary of what was done and which formatter, validation, and test commands were run"),
+    blocked_reason: tool.schema.string().optional().describe("Required when status is blocked: concise explanation of the external dependency or input needed"),
     pr_urls: tool.schema.array(tool.schema.string()).optional().describe("URLs of all pull requests created across repositories"),
   },
   async execute(args) {
     const path = artifactPath()
+    const blockedReason = trimmedStringOrUndefined(args.blocked_reason)
+    if (args.status === "blocked" && !blockedReason) {
+      throw new Error("blocked_reason is required when status is blocked")
+    }
     const artifact = {
       status: args.status,
       pr_urls: stringArrayOrEmpty(args.pr_urls),
       summary: stringOrUndefined(args.summary),
+      blocked_reason: blockedReason,
       review_url: undefined,
       review_body: undefined,
       review_already_exists: false,
@@ -56,17 +68,23 @@ const OPENCODE_REVIEW_TOOL_BODY_TS: &str = r#"export default tool({
   description: "Call this when the pull request review is complete to submit the final result. REQUIRED at end of every review run.",
   args: {
     status: tool.schema.enum(["completed", "failed", "blocked"]).describe("Outcome of the review run"),
-    summary: tool.schema.string().optional().describe("Brief summary of what was reviewed, what went wrong, or why blocked"),
+    summary: tool.schema.string().optional().describe("Brief optional summary of what was reviewed or what went wrong"),
+    blocked_reason: tool.schema.string().optional().describe("Required when status is blocked: concise explanation of the external dependency or input needed"),
     review_url: tool.schema.string().optional().describe("URL of the GitHub review that was posted"),
     review_body: tool.schema.string().optional().describe("Body of the review requested by this run, including any missing or failing formatter, validation, or test commands"),
     review_already_exists: tool.schema.boolean().optional().describe("True only when this same work run already posted its review before the session resumed. A review from an earlier run does not satisfy a new review request."),
   },
   async execute(args) {
     const path = artifactPath()
+    const blockedReason = trimmedStringOrUndefined(args.blocked_reason)
+    if (args.status === "blocked" && !blockedReason) {
+      throw new Error("blocked_reason is required when status is blocked")
+    }
     const artifact = {
       status: args.status,
       pr_urls: [],
       summary: stringOrUndefined(args.summary),
+      blocked_reason: blockedReason,
       review_url: stringOrUndefined(args.review_url),
       review_body: stringOrUndefined(args.review_body),
       review_already_exists: args.review_already_exists === true,
@@ -77,6 +95,12 @@ import { mkdirSync, writeFileSync } from "node:fs"
 
 function stringOrUndefined(value) {
   return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function trimmedStringOrUndefined(value) {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
 }
 
 function stringArrayOrEmpty(value) {
@@ -115,13 +139,19 @@ const OMP_TOOL_SUFFIX_TS: &str = r#"
 const OMP_IMPLEMENTATION_TOOL_BODY_TS: &str = r#"    parameters: z.object({
       status: z.enum(["completed", "failed", "blocked"]),
       summary: z.string().optional(),
+      blocked_reason: z.string().optional().describe("Required when status is blocked: concise explanation of the external dependency or input needed"),
       pr_urls: z.array(z.string()).optional(),
     }),
     async execute(_toolCallId, input) {
+      const blockedReason = trimmedStringOrUndefined(input.blocked_reason)
+      if (input.status === "blocked" && !blockedReason) {
+        throw new Error("blocked_reason is required when status is blocked")
+      }
       const artifact = {
         status: input.status,
         pr_urls: stringArrayOrEmpty(input.pr_urls),
         summary: stringOrUndefined(input.summary),
+        blocked_reason: blockedReason,
         review_url: undefined,
         review_body: undefined,
         review_already_exists: false,
@@ -130,15 +160,21 @@ const OMP_IMPLEMENTATION_TOOL_BODY_TS: &str = r#"    parameters: z.object({
 const OMP_REVIEW_TOOL_BODY_TS: &str = r#"    parameters: z.object({
       status: z.enum(["completed", "failed", "blocked"]),
       summary: z.string().optional(),
+      blocked_reason: z.string().optional().describe("Required when status is blocked: concise explanation of the external dependency or input needed"),
       review_url: z.string().optional(),
       review_body: z.string().optional(),
       review_already_exists: z.boolean().optional(),
     }),
     async execute(_toolCallId, input) {
+      const blockedReason = trimmedStringOrUndefined(input.blocked_reason)
+      if (input.status === "blocked" && !blockedReason) {
+        throw new Error("blocked_reason is required when status is blocked")
+      }
       const artifact = {
         status: input.status,
         pr_urls: [],
         summary: stringOrUndefined(input.summary),
+        blocked_reason: blockedReason,
         review_url: stringOrUndefined(input.review_url),
         review_body: stringOrUndefined(input.review_body),
         review_already_exists: input.review_already_exists === true,

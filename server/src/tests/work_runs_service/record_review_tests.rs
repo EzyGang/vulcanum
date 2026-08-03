@@ -168,6 +168,7 @@ fn submit_params(
         model_used: None,
         finish_status: None,
         result_summary: result_summary.map(str::to_owned),
+        blocked_reason: None,
         review_url: review_url.map(str::to_owned),
         review_body: review_body.map(str::to_owned),
         review_already_exists,

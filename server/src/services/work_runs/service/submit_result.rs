@@ -17,13 +17,21 @@ impl WorkRunsService {
         worker_id: Uuid,
         params: SubmitResultRequest,
     ) -> Result<WorkRun, WorkRunsError> {
+        let finish_blocked_reason = blocked_finish_reason(&params)?;
         let status = result_status(&params);
         let pr_urls = normalized_pr_urls(&params);
 
         let run = self.work_runs_repo.find_by_id(&self.db, id).await?;
 
         if !matches!(run.status, WorkRunStatus::Running) {
-            if is_idempotent_retry(&run, worker_id, &params, status, &pr_urls) {
+            if is_idempotent_retry(
+                &run,
+                worker_id,
+                &params,
+                status,
+                &pr_urls,
+                finish_blocked_reason,
+            ) {
                 let existing_pr_urls = self.work_runs_repo.list_pr_urls(&self.db, id).await?;
                 if existing_pr_urls == pr_urls {
                     return Ok(run);
@@ -36,8 +44,6 @@ impl WorkRunsService {
         if run.worker_id != Some(worker_id) {
             return Err(WorkRunsError::NotOwned);
         }
-
-        let finish_blocked_reason = blocked_finish_reason(&params);
 
         let mut tx = self.db.begin().await.map_err(WorkRunsError::Database)?;
 
@@ -242,11 +248,16 @@ fn result_status(params: &SubmitResultRequest) -> WorkRunStatus {
     }
 }
 
-#[must_use]
-fn blocked_finish_reason(params: &SubmitResultRequest) -> Option<&str> {
+fn blocked_finish_reason(params: &SubmitResultRequest) -> Result<Option<&str>, WorkRunsError> {
     match params.finish_status {
-        Some(FinishStatus::Blocked) => params.result_summary.as_deref().or(Some("blocked")),
-        _ => None,
+        Some(FinishStatus::Blocked) => params
+            .blocked_reason
+            .as_deref()
+            .map(str::trim)
+            .filter(|reason| !reason.is_empty())
+            .map(Some)
+            .ok_or(WorkRunsError::BlockedReasonRequired),
+        _ => Ok(None),
     }
 }
 
@@ -257,6 +268,7 @@ fn is_idempotent_retry(
     params: &SubmitResultRequest,
     status: WorkRunStatus,
     pr_urls: &[String],
+    finish_blocked_reason: Option<&str>,
 ) -> bool {
     if run.worker_id != Some(worker_id) {
         return false;
@@ -279,7 +291,7 @@ fn is_idempotent_retry(
         && run.finish_status.as_deref() == params.finish_status.as_ref().map(|s| s.as_str())
         && run.result_summary.as_deref() == params.result_summary.as_deref()
         && run.finish_next_column.is_none()
-        && run.finish_blocked_reason.as_deref() == blocked_finish_reason(params)
+        && run.finish_blocked_reason.as_deref() == finish_blocked_reason
 }
 
 #[must_use]

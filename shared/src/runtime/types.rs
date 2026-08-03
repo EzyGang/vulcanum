@@ -110,6 +110,8 @@ pub struct FinishRunArtifact {
     #[serde(default)]
     pub summary: Option<String>,
     #[serde(default)]
+    pub blocked_reason: Option<String>,
+    #[serde(default)]
     pub review_url: Option<String>,
     #[serde(default)]
     pub review_body: Option<String>,

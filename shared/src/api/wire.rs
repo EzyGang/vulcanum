@@ -206,6 +206,8 @@ pub struct SubmitResultRequest {
     pub finish_status: Option<FinishStatus>,
     pub result_summary: Option<String>,
     #[serde(default)]
+    pub blocked_reason: Option<String>,
+    #[serde(default)]
     pub review_url: Option<String>,
     #[serde(default)]
     pub review_body: Option<String>,

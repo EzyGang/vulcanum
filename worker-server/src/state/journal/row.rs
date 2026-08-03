@@ -1,8 +1,8 @@
 use chrono::DateTime;
 use rusqlite::types::Type;
 use uuid::Uuid;
-
 use vulcanum_shared::api::wire::WorkRunType;
+use vulcanum_shared::runtime::types::FinishStatus;
 
 use crate::state::journal::model::{journal_status_from_str, JournalEntry};
 
@@ -14,6 +14,10 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
 
     let work_type = work_type_from_str(&row.get::<_, String>(34)?)
         .ok_or_else(|| invalid_text_column(34, "invalid work run type"))?;
+    let finish_status = row
+        .get::<_, Option<String>>(36)?
+        .map(|value| finish_status_from_str(&value))
+        .transpose()?;
     let job_id = Uuid::parse_str(&job_id)
         .map_err(|err| rusqlite::Error::FromSqlConversionFailure(0, Type::Text, Box::new(err)))?;
     let status = journal_status_from_str(&status)
@@ -51,6 +55,8 @@ pub(super) fn journal_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Resul
         review_url: row.get(15)?,
         review_body: row.get(16)?,
         review_already_exists: row.get(17)?,
+        finish_status,
+        blocked_reason: row.get(35)?,
         error_message: row.get(18)?,
         turn_count: row.get(19)?,
         review_fix_pass: row.get(20)?,
@@ -90,5 +96,14 @@ fn work_type_from_str(value: &str) -> Option<WorkRunType> {
         "implementation" => Some(WorkRunType::Implementation),
         "pull_request_review" => Some(WorkRunType::PullRequestReview),
         _ => None,
+    }
+}
+
+fn finish_status_from_str(value: &str) -> rusqlite::Result<FinishStatus> {
+    match value {
+        "completed" => Ok(FinishStatus::Completed),
+        "failed" => Ok(FinishStatus::Failed),
+        "blocked" => Ok(FinishStatus::Blocked),
+        _ => Err(invalid_text_column(36, "invalid finish status")),
     }
 }

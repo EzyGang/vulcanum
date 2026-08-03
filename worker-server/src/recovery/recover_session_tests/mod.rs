@@ -214,6 +214,8 @@ fn test_entry(workdir: &std::path::Path, harness_type: &str) -> JournalEntry {
         review_url: None,
         review_body: None,
         review_already_exists: false,
+        finish_status: None,
+        blocked_reason: None,
         error_message: None,
         turn_count: Some(1),
         review_fix_pass: 0,

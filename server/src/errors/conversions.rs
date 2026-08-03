@@ -102,6 +102,9 @@ impl From<WorkRunsError> for AppError {
             WorkRunsError::AlreadyClaimed => Self::AlreadyClaimed,
             WorkRunsError::NotOwned => Self::NotOwned,
             WorkRunsError::InvalidStatusTransition => Self::InvalidStatusTransition,
+            WorkRunsError::BlockedReasonRequired => Self::BadRequest(
+                "blocked_reason is required when finish_status is blocked".to_owned(),
+            ),
             WorkRunsError::Database(e) => {
                 tracing::error!(error = %e, operation = "work_runs", "database error");
                 Self::Internal

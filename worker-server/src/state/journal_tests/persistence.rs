@@ -1,3 +1,5 @@
+use vulcanum_shared::runtime::types::FinishStatus;
+
 use super::{open_journal, JournalResultUpdate, JournalStatus, Utc, Uuid};
 
 #[test]
@@ -33,6 +35,8 @@ fn update_result_persists_granular_tokens() {
             review_body: Some("Looks good"),
             review_already_exists: true,
             status: JournalStatus::Running,
+            finish_status: Some(FinishStatus::Blocked),
+            blocked_reason: Some("Waiting for repository access"),
         })
         .expect("should update");
 
@@ -50,6 +54,11 @@ fn update_result_persists_granular_tokens() {
     assert_eq!(
         entry.review_url.as_deref(),
         Some("https://github.com/EzyGang/vulcanum/pull/1#pullrequestreview-1")
+    );
+    assert_eq!(entry.finish_status, Some(FinishStatus::Blocked));
+    assert_eq!(
+        entry.blocked_reason.as_deref(),
+        Some("Waiting for repository access")
     );
     assert_eq!(entry.review_body.as_deref(), Some("Looks good"));
     assert!(entry.review_already_exists);
@@ -114,6 +123,8 @@ fn multiple_jobs_with_mixed_statuses() {
             review_body: None,
             review_already_exists: false,
             status: JournalStatus::Completed,
+            finish_status: None,
+            blocked_reason: None,
         })
         .expect("complete 1");
 

@@ -15,6 +15,8 @@ fn implementation_initial_prompt_requires_finish_run() {
     assert!(prompt.contains("every repository you changed"));
     assert!(prompt.contains("Install missing project dependencies"));
     assert!(prompt.contains("only when it cannot be reproduced"));
+    assert!(prompt.contains("`blocked_reason` is mandatory"));
+    assert!(prompt.contains("external dependency or input needed"));
     assert!(prompt.contains("`pr_urls`"));
     assert!(!prompt.contains("`pr_url`"));
 }
@@ -40,6 +42,8 @@ fn review_initial_prompt_uses_review_artifact_fields() {
     assert!(prompt.contains("formatter, validation"));
     assert!(prompt.contains("Install missing project dependencies"));
     assert!(prompt.contains("only when it cannot be reproduced"));
+    assert!(prompt.contains("`blocked_reason` is mandatory"));
+    assert!(prompt.contains("external dependency or input needed"));
     assert!(!prompt.contains("`pr_url`"));
 }
 
