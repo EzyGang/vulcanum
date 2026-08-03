@@ -20,7 +20,7 @@ use tokio_util::sync::CancellationToken;
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::pull_requests::PullRequestCommentWriter;
 use crate::services::github_app::service::webhooks::events::parse_event;
-use crate::services::github_app::webhook_store::GithubWebhookStore;
+use crate::services::github_app::webhook_store::{GithubWebhookEnqueueOutcome, GithubWebhookStore};
 use crate::services::work_runs::service::WorkRunsService;
 
 const POLL_INTERVAL: Duration = Duration::from_secs(5);
@@ -88,13 +88,19 @@ impl GithubWebhookService {
             None => return Ok(GithubWebhookOutcome::Ignored),
         };
         let kind = payload.kind;
-        let inserted = self.store.enqueue(payload).await?;
+        let enqueue_outcome = self.store.enqueue(payload).await?;
+        let (inserted, requeued) = match enqueue_outcome {
+            GithubWebhookEnqueueOutcome::Inserted => (true, false),
+            GithubWebhookEnqueueOutcome::Duplicate => (false, false),
+            GithubWebhookEnqueueOutcome::Requeued => (false, true),
+        };
 
         tracing::info!(
             github_delivery_id = delivery,
             webhook_kind = kind.as_str(),
-            duplicate = !inserted,
-            "queued GitHub webhook",
+            duplicate = matches!(enqueue_outcome, GithubWebhookEnqueueOutcome::Duplicate),
+            requeued,
+            "accepted GitHub webhook",
         );
 
         Ok(GithubWebhookOutcome::Queued { inserted })

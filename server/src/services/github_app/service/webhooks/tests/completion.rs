@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex;
@@ -99,6 +100,56 @@ async fn merged_webhook_matches_pr_url_without_installation_mapping(pool: sqlx::
         .process_pending_once()
         .await
         .expect("process merged delivery"));
+
+    assert_eq!(task_fetcher.status.lock().await.as_str(), "done");
+    assert_eq!(
+        task_fetcher.updates.lock().await.as_slice(),
+        &[("task-1".to_owned(), "done".to_owned())]
+    );
+}
+
+#[sqlx::test]
+async fn redelivered_completed_webhook_moves_previously_unmoved_ticket(pool: sqlx::PgPool) {
+    let (service, task_fetcher) = completion_service(&pool).await;
+    let payload = test_helpers::github::github_pull_request_payload("closed", true);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
+    service
+        .handle(
+            &signature,
+            "pull_request",
+            "redelivered-merged-pr",
+            &payload,
+        )
+        .await
+        .expect("queue original delivery");
+    let claim = service
+        .store
+        .claim_pending(Duration::from_secs(60))
+        .await
+        .expect("claim original delivery")
+        .expect("original delivery exists");
+    assert!(service
+        .store
+        .complete(&claim)
+        .await
+        .expect("complete original delivery"));
+
+    assert_eq!(
+        service
+            .handle(
+                &signature,
+                "pull_request",
+                "redelivered-merged-pr",
+                &payload,
+            )
+            .await
+            .expect("queue redelivery"),
+        GithubWebhookOutcome::Queued { inserted: false },
+    );
+    assert!(service
+        .process_pending_once()
+        .await
+        .expect("process redelivery"));
 
     assert_eq!(task_fetcher.status.lock().await.as_str(), "done");
     assert_eq!(

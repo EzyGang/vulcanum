@@ -93,6 +93,13 @@ pub(crate) struct GithubWebhookClaim {
     token: Uuid,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum GithubWebhookEnqueueOutcome {
+    Inserted,
+    Duplicate,
+    Requeued,
+}
+
 #[derive(Clone)]
 pub(crate) enum GithubWebhookStore {
     Redis(redis::Client),
@@ -122,25 +129,40 @@ impl GithubWebhookStore {
         Self::Memory(Arc::new(Mutex::new(HashMap::new())))
     }
 
-    pub async fn enqueue(&self, delivery: GithubWebhookDelivery) -> Result<bool, GithubAppError> {
+    pub async fn enqueue(
+        &self,
+        delivery: GithubWebhookDelivery,
+    ) -> Result<GithubWebhookEnqueueOutcome, GithubAppError> {
+        let now = now_millis()?;
         match self {
-            Self::Redis(client) => redis_store::enqueue(client, &delivery, now_millis()?).await,
+            Self::Redis(client) => redis_store::enqueue(client, &delivery, now).await,
             #[cfg(test)]
             Self::Memory(deliveries) => {
                 let mut deliveries = deliveries.lock().await;
-                if deliveries.contains_key(&delivery.delivery_id) {
-                    return Ok(false);
+                if let Some(existing) = deliveries.get_mut(&delivery.delivery_id) {
+                    if existing.completed
+                        && matches!(delivery.kind, GithubWebhookKind::PullRequestClosed)
+                    {
+                        *existing = MemoryDelivery {
+                            delivery,
+                            next_attempt_at: now,
+                            completed: false,
+                            claim_token: None,
+                        };
+                        return Ok(GithubWebhookEnqueueOutcome::Requeued);
+                    }
+                    return Ok(GithubWebhookEnqueueOutcome::Duplicate);
                 }
                 deliveries.insert(
                     delivery.delivery_id.clone(),
                     MemoryDelivery {
                         delivery,
-                        next_attempt_at: now_millis()?,
+                        next_attempt_at: now,
                         completed: false,
                         claim_token: None,
                     },
                 );
-                Ok(true)
+                Ok(GithubWebhookEnqueueOutcome::Inserted)
             }
         }
     }

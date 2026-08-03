@@ -92,9 +92,18 @@ impl GithubWebhookService {
                 );
                 Ok(DeliveryDisposition::Complete)
             }
-            Ok(_) => Ok(DeliveryDisposition::Retry(
-                "no linked task PR found yet".to_owned(),
-            )),
+            Ok(_) => {
+                tracing::warn!(
+                    github_delivery_id = delivery.delivery_id,
+                    repo_full_name = delivery.repo_full_name,
+                    pr_number = delivery.pr_number,
+                    attempt = delivery.attempts,
+                    "no linked task found for merged pull request; retry scheduled",
+                );
+                Ok(DeliveryDisposition::Retry(
+                    "no linked task PR found yet".to_owned(),
+                ))
+            }
             Err(error) => {
                 tracing::warn!(
                     github_delivery_id = delivery.delivery_id,

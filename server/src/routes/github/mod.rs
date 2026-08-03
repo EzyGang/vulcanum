@@ -55,7 +55,7 @@ pub async fn webhook(
         }
         Err(GithubWebhookError::Persistence(e)) => {
             tracing::error!(error = %e, "GitHub webhook delivery persistence failed");
-            Err(AppError::Internal)
+            Ok(HttpResponse::ServiceUnavailable().finish())
         }
     }
 }

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::webhook_store::{
     duration_millis, GithubWebhookClaim, GithubWebhookCommandError, GithubWebhookDelivery,
-    GithubWebhookKind,
+    GithubWebhookEnqueueOutcome, GithubWebhookKind,
 };
 
 const KEY_PREFIX: &str = "vulcanum:github:webhook:";
@@ -31,11 +31,15 @@ pub(super) async fn enqueue(
     client: &redis::Client,
     delivery: &GithubWebhookDelivery,
     now: u64,
-) -> Result<bool, GithubAppError> {
+) -> Result<GithubWebhookEnqueueOutcome, GithubAppError> {
     let mut connection = connection(client).await?;
-    let inserted: i64 = redis::Script::new(
-        r#"if redis.call('EXISTS', KEYS[1]) == 1 then
-               return 0
+    let outcome: i64 = redis::Script::new(
+        r#"local exists = redis.call('EXISTS', KEYS[1])
+           if exists == 1 then
+               local completed = redis.call('HGET', KEYS[1], 'completed')
+               if ARGV[1] ~= 'pull_request_closed' or completed ~= '1' then
+                   return 0
+               end
            end
            redis.call('HSET', KEYS[1],
                'kind', ARGV[1],
@@ -53,7 +57,7 @@ pub(super) async fn enqueue(
                'completed', 0)
            redis.call('EXPIRE', KEYS[1], ARGV[13])
            redis.call('ZADD', KEYS[2], ARGV[12], ARGV[14])
-           return 1"#,
+           if exists == 1 then return 2 else return 1 end"#,
     )
     .key(delivery_key(&delivery.delivery_id))
     .key(PENDING_KEY)
@@ -75,7 +79,14 @@ pub(super) async fn enqueue(
     .await
     .map_err(redis_error)?;
 
-    Ok(inserted == 1)
+    match outcome {
+        0 => Ok(GithubWebhookEnqueueOutcome::Duplicate),
+        1 => Ok(GithubWebhookEnqueueOutcome::Inserted),
+        2 => Ok(GithubWebhookEnqueueOutcome::Requeued),
+        _ => Err(GithubAppError::Redis(format!(
+            "unexpected webhook enqueue outcome: {outcome}"
+        ))),
+    }
 }
 
 pub(super) async fn claim_pending(
