@@ -1,4 +1,6 @@
 mod labels;
+#[cfg(test)]
+mod labels_tests;
 mod projects;
 mod relations;
 mod tasks;

@@ -1,14 +1,18 @@
 use std::borrow::Cow;
+#[cfg(not(target_os = "windows"))]
 use std::time::Duration;
 
 use unicode_width::UnicodeWidthStr;
 
+#[cfg(not(target_os = "windows"))]
 use indicatif::{ProgressBar, ProgressStyle};
 
+#[cfg(not(target_os = "windows"))]
 pub fn step<T>(name: &str, f: impl FnOnce() -> anyhow::Result<T>) -> anyhow::Result<T> {
     progress(&format!("Installing {name}"), name, f)
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn progress<T>(
     message: &str,
     done_label: &str,
@@ -38,10 +42,12 @@ pub fn progress<T>(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn info(msg: &str) {
     eprintln!("  {msg}");
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn warn(msg: &str) {
     eprintln!("  [WARNING] {msg}");
 }

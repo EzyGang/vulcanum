@@ -4,16 +4,20 @@ mod prompts;
 #[cfg(test)]
 mod tests;
 
+#[cfg(not(target_os = "windows"))]
+use anyhow::Context;
+#[cfg(not(target_os = "windows"))]
+use clap::ValueEnum;
+use clap::{Parser, Subcommand};
+
 use crate::commands::app::args::{
     ProjectReposCommand, ProjectsCommand, RunsCommand, SettingsCommand, WorkersCommand,
 };
 use crate::commands::app::board::args::BoardCommand;
 use crate::commands::app::projects::args::{ProjectAutomationCommand, ProjectColumnsCommand};
-use crate::commands::skills::SkillsCommand;
-use anyhow::Context;
-use clap::{Parser, Subcommand, ValueEnum};
-
+#[cfg(not(target_os = "windows"))]
 use crate::commands::setup::host::worker_server_path;
+use crate::commands::skills::SkillsCommand;
 
 #[derive(Parser)]
 #[command(name = "vulcanum", about = "Vulcanum CLI")]
@@ -39,7 +43,8 @@ enum Command {
         #[arg(long)]
         no_browser: bool,
     },
-    /// Worker commands (daemon, setup)
+    #[cfg(not(target_os = "windows"))]
+    /// Manage the local worker lifecycle
     #[command(visible_alias = "wrk")]
     Worker {
         #[command(subcommand)]
@@ -77,6 +82,7 @@ enum Command {
     },
 }
 
+#[cfg(not(target_os = "windows"))]
 #[derive(Subcommand)]
 enum WorkerCommand {
     /// Run the worker daemon (poll loop, job execution)
@@ -84,6 +90,11 @@ enum WorkerCommand {
     /// Unregister this worker and remove local state
     #[command(name = "self-delete")]
     SelfDelete,
+    /// Manage verified automatic worker-side updates
+    Updates {
+        #[command(subcommand)]
+        cmd: WorkerUpdatesCommand,
+    },
     /// Install dependencies, configure systemd, and register with an instance
     Setup {
         /// Instance URL (e.g. https://vulcanum.example.com)
@@ -104,6 +115,16 @@ enum WorkerCommand {
     },
 }
 
+#[cfg(not(target_os = "windows"))]
+#[derive(Subcommand)]
+enum WorkerUpdatesCommand {
+    /// Enable verified automatic updates
+    Enable,
+    /// Disable verified automatic updates
+    Disable,
+}
+
+#[cfg(not(target_os = "windows"))]
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum IsolationBackend {
     Kata,
@@ -124,9 +145,14 @@ async fn main() -> anyhow::Result<()> {
             auth_code,
             no_browser,
         } => commands::login::run(instance, password_stdin, auth_code, no_browser).await,
+        #[cfg(not(target_os = "windows"))]
         Command::Worker { cmd } => match cmd {
             WorkerCommand::Daemon => run_daemon_subcommand().await,
             WorkerCommand::SelfDelete => commands::self_delete::run().await,
+            WorkerCommand::Updates { cmd } => match cmd {
+                WorkerUpdatesCommand::Enable => commands::worker_updates::run(true),
+                WorkerUpdatesCommand::Disable => commands::worker_updates::run(false),
+            },
             WorkerCommand::Setup {
                 instance,
                 code,
@@ -223,6 +249,7 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 async fn run_daemon_subcommand() -> anyhow::Result<()> {
     let path = worker_server_path()?;
     let mut child = tokio::process::Command::new(&path)

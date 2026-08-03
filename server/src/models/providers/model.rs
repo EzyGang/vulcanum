@@ -14,6 +14,7 @@ pub struct IntegrationLabel {
     pub id: String,
     pub name: String,
     pub color: String,
+    pub task_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

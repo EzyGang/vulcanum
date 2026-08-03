@@ -77,20 +77,24 @@ This installs the worker-side binaries only. The control-plane server, dispatche
 
 ### Automatic worker-side updates
 
-Automatic updates are disabled by default. To enable them for a Linux or macOS
-worker, add the following settings to the worker service account's
+Installed workers update the `vulcanum` CLI and `vulcanum-server` worker daemon
+as one verified release pair. Automatic updates are enabled by default for newly
+created worker configurations. Operators can opt out or back in without editing
 `~/.vulcanum/config.json`:
 
-```json
-{
-  "auto_update_enabled": true,
-  "update_check_interval_secs": 86400
-}
+```bash
+vulcanum worker updates disable
+vulcanum worker updates enable
 ```
 
+Each command changes only `auto_update_enabled`; all other worker configuration
+is preserved. A running daemon reads the changed setting on its next startup.
 When enabled, the worker updates the `vulcanum` CLI and `vulcanum-server` daemon
 together from stable releases. Automatic updates cover only this worker-side pair,
 not the control-plane server, dispatcher, or frontend.
+
+See [Worker configuration](website/docs/content/workers/configuration.md#automatic-updates)
+for update cadence, verification, activation, rollback, and recovery details.
 
 
 ### Install the agent skills

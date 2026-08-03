@@ -119,6 +119,7 @@ fn body_edit_of_in_progress_task_preserves_update_contract_state() {
             id: "label-1".to_owned(),
             name: "Regression".to_owned(),
             color: "#ff00ff".to_owned(),
+            task_id: Some("task-1".to_owned()),
         });
     let input = task_update_input(
         current,

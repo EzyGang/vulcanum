@@ -137,8 +137,7 @@ async fn task_edit_sanitizes_kaneo_validation_error(pool: sqlx::PgPool) {
     )
     .await;
 
-    let previous_certificate = std::env::var_os("SSL_CERT_FILE");
-    std::env::set_var("SSL_CERT_FILE", &server.certificate_path);
+    let _ssl_cert_file = SslCertFileGuard::set(&server.certificate_path);
     let response = test::call_service(
         &app,
         test::TestRequest::patch()
@@ -150,10 +149,6 @@ async fn task_edit_sanitizes_kaneo_validation_error(pool: sqlx::PgPool) {
             .to_request(),
     )
     .await;
-    match previous_certificate {
-        Some(path) => std::env::set_var("SSL_CERT_FILE", path),
-        None => std::env::remove_var("SSL_CERT_FILE"),
-    }
 
     assert_eq!(response.status(), actix_web::http::StatusCode::BAD_REQUEST);
     let payload: serde_json::Value = test::read_body_json(response).await;

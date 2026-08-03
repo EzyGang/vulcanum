@@ -7,6 +7,17 @@ use super::{
 };
 
 #[test]
+fn default_updates_use_the_default_interval() {
+    let config = WorkerConfig::default();
+
+    assert!(config.auto_update_enabled);
+    assert_eq!(
+        automatic_update_interval(&config).expect("default updates should schedule"),
+        Duration::from_secs(config.update_check_interval_secs)
+    );
+}
+
+#[test]
 fn disabled_updates_ignore_unusable_interval() {
     let config = WorkerConfig {
         auto_update_enabled: false,
