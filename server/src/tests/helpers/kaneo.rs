@@ -83,13 +83,15 @@ pub(crate) async fn start_kaneo_server(update_status: u16) -> KaneoTestServer {
         for _ in 0..2 {
             let (stream, _) = listener.accept().await.expect("accept test request");
             let mut stream = acceptor.accept(stream).await.expect("accept test TLS");
-            let request = read_request(&mut stream).await;
-            let (status, body) = match request.0.as_str() {
+            let (method, request) = read_request(&mut stream).await;
+            let (status, body) = match method.as_str() {
+                "GET" => ("200 OK", kaneo_task_response()),
                 "PUT" if update_status == 400 => (
                     "400 Bad Request",
                     "invalid description: secret body".to_owned(),
                 ),
-                _ => ("200 OK", kaneo_task_response()),
+                "PUT" => ("200 OK", kaneo_task_response()),
+                _ => ("405 Method Not Allowed", String::new()),
             };
             let response = format!(
                 "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
@@ -100,8 +102,8 @@ pub(crate) async fn start_kaneo_server(update_status: u16) -> KaneoTestServer {
                 .await
                 .expect("write test response");
 
-            if request.0 == "PUT" {
-                sender.send(request.1).expect("capture PUT request");
+            if let Some(request) = request {
+                sender.send(request).expect("capture PUT request");
                 break;
             }
         }
@@ -114,7 +116,7 @@ pub(crate) async fn start_kaneo_server(update_status: u16) -> KaneoTestServer {
     }
 }
 
-async fn read_request<S>(stream: &mut S) -> (String, serde_json::Value)
+async fn read_request<S>(stream: &mut S) -> (String, Option<serde_json::Value>)
 where
     S: AsyncRead + Unpin,
 {
@@ -151,11 +153,12 @@ where
         buffer.extend_from_slice(&chunk[..count]);
     }
 
-    let body = if content_length == 0 {
-        serde_json::Value::Null
-    } else {
-        serde_json::from_slice(&buffer[header_end..header_end + content_length])
-            .expect("request body is JSON")
+    let body = match method.as_str() {
+        "PUT" => Some(
+            serde_json::from_slice(&buffer[header_end..header_end + content_length])
+                .expect("PUT request body is JSON"),
+        ),
+        _ => None,
     };
     (method, body)
 }
