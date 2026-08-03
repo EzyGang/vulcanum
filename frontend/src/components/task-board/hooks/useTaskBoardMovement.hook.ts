@@ -11,7 +11,7 @@ import type { TaskBoardColumn, TaskBoardLabel, TaskBoardTask } from '../../../ty
 import { invalidate } from '../../../utils/api/query/client';
 import { useApiMutation } from '../../../utils/api/query/hooks';
 import { textInputHandler } from '../../../utils/signal-input';
-import { boardQueryKey, COLUMN_PAGE_SIZE } from './taskBoard.helpers';
+import { boardQueryKey, COLUMN_PAGE_SIZE, selectedTemplateLabelIds } from './taskBoard.helpers';
 
 interface TaskBoardSelection {
   providerId: string;
@@ -144,7 +144,7 @@ export const useTaskBoardMovement = (
       selectedTask.value = task;
       editTitle.value = task.title;
       editBody.value = task.description ?? '';
-      editLabelIds.value = task.labels.map((label) => label.id);
+      editLabelIds.value = selectedTemplateLabelIds(labels, task.labels);
       editError.value = null;
     },
     [
@@ -153,6 +153,7 @@ export const useTaskBoardMovement = (
       editBody,
       editError,
       editLabelIds,
+      labels,
       editTitle,
       selectedTask
     ]

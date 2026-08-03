@@ -31,7 +31,12 @@ impl TaskBoardService {
         let mut board = client.fetch_board(external_project_id).await?;
         let project = client.lookup_project(external_project_id).await?;
         if let Some(workspace_id) = project.workspace_id.as_deref() {
-            board.labels = client.fetch_labels(workspace_id).await?;
+            board.labels = client
+                .fetch_labels(workspace_id)
+                .await?
+                .into_iter()
+                .filter(|label| label.task_id.is_none())
+                .collect();
         }
         let task_augmentations = self
             .task_augmentations(team_id, project_config.id, &board)

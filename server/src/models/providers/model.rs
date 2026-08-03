@@ -14,6 +14,7 @@ pub struct IntegrationLabel {
     pub id: String,
     pub name: String,
     pub color: String,
+    pub task_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -24,8 +25,12 @@ pub struct IntegrationTask {
     pub description: Option<String>,
     pub status: String,
     pub priority: String,
+    pub position: Option<f64>,
+    pub due_date: Option<String>,
+    pub start_date: Option<String>,
     pub number: Option<i64>,
     pub project_slug: Option<String>,
+    pub assignee_id: Option<String>,
     pub assignee_name: Option<String>,
     pub created_at: String,
     pub updated_at: Option<String>,
@@ -90,6 +95,13 @@ pub struct UpdateIntegrationTaskInput {
     pub task_id: String,
     pub title: String,
     pub body: String,
+    pub status: String,
+    pub priority: String,
+    pub project_id: String,
+    pub position: f64,
+    pub due_date: Option<String>,
+    pub start_date: Option<String>,
+    pub user_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]

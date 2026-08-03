@@ -1,20 +1,25 @@
-use super::client::filter_tasks_in_column;
 use super::client::types::{KaneoBoardColumn, KaneoBoardData, KaneoBoardResponse, KaneoTask};
-use super::client::{log_kaneo_result, KaneoClient};
+use super::client::{filter_tasks_in_column, log_kaneo_result, update_task_request, KaneoClient};
 use super::errors::KaneoError;
+use crate::models::providers::model::UpdateIntegrationTaskInput;
 
 fn task(id: &str, status: &str) -> KaneoTask {
     KaneoTask {
         id: id.to_owned(),
         project_id: "p1".to_owned(),
         number: None,
+        position: Some(0.0),
         title: format!("Task {id}"),
         description: None,
         status: status.to_owned(),
         priority: "low".to_owned(),
+        due_date: None,
+        start_date: None,
+        user_id: None,
         created_at: "2024-01-01".to_owned(),
         updated_at: None,
         assignee_name: None,
+        assignee_id: None,
         labels: Vec::new(),
     }
 }
@@ -166,6 +171,65 @@ fn task_description_update_uses_partial_update_endpoint() {
     let path = KaneoClient::task_description_path("task-123");
 
     assert_eq!(path, "/task/description/task-123");
+}
+
+#[test]
+fn task_update_request_contains_complete_kaneo_payload() {
+    let input = UpdateIntegrationTaskInput {
+        task_id: "task-123".to_owned(),
+        title: "Updated title".to_owned(),
+        body: "Updated body".to_owned(),
+        status: "in-progress".to_owned(),
+        priority: "urgent".to_owned(),
+        project_id: "project-1".to_owned(),
+        position: 7.5,
+        due_date: Some("2026-01-10T00:00:00Z".to_owned()),
+        start_date: Some("2026-01-03T00:00:00Z".to_owned()),
+        user_id: Some("user-1".to_owned()),
+    };
+
+    let (path, body) = update_task_request(&input);
+    let payload = serde_json::to_value(body).expect("update body serializes");
+
+    assert_eq!(path, "/task/task-123");
+    assert_eq!(
+        payload,
+        serde_json::json!({
+            "title": "Updated title",
+            "description": "Updated body",
+            "priority": "urgent",
+            "status": "in-progress",
+            "projectId": "project-1",
+            "position": 7.5,
+            "dueDate": "2026-01-10T00:00:00Z",
+            "startDate": "2026-01-03T00:00:00Z",
+            "userId": "user-1"
+        })
+    );
+    assert!(payload.get("labels").is_none());
+}
+
+#[test]
+fn task_update_request_omits_absent_optional_values() {
+    let input = UpdateIntegrationTaskInput {
+        task_id: "task-123".to_owned(),
+        title: "Current title".to_owned(),
+        body: "Current body".to_owned(),
+        status: "in-progress".to_owned(),
+        priority: "medium".to_owned(),
+        project_id: "project-1".to_owned(),
+        position: 0.0,
+        due_date: None,
+        start_date: None,
+        user_id: None,
+    };
+
+    let (_, body) = update_task_request(&input);
+    let payload = serde_json::to_value(body).expect("update body serializes");
+
+    assert!(payload.get("dueDate").is_none());
+    assert!(payload.get("startDate").is_none());
+    assert!(payload.get("userId").is_none());
 }
 
 #[test]

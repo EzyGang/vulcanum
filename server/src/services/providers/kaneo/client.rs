@@ -1,4 +1,6 @@
 mod labels;
+#[cfg(test)]
+mod labels_tests;
 mod projects;
 mod relations;
 mod tasks;
@@ -9,7 +11,7 @@ use kaneo_cli::api::client::ApiClient;
 use crate::services::providers::kaneo::errors::{api_err, KaneoError};
 
 #[cfg(test)]
-pub(crate) use tasks::filter_tasks_in_column;
+pub(crate) use tasks::{filter_tasks_in_column, update_task_request};
 
 #[derive(Clone)]
 pub struct KaneoClient {
