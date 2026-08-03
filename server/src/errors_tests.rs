@@ -23,6 +23,28 @@ async fn task_board_provider_client_error_is_not_internal() {
 }
 
 #[actix_web::test]
+async fn task_update_validation_error_is_sanitized_and_actionable() {
+    let err: AppError = TaskBoardError::TaskUpdate(IntegrationError::Kaneo(KaneoError::Api(
+        "400 Bad Request: invalid description: secret body".to_owned(),
+    )))
+    .into();
+
+    let response = err.error_response();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    let body = to_bytes(response.into_body()).await.expect("body reads");
+    let payload: serde_json::Value = serde_json::from_slice(&body).expect("body is JSON");
+    assert_eq!(
+        payload["error"],
+        "Task tracker rejected the update. Refresh the board and retry"
+    );
+    assert!(!payload["error"]
+        .as_str()
+        .expect("error is a string")
+        .contains("secret body"));
+}
+
+#[actix_web::test]
 async fn task_board_provider_server_error_stays_internal() {
     let err: AppError = TaskBoardError::Integration(IntegrationError::Kaneo(KaneoError::Api(
         "500 Internal Server Error: Failed to delete label".to_owned(),

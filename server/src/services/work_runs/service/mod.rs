@@ -13,6 +13,8 @@ pub(crate) mod implementation_followup_request_state;
 pub(crate) mod implementation_followup_ticket;
 pub(crate) mod job_prompts;
 pub(crate) mod lifecycle_labels;
+#[cfg(test)]
+mod lifecycle_labels_tests;
 pub mod list;
 pub mod poll;
 pub(crate) mod reconcile_pr_completion;

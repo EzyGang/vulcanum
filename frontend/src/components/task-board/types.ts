@@ -246,6 +246,7 @@ export interface TaskBoardFormState {
 
 export interface TaskBoardStatusState {
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
   creating: boolean;
   movingTaskId: string | null;
@@ -294,6 +295,7 @@ export interface TaskBoardActions {
   onDragOverStatus: (event: DragEvent, status: string) => void;
   onDragEnd: () => void;
   onDropOnStatus: (event: DragEvent, status: string) => void;
+  onRefreshBoard: () => void;
   onOpenCreateTask: () => void;
   onCloseCreateTask: () => void;
   onCreateDialogOpenChange: (open: boolean) => void;

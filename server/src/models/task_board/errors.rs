@@ -11,6 +11,8 @@ pub enum TaskBoardError {
     Provider(#[from] IntegrationProvidersError),
     #[error("integration error: {0}")]
     Integration(#[from] IntegrationError),
+    #[error("task update integration error: {0}")]
+    TaskUpdate(IntegrationError),
     #[error("project config error: {0}")]
     ProjectConfig(#[from] ProjectConfigsError),
     #[error("work runs error: {0}")]
@@ -21,4 +23,6 @@ pub enum TaskBoardError {
     EmptyStatus,
     #[error("task label is required")]
     EmptyLabel,
+    #[error("task is missing its position and cannot be safely updated")]
+    MissingTaskPosition,
 }

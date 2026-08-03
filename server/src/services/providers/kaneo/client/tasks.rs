@@ -1,6 +1,9 @@
 mod board;
 mod mutations;
 
+#[cfg(test)]
+pub(crate) use mutations::update_task_request;
+
 use std::collections::HashSet;
 
 use kaneo_cli::api::types::{Comment, CreateTaskBody};
