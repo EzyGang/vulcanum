@@ -13,15 +13,25 @@ pub(crate) struct KaneoTask {
     pub id: String,
     pub project_id: String,
     pub number: Option<i64>,
+    #[serde(default)]
+    pub position: Option<f64>,
     pub title: String,
     pub description: Option<String>,
     pub status: String,
     pub priority: String,
+    #[serde(default)]
+    pub due_date: Option<String>,
+    #[serde(default)]
+    pub start_date: Option<String>,
+    #[serde(default)]
+    pub user_id: Option<String>,
     pub created_at: String,
     #[serde(default)]
     pub updated_at: Option<String>,
     #[serde(default)]
     pub assignee_name: Option<String>,
+    #[serde(default)]
+    pub assignee_id: Option<String>,
     #[serde(default, deserialize_with = "deserialize_null_default")]
     pub labels: Vec<KaneoTaskLabel>,
 }

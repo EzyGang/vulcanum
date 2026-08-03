@@ -6,8 +6,10 @@ use crate::models::providers::model::{
     IntegrationBoard, IntegrationBoardColumn, IntegrationColumn, IntegrationProject,
     IntegrationTask, IntegrationType,
 };
+use crate::models::task_board::errors::TaskBoardError;
 use crate::services::task_board::service::{
     collect_board_task_refs, default_column_status, project_config_to_provider_project,
+    task_update_input,
 };
 
 fn column(slug: &str, is_final: Option<bool>) -> IntegrationColumn {
@@ -50,6 +52,10 @@ fn integration_task(id: &str) -> IntegrationTask {
         description: None,
         status: "todo".to_owned(),
         priority: "medium".to_owned(),
+        position: None,
+        due_date: None,
+        start_date: None,
+        assignee_id: None,
         number: None,
         project_slug: Some("project-1".to_owned()),
         assignee_name: None,
@@ -95,6 +101,55 @@ fn default_column_status_prefers_first_non_final_column() {
     ];
 
     assert_eq!(default_column_status(&columns), "in-progress");
+}
+#[test]
+fn body_edit_of_in_progress_task_preserves_update_contract_state() {
+    let mut current = integration_task("task-1");
+    current.title = "Current title".to_owned();
+    current.description = Some("Current body".to_owned());
+    current.status = "in-progress".to_owned();
+    current.priority = "urgent".to_owned();
+    current.position = Some(7.5);
+    current.due_date = Some("2026-01-10T00:00:00Z".to_owned());
+    current.start_date = Some("2026-01-03T00:00:00Z".to_owned());
+    current.assignee_id = Some("user-1".to_owned());
+    current
+        .labels
+        .push(crate::models::providers::model::IntegrationLabel {
+            id: "label-1".to_owned(),
+            name: "Regression".to_owned(),
+            color: "#ff00ff".to_owned(),
+            task_id: Some("task-1".to_owned()),
+        });
+    let input = task_update_input(
+        current,
+        "Current title".to_owned(),
+        "Updated body".to_owned(),
+    )
+    .expect("complete task update state");
+
+    assert_eq!(input.task_id, "task-1");
+    assert_eq!(input.title, "Current title");
+    assert_eq!(input.body, "Updated body");
+    assert_eq!(input.status, "in-progress");
+    assert_eq!(input.priority, "urgent");
+    assert_eq!(input.project_id, "project-1");
+    assert_eq!(input.position, 7.5);
+    assert_eq!(input.due_date.as_deref(), Some("2026-01-10T00:00:00Z"));
+    assert_eq!(input.start_date.as_deref(), Some("2026-01-03T00:00:00Z"));
+    assert_eq!(input.user_id.as_deref(), Some("user-1"));
+}
+
+#[test]
+fn body_edit_rejects_task_without_position() {
+    let err = task_update_input(
+        integration_task("task-1"),
+        "Current title".to_owned(),
+        "Updated body".to_owned(),
+    )
+    .expect_err("missing position rejects update");
+
+    assert!(matches!(err, TaskBoardError::MissingTaskPosition));
 }
 
 #[test]

@@ -21,7 +21,13 @@ impl KaneoError {
 
     pub(crate) fn public_message(&self) -> Option<&str> {
         match self {
-            Self::Api(message) => strip_http_status_prefix(message),
+            Self::Api(message) => {
+                let message = strip_http_status_prefix(message)?;
+                if message.trim_start().starts_with(['{', '[']) {
+                    return None;
+                }
+                Some(message)
+            }
             #[cfg(test)]
             Self::ColumnNotFound(message) => Some(message),
         }

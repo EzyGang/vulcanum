@@ -87,7 +87,7 @@ impl IntegrationProviderClient for KaneoClient {
         &self,
         input: UpdateIntegrationTaskInput,
     ) -> Result<IntegrationTask, IntegrationError> {
-        let task = KaneoClient::update_task(self, &input.task_id, &input.title, &input.body)
+        let task = KaneoClient::update_task(self, &input)
             .await
             .map_err(IntegrationError::from)?;
 

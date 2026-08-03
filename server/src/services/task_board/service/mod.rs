@@ -31,6 +31,8 @@ pub(crate) use crate::services::task_board::service::helpers::{
     collect_board_task_refs, project_config_to_provider_project,
 };
 use crate::services::task_board::service::helpers::{default_task_status, normalized_required};
+#[cfg(test)]
+pub(crate) use crate::services::task_board::service::tasks::task_update_input;
 
 const DEFAULT_PRIORITY: &str = "low";
 
