@@ -68,7 +68,7 @@ async fn kaneo_client_fetches_task_over_tls() {
     let server = start_kaneo_server(200).await;
     let _ssl_cert_file = SslCertFileGuard::set(&server.certificate_path);
 
-    let task = KaneoClient::new(server.instance_url, "test-key".to_owned())
+    let task = KaneoClient::new(server.instance_url.clone(), "test-key".to_owned())
         .fetch_task("task-1")
         .await
         .expect("Kaneo task fetch succeeds");
