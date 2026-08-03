@@ -135,8 +135,12 @@ where
         buffer.extend_from_slice(&chunk[..count]);
     }
 
-    let body = serde_json::from_slice(&buffer[header_end..header_end + content_length])
-        .expect("request body is JSON");
+    let body = if content_length == 0 {
+        serde_json::Value::Null
+    } else {
+        serde_json::from_slice(&buffer[header_end..header_end + content_length])
+            .expect("request body is JSON")
+    };
     (method, body)
 }
 
