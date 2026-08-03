@@ -144,7 +144,7 @@ jobs:
         run: echo "Release ${{ needs.metadata.outputs.tag }} approved"
 
   containers:
-    name: Publish container images
+    name: Build ${{ matrix.image.name }} (${{ matrix.architecture.name }})
     needs:
       - metadata
       - approval
@@ -152,18 +152,28 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false
       matrix:
-        runner:
-          - ubuntu-24.04
-    runs-on: ${{ matrix.runner }}
+        image:
+          - name: backend
+            file: server/docker/Dockerfile
+          - name: frontend
+            file: frontend/docker/Dockerfile
+          - name: website
+            file: website/docker/Dockerfile
+        architecture:
+          - name: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - name: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.architecture.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           ref: ${{ needs.metadata.outputs.sha }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -177,59 +187,77 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: server/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/ezygang/vulcanum/backend:${{ needs.metadata.outputs.tag }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ needs.metadata.outputs.tag }}
-            org.opencontainers.image.revision=${{ needs.metadata.outputs.sha }}
-          cache-from: type=gha,scope=release-backend
-          cache-to: type=gha,mode=max,scope=release-backend
-          target: runtime
+      - name: Check for existing architecture image
+        id: image
+        env:
+          IMAGE: ghcr.io/ezygang/vulcanum/${{ matrix.image.name }}:${{ needs.metadata.outputs.tag }}-${{ matrix.architecture.name }}
+        run: |
+          if docker buildx imagetools inspect "$IMAGE"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Build and push frontend image
+      - name: Build and push image
+        if: steps.image.outputs.exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: frontend/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          file: ${{ matrix.image.file }}
+          platforms: ${{ matrix.architecture.platform }}
           push: true
-          tags: ghcr.io/ezygang/vulcanum/frontend:${{ needs.metadata.outputs.tag }}
+          tags: ghcr.io/ezygang/vulcanum/${{ matrix.image.name }}:${{ needs.metadata.outputs.tag }}-${{ matrix.architecture.name }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ needs.metadata.outputs.tag }}
             org.opencontainers.image.revision=${{ needs.metadata.outputs.sha }}
-          cache-from: type=gha,scope=release-frontend
-          cache-to: type=gha,mode=max,scope=release-frontend
-          target: runtime
+          cache-from: type=registry,ref=ghcr.io/ezygang/vulcanum/${{ matrix.image.name }}:deps-${{ matrix.architecture.name }}
+          cache-to: type=registry,ref=ghcr.io/ezygang/vulcanum/${{ matrix.image.name }}:deps-${{ matrix.architecture.name }},mode=max,compression=zstd
 
-      - name: Build and push website image
-        uses: docker/build-push-action@v6
+  container-manifests:
+    name: Publish ${{ matrix.image }} manifest
+    needs:
+      - metadata
+      - containers
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-24.04
+        image:
+          - backend
+          - frontend
+          - website
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
         with:
-          context: .
-          file: website/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/ezygang/vulcanum/website:${{ needs.metadata.outputs.tag }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ needs.metadata.outputs.tag }}
-            org.opencontainers.image.revision=${{ needs.metadata.outputs.sha }}
-          cache-from: type=gha,scope=release-website
-          cache-to: type=gha,mode=max,scope=release-website
+          driver: docker-container
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-architecture manifest
+        env:
+          IMAGE: ghcr.io/ezygang/vulcanum/${{ matrix.image }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+        run: |
+          docker buildx imagetools create \
+            --tag "$IMAGE:$TAG" \
+            "$IMAGE:$TAG-amd64" \
+            "$IMAGE:$TAG-arm64"
 
   release:
     name: Publish release
     needs:
       - metadata
       - approval
-      - containers
+      - container-manifests
     strategy:
       matrix:
         runner:
