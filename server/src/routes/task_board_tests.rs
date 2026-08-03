@@ -27,6 +27,10 @@ async fn insert_provider(pool: &sqlx::PgPool, instance_url: &str) -> Uuid {
 }
 
 #[actix_web::test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "macOS native certificate roots do not honor SSL_CERT_FILE"
+)]
 async fn kaneo_client_captures_full_update_over_tls() {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
     let server = start_kaneo_server(200).await;
@@ -55,6 +59,10 @@ async fn kaneo_client_captures_full_update_over_tls() {
 }
 
 #[actix_web::test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "macOS native certificate roots do not honor SSL_CERT_FILE"
+)]
 async fn kaneo_client_fetches_task_over_tls() {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
     let server = start_kaneo_server(200).await;
@@ -70,6 +78,10 @@ async fn kaneo_client_fetches_task_over_tls() {
 }
 
 #[sqlx::test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "macOS native certificate roots do not honor SSL_CERT_FILE"
+)]
 async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::PgPool) {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
     let server = start_kaneo_server(200).await;
@@ -127,6 +139,10 @@ async fn task_edit_fetches_current_task_and_sends_full_kaneo_update(pool: sqlx::
 }
 
 #[sqlx::test]
+#[cfg_attr(
+    target_os = "macos",
+    ignore = "macOS native certificate roots do not honor SSL_CERT_FILE"
+)]
 async fn task_edit_sanitizes_kaneo_validation_error(pool: sqlx::PgPool) {
     let _ssl_cert_file_guard = SSL_CERT_FILE_LOCK.lock().await;
     let server = start_kaneo_server(400).await;
