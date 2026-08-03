@@ -213,6 +213,7 @@ const makeProps = (
     onDragOverStatus: vi.fn((event: DragEvent) => event.preventDefault()),
     onDragEnd: vi.fn(),
     onDropOnStatus: vi.fn(),
+    onRefreshBoard: vi.fn(),
     onOpenCreateTask: vi.fn(),
     onCloseCreateTask: vi.fn(),
     onCreateDialogOpenChange: vi.fn(),
@@ -367,6 +368,7 @@ const makeProps = (
     },
     status: {
       loading: false,
+      refreshing: false,
       error: null,
       creating: false,
       movingTaskId: null,
@@ -562,6 +564,36 @@ describe('TaskBoard.view', () => {
     fireEvent.click(getByText('Create task'));
 
     expect(props.actions.onOpenCreateTask).toHaveBeenCalledOnce();
+  });
+
+  it('triggers one refresh and shows the pending state in the control', () => {
+    const props = makeProps();
+    const { getByRole, rerender } = render(<TaskBoardView {...props} />);
+    const refreshButton = getByRole('button', { name: 'Refresh board' });
+
+    fireEvent.click(refreshButton);
+
+    expect(props.actions.onRefreshBoard).toHaveBeenCalledOnce();
+    expect(refreshButton).toHaveProperty('disabled', false);
+
+    props.status.refreshing = true;
+    rerender(<TaskBoardView {...props} />);
+
+    const pendingRefreshButton = getByRole('button', { name: 'Refresh board' });
+    expect(pendingRefreshButton).toHaveProperty('disabled', true);
+    expect(pendingRefreshButton.getAttribute('aria-busy')).toBe('true');
+    expect(pendingRefreshButton.querySelector('span')?.getAttribute('class')).toContain(
+      'animate-spin'
+    );
+  });
+
+  it('keeps the refresh control available after a board refresh error', () => {
+    const props = makeProps();
+    props.status.error = 'Unable to refresh board';
+    const { getByRole, getByText } = render(<TaskBoardView {...props} />);
+
+    expect(getByText('Unable to refresh board')).toBeTruthy();
+    expect(getByRole('button', { name: 'Refresh board' })).toBeTruthy();
   });
 
   it('submits task creation from the creation modal', () => {

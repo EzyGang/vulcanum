@@ -90,7 +90,7 @@ export const TaskBoardView = ({
     return <p class='text-sm text-text-muted'>Loading board…</p>;
   }
 
-  if (status.error) {
+  if (status.error && !board) {
     return <ErrorBanner message={status.error} />;
   }
 
@@ -161,6 +161,20 @@ export const TaskBoardView = ({
           <Button
             type='button'
             variant='ghost'
+            aria-label='Refresh board'
+            title='Refresh board'
+            aria-busy={status.refreshing}
+            disabled={status.refreshing}
+            onClick={actions.onRefreshBoard}
+            class='h-10 w-10 border border-border-base disabled:cursor-not-allowed disabled:opacity-50'
+          >
+            <span class={clsx('inline-flex', status.refreshing && 'animate-spin')}>
+              <IconRefresh size={16} stroke={1.75} aria-hidden='true' />
+            </span>
+          </Button>
+          <Button
+            type='button'
+            variant='ghost'
             aria-label='Board settings'
             onClick={actions.onOpenSettings}
             class='border border-border-base p-2'
@@ -169,6 +183,7 @@ export const TaskBoardView = ({
           </Button>
         </div>
       </div>
+      {status.error && <ErrorBanner message={status.error} />}
 
       {projectUsageSummary && <ProjectUsageSummaryView data={projectUsageSummary} />}
 
