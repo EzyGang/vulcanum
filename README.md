@@ -403,6 +403,7 @@ development, configure:
 - **Contents** permission: read and write
 - **Pull requests** permission: read and write
 - **Issues** permission: read and write
+- **Workflows** permission: read and write
 
 The callback accepts both GitHub response shapes. OAuth responses are correlated through a
 single-use state nonce; installation responses are verified against the GitHub App API before
