@@ -51,5 +51,6 @@ export interface WorkRunListItem extends WorkRunTokenUsage {
   resultExitCode: number | null;
   tokensUsed: number | null;
   durationMs: number | null;
+  finishBlockedReason: string | null;
   createdAt: string;
 }

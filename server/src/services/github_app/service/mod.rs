@@ -6,6 +6,8 @@ pub(crate) mod pull_requests;
 #[cfg(test)]
 mod pull_requests_tests;
 mod repos;
+#[cfg(test)]
+mod repos_tests;
 mod state_nonce;
 pub(crate) mod webhooks;
 

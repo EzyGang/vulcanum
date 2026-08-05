@@ -13,6 +13,7 @@ import { StatusBadge } from '../../../shared/ui/StatusBadge.view';
 import { Table } from '../../../shared/ui/Table.view';
 import { RunEventTimelineContainer } from '../../containers/run-events/RunEventTimeline.container';
 import { RunActions } from './RunActions.view';
+import { RunBlockedReason } from './RunBlockedReason.view';
 import { RunTaskCell } from './RunTaskCell.view';
 import { hasRunUsageStats, RunUsageStats } from './RunUsageStats';
 
@@ -102,6 +103,7 @@ export const RunsTable = ({
                   <span class='border border-border-base bg-bg-panel px-2 py-1 text-xs font-mono text-text-secondary'>
                     {WORK_RUN_TYPE_LABELS[run.workType]}
                   </span>
+                  <RunBlockedReason reason={run.finishBlockedReason} />
                 </div>
               </Table.Cell>
               <Table.Cell class='hidden lg:table-cell'>
@@ -153,7 +155,8 @@ export const RunsTable = ({
             {expanded && (
               <Table.Row key={`${run.id}-events`}>
                 <Table.Cell colSpan={COL_SPAN} paddingClass='p-0'>
-                  <div class='p-2'>
+                  <div class='flex flex-col gap-2 p-2'>
+                    <RunBlockedReason reason={run.finishBlockedReason} />
                     <RunEventTimelineContainer runId={run.id} status={run.status} />
                   </div>
                 </Table.Cell>

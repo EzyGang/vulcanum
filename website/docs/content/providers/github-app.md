@@ -32,6 +32,7 @@ Grant these repository permissions:
 | Contents | Read and write | Clone repositories and let jobs update code |
 | Pull requests | Read and write | Track and work with pull requests |
 | Issues | Read and write | Receive pull-request comments and post command responses |
+| Workflows | Read and write | Let jobs update repository workflows |
 
 GitHub models pull-request timeline comments as issue comments. The App needs Issues access for mention commands.
 
