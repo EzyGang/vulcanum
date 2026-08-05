@@ -53,8 +53,12 @@ pub async fn webhook(
             tracing::error!("GitHub webhook received without required GitHub App configuration");
             Ok(HttpResponse::ServiceUnavailable().finish())
         }
-        Err(GithubWebhookError::Persistence(e)) => {
-            tracing::error!(error = %e, "GitHub webhook delivery persistence failed");
+        Err(GithubWebhookError::Persistence(error)) => {
+            tracing::error!(
+                github_delivery_id = delivery,
+                %error,
+                "GitHub webhook delivery admission failed",
+            );
             Ok(HttpResponse::ServiceUnavailable().finish())
         }
     }

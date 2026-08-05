@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::time::Duration;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use tokio::time::MissedTickBehavior;
 
@@ -22,6 +23,7 @@ const MAX_DELIVERIES_PER_TICK: usize = 10;
 pub(super) enum DeliveryDisposition {
     Complete,
     Retry(String),
+    Terminal(String),
 }
 
 impl GithubWebhookService {
@@ -63,13 +65,40 @@ impl GithubWebhookService {
                 }
             })
             .await?;
+        let disposition_name = match &disposition {
+            DeliveryDisposition::Complete => "completed",
+            DeliveryDisposition::Retry(_) => "retry_scheduled",
+            DeliveryDisposition::Terminal(_) => "terminal_policy_skip",
+        };
         let updated = match disposition {
             DeliveryDisposition::Complete => self.store.complete(&claim).await?,
-            DeliveryDisposition::Retry(error) => self.store.retry(&claim, &error).await?,
+            DeliveryDisposition::Retry(error) => {
+                let attempts = delivery.attempts.clamp(1, 8) as u32;
+                let delay = Duration::from_secs(2_u64.pow(attempts));
+                let next_retry_at_unix_ms = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map(|now| now.saturating_add(delay).as_millis())
+                    .unwrap_or_default();
+                tracing::warn!(
+                    github_delivery_id = delivery.delivery_id,
+                    attempts = delivery.attempts,
+                    last_error = %error,
+                    next_retry_at_unix_ms,
+                    "scheduling GitHub webhook delivery retry",
+                );
+                self.store.retry(&claim, &error).await?
+            }
+            DeliveryDisposition::Terminal(reason) => self.store.terminal(&claim, &reason).await?,
         };
         if !updated {
             return Err(GithubAppError::DeliveryLeaseLost);
         }
+        tracing::info!(
+            github_delivery_id = delivery.delivery_id,
+            disposition = disposition_name,
+            attempts = delivery.attempts,
+            "updated GitHub webhook delivery state",
+        );
 
         Ok(true)
     }
@@ -83,27 +112,50 @@ impl GithubWebhookService {
             .reconcile_pull_request_completion(&delivery.repo_full_name, delivery.pr_number)
             .await
         {
-            Ok(outcome) if outcome.matched > 0 => {
+            Ok(outcome) if outcome.matched == 0 => Ok(DeliveryDisposition::Retry(
+                "no linked task PR found yet".to_owned(),
+            )),
+            Ok(outcome) if !outcome.retryable.is_empty() => {
+                let error = outcome.retryable.join("; ");
+                tracing::warn!(
+                    github_delivery_id = delivery.delivery_id,
+                    tasks_matched = outcome.matched,
+                    tasks_moved = outcome.moved,
+                    tasks_already_done = outcome.already_done,
+                    retryable_target_count = outcome.retryable.len(),
+                    terminal_target_count = outcome.terminal.len(),
+                    last_error = %error,
+                    "GitHub pull request webhook reconciliation deferred",
+                );
+                Ok(DeliveryDisposition::Retry(error))
+            }
+            Ok(outcome) if !outcome.terminal.is_empty() => {
+                let reason = outcome.terminal.join("; ");
+                tracing::warn!(
+                    github_delivery_id = delivery.delivery_id,
+                    tasks_matched = outcome.matched,
+                    tasks_moved = outcome.moved,
+                    tasks_already_done = outcome.already_done,
+                    terminal_target_count = outcome.terminal.len(),
+                    last_error = %reason,
+                    "GitHub pull request webhook reached terminal policy state",
+                );
+                Ok(DeliveryDisposition::Terminal(reason))
+            }
+            Ok(outcome) if outcome.moved + outcome.already_done == outcome.matched => {
                 tracing::info!(
                     github_delivery_id = delivery.delivery_id,
                     tasks_matched = outcome.matched,
                     tasks_moved = outcome.moved,
+                    tasks_already_done = outcome.already_done,
                     "processed GitHub pull request webhook",
                 );
                 Ok(DeliveryDisposition::Complete)
             }
-            Ok(_) => {
-                tracing::warn!(
-                    github_delivery_id = delivery.delivery_id,
-                    repo_full_name = delivery.repo_full_name,
-                    pr_number = delivery.pr_number,
-                    attempt = delivery.attempts,
-                    "no linked task found for merged pull request; retry scheduled",
-                );
-                Ok(DeliveryDisposition::Retry(
-                    "no linked task PR found yet".to_owned(),
-                ))
-            }
+            Ok(outcome) => Ok(DeliveryDisposition::Retry(format!(
+                "{} matched targets were not reconciled",
+                outcome.matched
+            ))),
             Err(error) => {
                 tracing::warn!(
                     github_delivery_id = delivery.delivery_id,
