@@ -1,4 +1,4 @@
-mod result;
+pub(super) mod result;
 
 use std::collections::HashMap;
 
@@ -57,7 +57,7 @@ impl WorkRunsService {
         run: &WorkRun,
         state: LifecycleLabelState,
     ) {
-        if run.is_standalone_review() && !run.has_linked_tracker_task() {
+        if !run.syncs_lifecycle_labels() {
             return;
         }
 
