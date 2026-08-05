@@ -89,21 +89,23 @@ impl GithubWebhookService {
         };
         let kind = payload.kind;
         let enqueue_outcome = self.store.enqueue(payload).await?;
-        let (inserted, requeued) = match enqueue_outcome {
-            GithubWebhookEnqueueOutcome::Inserted => (true, false),
-            GithubWebhookEnqueueOutcome::Duplicate => (false, false),
-            GithubWebhookEnqueueOutcome::Requeued => (false, true),
+        let disposition = match enqueue_outcome {
+            GithubWebhookEnqueueOutcome::Inserted => "queued",
+            GithubWebhookEnqueueOutcome::DuplicatePending => "duplicate_pending",
+            GithubWebhookEnqueueOutcome::DuplicateCompleted => "duplicate_completed",
+            GithubWebhookEnqueueOutcome::DuplicateTerminal => "duplicate_terminal",
         };
 
         tracing::info!(
             github_delivery_id = delivery,
             webhook_kind = kind.as_str(),
-            duplicate = matches!(enqueue_outcome, GithubWebhookEnqueueOutcome::Duplicate),
-            requeued,
-            "accepted GitHub webhook",
+            disposition,
+            "accepted GitHub webhook delivery",
         );
 
-        Ok(GithubWebhookOutcome::Queued { inserted })
+        Ok(GithubWebhookOutcome::Queued {
+            inserted: matches!(enqueue_outcome, GithubWebhookEnqueueOutcome::Inserted),
+        })
     }
 
     pub async fn run(self, cancellation: CancellationToken) {

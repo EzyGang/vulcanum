@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use async_trait::async_trait;
 use tokio::sync::Mutex;
@@ -109,7 +108,30 @@ async fn merged_webhook_matches_pr_url_without_installation_mapping(pool: sqlx::
 }
 
 #[sqlx::test]
-async fn redelivered_completed_webhook_moves_previously_unmoved_ticket(pool: sqlx::PgPool) {
+async fn pending_redelivery_keeps_delivery_available_for_processing(pool: sqlx::PgPool) {
+    let (service, task_fetcher) = completion_service(&pool).await;
+    let payload = test_helpers::github::github_pull_request_payload("closed", true);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
+
+    for expected in [true, false] {
+        assert_eq!(
+            service
+                .handle(&signature, "pull_request", "pending-merged-pr", &payload)
+                .await
+                .expect("accept pending delivery"),
+            GithubWebhookOutcome::Queued { inserted: expected },
+        );
+    }
+    assert!(service
+        .process_pending_once()
+        .await
+        .expect("process pending delivery"));
+
+    assert_eq!(task_fetcher.status.lock().await.as_str(), "done");
+}
+
+#[sqlx::test]
+async fn redelivered_completed_webhook_does_not_repeat_ticket_movement(pool: sqlx::PgPool) {
     let (service, task_fetcher) = completion_service(&pool).await;
     let payload = test_helpers::github::github_pull_request_payload("closed", true);
     let signature = test_helpers::github::sign_github_webhook(&payload);
@@ -122,17 +144,10 @@ async fn redelivered_completed_webhook_moves_previously_unmoved_ticket(pool: sql
         )
         .await
         .expect("queue original delivery");
-    let claim = service
-        .store
-        .claim_pending(Duration::from_secs(60))
-        .await
-        .expect("claim original delivery")
-        .expect("original delivery exists");
     assert!(service
-        .store
-        .complete(&claim)
+        .process_pending_once()
         .await
-        .expect("complete original delivery"));
+        .expect("process original delivery"));
 
     assert_eq!(
         service
@@ -143,13 +158,37 @@ async fn redelivered_completed_webhook_moves_previously_unmoved_ticket(pool: sql
                 &payload,
             )
             .await
-            .expect("queue redelivery"),
+            .expect("accept completed redelivery"),
         GithubWebhookOutcome::Queued { inserted: false },
     );
-    assert!(service
+    assert!(!service
         .process_pending_once()
         .await
-        .expect("process redelivery"));
+        .expect("completed delivery does not requeue"));
+
+    assert_eq!(task_fetcher.status.lock().await.as_str(), "done");
+    assert_eq!(
+        task_fetcher.updates.lock().await.as_slice(),
+        &[("task-1".to_owned(), "done".to_owned())]
+    );
+}
+
+#[sqlx::test]
+async fn already_done_ticket_completes_without_second_status_update(pool: sqlx::PgPool) {
+    let (service, task_fetcher) = completion_service(&pool).await;
+    let payload = test_helpers::github::github_pull_request_payload("closed", true);
+    let signature = test_helpers::github::sign_github_webhook(&payload);
+
+    for delivery_id in ["initial-merged-pr", "already-done-merged-pr"] {
+        service
+            .handle(&signature, "pull_request", delivery_id, &payload)
+            .await
+            .expect("queue merged delivery");
+        assert!(service
+            .process_pending_once()
+            .await
+            .expect("process merged delivery"));
+    }
 
     assert_eq!(task_fetcher.status.lock().await.as_str(), "done");
     assert_eq!(

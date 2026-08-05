@@ -96,8 +96,9 @@ pub(crate) struct GithubWebhookClaim {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum GithubWebhookEnqueueOutcome {
     Inserted,
-    Duplicate,
-    Requeued,
+    DuplicatePending,
+    DuplicateCompleted,
+    DuplicateTerminal,
 }
 
 #[derive(Clone)]
@@ -112,7 +113,9 @@ pub(crate) enum GithubWebhookStore {
 pub(crate) struct MemoryDelivery {
     delivery: GithubWebhookDelivery,
     next_attempt_at: u64,
+    last_error: Option<String>,
     completed: bool,
+    terminal: bool,
     claim_token: Option<Uuid>,
 }
 
@@ -140,25 +143,22 @@ impl GithubWebhookStore {
             Self::Memory(deliveries) => {
                 let mut deliveries = deliveries.lock().await;
                 if let Some(existing) = deliveries.get_mut(&delivery.delivery_id) {
-                    if existing.completed
-                        && matches!(delivery.kind, GithubWebhookKind::PullRequestClosed)
-                    {
-                        *existing = MemoryDelivery {
-                            delivery,
-                            next_attempt_at: now,
-                            completed: false,
-                            claim_token: None,
-                        };
-                        return Ok(GithubWebhookEnqueueOutcome::Requeued);
-                    }
-                    return Ok(GithubWebhookEnqueueOutcome::Duplicate);
+                    return Ok(if existing.terminal {
+                        GithubWebhookEnqueueOutcome::DuplicateTerminal
+                    } else if existing.completed {
+                        GithubWebhookEnqueueOutcome::DuplicateCompleted
+                    } else {
+                        GithubWebhookEnqueueOutcome::DuplicatePending
+                    });
                 }
                 deliveries.insert(
                     delivery.delivery_id.clone(),
                     MemoryDelivery {
                         delivery,
                         next_attempt_at: now,
+                        last_error: None,
                         completed: false,
+                        terminal: false,
                         claim_token: None,
                     },
                 );
@@ -180,7 +180,9 @@ impl GithubWebhookStore {
                 let mut deliveries = deliveries.lock().await;
                 let delivery = deliveries
                     .values_mut()
-                    .filter(|entry| !entry.completed && entry.next_attempt_at <= now)
+                    .filter(|entry| {
+                        !entry.completed && !entry.terminal && entry.next_attempt_at <= now
+                    })
                     .min_by_key(|entry| entry.next_attempt_at);
                 match delivery {
                     Some(entry) => {
@@ -211,7 +213,11 @@ impl GithubWebhookStore {
                 let mut deliveries = deliveries.lock().await;
                 let renewed = deliveries
                     .get_mut(&claim.delivery.delivery_id)
-                    .filter(|entry| !entry.completed && entry.claim_token == Some(claim.token))
+                    .filter(|entry| {
+                        !entry.completed
+                            && !entry.terminal
+                            && entry.claim_token == Some(claim.token)
+                    })
                     .map(|entry| entry.next_attempt_at = lease_expires_at)
                     .is_some();
                 Ok(renewed)
@@ -230,6 +236,7 @@ impl GithubWebhookStore {
                     .filter(|entry| entry.claim_token == Some(claim.token))
                     .map(|entry| {
                         entry.completed = true;
+                        entry.last_error = None;
                         entry.claim_token = None;
                     })
                     .is_some();
@@ -256,10 +263,35 @@ impl GithubWebhookStore {
                     .filter(|entry| entry.claim_token == Some(claim.token))
                     .map(|entry| {
                         entry.next_attempt_at = next_attempt;
+                        entry.last_error = Some(error.to_owned());
                         entry.claim_token = None;
                     })
                     .is_some();
                 Ok(retried)
+            }
+        }
+    }
+
+    pub async fn terminal(
+        &self,
+        claim: &GithubWebhookClaim,
+        reason: &str,
+    ) -> Result<bool, GithubAppError> {
+        match self {
+            Self::Redis(client) => redis_store::terminal(client, claim, reason).await,
+            #[cfg(test)]
+            Self::Memory(deliveries) => {
+                let mut deliveries = deliveries.lock().await;
+                let terminal = deliveries
+                    .get_mut(&claim.delivery.delivery_id)
+                    .filter(|entry| entry.claim_token == Some(claim.token))
+                    .map(|entry| {
+                        entry.last_error = Some(reason.to_owned());
+                        entry.terminal = true;
+                        entry.claim_token = None;
+                    })
+                    .is_some();
+                Ok(terminal)
             }
         }
     }

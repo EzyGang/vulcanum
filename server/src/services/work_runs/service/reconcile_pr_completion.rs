@@ -7,10 +7,21 @@ use crate::services::work_runs::service::lifecycle_labels::LifecycleLabelState;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_pr_url;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum TaskPrCompletionDisposition {
+    Moved,
+    AlreadyDone,
+    Retryable(String),
+    Terminal(String),
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub(crate) struct PullRequestReconciliation {
     pub matched: usize,
     pub moved: usize,
+    pub already_done: usize,
+    pub retryable: Vec<String>,
+    pub terminal: Vec<String>,
 }
 
 impl WorkRunsService {
@@ -24,19 +35,27 @@ impl WorkRunsService {
             .work_runs_repo
             .list_task_pr_targets_for_pr_url(&self.db, &pr_url)
             .await?;
-        let matched = targets.len();
-        let mut moved = 0;
+        let mut outcome = PullRequestReconciliation {
+            matched: targets.len(),
+            ..PullRequestReconciliation::default()
+        };
 
         for target in targets {
-            if self
-                .reconcile_task_pr_completion(target.project_config_id, &target.external_task_ref)
+            match self
+                .reconcile_task_pr_completion_with_disposition(
+                    target.project_config_id,
+                    &target.external_task_ref,
+                )
                 .await?
             {
-                moved += 1;
+                TaskPrCompletionDisposition::Moved => outcome.moved += 1,
+                TaskPrCompletionDisposition::AlreadyDone => outcome.already_done += 1,
+                TaskPrCompletionDisposition::Retryable(reason) => outcome.retryable.push(reason),
+                TaskPrCompletionDisposition::Terminal(reason) => outcome.terminal.push(reason),
             }
         }
 
-        Ok(PullRequestReconciliation { matched, moved })
+        Ok(outcome)
     }
 
     pub(crate) async fn reconcile_task_pr_completion(
@@ -44,9 +63,28 @@ impl WorkRunsService {
         project_config_id: uuid::Uuid,
         task_ref: &str,
     ) -> Result<bool, WorkRunsError> {
+        Ok(matches!(
+            self.reconcile_task_pr_completion_with_disposition(project_config_id, task_ref)
+                .await?,
+            TaskPrCompletionDisposition::Moved
+        ))
+    }
+
+    async fn reconcile_task_pr_completion_with_disposition(
+        &self,
+        project_config_id: uuid::Uuid,
+        task_ref: &str,
+    ) -> Result<TaskPrCompletionDisposition, WorkRunsError> {
         let config = self.project_configs.find_by_id(project_config_id).await?;
-        if !config.enabled || config.review_column == config.done_column {
-            return Ok(false);
+        if !config.enabled {
+            return Ok(TaskPrCompletionDisposition::Terminal(format!(
+                "task {task_ref} belongs to a disabled project configuration"
+            )));
+        }
+        if config.review_column == config.done_column {
+            return Ok(TaskPrCompletionDisposition::Terminal(format!(
+                "task {task_ref} has identical Review and Done columns"
+            )));
         }
 
         let task_refs = [task_ref.to_owned()];
@@ -58,10 +96,13 @@ impl WorkRunsService {
             .task_prs_are_merged(config.team_id, task_ref, &task_prs)
             .await?
         {
-            return Ok(false);
+            return Ok(TaskPrCompletionDisposition::Retryable(format!(
+                "task {task_ref} is waiting for all linked pull requests to merge"
+            )));
         }
 
-        self.move_task_to_done(&config, task_ref).await
+        self.move_task_to_done_with_disposition(&config, task_ref)
+            .await
     }
 
     pub(crate) async fn task_prs_are_merged(
@@ -95,11 +136,11 @@ impl WorkRunsService {
         Ok(!task_prs.is_empty())
     }
 
-    async fn move_task_to_done(
+    async fn move_task_to_done_with_disposition(
         &self,
         config: &ProjectConfig,
         task_ref: &str,
-    ) -> Result<bool, WorkRunsError> {
+    ) -> Result<TaskPrCompletionDisposition, WorkRunsError> {
         let provider_id = config.provider_id.ok_or(ProjectConfigsError::NoProvider)?;
         let provider = self
             .providers_repo
@@ -107,28 +148,43 @@ impl WorkRunsService {
             .await
             .map_err(|_| ProjectConfigsError::NoProvider)?;
         let client = IntegrationClient::from_provider(&provider);
-        self.sync_task_to_done(config, task_ref, &client).await
+        self.sync_task_to_done_with_disposition(config, task_ref, &client)
+            .await
     }
 
+    #[cfg(test)]
     pub(crate) async fn sync_task_to_done(
         &self,
         config: &ProjectConfig,
         task_ref: &str,
         client: &IntegrationClient,
     ) -> Result<bool, WorkRunsError> {
+        Ok(matches!(
+            self.sync_task_to_done_with_disposition(config, task_ref, client)
+                .await?,
+            TaskPrCompletionDisposition::Moved
+        ))
+    }
+
+    async fn sync_task_to_done_with_disposition(
+        &self,
+        config: &ProjectConfig,
+        task_ref: &str,
+        client: &IntegrationClient,
+    ) -> Result<TaskPrCompletionDisposition, WorkRunsError> {
         let current = match &self.task_fetcher {
             Some(task_fetcher) => task_fetcher.fetch_task(task_ref).await?,
             None => client.fetch_task(task_ref).await?,
         };
 
+        if current.status == config.done_column {
+            return Ok(TaskPrCompletionDisposition::AlreadyDone);
+        }
         if current.status != config.review_column {
-            tracing::debug!(
-                task_ref,
-                expected_column = %config.review_column,
-                current_column = %current.status,
-                "skipping automatic PR completion because task left the Review column",
-            );
-            return Ok(false);
+            return Ok(TaskPrCompletionDisposition::Terminal(format!(
+                "task {task_ref} is in {} instead of the configured Review or Done column",
+                current.status
+            )));
         }
 
         match &self.task_fetcher {
@@ -159,6 +215,6 @@ impl WorkRunsService {
                 "task moved to Done without updating its lifecycle label"
             );
         }
-        Ok(true)
+        Ok(TaskPrCompletionDisposition::Moved)
     }
 }

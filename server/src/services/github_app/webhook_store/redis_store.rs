@@ -36,10 +36,13 @@ pub(super) async fn enqueue(
     let outcome: i64 = redis::Script::new(
         r#"local exists = redis.call('EXISTS', KEYS[1])
            if exists == 1 then
-               local completed = redis.call('HGET', KEYS[1], 'completed')
-               if ARGV[1] ~= 'pull_request_closed' or completed ~= '1' then
-                   return 0
+               if redis.call('HGET', KEYS[1], 'terminal') == '1' then
+                   return 3
                end
+               if redis.call('HGET', KEYS[1], 'completed') == '1' then
+                   return 2
+               end
+               return 0
            end
            redis.call('HSET', KEYS[1],
                'kind', ARGV[1],
@@ -54,10 +57,11 @@ pub(super) async fn enqueue(
                'request_body', ARGV[10],
                'command_error', ARGV[11],
                'attempts', 0,
-               'completed', 0)
+               'completed', 0,
+               'terminal', 0)
            redis.call('EXPIRE', KEYS[1], ARGV[13])
            redis.call('ZADD', KEYS[2], ARGV[12], ARGV[14])
-           if exists == 1 then return 2 else return 1 end"#,
+           return 1"#,
     )
     .key(delivery_key(&delivery.delivery_id))
     .key(PENDING_KEY)
@@ -80,9 +84,10 @@ pub(super) async fn enqueue(
     .map_err(redis_error)?;
 
     match outcome {
-        0 => Ok(GithubWebhookEnqueueOutcome::Duplicate),
+        0 => Ok(GithubWebhookEnqueueOutcome::DuplicatePending),
         1 => Ok(GithubWebhookEnqueueOutcome::Inserted),
-        2 => Ok(GithubWebhookEnqueueOutcome::Requeued),
+        2 => Ok(GithubWebhookEnqueueOutcome::DuplicateCompleted),
+        3 => Ok(GithubWebhookEnqueueOutcome::DuplicateTerminal),
         _ => Err(GithubAppError::Redis(format!(
             "unexpected webhook enqueue outcome: {outcome}"
         ))),
@@ -171,7 +176,8 @@ pub(super) async fn renew(
     let mut connection = connection(client).await?;
     let renewed: i64 = redis::Script::new(
         r#"if redis.call('HGET', KEYS[1], 'claim_token') ~= ARGV[1]
-               or redis.call('HGET', KEYS[1], 'completed') == '1' then
+               or redis.call('HGET', KEYS[1], 'completed') == '1'
+               or redis.call('HGET', KEYS[1], 'terminal') == '1' then
                return 0
            end
            redis.call('EXPIRE', KEYS[1], ARGV[2])
@@ -201,7 +207,7 @@ pub(super) async fn complete(
                return 0
            end
            redis.call('HSET', KEYS[1], 'completed', 1)
-           redis.call('HDEL', KEYS[1], 'claim_token')
+           redis.call('HDEL', KEYS[1], 'claim_token', 'last_error')
            redis.call('EXPIRE', KEYS[1], ARGV[2])
            redis.call('ZREM', KEYS[2], ARGV[3])
            return 1"#,
@@ -247,6 +253,35 @@ pub(super) async fn retry(
     .map_err(redis_error)?;
 
     Ok(retried == 1)
+}
+
+pub(super) async fn terminal(
+    client: &redis::Client,
+    claim: &GithubWebhookClaim,
+    reason: &str,
+) -> Result<bool, GithubAppError> {
+    let mut connection = connection(client).await?;
+    let terminal: i64 = redis::Script::new(
+        r#"if redis.call('HGET', KEYS[1], 'claim_token') ~= ARGV[1] then
+               return 0
+           end
+           redis.call('HSET', KEYS[1], 'terminal', 1, 'last_error', ARGV[2])
+           redis.call('HDEL', KEYS[1], 'claim_token')
+           redis.call('EXPIRE', KEYS[1], ARGV[3])
+           redis.call('ZREM', KEYS[2], ARGV[4])
+           return 1"#,
+    )
+    .key(delivery_key(&claim.delivery.delivery_id))
+    .key(PENDING_KEY)
+    .arg(claim.token.to_string())
+    .arg(reason)
+    .arg(DEDUPE_TTL_SECONDS)
+    .arg(&claim.delivery.delivery_id)
+    .invoke_async(&mut connection)
+    .await
+    .map_err(redis_error)?;
+
+    Ok(terminal == 1)
 }
 
 fn non_empty(value: Option<String>) -> Option<String> {
