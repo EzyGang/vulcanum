@@ -20,7 +20,11 @@ use crate::commands::setup::host::worker_server_path;
 use crate::commands::skills::SkillsCommand;
 
 #[derive(Parser)]
-#[command(name = "vulcanum", about = "Vulcanum CLI")]
+#[command(
+    name = "vulcanum",
+    about = "Vulcanum CLI",
+    version = env!("VULCANUM_VERSION")
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
