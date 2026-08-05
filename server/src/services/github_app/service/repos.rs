@@ -5,6 +5,18 @@ use crate::models::github_app::errors::GithubAppError;
 use crate::services::github_app::service::{GithubAppManager, InstallationToken, RepoInfo};
 use crate::util::github::parse_github_repo;
 
+#[must_use]
+pub(super) fn installation_token_request_body(repo_names: Vec<String>) -> serde_json::Value {
+    serde_json::json!({
+        "repositories": repo_names,
+        "permissions": {
+            "contents": "write",
+            "pull_requests": "write",
+            "workflows": "write"
+        }
+    })
+}
+
 impl GithubAppManager {
     pub async fn list_repos(&self, team_id: Uuid) -> Result<Vec<RepoInfo>, GithubAppError> {
         let installations = self.repo.list_installations(&self.db, team_id).await?;
@@ -101,13 +113,7 @@ impl GithubAppManager {
 
         let octo = self.app_octocrab()?;
         let route = format!("/app/installations/{github_installation_id}/access_tokens");
-        let body = serde_json::json!({
-            "repositories": repo_names,
-            "permissions": {
-                "contents": "write",
-                "pull_requests": "write"
-            }
-        });
+        let body = installation_token_request_body(repo_names);
         let response: octocrab::models::InstallationToken = octo
             .post(&route, Some(&body))
             .await
