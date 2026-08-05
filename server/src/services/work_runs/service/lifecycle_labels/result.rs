@@ -10,7 +10,7 @@ impl WorkRunsService {
         status: WorkRunStatus,
         review_outcome: Option<ReviewSpawnOutcome>,
     ) {
-        if run.is_standalone_review() {
+        if run.is_standalone_review() && !run.has_linked_tracker_task() {
             return;
         }
 
@@ -71,7 +71,7 @@ impl WorkRunsService {
 
         match summary.active_count {
             0 => Some(LifecycleLabelState::ReadyForHuman),
-            _ => None,
+            _ => Some(LifecycleLabelState::ReviewRunning),
         }
     }
 }
