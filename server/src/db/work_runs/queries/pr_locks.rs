@@ -26,4 +26,24 @@ impl WorkRunsRepository {
 
         Ok(())
     }
+
+    pub async fn lock_task_pr_completion(
+        &self,
+        db: &mut PgConnection,
+        project_config_id: Uuid,
+        task_ref: &str,
+    ) -> Result<(), WorkRunsError> {
+        sqlx::query(
+            r#"SELECT pg_advisory_xact_lock(hashtextextended(
+                   'github-task-completion:' || $1::TEXT || ':' || $2,
+                   0
+               ))"#,
+        )
+        .bind(project_config_id)
+        .bind(task_ref)
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
 }

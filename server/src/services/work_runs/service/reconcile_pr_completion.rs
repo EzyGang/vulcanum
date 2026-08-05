@@ -87,10 +87,14 @@ impl WorkRunsService {
             )));
         }
 
+        let mut transaction = self.db.begin().await?;
+        self.work_runs_repo
+            .lock_task_pr_completion(&mut transaction, config.id, task_ref)
+            .await?;
         let task_refs = [task_ref.to_owned()];
         let task_prs = self
             .work_runs_repo
-            .list_task_prs_for_refs(&self.db, config.id, &task_refs)
+            .list_task_prs_for_refs(&mut *transaction, config.id, &task_refs)
             .await?;
         if !self
             .task_prs_are_merged(config.team_id, task_ref, &task_prs)
@@ -101,8 +105,12 @@ impl WorkRunsService {
             )));
         }
 
-        self.move_task_to_done_with_disposition(&config, task_ref)
-            .await
+        let disposition = self
+            .move_task_to_done_with_disposition(&config, task_ref)
+            .await?;
+        transaction.commit().await?;
+
+        Ok(disposition)
     }
 
     pub(crate) async fn task_prs_are_merged(
