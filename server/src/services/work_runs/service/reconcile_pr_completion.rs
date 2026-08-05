@@ -3,7 +3,6 @@ use crate::models::project_configs::model::ProjectConfig;
 use crate::models::work_runs::errors::WorkRunsError;
 use crate::models::work_runs::model::TaskPr;
 use crate::services::providers::client::IntegrationClient;
-use crate::services::work_runs::service::lifecycle_labels::LifecycleLabelState;
 use crate::services::work_runs::service::WorkRunsService;
 use crate::util::github::github_pr_url;
 
@@ -209,18 +208,12 @@ impl WorkRunsService {
         }
 
         if !self
-            .set_lifecycle_label_for_task(
-                config,
-                client,
-                task_ref,
-                LifecycleLabelState::Done,
-                Some(&current.labels),
-            )
+            .clear_lifecycle_labels_for_task(client, task_ref, Some(&current.labels))
             .await
         {
             tracing::warn!(
                 task_ref,
-                "task moved to Done without updating its lifecycle label"
+                "task moved to Done without removing its lifecycle labels"
             );
         }
         Ok(TaskPrCompletionDisposition::Moved)

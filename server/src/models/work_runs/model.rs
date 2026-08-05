@@ -60,6 +60,15 @@ impl WorkRun {
     pub fn is_standalone_review(&self) -> bool {
         self.work_type == WorkRunType::PullRequestReview && self.github_delivery_id.is_some()
     }
+
+    #[must_use]
+    pub fn has_linked_tracker_task(&self) -> bool {
+        self.work_type == WorkRunType::PullRequestReview && self.parent_work_run_id.is_some()
+    }
+    #[must_use]
+    pub(crate) fn syncs_lifecycle_labels(&self) -> bool {
+        !self.is_standalone_review() || self.has_linked_tracker_task()
+    }
 }
 
 #[derive(Debug, Clone, FromRow, Serialize)]

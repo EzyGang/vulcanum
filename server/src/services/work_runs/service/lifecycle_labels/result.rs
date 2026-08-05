@@ -10,28 +10,15 @@ impl WorkRunsService {
         status: WorkRunStatus,
         review_outcome: Option<ReviewSpawnOutcome>,
     ) {
-        if run.is_standalone_review() {
+        if !run.syncs_lifecycle_labels() {
             return;
         }
 
         let state = match (run.work_type, status) {
-            (WorkRunType::Implementation, WorkRunStatus::Completed) => {
-                match review_outcome.unwrap_or(ReviewSpawnOutcome::NoPullRequests) {
-                    ReviewSpawnOutcome::NoPullRequests => Some(LifecycleLabelState::ReadyForHuman),
-                    ReviewSpawnOutcome::ReviewNeeded => Some(LifecycleLabelState::ReviewNeeded),
-                    ReviewSpawnOutcome::ReviewRunning => Some(LifecycleLabelState::ReviewRunning),
-                }
-            }
-            (WorkRunType::Implementation, WorkRunStatus::Failed) => {
-                Some(LifecycleLabelState::NeedsAttention)
-            }
             (WorkRunType::PullRequestReview, WorkRunStatus::Completed) => {
                 self.review_completion_lifecycle_label(run).await
             }
-            (WorkRunType::PullRequestReview, WorkRunStatus::Failed) => {
-                Some(LifecycleLabelState::NeedsAttention)
-            }
-            _ => None,
+            _ => lifecycle_label_for_terminal_result(run.work_type, status, review_outcome),
         };
 
         if let Some(state) = state {
@@ -39,7 +26,7 @@ impl WorkRunsService {
         }
     }
 
-    async fn review_completion_lifecycle_label(
+    pub(crate) async fn review_completion_lifecycle_label(
         &self,
         run: &WorkRun,
     ) -> Option<LifecycleLabelState> {
@@ -71,7 +58,29 @@ impl WorkRunsService {
 
         match summary.active_count {
             0 => Some(LifecycleLabelState::ReadyForHuman),
-            _ => None,
+            _ => Some(LifecycleLabelState::ReviewRunning),
         }
+    }
+}
+
+#[must_use]
+pub(crate) fn lifecycle_label_for_terminal_result(
+    work_type: WorkRunType,
+    status: WorkRunStatus,
+    review_outcome: Option<ReviewSpawnOutcome>,
+) -> Option<LifecycleLabelState> {
+    match (work_type, status) {
+        (WorkRunType::Implementation, WorkRunStatus::Completed) => {
+            match review_outcome.unwrap_or(ReviewSpawnOutcome::NoPullRequests) {
+                ReviewSpawnOutcome::NoPullRequests => Some(LifecycleLabelState::ReadyForHuman),
+                ReviewSpawnOutcome::ReviewNeeded => Some(LifecycleLabelState::ReviewNeeded),
+                ReviewSpawnOutcome::ReviewRunning => Some(LifecycleLabelState::ReviewRunning),
+            }
+        }
+        (WorkRunType::Implementation, WorkRunStatus::Failed)
+        | (WorkRunType::PullRequestReview, WorkRunStatus::Failed) => {
+            Some(LifecycleLabelState::NeedsAttention)
+        }
+        _ => None,
     }
 }

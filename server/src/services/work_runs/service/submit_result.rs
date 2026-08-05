@@ -213,10 +213,8 @@ impl WorkRunsService {
             self.record_review_result(&run, &params).await;
         }
 
-        if !run.is_standalone_review() {
-            self.set_lifecycle_label_after_result(&run, status, review_outcome)
-                .await;
-        }
+        self.set_lifecycle_label_after_result(&run, status, review_outcome)
+            .await;
 
         if matches!(status, WorkRunStatus::Completed) && !run.is_standalone_review() {
             if let Err(e) = self
