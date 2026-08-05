@@ -1,4 +1,4 @@
-mod result;
+pub(super) mod result;
 
 use std::collections::HashMap;
 
@@ -57,7 +57,7 @@ impl WorkRunsService {
         run: &WorkRun,
         state: LifecycleLabelState,
     ) {
-        if run.is_standalone_review() {
+        if !run.syncs_lifecycle_labels() {
             return;
         }
 
@@ -68,6 +68,54 @@ impl WorkRunsService {
 
         self.set_lifecycle_label_for_task(&config, &client, &run.external_task_ref, state, None)
             .await;
+    }
+    pub(crate) async fn clear_lifecycle_labels_for_task(
+        &self,
+        client: &IntegrationClient,
+        task_ref: &str,
+        attached_labels: Option<&[IntegrationLabel]>,
+    ) -> bool {
+        let fetched_labels = match attached_labels {
+            Some(_) => None,
+            None => {
+                let task = match client.fetch_task(task_ref).await {
+                    Ok(task) => task,
+                    Err(e) => {
+                        tracing::warn!(
+                            task_ref,
+                            error = %e,
+                            "failed to fetch task labels before lifecycle label cleanup",
+                        );
+                        return false;
+                    }
+                };
+                Some(task.labels)
+            }
+        };
+        let attached_labels = match attached_labels {
+            Some(labels) => labels,
+            None => fetched_labels.as_deref().unwrap_or(&[]),
+        };
+        let mut succeeded = true;
+
+        for label in attached_labels {
+            if !is_lifecycle_label(&label.name) {
+                continue;
+            }
+
+            if let Err(e) = client.remove_task_label(task_ref, &label.id).await {
+                tracing::warn!(
+                    task_ref,
+                    label_id = %label.id,
+                    label_name = %label.name,
+                    error = %e,
+                    "failed to remove lifecycle label",
+                );
+                succeeded = false;
+            }
+        }
+
+        succeeded
     }
 
     pub(crate) async fn set_lifecycle_label_for_task(

@@ -14,7 +14,10 @@ use crate::test_helpers;
 
 struct LabelFailingClient {
     current_status: String,
+    labels: Vec<IntegrationLabel>,
     status_updates: Arc<Mutex<Vec<(String, String)>>>,
+    removed_labels: Arc<Mutex<Vec<String>>>,
+    fail_removal: bool,
 }
 
 #[async_trait]
@@ -51,7 +54,7 @@ impl IntegrationProviderClient for LabelFailingClient {
             assignee_name: None,
             created_at: "2026-07-25T00:00:00Z".to_owned(),
             updated_at: None,
-            labels: Vec::new(),
+            labels: self.labels.clone(),
         })
     }
 
@@ -163,9 +166,14 @@ impl IntegrationProviderClient for LabelFailingClient {
     async fn remove_task_label(
         &self,
         _task_id: &str,
-        _label_id: &str,
+        label_id: &str,
     ) -> Result<(), IntegrationError> {
-        Err(unexpected_call("remove_task_label"))
+        if self.fail_removal {
+            return Err(IntegrationError::Other("label API unavailable".to_owned()));
+        }
+
+        self.removed_labels.lock().await.push(label_id.to_owned());
+        Ok(())
     }
 }
 
@@ -180,9 +188,13 @@ async fn merged_pr_moves_task_when_lifecycle_label_sync_fails(pool: sqlx::PgPool
         .await
         .expect("load project config");
     let status_updates = Arc::new(Mutex::new(Vec::new()));
+    let removed_labels = Arc::new(Mutex::new(Vec::new()));
     let client = IntegrationClient::new(LabelFailingClient {
         current_status: config.review_column.clone(),
+        labels: vec![lifecycle_label("running", "Review running")],
         status_updates: status_updates.clone(),
+        removed_labels,
+        fail_removal: true,
     });
 
     let moved = state
@@ -196,6 +208,59 @@ async fn merged_pr_moves_task_when_lifecycle_label_sync_fails(pool: sqlx::PgPool
         status_updates.lock().await.as_slice(),
         &[("task-1".to_owned(), "done".to_owned())]
     );
+}
+
+#[sqlx::test]
+async fn moving_task_to_done_removes_all_lifecycle_labels(pool: sqlx::PgPool) {
+    let project_config_id =
+        test_helpers::project_configs::insert_project_config(&pool, "project-1").await;
+    let state = test_helpers::state::build_state(pool).await;
+    let config = state
+        .project_configs
+        .find_by_id(project_config_id)
+        .await
+        .expect("load project config");
+    let status_updates = Arc::new(Mutex::new(Vec::new()));
+    let removed_labels = Arc::new(Mutex::new(Vec::new()));
+    let client = IntegrationClient::new(LabelFailingClient {
+        current_status: config.review_column.clone(),
+        labels: vec![
+            lifecycle_label("implementation", "Implementation running"),
+            lifecycle_label("review", "Review running"),
+            lifecycle_label("attention", "Needs attention"),
+            lifecycle_label("ready", "Ready for human"),
+            lifecycle_label("provider", "Customer escalation"),
+        ],
+        status_updates,
+        removed_labels: removed_labels.clone(),
+        fail_removal: false,
+    });
+
+    let moved = state
+        .jobs
+        .sync_task_to_done(&config, "task-1", &client)
+        .await
+        .expect("lifecycle labels should be removed");
+
+    assert!(moved);
+    assert_eq!(
+        removed_labels.lock().await.as_slice(),
+        &[
+            "implementation".to_owned(),
+            "review".to_owned(),
+            "attention".to_owned(),
+            "ready".to_owned(),
+        ]
+    );
+}
+
+fn lifecycle_label(id: &str, name: &str) -> IntegrationLabel {
+    IntegrationLabel {
+        id: id.to_owned(),
+        name: name.to_owned(),
+        color: "#000000".to_owned(),
+        task_id: Some("task-1".to_owned()),
+    }
 }
 
 fn unexpected_call(operation: &str) -> IntegrationError {
