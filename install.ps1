@@ -9,13 +9,22 @@ $ErrorActionPreference = "Stop"
 $target = "x86_64-pc-windows-msvc"
 
 function Resolve-LatestTag {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases/latest" -Headers @{ Accept = "application/vnd.github+json" }
+    $archiveName = "vulcanum-$target.zip"
+    $checksumName = "$archiveName.sha256"
+    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases?per_page=100" -Headers @{ Accept = "application/vnd.github+json" }
 
-    if ([string]::IsNullOrWhiteSpace($release.tag_name)) {
-        throw "No published Vulcanum release was found."
+    foreach ($release in $releases) {
+        if (
+            -not $release.draft -and
+            -not $release.prerelease -and
+            $release.assets.name -contains $archiveName -and
+            $release.assets.name -contains $checksumName
+        ) {
+            return $release.tag_name
+        }
     }
 
-    return $release.tag_name
+    throw "No published Vulcanum release includes the Windows x64 CLI."
 }
 
 function Get-ReleaseTag {

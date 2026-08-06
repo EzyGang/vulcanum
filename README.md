@@ -50,7 +50,7 @@ The release installers download verified release assets:
 curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh | sh
 ```
 
-**Windows x64** installs the `vulcanum.exe` CLI only; Windows worker-daemon setup is not supported:
+**Windows x64** installs the `vulcanum.exe` CLI only after the first release containing the Windows CLI asset is published; Windows worker-daemon setup is not supported:
 
 ```powershell
 irm https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.ps1 | iex
