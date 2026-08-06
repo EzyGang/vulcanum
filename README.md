@@ -42,20 +42,27 @@ The point is not to build another task tracker, another coding agent, or just an
 
 ## Installation
 
-The release installer downloads the `vulcanum` CLI and the `vulcanum-server` worker daemon on Linux or macOS:
+The release installers download verified release assets:
+
+**Linux and macOS** install the `vulcanum` CLI and `vulcanum-server` worker daemon:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh | sh
 ```
 
-The installer:
+**Windows x64** installs the `vulcanum.exe` CLI only; Windows worker-daemon setup is not supported:
 
-- supports x86_64 and ARM64 Linux and macOS;
-- downloads the latest release archive and its SHA-256 checksum;
-- verifies the archive before installing either binary;
-- installs to `~/.local/bin` by default and, when needed, prints commands to update `PATH` for the current shell and persist it in Bash, Zsh, or Fish.
+```powershell
+irm https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.ps1 | iex
+```
 
-It requires `tar`, `awk`, `sed`, either `curl` or `wget`, and either `sha256sum` or `shasum`. To inspect the script before running it:
+Both installers:
+
+- download the latest release archive and its SHA-256 checksum;
+- verify the archive before installing;
+- accept a version and destination through `VULCANUM_VERSION` and `VULCANUM_INSTALL_DIR`.
+
+The Unix installer supports x86_64 and ARM64 Linux and macOS, installs to `~/.local/bin` by default, and prints `PATH` instructions when needed. It requires `tar`, `awk`, `sed`, either `curl` or `wget`, and either `sha256sum` or `shasum`. To inspect it before running:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -LsSf \
@@ -65,15 +72,27 @@ less install.sh
 sh install.sh
 ```
 
-Set `VULCANUM_VERSION` to install a specific release or `VULCANUM_INSTALL_DIR` to choose another destination:
+The Windows installer supports x86_64 Windows, installs to `%LOCALAPPDATA%\Vulcanum\bin` by default, and adds that directory to the user `PATH`. To inspect it before running:
 
-```bash
-curl --proto '=https' --tlsv1.2 -LsSf \
-  https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.sh |
-  VULCANUM_VERSION=0.1.0 VULCANUM_INSTALL_DIR="$HOME/bin" sh
+```powershell
+irm https://raw.githubusercontent.com/EzyGang/vulcanum/main/install.ps1 -OutFile install.ps1
+Get-Content install.ps1
+.\install.ps1
 ```
 
-This installs the worker-side binaries only. The control-plane server, dispatcher, and frontend must still be deployed separately or run from source as described under [Running Locally](#running-locally).
+Set installer variables before invoking the corresponding script:
+
+```bash
+VULCANUM_VERSION=0.1.0 VULCANUM_INSTALL_DIR="$HOME/bin" sh install.sh
+```
+
+```powershell
+$env:VULCANUM_VERSION = "0.1.0"
+$env:VULCANUM_INSTALL_DIR = "$HOME\bin"
+.\install.ps1
+```
+
+The control-plane server, dispatcher, and frontend must still be deployed separately or run from source as described under [Running Locally](#running-locally).
 
 ### Automatic worker-side updates
 
@@ -564,12 +583,13 @@ Run `pnpm prep-queries` after changing server SQL queries.
 
 Published archives are listed on the [GitHub Releases page](https://github.com/EzyGang/vulcanum/releases).
 
-Each release includes `vulcanum` and `vulcanum-server` in checksum-protected archives for:
+Each release includes checksum-protected archives for:
 
-- x86_64 and ARM64 Linux;
-- x86_64 and ARM64 macOS.
+- `vulcanum` and `vulcanum-server` on x86_64 and ARM64 Linux;
+- `vulcanum` and `vulcanum-server` on x86_64 and ARM64 macOS;
+- `vulcanum.exe` on x86_64 Windows.
 
-Use the [installation script](#installation) to select the archive for the current platform automatically. Each release also publishes multi-platform control-plane, frontend, and public website images:
+Use the [installation scripts](#installation) to select the archive for the current platform automatically. Each release also publishes multi-platform control-plane, frontend, and public website images:
 
 ```text
 ghcr.io/ezygang/vulcanum/backend:<release-tag>
