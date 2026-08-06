@@ -1,3 +1,5 @@
+#![cfg(not(windows))]
+
 use std::fs;
 use std::net::TcpListener;
 

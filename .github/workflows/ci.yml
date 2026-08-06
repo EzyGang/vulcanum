@@ -156,6 +156,11 @@ jobs:
         shell: pwsh
         run: |
           $archive = "vulcanum-x86_64-pc-windows-msvc.zip"
+          $expectedChecksum = ((Get-Content "$archive.sha256" -Raw).Trim() -split '\s+')[0]
+          $actualChecksum = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower()
+          if ($actualChecksum -ne $expectedChecksum) {
+            throw "Windows CLI archive checksum does not match $archive.sha256"
+          }
           Expand-Archive -Path $archive -DestinationPath extracted
           if (-not (Test-Path extracted/vulcanum.exe)) {
             throw "Windows CLI archive does not contain vulcanum.exe"
