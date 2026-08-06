@@ -4,6 +4,15 @@ The `vulcanum` binary manages the local worker and provides authenticated access
 
 Run `vulcanum --help` or `vulcanum <COMMAND> --help` for generated command help.
 
+## Version
+
+```bash
+vulcanum --version
+vulcanum -V
+```
+
+Prints the version embedded when the binary was built, then exits without reading local state or contacting an instance.
+
 ## Authentication
 
 App-facing commands require a saved login session:
