@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod redis_store_tests;
+
 use std::time::Duration;
 
 use uuid::Uuid;
@@ -33,6 +36,8 @@ pub(super) async fn enqueue(
     now: u64,
 ) -> Result<GithubWebhookEnqueueOutcome, GithubAppError> {
     let mut connection = connection(client).await?;
+    // The redis crate omits None arguments, which would shift every later Lua ARGV position.
+    let comment_id = optional_i64_arg(delivery.comment_id);
     let outcome: i64 = redis::Script::new(
         r#"local exists = redis.call('EXISTS', KEYS[1])
            if exists == 1 then
@@ -42,14 +47,16 @@ pub(super) async fn enqueue(
                if redis.call('HGET', KEYS[1], 'completed') == '1' then
                    return 2
                end
-               return 0
+               if redis.call('ZSCORE', KEYS[2], ARGV[14]) then
+                   return 0
+               end
+               redis.call('DEL', KEYS[1])
            end
            redis.call('HSET', KEYS[1],
                'kind', ARGV[1],
                'installation_id', ARGV[2],
                'repo_full_name', ARGV[3],
                'pr_number', ARGV[4],
-               'comment_id', ARGV[5],
                'sender_id', ARGV[6],
                'pr_title', ARGV[7],
                'project_selector', ARGV[8],
@@ -59,6 +66,9 @@ pub(super) async fn enqueue(
                'attempts', 0,
                'completed', 0,
                'terminal', 0)
+           if ARGV[5] ~= '' then
+               redis.call('HSET', KEYS[1], 'comment_id', ARGV[5])
+           end
            redis.call('EXPIRE', KEYS[1], ARGV[13])
            redis.call('ZADD', KEYS[2], ARGV[12], ARGV[14])
            return 1"#,
@@ -69,7 +79,7 @@ pub(super) async fn enqueue(
     .arg(delivery.installation_id)
     .arg(&delivery.repo_full_name)
     .arg(delivery.pr_number)
-    .arg(delivery.comment_id)
+    .arg(&comment_id)
     .arg(delivery.sender_id.as_deref().unwrap_or(""))
     .arg(delivery.pr_title.as_deref().unwrap_or(""))
     .arg(delivery.project_selector.as_deref().unwrap_or(""))
@@ -282,6 +292,13 @@ pub(super) async fn terminal(
     .map_err(redis_error)?;
 
     Ok(terminal == 1)
+}
+
+fn optional_i64_arg(value: Option<i64>) -> String {
+    match value {
+        Some(value) => value.to_string(),
+        None => String::new(),
+    }
 }
 
 fn non_empty(value: Option<String>) -> Option<String> {
