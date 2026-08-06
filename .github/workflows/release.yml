@@ -27,6 +27,7 @@ jobs:
       prerelease: ${{ steps.tag.outputs.prerelease }}
       previous_tag: ${{ steps.tag.outputs.previous_tag }}
       tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
       sha: ${{ steps.version.outputs.sha }}
     steps:
       - name: Checkout
@@ -64,8 +65,10 @@ jobs:
             tag="v${VERSION}"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
+          version="${tag#v}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "name=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "previous_tag=${previous_tag:-}" >> "$GITHUB_OUTPUT"
 
   build:
@@ -105,6 +108,8 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Build binaries
+        env:
+          VULCANUM_VERSION: ${{ needs.metadata.outputs.version }}
         run: cargo build --locked --release --target "${{ matrix.target }}" --bin vulcanum --bin vulcanum-server
 
       - name: Package binaries
