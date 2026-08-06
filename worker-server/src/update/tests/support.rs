@@ -18,6 +18,7 @@ pub(super) struct FakeRestarter {
 }
 
 impl FakeRestarter {
+    #[cfg(unix)]
     pub(super) fn failing() -> Self {
         Self {
             calls: Arc::new(AtomicUsize::new(0)),

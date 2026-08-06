@@ -80,12 +80,19 @@ jobs:
         include:
           - runner: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
+            archive_extension: tar.gz
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
+            archive_extension: tar.gz
           - runner: macos-15-intel
             target: x86_64-apple-darwin
+            archive_extension: tar.gz
           - runner: macos-latest
             target: aarch64-apple-darwin
+            archive_extension: tar.gz
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            archive_extension: zip
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -107,12 +114,20 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Build binaries
+      - name: Build Unix binaries
+        if: runner.os != 'Windows'
         env:
           VULCANUM_VERSION: ${{ needs.metadata.outputs.version }}
         run: cargo build --locked --release --target "${{ matrix.target }}" --bin vulcanum --bin vulcanum-server
 
-      - name: Package binaries
+      - name: Build Windows CLI
+        if: runner.os == 'Windows'
+        env:
+          VULCANUM_VERSION: ${{ needs.metadata.outputs.version }}
+        run: cargo build --locked --release --target "${{ matrix.target }}" --bin vulcanum
+
+      - name: Package Unix binaries
+        if: runner.os != 'Windows'
         env:
           TARGET: ${{ matrix.target }}
         run: |
@@ -124,13 +139,24 @@ jobs:
             shasum -a 256 "$archive" > "${archive}.sha256"
           fi
 
+      - name: Package Windows CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          $archive = "vulcanum-$env:TARGET.zip"
+          Compress-Archive -Path "target/$env:TARGET/release/vulcanum.exe" -DestinationPath $archive
+          $checksum = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower()
+          "$checksum  $archive" | Out-File -Encoding ascii "$archive.sha256"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
           name: vulcanum-${{ matrix.target }}
           path: |
-            vulcanum-${{ matrix.target }}.tar.gz
-            vulcanum-${{ matrix.target }}.tar.gz.sha256
+            vulcanum-${{ matrix.target }}.${{ matrix.archive_extension }}
+            vulcanum-${{ matrix.target }}.${{ matrix.archive_extension }}.sha256
           if-no-files-found: error
 
   approval:

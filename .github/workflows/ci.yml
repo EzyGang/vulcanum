@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -129,12 +130,61 @@ jobs:
           RUST_TEST_THREADS: "8"
         run: pnpm run test
 
+  windows-cli:
+    name: Build Windows CLI
+    runs-on: windows-2025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-cli-x86_64-pc-windows-msvc
+      - name: Build Windows CLI
+        run: cargo build --locked --release --target x86_64-pc-windows-msvc --bin vulcanum
+      - name: Package Windows CLI
+        shell: pwsh
+        run: |
+          $archive = "vulcanum-x86_64-pc-windows-msvc.zip"
+          Compress-Archive -Path target/x86_64-pc-windows-msvc/release/vulcanum.exe -DestinationPath $archive
+          $checksum = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower()
+          "$checksum  $archive" | Out-File -Encoding ascii "$archive.sha256"
+      - name: Verify Windows CLI archive
+        shell: pwsh
+        run: |
+          $archive = "vulcanum-x86_64-pc-windows-msvc.zip"
+          $expectedChecksum = ((Get-Content "$archive.sha256" -Raw).Trim() -split '\s+')[0]
+          $actualChecksum = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower()
+          if ($actualChecksum -ne $expectedChecksum) {
+            throw "Windows CLI archive checksum does not match $archive.sha256"
+          }
+          Expand-Archive -Path $archive -DestinationPath extracted
+          if (-not (Test-Path extracted/vulcanum.exe)) {
+            throw "Windows CLI archive does not contain vulcanum.exe"
+          }
+          if (Test-Path extracted/vulcanum-server.exe) {
+            throw "Windows CLI archive must not contain vulcanum-server.exe"
+          }
+      - name: Upload Windows CLI artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: vulcanum-x86_64-pc-windows-msvc
+          path: |
+            vulcanum-x86_64-pc-windows-msvc.zip
+            vulcanum-x86_64-pc-windows-msvc.zip.sha256
+          if-no-files-found: error
+
   ci-pass:
     name: CI succeeded
     if: always()
     needs:
       - lint
       - test
+      - windows-cli
     runs-on: ubuntu-24.04
     steps:
       - name: Check whether the needed jobs succeeded or failed

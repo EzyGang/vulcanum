@@ -1,4 +1,6 @@
+#[cfg(unix)]
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
@@ -166,7 +168,9 @@ fn remove_abandoned_restore_files(install_dir: &Path) -> anyhow::Result<()> {
 }
 
 pub(super) fn sync_file(path: &Path) -> anyhow::Result<()> {
-    File::open(path)
+    OpenOptions::new()
+        .write(true)
+        .open(path)
         .and_then(|file| file.sync_all())
         .with_context(|| format!("failed to sync {}", path.display()))
 }
